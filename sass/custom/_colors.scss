@@ -7,6 +7,7 @@ $sol_base0:     #839496;
 $sol_base1:     #93a1a1;
 $sol_base2:     #eee8d5;
 $sol_base3:     #fdf6e3;
+$kl_text:       #000000;
 
 $sol : light; // light or dark -  Recommended: set $solarized to the opposite of this
 $solarized : dark; // code syntax highlighting theme
@@ -30,6 +31,7 @@ $solarized : dark; // code syntax highlighting theme
   $sol_base1:   $_sol_base01;
   $sol_base2:   $_sol_base02;
   $sol_base3:   $_sol_base03;
+  $kl_text: #586e75;
 }
 
 $sol_yellow:    #b58900;
@@ -57,7 +59,7 @@ $article-border: none;
 $header-bg: $sol_base3;
 $title-color: $sol_yellow;
 $subtitle-color: $sol_base0;
-$text-color: $sol_base1;
+$text-color: $kl_text; //$sol_base1;
 $text-color-light: $sol_base0;
 ///* Navigation */
 $nav-bg: $sol_base1;
