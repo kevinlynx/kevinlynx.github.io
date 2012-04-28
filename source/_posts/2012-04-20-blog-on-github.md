@@ -3,12 +3,13 @@ layout: post
 title: "使用Github Page来写博客"
 category: other
 tags: github jekyll blog
+comments: true
 ---
 
 最开始知道[Github Page](http://pages.github.com/)，是通过[codertrace](http://codertrace.com)上的某些注册用户，他们的BLOG就建立在Github Page上，并且清一色的干净整洁（简陋），这看起来很酷。
 
 Github提供了很多很合coder口味的东西，例如Gist，也包括这里提到的Page。Page并不是特用于建立博客的产品，它仅提供静态页面的显示。它最酷的地方，是通过Git的方式来让你管理这些静态页面。通过建立一个repository，并使用markdown语法来编写文章，然后通过Git来管理这些文章，你就可以自动将其发布出去。
-
+<!-- more -->
 当然，要搭建一个像样点的博客，使用Github Page还不太方便。这里可以使用[Jekyll](https://github.com/mojombo/jekyll)。Jekyll是一个静态网页生成器，它可以将你的markdown文件自动输出为对应的网页。而Github Page也支持Jekyll。
 
 为了更方便地搭建博客，我还使用了[Jekyll-bootstrap](http://jekyllbootstrap.com)。jekyll-bootstrap其实就是一些模板文件，提供了一些博客所需的特殊功能，例如评论，访问统计。

@@ -3,6 +3,7 @@ layout: post
 title: "Lisp一瞥：增强型变量Symbol"
 category: lisp
 tags: lisp
+comments: true
 ---
 
 变量，是所有编程语言里都有的语法概念。在C/C++中，变量用于标示一个内存地址，而变
@@ -10,7 +11,7 @@ tags: lisp
 为实际的地址。在其他语言中，变量虽然或多或少有其他不同的含义，但也大致如此。
 
 Lisp中的变量也差不多这样，但若将variable和Lisp中的 **symbol** 放在一起，则多少会 带来些困惑。
-
+<!-- more -->
 ## Lisp中的“变量"
 
 很多教授Lisp的书中，大概会简单地告诉我们可以使用如下的方式定义一个全局变量 [1]\_.

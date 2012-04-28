@@ -3,6 +3,7 @@ layout: post
 title: "多重继承和void*的糗事"
 category: c/c++
 tags: c/c++
+comments: true
 ---
 
 C++为了兼容C，导致了不少语言阴暗面。Bjarne
@@ -11,6 +12,7 @@ Stroustrup在<D&E\>一书里也常为此表现出无奈。另一方面，强制�
 
 本文即描述了一个关于强制转换带来的问题。这个问题几年前我曾遇到过(<[多线程下vc2003,vc2005对虚函数表处理的BUG？](http://www.cppblog.com/kevinlynx/archive/2008/04/24/48001.html)\>)，当时没来得及深究。深究C++的某些语法，实在是件辛苦事。所以，这里也不提过于诡异的用法。
 
+<!-- more -->
 ## 问题
 
 考虑下面非常普通的多重继承代码:

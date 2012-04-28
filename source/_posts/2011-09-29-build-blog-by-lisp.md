@@ -3,12 +3,14 @@ layout: post
 title: "使用Lisp搭建独立博客"
 category: lisp
 tags: lisp
+comments: true
 ---
 
 本文描述如何使用Lisp工具集搭建一个完整的个人博客站点。一个搭建好的例子站点可以参看我的个人博客：http://codemacro.com。
 
 要搭建一个独立博客，需要两方面的支持。一是博客软件，二是根据选择的博客软件取得必须的“硬件“。例如我这里使用的是Lisp工具集，就需要一个可以完全控制的服务器，所以这里我需要一个VPS。当然，购买一个合适的域名也是必须的。以下将针对这些内容做描述。
 
+<!-- more -->
 ## 获取VPS及域名
 
 VPS提供商国内国外都有很多。我选择的是 [rapidxen](http://www.rapidxen.net/)

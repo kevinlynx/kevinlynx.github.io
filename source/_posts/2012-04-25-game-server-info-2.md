@@ -3,6 +3,7 @@ layout: post
 title: "谈谈我们的游戏逻辑服务器实现（二）"
 category: game develop
 tags: [game develop]
+comments: true
 ---
 
 上一篇谈了一些关键技术的实现方案。本篇描述一些遇到的问题。

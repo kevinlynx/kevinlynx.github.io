@@ -3,6 +3,7 @@ layout: post
 title: "写了个简单的网站，codertrace.com"
 category: other
 tags: codertrace
+comments: true
 ---
 
 ## 简介
@@ -12,6 +13,7 @@ tags: codertrace
 [github主页](https://github.com/kevinlynx)
 集中到一块展示给别人，会不会是一种很方便的自我简介方式？然后我就动手写了
 [codertrace.com](http://codertrace.com) 。
+<!-- more -->
 
 所以， [codertrace.com](http://codertrace.com)
 这个网站的作用就是用来集中让程序员炫耀的。它通过RSS抓取，将你的博客，github主页，或其他有RSS输出的信息集中到一块展示给别人。这些信息通常就可以代表一个程序员。

@@ -4,6 +4,7 @@ title: "用lisp开发博客客户端"
 description: ""
 category: lisp
 tags: lisp
+comments: true
 ---
 
 最近一直在学习Lisp这门语言。回头一看，基本上接近1个月了。刚开始接触Lisp是因为看
@@ -14,7 +15,7 @@ tags: lisp
 当然并不是每次因为某篇写得很geek技术文章就去学习某个新的技术点。一个月时间对我来
 说还是很珍贵了。但是Lisp绝对是大部分程序员都值得一学的语言（就像Haskell一样）。
 我能给出的简单理由包括：
-
+<!-- more -->
 * 大部分程序员只会命令式语言（C/C++/C Like etc)，缺乏函数式语言解决编程问题的思
   想（当然Lisp不是纯函数式)
 * Lisp是仅次于Fortran的古老语言，很多优秀的语言设计思想在现代的一些语言里都找得
