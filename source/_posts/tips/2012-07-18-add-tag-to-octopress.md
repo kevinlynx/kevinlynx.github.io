@@ -13,6 +13,7 @@ tags: [tips, octopress]
 
 复制tag_generator.rb到/plugins目录；复制tag_index.html到/source/\_layouts目录。**需要注意的是，还需要复制tag_feed.xml到/source/\_includes/custom/目录。**这个官方文档里没提到，在我机器上rake generate时报错。其他文件就不需要复制了，都是些例子。
 
+<!-- more -->
 **octopress-tag-cloud**
 
 仅复制tag_cloud.rb到/plugins目录即可。但这仅仅只是为liquid添加了一个tag（非本文所提tag）。如果要在侧边导航里添加一个tag cloud，我们还需要手动添加aside。

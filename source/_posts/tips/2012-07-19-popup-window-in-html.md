@@ -13,6 +13,7 @@ tags: [tips, web, html]
 
 弹出窗口的内容是作为一个单独的div存在的，这个div可以在页面刚开始载入时不填入内容，而在以后通过json或者直接返回js来填入。其次，弹出窗口的显示位置一般是绝对位置，一方面是不影响页面布局，另一方面也希望其作为一个顶层窗口来呈现，所以需要指定其position css。
 
+<!-- more -->
 {% highlight html %}
 <div id='userprofile' class='popup' style="display:none;"></div>
 {% endhighlight %}
