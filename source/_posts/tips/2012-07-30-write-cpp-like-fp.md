@@ -19,6 +19,7 @@ for (ListType::iterator it = con.begin(); it != con.end(); ++it) {
 {% endraw %}
 {% endhighlight %}
 
+<!-- more -->
 或者针对std::map/set等的查找：
 
 {% highlight c++ %}
