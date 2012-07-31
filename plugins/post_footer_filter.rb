@@ -14,7 +14,7 @@ module AppendFooterFilter
      post.content + %Q[<p class='post-footer'>
             #{pre or "original link:"}
             <a href='#{post.full_url}'>#{post.full_url}</a><br/>
-            &nbsp;written by <a href='#{url}'>#{author}</a>
+            written by <a href='#{url}'>#{author}</a>
             &nbsp;posted at <a href='#{url}'>#{url}</a>
             </p>]
   end 
