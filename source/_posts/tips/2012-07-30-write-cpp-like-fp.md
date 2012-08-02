@@ -60,7 +60,7 @@ con.each do |it| if it.some-filed == some-value then return something end end
     }
 #define L_VALUE (*IT_N)
 
-#define FIDN_MAP_ITEM(type, map, key, fexps, texps) \
+#define FIND_MAP_ITEM(type, map, key, fexps, texps) \
     do { \
         type::iterator IT_N = map.find(key); \
         if (IT_N == map.end()) { \
