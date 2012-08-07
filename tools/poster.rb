@@ -66,7 +66,7 @@ def new_post(api, url)
     return
   end
   post = { :title => title, :description => content, :categories => categories }
-  api.newPost(post, false)
+  api.newPost(post, true)
   puts "new post #{title} in #{categories} done\n"
 end
 
@@ -77,7 +77,7 @@ def edit_post(api, postid, url)
     return
   end
   post = { :title => title, :description => content, :categories => categories }
-  api.editPost(postid, post, false)
+  api.editPost(postid, post, true)
   puts "edit post #{title} in #{categories} done\n"
 end
 
