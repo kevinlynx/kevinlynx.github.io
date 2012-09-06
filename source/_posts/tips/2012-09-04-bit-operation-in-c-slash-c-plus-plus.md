@@ -5,6 +5,8 @@ date: 2012-09-04 19:49
 comments: true
 categories: [tips, c/c++]
 tags: [tips, c/c++]
+keywords: bit operation, c/c++, bitset
+description: c/c++中对二进制位的操作包括设置某位为1、清除某位（置为0）、开关某位(toggling a bit)、检查某位是否为1等。
 ---
 
 参考[How do you set, clear and toggle a single bit in C?](http://stackoverflow.com/questions/47981/how-do-you-set-clear-and-toggle-a-single-bit-in-c)

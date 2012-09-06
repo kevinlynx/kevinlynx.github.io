@@ -5,6 +5,8 @@ date: 2012-08-13 15:56
 comments: true
 categories: [tips, lua]
 tags: [tips, lua]
+keywords: lua, object-oriented
+description: 可以结合[Lua里实现简单的类-对象]看。在我的应用中，存在类似以下代码：
 ---
 
 可以结合[Lua里实现简单的类-对象](http://codemacro.com/2012/08/02/simple-oo-in-lua/)看。在我的应用中，存在类似以下代码：

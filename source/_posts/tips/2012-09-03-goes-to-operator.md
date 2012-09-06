@@ -5,6 +5,8 @@ date: 2012-09-03 15:14
 comments: true
 categories: [tips, c/c++]
 tags: [tips]
+keywords: -->, c/c++, operator
+description: -->是一个合法的操作符，我打赌自认c/c++熟手的你们都不知道这个操作符。有人称它为goes to操作符，x-->0表示x向0趋近。
 ---
 
 参考[What is the name of this operator: "-->"?](http://stackoverflow.com/questions/1642028/what-is-the-name-of-this-operator)

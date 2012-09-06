@@ -5,6 +5,8 @@ date: 2012-08-17 11:37
 comments: true
 categories: [tips, c/c++]
 tags: [tips, c/c++]
+keywords: memcmp, c/c++
+description: c语言中的赋值运算符（=）被定义为基于值的复制，而不是基于内存内容的复制。
 ---
 
 参考[Is using memcmp on array of int strictly conforming?](http://stackoverflow.com/questions/11994513/is-using-memcmp-on-array-of-int-strictly-conforming)
