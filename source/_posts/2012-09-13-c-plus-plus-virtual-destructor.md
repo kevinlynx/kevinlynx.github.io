@@ -6,7 +6,7 @@ comments: true
 categories: [c/c++]
 tags: [c/c++, destructor, virtual]
 keywords: c/c++, virtual, destructor
-description:
+description: 当然，实际代码比这个复杂得多(这也是导致从发现问题到找到问题耗费大量时间的原因)。vld在报内存泄漏时，当然报的位置是`new`的地方。这个同事检查了这个对象的整个生命周期，确定他正确地释放了这个对象。
 ---
 
 有一天有个同事在通过vld调试一个内存泄漏问题，折腾了很久然后找到我。我瞥了一眼他的代码，发现问题和我曾经遇到的一模一样：
@@ -25,7 +25,7 @@ privated:
 Base *obj = new Derived();
 delete obj;
 {% endhighlight %}
-
+<!-- more -->
 当然，实际代码比这个复杂得多(这也是导致从发现问题到找到问题耗费大量时间的原因)。vld在报内存泄漏时，当然报的位置是`new`的地方。这个同事检查了这个对象的整个生命周期，确定他正确地释放了这个对象。
 
 问题的关键就在于：**`Base`类的析构函数不是`virtual`的**。因为不是`virtual`，所以在对一个`Base`类型的指针进行`delete`时，就不会调用到派生类`Derived`的析构函数。而派生类里的析构函数会用于析构其内部的子对象，也就是这里的`m_data`。这样，就造成了内存泄漏。
