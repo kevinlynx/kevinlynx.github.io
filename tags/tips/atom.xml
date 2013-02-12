@@ -1,0 +1,365 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Tag: tips | loop in codes]]></title>
+  <link href="http://codemacro.com/tags/tips/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-12T21:33:16+08:00</updated>
+  <id>http://codemacro.com/</id>
+  <author>
+    <name><![CDATA[Kevin Lynx]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Octopress中的SEO]]></title>
+    <link href="http://codemacro.com/2012/09/06/octopress-seo/"/>
+    <updated>2012-09-06T19:02:00+08:00</updated>
+    <id>http://codemacro.com/2012/09/06/octopress-seo</id>
+    <content type="html"><![CDATA[<p>来自<a href="http://www.yatishmehta.in/seo-for-octopress">SEO for Octopress</a></p>
+
+<p>Octopress默认为每个页面添加<code>meta description</code>，其内容为当前文章的前150个字符，如果是首页就会是第一篇文章的前150个字符。这里主要通过增加<code>meta keywords</code>来提高SEO。</p>
+
+<!-- more -->
+
+
+<h2>为每篇文章增加keywors和description</h2>
+
+<p>就像我的这篇博客，这下文章头得填很多数据了，有点麻烦：</p>
+
+<p>{% highlight yaml %}</p>
+
+<h2>{% raw %}</h2>
+
+<p>layout: post
+title: "Octopress中的SEO"
+date: 2012-09-06 19:02
+comments: true
+categories: tips
+tags: [tips, octopress]
+keywords: seo, octopress</p>
+
+<h2>description: Octopress默认为每个页面添加<code>meta description</code>，其内容为当前文章的前150个字符，如果是首页就会是第一篇文章的前150个字符。这里主要通过增加<code>meta keywords</code>来提高SEO。</h2>
+
+<p>{% endraw %}
+{% endhighlight %}</p>
+
+<p>这样，每篇文章页面头就会自动增加<code>meta keywords</code>项，<code>description</code>也会使用这里填的，而不是自动为文章前若干个字符。这个功能的实现在<code>_includes/head.html</code>中。</p>
+
+<p>{% highlight html %}
+{% raw %}
+<meta name="author" content="Kevin Lynx">
+<meta name="description" content=" Octopress默认为每个页面添加`meta description`，其内容为当前文章的前150个字符，如果是首页就会是第一篇文章的前150个字符。这里主要通过增加`meta keywords`来提高SEO。 ">
+<meta name="keywords" content="seo, octopress">
+{% endraw %}
+{% endhighlight %}</p>
+
+<h2>为页面(Page)增加keywords</h2>
+
+<p>上面只是修正了每篇博客页面的<code>meta</code>信息，octopress中还有几个页面需要修正，例如首页，这个可以通过修改<code>_includes/head.html</code>来完成。替换相关内容为以下：</p>
+
+<p>{% highlight html %}
+{% raw %}
+<meta name="author" content="{{ site.author }}">
+{% capture description %}{% if page.description %}{{ page.description }}{% elsif site.description %}{{ site.description }}{%else%}{{ content | raw_content }}{% endif %}{% endcapture %}
+<meta name="description" content="{{ description | strip_html | condense_spaces | truncate:150 }}">
+{% if page.keywords %}<meta name="keywords" content="{{ page.keywords }}">{%else%}<meta name="keywords" content="{{ site.keywords }}">{% endif %}
+{% endraw %}
+{% endhighlight %}</p>
+
+<p>如果页面没有提供<code>keywords</code>或者<code>description</code>的话，就使用<code>site</code>里的设置，也就需要修改<code>_config.yml</code>：</p>
+
+<p>{% highlight yaml %}
+{% raw %}
+description: loop in codes, Kevin Lynx blog
+keywords: c/c++, mmo, game develop, lisp, ruby, lua, web development
+{% endraw %}
+{% endhighlight %}</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[c/c++中几种操作位的方法]]></title>
+    <link href="http://codemacro.com/2012/09/04/bit-operation-in-c-slash-c-plus-plus/"/>
+    <updated>2012-09-04T19:49:00+08:00</updated>
+    <id>http://codemacro.com/2012/09/04/bit-operation-in-c-slash-c-plus-plus</id>
+    <content type="html"><![CDATA[<p>参考<a href="http://stackoverflow.com/questions/47981/how-do-you-set-clear-and-toggle-a-single-bit-in-c">How do you set, clear and toggle a single bit in C?</a></p>
+
+<p>c/c++中对二进制位的操作包括设置某位为1、清除某位（置为0）、开关某位(toggling a bit)、检查某位是否为1等。这些操作较为常见并且可以作为其他位运算的基础接口，以下罗列几种方法：</p>
+
+<h2>传统方法</h2>
+
+<ul>
+<li>设置某位为1</li>
+</ul>
+
+
+<p>{% highlight c++ %}
+number |= 1 &lt;&lt; x; // 设置第x位为1
+{% endhighlight %}</p>
+
+<!-- more -->
+
+
+<ul>
+<li>清除某位</li>
+</ul>
+
+
+<p>{% highlight c++ %}
+number &amp;= ~(1 &lt;&lt; x); // 置第x位为0
+{% endhighlight %}</p>
+
+<ul>
+<li>开关某位</li>
+</ul>
+
+
+<p>{% highlight c++ %}
+number ^= 1 &lt;&lt; x;
+{% endhighlight %}</p>
+
+<ul>
+<li>检查某位</li>
+</ul>
+
+
+<p>{% highlight c++ %}
+if (number &amp; (1 &lt;&lt; x))
+{% endhighlight %}</p>
+
+<p>相应地我们可以将其封装起来，简便的方法是使用宏来封装：</p>
+
+<p>{% highlight c++ %}</p>
+
+<h1>define BIT_SET(a,b) ((a) |= (1&lt;&lt;(b)))</h1>
+
+<h1>define BIT_CLEAR(a,b) ((a) &amp;= ~(1&lt;&lt;(b)))</h1>
+
+<h1>define BIT_FLIP(a,b) ((a) ^= (1&lt;&lt;(b)))</h1>
+
+<h1>define BIT_CHECK(a,b) ((a) &amp; (1&lt;&lt;(b)))</h1>
+
+<p>{% endhighlight %}</p>
+
+<h2>使用位结构操作</h2>
+
+<p>这个使用起来简单很多：</p>
+
+<p>{% highlight c++ %}
+struct bits {</p>
+
+<pre><code>unsigned int a:1;
+unsigned int b:1;
+unsigned int c:1;
+</code></pre>
+
+<p>};</p>
+
+<p>struct bits mybits;</p>
+
+<p>// set/clear a bit
+mybits.b = 1;
+mybits.c = 0;</p>
+
+<p>// toggle a bit
+mybits.a = !mybits.a;
+mybits.b = ~mybits.b;
+mybits.c ^= 1;</p>
+
+<p>// check a bit
+if (mybits.c)
+{% endhighlight %}</p>
+
+<h2>使用STL的std::bitset<N></h2>
+
+<p>这个方法其实类似于使用位结构，只不过STL包装了这个结构定义，当然还提供了很多便捷的接口：</p>
+
+<p>{% highlight c++ %}
+std::bitset<5> bits;
+bits[0] = true;
+bits[1] = false;
+bits.set(2);
+bits.flip(3);
+bits.reset(2);
+{% endhighlight %}</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[c/c++中的-->运算符]]></title>
+    <link href="http://codemacro.com/2012/09/03/goes-to-operator/"/>
+    <updated>2012-09-03T15:14:00+08:00</updated>
+    <id>http://codemacro.com/2012/09/03/goes-to-operator</id>
+    <content type="html"><![CDATA[<p>参考<a href="http://stackoverflow.com/questions/1642028/what-is-the-name-of-this-operator">What is the name of this operator: "-->"?</a></p>
+
+<p>c/c++中以下代码是合法的：</p>
+
+<p>{% highlight c++ %}</p>
+
+<h1>include &lt;stdio.h></h1>
+
+<p>int main()
+{</p>
+
+<pre><code> int x = 10;
+ while( x --&gt; 0 ) // x goes to 0
+ {
+    printf("%d ", x);
+ }
+</code></pre>
+
+<p>}
+{% endhighlight %}</p>
+
+<!-- more -->
+
+
+<p><code>--&gt;</code>是一个合法的操作符，我打赌自认c/c++熟手的你们都不知道这个操作符。有人称它为<code>goes to</code>操作符，<code>x--&gt;0</code>表示x向0趋近。</p>
+
+<p><strong>其实我在忽悠你们。</strong> 并且我相信有很多人对此把戏相当熟悉。没错，<code>--&gt;</code>只是两个操作符恰好遇在了一起，他们是自减运算符<code>--</code>和大于比较运算符<code>&gt;</code>：</p>
+
+<p>{% highlight c++ %}
+while (x-- > 0)</p>
+
+<pre><code>...
+</code></pre>
+
+<p>{% endhighlight %}</p>
+
+<p>类似的把戏还有：</p>
+
+<p>{% highlight c++ %}
+while (x -- \</p>
+
+<pre><code>         \
+          \
+           \
+            &gt; 0)
+printf("%d ", x);
+</code></pre>
+
+<p>{% endhighlight %}</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Null Object模式]]></title>
+    <link href="http://codemacro.com/2012/08/29/null-object-pattern/"/>
+    <updated>2012-08-29T15:57:00+08:00</updated>
+    <id>http://codemacro.com/2012/08/29/null-object-pattern</id>
+    <content type="html"><![CDATA[<p>Null Object模式用于代替空指针（C++中），以避免上层模块对返回值做空值判定。Null Object模式返回的不是一个空指针，而是一个空对象，上层模块对返回值做操作时，不需要做空判定，而是按正常逻辑调用这个对象的某个接口，只不过对于空对象而言，这个接口什么事也没做，例如：</p>
+
+<p>{% highlight c++ %}
+class animal {
+public:
+  virtual void make_sound() = 0;
+};</p>
+
+<p>class dog : public animal {
+  void make_sound() { cout &lt;&lt; "woof!" &lt;&lt; endl; }
+};</p>
+
+<p>class null_animal : public animal {
+  void make_sound() { }
+};</p>
+
+<p>{% endhighlight %}</p>
+
+<p>在我看来这个模式在C++中其实挺扯淡的，因为去判断一个指针是否为NULL，远比创建一个空类，并且添加若干个空函数代价小更多。更何况，我们还不知道<code>null_animal</code>的生命周期如何管理。</p>
+
+<p>但是在我以往写的代码中，我也写过一些避免空指针判定的代码，例如我会使用引用。注意，引用肯定不能保证所对应的对象是合法的，这就像无法确定一个指针是不是野指针一样：</p>
+
+<p>{% highlight c++ %}
+const Item &amp;Container::FindItem(int id) const {</p>
+
+<pre><code>static Item null_item;
+Table::const_iterator it = m_items.find(id);
+return it == m_items.end() ? null_item : it-&gt;second;
+</code></pre>
+
+<p>}
+{% endhighlight %}</p>
+
+<p>参考<a href="http://en.wikipedia.org/wiki/Null_Object_pattern">http://en.wikipedia.org/wiki/Null_Object_pattern</a></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[C++11中lambda概览]]></title>
+    <link href="http://codemacro.com/2012/08/21/c-plus-plus-11-lambda-overview/"/>
+    <updated>2012-08-21T16:44:00+08:00</updated>
+    <id>http://codemacro.com/2012/08/21/c-plus-plus-11-lambda-overview</id>
+    <content type="html"><![CDATA[<p>虽然我对C++11没有什么兴趣，因为C++03就已经有很多复杂的技术了。我曾经试图把我学到的那些复杂的C++技术应用到项目中，但悲剧地发现这给团队其他成员带来了不小的负担。其实也给未来一段时间的自己带来了不小的负担。尤其是template的应用，template代码从外表上就一副唬人的样子，就像即使你会Lisp，并且对Lisp中的括号不以为然，但看到满屏幕的括号时依然内心不安。</p>
+
+<p>但是稍微对C++11的一些特性做了解后，单从理论上来说，还是挺让人有兴趣的。我感觉C++11加入了不少函数式语言的特性和思想，这是我感兴趣的最大理由。今天来看看C++11中的lambda。</p>
+
+<!-- more -->
+
+
+<p>C++03中，在使用STL容器时，或者我自己写的类中，常有遍历的需求，本来写个functor传进去就可以，但是这functor偏偏写的很恶心。因为你需要局部定义一个结构体，重载operator()，并且，如果这个operator()依赖这个functor构建时的上下文信息，你得往这个结构体里塞入若干成员，当然还得让构造函数的参数变得越来越长。最后，在包含你这个functor使用以及结构体定义的这个代码块中，在其代码格式上就变得非常奇怪。如果你像我一样常这样应用，一定深有感触。</p>
+
+<p>然后，C++11来了，C++11中的lambda，就我个人而言，其语法还是非常现代的。来看看其文法形式（截自<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2008/n2550.pdf">N2550</a>）：</p>
+
+<pre><code>lambda-expression:
+      lambda-introducer lambda-parameter-declaration compound-statement
+lambda-introducer:
+      [ lambda-capture ]
+lambda-capture:
+      capture-default
+      capture-list
+      capture-default , capture-list
+capture-default:
+      &amp;
+      =
+capture-list:
+      capture
+      capture-list , capture
+capture:
+      identifier
+      &amp; identifier
+      this
+lambda-parameter-declaration:
+      ( lambda-parameter-declaration-list ) exception-specification lambda-return-type-clause
+lambda-parameter-declaration-list:
+      lambda-parameter
+      lambda-parameter , lambda-parameter-declaration-list
+lambda-parameter:
+      decl-specifier-seq declarator
+lambda-return-type-clause:
+      -&gt; type-id
+</code></pre>
+
+<p>翻译过来大致就是这样的形式：</p>
+
+<pre><code>[capture] (parameter) spec -&gt;return-type { body }
+</code></pre>
+
+<p>capture就是这个lambda实现里可以访问的这个lambda定义时作用域里的变量列表，就像Lua里的upvalue。其实我觉得这个才是lambda最方便程序员的地方，一般的函数式语言其实不需要显示声明这个列表，直接引用这些变量即可。后面的部分都比较好理解，parameter就是这个lambda被调用时的形参列表，return-type就是这个lambda的返回值类型，body自然就是这个lambda的实现。至于spec，主要就是指定异常及body里对capture里的变量的使用权限。一个例子：</p>
+
+<p>{% highlight c++ %}
+vector<int> ints;
+ints.push_back(99);
+ints.push_back(100);
+ints.push_back(101);
+int threhold = 100;
+int sum = 0;
+for_each(ints.begin(), ints.end(),</p>
+
+<pre><code>    [threhold, &amp;sum] (int v) { 
+        if (v &gt;= threhold) ++ sum;
+        });
+</code></pre>
+
+<p>printf("%d\n", sum);
+{% endhighlight %}</p>
+
+<p>capture使用了threhold和sum，但是threhold仅使用其值，而sum则使用了其引用，通过结果可以看出lambda中改变了sum的值。</p>
+
+<p>C++11正在被越来越多的编译器支持，也慢慢地支持得更好。这里有个<a href="http://wiki.apache.org/stdcxx/C++0xCompilerSupport">表</a>，罗列了C++11的各个特性在各个编译器上的支持情况，仅供查阅（以上示例代码测试于vs2010，即MSVC10.0）。</p>
+]]></content>
+  </entry>
+  
+</feed>

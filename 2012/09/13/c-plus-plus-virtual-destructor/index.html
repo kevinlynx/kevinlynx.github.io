@@ -5,13 +5,13 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>loop in codes</title>
+  <title>C++陷阱：virtual析构函数 - loop in codes</title>
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content=" loop in codes, Kevin Lynx blog ">
+  <meta name="description" content=" 当然，实际代码比这个复杂得多(这也是导致从发现问题到找到问题耗费大量时间的原因)。vld在报内存泄漏时，当然报的位置是`new`的地方。这个同事检查了这个对象的整个生命周期，确定他正确地释放了这个对象。 ">
   
-    <meta name="keywords" content="c/c++, mmo, game develop, lisp, ruby, lua, web development">
+    <meta name="keywords" content="c/c++, virtual, destructor">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -20,7 +20,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://codemacro.com">
+  <link rel="canonical" href="http://codemacro.com/2012/09/13/c-plus-plus-virtual-destructor">
   <link href="/favicon.ico" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <script src="/javascripts/modernizr-2.0.js"></script>
@@ -66,107 +66,12 @@
 </nav>
   <div id="main">
     <div id="content">
-      <div class="blog-index">
+      <div>
+<article class="hentry" role="article">
   
-  
-  
-    <article>
-      
   <header>
     
-      <h1 class="entry-title"><a href="/2013/02/12/using-clang/">使用Clang实现C语言编程规范检查</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-02-12T00:00:00+08:00" pubdate data-updated="true">Feb 12<span>th</span>, 2013</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>概述</h2>
-
-<p>Clang是LLVM编译器工具集的前端部分，也就是涵盖词法分析、语法语义分析的部分。而LLVM是Apple在Mac OS上用于替代GCC工具集的编译器软件集合。Clang支持类C语言的语言，例如C、C++、Objective C。Clang的与众不同在于其模块化的设计，使其不仅实现编译器前端部分，并且包装成库的形式提供给上层应用。使用Clang可以做诸如语法高亮、语法检查、编程规范检查方面的工作，当然也可以作为你自己的编译器前端。</p>
-
-<p>编程规范一般包含编码格式和语义规范两部分。编码格式用于约定代码的排版、符号命名等；而语义规范则用于约定诸如类型匹配、表达式复杂度等，例如不允许对常数做逻辑运算、检查变量使用前是否被赋值等。本文描述的主要是基于语义方面的检查，其经验来自于最近做的一个检查工具，该工具实现了超过130条的规范。这份规范部分规则来自于<a href="http://en.wikipedia.org/wiki/MISRA_C">MISRA C</a></p>
-
-<h2>编程模式</h2>
-
-<p>编译器前端部分主要是输出代码对应的抽象语法树(AST)。Clang提供给上层的接口也主要是围绕语法树来做操作。通过google一些Clang的资料，你可能会如我当初一样对该如何正确地使用Clang心存疑惑。我最后使用的方式是基于RecursiveASTVisitor。这是一种类似回调的使用机制，通过提供特定语法树节点的接口，Clang在遍历语法树的时候，在遇到该节点时，就会调用到上层代码。不能说这是最好的方式，但起码它可以工作。基于RecursiveASTVisitor使用Clang，程序主体框架大致为：</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2013/02/12/using-clang/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/09/17/c-plus-plus-ctor-virtual/">C++陷阱：构造函数中的多态</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-17T16:01:00+08:00" pubdate data-updated="true">Sep 17<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>C++中主要是通过给函数加上<code>virtual</code>关键字来实现多态。多态可用于改变一个接口的实现，也算是一种嵌入应用层代码到底层的实现手段。就算你用不到C++那些复杂的技术，多态肯定会被用到。</p>
-
-<p>但加上<code>virtual</code>不一定能保证多态成功：</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/09/17/c-plus-plus-ctor-virtual/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/09/13/c-plus-plus-virtual-destructor/">C++陷阱：virtual析构函数</a></h1>
+      <h1 class="entry-title">C++陷阱：virtual析构函数</h1>
     
     
       <p class="meta">
@@ -189,7 +94,7 @@
   </header>
 
 
-  <div class="entry-content"><p>有一天有个同事在通过vld调试一个内存泄漏问题，折腾了很久然后找到我。我瞥了一眼他的代码，发现问题和我曾经遇到的一模一样：</p>
+<div class="entry-content"><p>有一天有个同事在通过vld调试一个内存泄漏问题，折腾了很久然后找到我。我瞥了一眼他的代码，发现问题和我曾经遇到的一模一样：</p>
 
 <div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">Base</span> <span class="p">{</span>
 <span class="nl">public:</span>
@@ -209,70 +114,33 @@
 
 
 
+<!-- more -->
+
+
+<p>当然，实际代码比这个复杂得多(这也是导致从发现问题到找到问题耗费大量时间的原因)。vld在报内存泄漏时，当然报的位置是<code>new</code>的地方。这个同事检查了这个对象的整个生命周期，确定他正确地释放了这个对象。</p>
+
+<p>问题的关键就在于：<strong><code>Base</code>类的析构函数不是<code>virtual</code>的</strong>。因为不是<code>virtual</code>，所以在对一个<code>Base</code>类型的指针进行<code>delete</code>时，就不会调用到派生类<code>Derived</code>的析构函数。而派生类里的析构函数会用于析构其内部的子对象，也就是这里的<code>m_data</code>。这样，就造成了内存泄漏。</p>
+
+<p>这其实是一个很低级的失误。但毫不客气地说C++中有很多这种少个关键字或者代码位置不对就会造成另一个结果的例子。事实上，针对这些悲剧也有很多书提出一些准则来让大家去无脑遵守。例如针对这个例子，我就记得曾有书说，只要你觉得你的类会被继承，那么最好给析构函数加上virtual。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2012/09/13/c-plus-plus-virtual-destructor/'>http://codemacro.com/2012/09/13/c-plus-plus-virtual-destructor/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
 </div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/09/13/c-plus-plus-virtual-destructor/">Read on &rarr;</a>
-    </footer>
-  
 
 
-    </article>
-  
-  
-    <article>
+  <footer>
+    <p class="meta">
       
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/09/06/octopress-seo/">Octopress中的SEO</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
   
 
+<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
 
-<time datetime="2012-09-06T19:02:00+08:00" pubdate data-updated="true">Sep 6<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>来自<a href="http://www.yatishmehta.in/seo-for-octopress">SEO for Octopress</a></p>
-
-<p>Octopress默认为每个页面添加<code>meta description</code>，其内容为当前文章的前150个字符，如果是首页就会是第一篇文章的前150个字符。这里主要通过增加<code>meta keywords</code>来提高SEO。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/09/06/octopress-seo/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
       
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/09/04/bit-operation-in-c-slash-c-plus-plus/">C/c++中几种操作位的方法</a></h1>
-    
-    
-      <p class="meta">
-        
 
 
 
@@ -284,50 +152,44 @@
   
 
 
-<time datetime="2012-09-04T19:49:00+08:00" pubdate data-updated="true">Sep 4<span>th</span>, 2012</time>
-        
-      </p>
+<time datetime="2012-09-13T17:03:00+08:00" pubdate data-updated="true">Sep 13<span>th</span>, 2012</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/categories/c-c-/'>c/c++</a>
+  
+</span>
+
+
+    </p>
     
-  </header>
-
-
-  <div class="entry-content"><p>参考<a href="http://stackoverflow.com/questions/47981/how-do-you-set-clear-and-toggle-a-single-bit-in-c">How do you set, clear and toggle a single bit in C?</a></p>
-
-<p>c/c++中对二进制位的操作包括设置某位为1、清除某位（置为0）、开关某位(toggling a bit)、检查某位是否为1等。这些操作较为常见并且可以作为其他位运算的基础接口，以下罗列几种方法：</p>
-
-<h2>传统方法</h2>
-
-<ul>
-<li>设置某位为1</li>
-</ul>
-
-
-<div class="highlight"><pre><code class="c"><span class="n">number</span> <span class="o">|=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">x</span><span class="p">;</span> <span class="c1">// 设置第x位为1</span>
-</code></pre>
+      <div class="sharing">
+  
+  
+  
 </div>
 
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/2012/09/06/octopress-seo/" title="Previous Post: Octopress中的SEO">&laquo; Octopress中的SEO</a>
+      
+      
+        <a class="basic-alignment right" href="/2012/09/17/c-plus-plus-ctor-virtual/" title="Next Post: C++陷阱：构造函数中的多态">C++陷阱：构造函数中的多态 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
 
-
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
 
 </div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/09/04/bit-operation-in-c-slash-c-plus-plus/">Read on &rarr;</a>
-    </footer>
-  
 
-
-    </article>
-  
-  <div class="pagination">
-    
-      <a class="prev" href="/page/2/">&larr; Older</a>
-    
-    <a href="/blog/archives">Blog Archives</a>
-    
-  </div>
-</div>
 <aside class="sidebar">
   
     <section>
@@ -410,6 +272,7 @@
   
 </aside>
 
+
     </div>
   </div>
   <footer role="contentinfo"><p>
@@ -424,7 +287,10 @@
       var disqus_shortname = 'loopincodes';
       
         
-        var disqus_script = 'count.js';
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://codemacro.com/2012/09/13/c-plus-plus-virtual-destructor/';
+        var disqus_url = 'http://codemacro.com/2012/09/13/c-plus-plus-virtual-destructor/';
+        var disqus_script = 'embed.js';
       
     (function () {
       var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;

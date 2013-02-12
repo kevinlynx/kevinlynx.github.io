@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Tag: nokogiri | loop in codes]]></title>
+  <link href="http://codemacro.com/tags/nokogiri/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-12T21:33:16+08:00</updated>
+  <id>http://codemacro.com/</id>
+  <author>
+    <name><![CDATA[Kevin Lynx]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Ruby应用几则（解析HTML、XMLRPC）]]></title>
+    <link href="http://codemacro.com/2012/08/09/ruby-usage-example/"/>
+    <updated>2012-08-09T14:26:00+08:00</updated>
+    <id>http://codemacro.com/2012/08/09/ruby-usage-example</id>
+    <content type="html"><![CDATA[<h3>Ruby解析HTML</h3>
+
+<p>Ruby解析HTML（或XML）可以使用<a href="http://nokogiri.org/">nokogiri</a>。我的应用里需要查找HTML页面里的某个元素，结果发现实现方式非常简单，就像使用jquery一样。例如我要获取到octopress博客文章里的文章内容、文章标题、文章分类，就像这篇博客：</p>
+
+<p>{% highlight ruby %}
+{% raw %}</p>
+
+<h1>get post title and content for an octopress post</h1>
+
+<p>def post_info(url)
+  doc = Nokogiri::HTML(open(url))
+  content = doc.css('div.entry-content').to_s
+  title = doc.css('header h1.entry-title').inner_html
+  categories = doc.css('a.category').collect do |link| link.content end
+  return title, content, categories
+end
+{% endraw %}
+{% endhighlight %}</p>
+
+<!-- more -->
+
+
+<p>最关键就是<code>doc.css('div.entry-content')</code>。想起以前用lisp写的那个版本，还手工遍历了整个HTML页面，实在太落后了。上面这个函数的作用就是取得一篇博文的HTML页面，然后返回该博文的内容、标题和分类。</p>
+
+<h3>Ruby调用xml-rpc</h3>
+
+<p>可以使用<code>rails-xmlrpc</code>这个库，直接使用gem安装：<code>gem install rails-xmlrpc</code>。这个库分为客户端和服务器两部分，我的应用是使用metaweblog API：</p>
+
+<p>{% highlight ruby %}
+{% raw %}
+class MetaWeblogClient &lt; XMLRPC::Client
+  def initialize(username, password, host, url)</p>
+
+<pre><code>super(host, url)
+@username = username
+@password = password
+</code></pre>
+
+<p>  end</p>
+
+<p>  def newPost(post, publish)</p>
+
+<pre><code>call("metaWeblog.newPost", "0", "#{@username}", "#{@password}", post, publish)
+</code></pre>
+
+<p>  end</p>
+
+<p>  # other methods</p>
+
+<p>end</p>
+
+<p>def new_post(api, url)
+  title, content, categories = post_info(url)
+  if title.nil? or content.nil?</p>
+
+<pre><code>puts "get post info failed at #{url}\n"
+return
+</code></pre>
+
+<p>  end
+  post = { :title => title, :description => content, :categories => categories }
+  api.newPost(post, true)
+  puts "new post #{title} in #{categories} done\n"
+end</p>
+
+<p>api = MetaweblogClient.new(username, password, host, url)
+new_post(api, "http://codemacro.com/2012/08/07/write-standalone-ruby-script/")</p>
+
+<p>{% endraw %}
+{% endhighlight %}</p>
+
+<h3>Ruby读取yaml</h3>
+
+<p>就像Rails里那些配置文件一样，都属于yaml配置文件。我的应用里只需使用简单的key-value形式的yaml配置，就像：</p>
+
+<p>{% highlight ruby %}
+host: www.cppblog.com
+url: /kevinlynx/services/metaweblog.aspx
+username: kevinlynx
+password: xxxxxx
+{% endhighlight %}</p>
+
+<p>解析的时候需要使用<code>yaml</code>库：</p>
+
+<p>{% highlight ruby %}
+file = File.open(filename)
+cfg = YAML::load(file)
+{% endhighlight %}</p>
+
+<p>针对以上配置，<code>YAML::load</code>得到的结果就是一个hash表：</p>
+
+<p>{% highlight ruby %}
+{% raw %}
+puts cfg["host"]
+puts cfg["url"]
+{% endraw %}
+{% endhighlight %}</p>
+
+<p>以上，我写了一个小工具，可以让我每次在<a href="http://codemacro.com">codemacro.com</a>发表博客后，使用这个工具自动解析生成的文章，然后发表到CPPBLOG上。完整源码可在这个上：<a href="https://gist.github.com/3301662">https://gist.github.com/3301662</a></p>
+]]></content>
+  </entry>
+  
+</feed>

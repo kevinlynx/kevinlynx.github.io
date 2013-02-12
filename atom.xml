@@ -1,0 +1,2137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[loop in codes]]></title>
+  <link href="http://codemacro.com/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-12T21:29:37+08:00</updated>
+  <id>http://codemacro.com/</id>
+  <author>
+    <name><![CDATA[Kevin Lynx]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[使用Clang实现C语言编程规范检查]]></title>
+    <link href="http://codemacro.com/2013/02/12/using-clang/"/>
+    <updated>2013-02-12T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2013/02/12/using-clang</id>
+    <content type="html"><![CDATA[<h2>概述</h2>
+
+<p>Clang是LLVM编译器工具集的前端部分，也就是涵盖词法分析、语法语义分析的部分。而LLVM是Apple在Mac OS上用于替代GCC工具集的编译器软件集合。Clang支持类C语言的语言，例如C、C++、Objective C。Clang的与众不同在于其模块化的设计，使其不仅实现编译器前端部分，并且包装成库的形式提供给上层应用。使用Clang可以做诸如语法高亮、语法检查、编程规范检查方面的工作，当然也可以作为你自己的编译器前端。</p>
+
+<p>编程规范一般包含编码格式和语义规范两部分。编码格式用于约定代码的排版、符号命名等；而语义规范则用于约定诸如类型匹配、表达式复杂度等，例如不允许对常数做逻辑运算、检查变量使用前是否被赋值等。本文描述的主要是基于语义方面的检查，其经验来自于最近做的一个检查工具，该工具实现了超过130条的规范。这份规范部分规则来自于<a href="http://en.wikipedia.org/wiki/MISRA_C">MISRA C</a></p>
+
+<h2>编程模式</h2>
+
+<p>编译器前端部分主要是输出代码对应的抽象语法树(AST)。Clang提供给上层的接口也主要是围绕语法树来做操作。通过google一些Clang的资料，你可能会如我当初一样对该如何正确地使用Clang心存疑惑。我最后使用的方式是基于RecursiveASTVisitor。这是一种类似回调的使用机制，通过提供特定语法树节点的接口，Clang在遍历语法树的时候，在遇到该节点时，就会调用到上层代码。不能说这是最好的方式，但起码它可以工作。基于RecursiveASTVisitor使用Clang，程序主体框架大致为：</p>
+
+<!-- more -->
+
+
+
+
+<div class="highlight"><pre><code class="c"><span class="c1">// 编写你感兴趣的语法树节点访问接口，例如该例子中提供了函数调用语句和goto语句的节点访问接口</span>
+<span class="n">class</span> <span class="n">MyASTVisitor</span> <span class="o">:</span> <span class="n">public</span> <span class="n">RecursiveASTVisitor</span><span class="o">&lt;</span><span class="n">MyASTVisitor</span><span class="o">&gt;</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="kt">bool</span> <span class="n">VisitCallExpr</span><span class="p">(</span><span class="n">CallExpr</span> <span class="o">*</span><span class="n">expr</span><span class="p">);</span>
+
+    <span class="kt">bool</span> <span class="nf">VisitGotoStmt</span><span class="p">(</span><span class="n">GotoStmt</span> <span class="o">*</span><span class="n">stmt</span><span class="p">);</span>
+    <span class="p">...</span>
+<span class="p">};</span>
+
+<span class="n">class</span> <span class="n">MyASTConsumer</span> <span class="o">:</span> <span class="n">public</span> <span class="n">ASTConsumer</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="n">virtual</span> <span class="kt">bool</span> <span class="n">HandleTopLevelDecl</span><span class="p">(</span><span class="n">DeclGroupRef</span> <span class="n">DR</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">DeclGroupRef</span><span class="o">::</span><span class="n">iterator</span> <span class="n">b</span> <span class="o">=</span> <span class="n">DR</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">e</span> <span class="o">=</span> <span class="n">DR</span><span class="p">.</span><span class="n">end</span><span class="p">();</span> <span class="n">b</span> <span class="o">!=</span> <span class="n">e</span><span class="p">;</span> <span class="o">++</span><span class="n">b</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">Visitor</span><span class="p">.</span><span class="n">TraverseDecl</span><span class="p">(</span><span class="o">*</span><span class="n">b</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+    <span class="p">}</span> 
+    
+<span class="nl">private:</span>
+    <span class="n">MyASTVisitor</span> <span class="n">Visitor</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">CompilerInstance</span> <span class="n">inst</span><span class="p">;</span>
+    <span class="n">Rewriter</span> <span class="n">writer</span><span class="p">;</span>
+    <span class="n">inst</span><span class="p">.</span><span class="n">createFileManager</span><span class="p">();</span>
+    <span class="n">inst</span><span class="p">.</span><span class="n">createSourceManager</span><span class="p">(</span><span class="n">inst</span><span class="p">.</span><span class="n">getFileManager</span><span class="p">());</span>
+    <span class="n">inst</span><span class="p">.</span><span class="n">createPreprocessor</span><span class="p">();</span>
+    <span class="n">inst</span><span class="p">.</span><span class="n">createASTContext</span><span class="p">();</span>
+    <span class="n">writer</span><span class="p">.</span><span class="n">setSourceMgr</span><span class="p">(</span><span class="n">inst</span><span class="p">.</span><span class="n">getSourceManager</span><span class="p">(),</span> <span class="n">inst</span><span class="p">.</span><span class="n">getLangOpts</span><span class="p">());</span>
+    <span class="p">...</span> <span class="c1">// 其他初始化CompilerInstance的代码</span>
+  
+    <span class="k">const</span> <span class="n">FileEntry</span> <span class="o">*</span><span class="n">fileIn</span> <span class="o">=</span> <span class="n">fileMgr</span><span class="p">.</span><span class="n">getFile</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+    <span class="n">sourceMgr</span><span class="p">.</span><span class="n">createMainFileID</span><span class="p">(</span><span class="n">fileIn</span><span class="p">);</span>
+    <span class="n">inst</span><span class="p">.</span><span class="n">getDiagnosticClient</span><span class="p">().</span><span class="n">BeginSourceFile</span><span class="p">(</span><span class="n">inst</span><span class="p">.</span><span class="n">getLangOpts</span><span class="p">(),</span> <span class="o">&amp;</span><span class="n">inst</span><span class="p">.</span><span class="n">getPreprocessor</span><span class="p">());</span>
+    <span class="n">MyASTConsumer</span> <span class="n">consumer</span><span class="p">(</span><span class="n">writer</span><span class="p">);</span>
+    <span class="n">ParseAST</span><span class="p">(</span><span class="n">inst</span><span class="p">.</span><span class="n">getPreprocessor</span><span class="p">(),</span> <span class="o">&amp;</span><span class="n">consumer</span><span class="p">,</span> <span class="n">inst</span><span class="p">.</span><span class="n">getASTContext</span><span class="p">());</span>
+    <span class="n">inst</span><span class="p">.</span><span class="n">getDiagnosticClient</span><span class="p">().</span><span class="n">EndSourceFile</span><span class="p">();</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+<p>以上代码中，ParseAST为Clang开始分析代码的主入口，其中提供了一个ASTConsumer。每次分析到一个顶层定义时(Top level decl)就会回调MyASTConsumer::HandleTopLevelDecl，该函数的实现里调用MyASTVisitor开始递归访问该节点。这里的<code>decl</code>实际上包含定义。</p>
+
+<p>这里使用Clang的方式来源于<a href="http://eli.thegreenplace.net/2012/06/08/basic-source-to-source-transformation-with-clang/">Basic source-to-source transformation with Clang</a>。</p>
+
+<h2>语法树</h2>
+
+<p>Clang中视所有代码单元为语句(statement)，Clang中使用类<code>Stmt</code>来代表statement。Clang构造出来的语法树，其节点类型就是<code>Stmt</code>。针对不同类型的语句，Clang有对应的<code>Stmt</code>子类，例如<code>GotoStmt</code>。Clang中的表达式也被视为语句，Clang使用<code>Expr</code>类来表示表达式，而<code>Expr</code>本身就派生于<code>Stmt</code>。</p>
+
+<p>每个语法树节点都会有一个子节点列表，在Clang中一般可以使用如下语句遍历一个节点的子节点：</p>
+
+<div class="highlight"><pre><code class="c"><span class="k">for</span> <span class="p">(</span><span class="n">Stmt</span><span class="o">::</span><span class="n">child_iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">stmt</span><span class="o">-&gt;</span><span class="n">child_begin</span><span class="p">();</span> <span class="n">it</span> <span class="o">!=</span> <span class="n">stmt</span><span class="o">-&gt;</span><span class="n">child_end</span><span class="p">();</span> <span class="o">++</span><span class="n">it</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">Stmt</span> <span class="o">*</span><span class="n">child</span> <span class="o">=</span> <span class="o">*</span><span class="n">it</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+<p>但遗憾的是，无法从一个语法树节点获取其父节点，这将给我们的规范检测工具的实现带来一些麻烦。</p>
+
+<h3>TraverseXXXStmt</h3>
+
+<p>在自己实现的Visitor中（例如MyASTVisitor），除了可以提供VisitXXXStmt系列接口去访问某类型的语法树节点外，还可以提供TraverseXXXStmt系列接口。Traverse系列的接口包装对应的Visit接口，即他们的关系大致为：</p>
+
+<div class="highlight"><pre><code class="c"><span class="kt">bool</span> <span class="nf">TraverseGotoStmt</span><span class="p">(</span><span class="n">GotoStmt</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">VisitGotoStmt</span><span class="p">(</span><span class="n">s</span><span class="p">);</span>
+    <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+<p>例如对于GotoStmt节点而言，Clang会先调用TraverseGotoStmt，在TraverseGotoStmt的实现中才会调用VisitGotoStmt。利用Traverse和Visit之间的调用关系，我们可以解决一些因为不能访问某节点父节点而出现的问题。例如，我们需要限制逗号表达式的使用，在任何地方一旦检测到逗号表达式的出现，都给予警告，除非这个逗号表达式出现在for语句中，例如：</p>
+
+<div class="highlight"><pre><code class="c"><span class="n">a</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">2</span><span class="p">);</span> <span class="cm">/* 违反规范，非法 */</span>
+<span class="k">for</span> <span class="p">(</span><span class="n">a</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span> <span class="n">a</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">;</span> <span class="o">++</span><span class="n">a</span><span class="p">)</span> <span class="cm">/* 合法 */</span>
+</code></pre>
+</div>
+
+
+<p>逗号表达式对应的访问接口为VisitBinComma，所以我们只需要提供该接口的实现即可：</p>
+
+<div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">MyASTVisitor</span> <span class="o">:</span> <span class="n">public</span> <span class="n">RecursiveASTVisitor</span><span class="o">&lt;</span><span class="n">MyASTVisitor</span><span class="o">&gt;</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="p">...</span>
+    <span class="kt">bool</span> <span class="n">VisitBinComma</span><span class="p">(</span><span class="n">BinaryOperator</span> <span class="o">*</span><span class="n">stmt</span><span class="p">)</span> <span class="p">{</span>
+        <span class="cm">/* 报告错误 */</span>
+        <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="p">...</span>
+<span class="p">};</span>
+</code></pre>
+</div>
+
+
+<p>（注：BinaryOperator用于表示二目运算表达式，例如a + b，逗号表达式也是二目表达式）</p>
+
+<p>但在循环中出现的逗号表达式也会调用到VisitBinComma。为了有效区分该逗号表达式是否出现在for语句中，我们可以期望获取该逗号表达式的父节点，并检查该父节点是否为for语句。但Clang并没有提供这样的能力，我想很大一部分原因在于臆测语法树（抽象语法树）节点的组织结构（父节点、兄弟节点）本身就不是一个确定的事。</p>
+
+<p>这里的解决办法是通过提供TraverseForStmt，以在进入for语句前得到一个标识：</p>
+
+<div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">MyASTVisitor</span> <span class="o">:</span> <span class="n">public</span> <span class="n">RecursiveASTVisitor</span><span class="o">&lt;</span><span class="n">MyASTVisitor</span><span class="o">&gt;</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="p">...</span>
+    <span class="c1">// 这个函数的实现可以参考RecursiveASTVisitor的默认实现，我们唯一要做的就是在for语句的头那设定一个标志m_inForLine</span>
+    <span class="kt">bool</span> <span class="n">TraverseForStmt</span><span class="p">(</span><span class="n">ForStmt</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">WalkUpFromForStmt</span><span class="p">(</span><span class="n">s</span><span class="p">))</span>
+            <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+        <span class="n">m_inForLine</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">Stmt</span><span class="o">::</span><span class="n">child_range</span> <span class="n">range</span> <span class="o">=</span> <span class="n">s</span><span class="o">-&gt;</span><span class="n">children</span><span class="p">();</span> <span class="n">range</span><span class="p">;</span> <span class="o">++</span><span class="n">range</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="o">*</span><span class="n">range</span> <span class="o">==</span> <span class="n">s</span><span class="o">-&gt;</span><span class="n">getBody</span><span class="p">())</span>
+                <span class="n">m_inForLine</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+            <span class="n">TraverseStmt</span><span class="p">(</span><span class="o">*</span><span class="n">range</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="kt">bool</span> <span class="n">VisitBinComma</span><span class="p">(</span><span class="n">BinaryOperator</span> <span class="o">*</span><span class="n">stmt</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">m_inForLine</span><span class="p">)</span> <span class="p">{</span>
+            <span class="cm">/* 报告错误 */</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="p">...</span>
+<span class="p">};</span>
+</code></pre>
+</div>
+
+
+<p>（注：严格来说，我们必须检查逗号表达式是出现在for语句的头中，而不包括for语句循环体）</p>
+
+<h2>类型信息</h2>
+
+<p>对于表达式(<code>Expr</code>)而言，都有一个类型信息。Clang直接用于表示类型的类是<code>QualType</code>，实际上这个类只是一个接口包装。这些类型信息可以用于很多类型相关的编程规范检查。例如不允许定义超过2级的指针(例如int ***p)：</p>
+
+<div class="highlight"><pre><code class="c"><span class="kt">bool</span> <span class="n">MyASTVisitor</span><span class="o">::</span><span class="n">VisitVarDecl</span><span class="p">(</span><span class="n">VarDecl</span> <span class="o">*</span><span class="n">decl</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// 当发现变量定义时该接口被调用</span>
+    <span class="n">QualType</span> <span class="n">t</span> <span class="o">=</span> <span class="n">decl</span><span class="o">-&gt;</span><span class="n">getType</span><span class="p">();</span> <span class="c1">// 取得该变量的类型</span>
+    <span class="kt">int</span> <span class="n">pdepth</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="c1">// check pointer level</span>
+    <span class="k">for</span> <span class="p">(</span> <span class="p">;</span> <span class="n">t</span><span class="o">-&gt;</span><span class="n">isPointerType</span><span class="p">();</span> <span class="n">t</span> <span class="o">=</span> <span class="n">t</span><span class="o">-&gt;</span><span class="n">getPointeeType</span><span class="p">())</span> <span class="p">{</span> <span class="c1">// 如果是指针类型就获取其指向类型(PointeeType)</span>
+        <span class="o">++</span><span class="n">pdepth</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">pdepth</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="cm">/* 报告错误 */</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+<p>可以直接调用<code>Expr::getType</code>接口，用于获取指定表达式最终的类型，基于此我们可以检查复杂表达式中的类型转换，例如：</p>
+
+<div class="highlight"><pre><code class="c"><span class="kt">float</span> <span class="n">f</span> <span class="o">=</span> <span class="mf">2.0f</span><span class="p">;</span>
+<span class="kt">double</span> <span class="n">d</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">;</span>
+<span class="n">f</span> <span class="o">=</span> <span class="n">d</span> <span class="o">*</span> <span class="n">f</span><span class="p">;</span> <span class="cm">/* 检查此表达式 */</span>
+</code></pre>
+</div>
+
+
+<p>对以上表达式的检查有很多方法，你可以实现MyASTVisitor::VisitBinaryOperator（只要是二目运算符都会调用），或者MyASTVisitor::VisitBinAssign（赋值运算=调用）。无论哪种方式，我们都可以提供一个递归检查两个表达式类型是否相同的接口：</p>
+
+<div class="highlight"><pre><code class="c"><span class="kt">bool</span> <span class="nf">HasDiffType</span><span class="p">(</span><span class="n">BinaryOperator</span> <span class="o">*</span><span class="n">stmt</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">Expr</span> <span class="o">*</span><span class="n">lhs</span> <span class="o">=</span> <span class="n">stmt</span><span class="o">-&gt;</span><span class="n">getLHS</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">IgnoreImpCasts</span><span class="p">();</span> <span class="c1">// 忽略隐式转换</span>
+    <span class="n">Expr</span> <span class="o">*</span><span class="n">rhs</span> <span class="o">=</span> <span class="n">stmt</span><span class="o">-&gt;</span><span class="n">getRHS</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">IgnoreImpCasts</span><span class="p">();</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">lhs</span><span class="o">-&gt;</span><span class="n">getType</span><span class="p">()</span> <span class="o">==</span> <span class="n">rhs</span><span class="o">-&gt;</span><span class="n">getType</span><span class="p">()))</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">isa</span><span class="o">&lt;</span><span class="n">BinaryOperator</span><span class="o">&gt;</span><span class="p">(</span><span class="n">lhs</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="n">HasDiffType</span><span class="p">(</span><span class="n">cast</span><span class="o">&lt;</span><span class="n">BinaryOperator</span><span class="o">&gt;</span><span class="p">(</span><span class="n">lhs</span><span class="p">)))</span>
+            <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">isa</span><span class="o">&lt;</span><span class="n">BinaryOperator</span><span class="o">&gt;</span><span class="p">(</span><span class="n">rhs</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="n">HasDiffType</span><span class="p">(</span><span class="n">cast</span><span class="o">&lt;</span><span class="n">BinaryOperator</span><span class="o">&gt;</span><span class="p">(</span><span class="n">rhs</span><span class="p">)))</span>
+            <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+        <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+<p>（注：此函数只是简单实现，未考虑类型修饰符之类的问题）</p>
+
+<p>该函数获得二目运算表达式的两个子表达式，然后递归检测这两个表达式的类型是否相同。</p>
+
+<p><code>Expr</code>类提供了更多方便的类型相关的接口，例如判定该表达式是否为常数，是否是布尔表达式，甚至在某些情况下可以直接计算得到值。例如我们可以检查明显的死循环:</p>
+
+<div class="highlight"><pre><code class="c"><span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span> <span class="p">}</span>
+</code></pre>
+</div>
+
+
+<p>可以使用：</p>
+
+<div class="highlight"><pre><code class="c"><span class="n">ASTContext</span> <span class="o">&amp;</span><span class="n">context</span> <span class="o">=</span> <span class="n">inst</span><span class="p">.</span><span class="n">GetASTContext</span><span class="p">();</span>
+<span class="kt">bool</span> <span class="n">result</span><span class="p">;</span>
+<span class="c1">// 假设stmt为WhileStmt</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">stmt</span><span class="o">-&gt;</span><span class="n">getCond</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">EvaluateAsBooleanCondition</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">context</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">result</span><span class="p">)</span> 
+        <span class="cm">/* 死循环 */</span>
+</code></pre>
+</div>
+
+
+<h2>符号表</h2>
+
+<p>符号表这个概念比较广义，这里我仅指的是用于保存类型和变量信息的表。Clang中没有显示的符号表数据结构，但每一个定义都有一个<code>DeclContext</code>，<code>DeclContext</code>用于描述一个定义的上下文环境。有一个特殊的<code>DeclContext</code>被称为<code>translation unit decl</code>，其实也就是全局环境。利用这个translation unit decl，我们可以获取一些全局符号，例如全局变量、全局类型：</p>
+
+<div class="highlight"><pre><code class="c"><span class="c1">// 获取全局作用域里指定名字的符号列表</span>
+<span class="n">DeclContext</span><span class="o">::</span><span class="n">lookup_result</span> <span class="n">GetGlobalDecl</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">name</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">ASTContext</span> <span class="o">&amp;</span><span class="n">context</span> <span class="o">=</span> <span class="n">CompilerInst</span><span class="o">::</span><span class="n">getSingleton</span><span class="p">().</span><span class="n">GetASTContext</span><span class="p">();</span>
+    <span class="n">DeclContext</span> <span class="o">*</span><span class="n">tcxt</span> <span class="o">=</span> <span class="n">context</span><span class="p">.</span><span class="n">getTranslationUnitDecl</span><span class="p">();</span>
+    <span class="n">IdentifierInfo</span> <span class="o">&amp;</span><span class="n">id</span> <span class="o">=</span> <span class="n">context</span><span class="p">.</span><span class="n">Idents</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">tcxt</span><span class="o">-&gt;</span><span class="n">lookup</span><span class="p">(</span><span class="n">DeclarationName</span><span class="p">(</span><span class="o">&amp;</span><span class="n">id</span><span class="p">));</span>
+<span class="p">}</span>
+
+<span class="c1">// 可以根据GetGlobalDecl的返回结果，检查该列表里是否有特定的定义，例如函数定义、类型定义等</span>
+<span class="kt">bool</span> <span class="n">HasSpecDecl</span><span class="p">(</span><span class="n">DeclContext</span><span class="o">::</span><span class="n">lookup_result</span> <span class="n">ret</span><span class="p">,</span> <span class="n">Decl</span><span class="o">::</span><span class="n">Kind</span> <span class="n">kind</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">ret</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">NamedDecl</span> <span class="o">*</span><span class="n">decl</span> <span class="o">=</span> <span class="n">ret</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">decl</span><span class="o">-&gt;</span><span class="n">getKind</span><span class="p">()</span> <span class="o">==</span> <span class="n">kind</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+<p>有了以上两个函数，我们要检测全局作用域里是否有名为&#8221;var&#8221;的变量定义，就可以：</p>
+
+<div class="highlight"><pre><code class="c"><span class="n">HasSpecDecl</span><span class="p">(</span><span class="n">GetGlobalDecl</span><span class="p">(</span><span class="s">&quot;var&quot;</span><span class="p">),</span> <span class="n">Decl</span><span class="o">::</span><span class="n">Var</span><span class="p">);</span>
+</code></pre>
+</div>
+
+
+<p>每一个<code>Decl</code>都有对应的<code>DeclContext</code>，要检查相同作用域是否包含相同名字的符号，其处理方式和全局的方式有点不一样：</p>
+
+<div class="highlight"><pre><code class="c"><span class="c1">// 检查在ctx中是否有与decl同名的符号定义</span>
+<span class="kt">bool</span> <span class="nf">HasSymbolInContext</span><span class="p">(</span><span class="k">const</span> <span class="n">NamedDecl</span> <span class="o">*</span><span class="n">decl</span><span class="p">,</span> <span class="k">const</span> <span class="n">DeclContext</span> <span class="o">*</span><span class="n">ctx</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">DeclContext</span><span class="o">::</span><span class="n">decl_iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">-&gt;</span><span class="n">decls_begin</span><span class="p">();</span> <span class="n">it</span> <span class="o">!=</span> <span class="n">ctx</span><span class="o">-&gt;</span><span class="n">decls_end</span><span class="p">();</span> <span class="o">++</span><span class="n">it</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">Decl</span> <span class="o">*</span><span class="n">d</span> <span class="o">=</span> <span class="o">*</span><span class="n">it</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">d</span> <span class="o">!=</span> <span class="n">decl</span> <span class="o">&amp;&amp;</span> <span class="n">isa</span><span class="o">&lt;</span><span class="n">NamedDecl</span><span class="o">&gt;</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">&amp;&amp;</span> 
+            <span class="n">cast</span><span class="o">&lt;</span><span class="n">NamedDecl</span><span class="o">&gt;</span><span class="p">(</span><span class="n">d</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">getNameAsString</span><span class="p">()</span> <span class="o">==</span> <span class="n">decl</span><span class="o">-&gt;</span><span class="n">getNameAsString</span><span class="p">())</span>
+            <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">bool</span> <span class="nf">HasSymbolInContext</span><span class="p">(</span><span class="k">const</span> <span class="n">NamedDecl</span> <span class="o">*</span><span class="n">decl</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">HasSymbolInContext</span><span class="p">(</span><span class="n">decl</span><span class="p">,</span> <span class="n">decl</span><span class="o">-&gt;</span><span class="n">getDeclContext</span><span class="p">());</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+<p>可以看出，这里检查相同作用域的方式是遍历上下文环境中的所有符号，但对于全局作用域却是直接查找。对于<code>DeclContext</code>的详细信息我也不甚明了，只能算凑合使用。实际上，这里使用“作用域”一词并不准确，在C语言中的作用域概念，和这里的<code>context</code>概念在Clang中并非等同。</p>
+
+<p>如果要检查嵌套作用域里不能定义相同名字的变量，例如：</p>
+
+<div class="highlight"><pre><code class="c"><span class="kt">int</span> <span class="n">var</span><span class="p">;</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">var</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+<p>通过Clang现有的API是无法实现的。因为Clang给上层的语法树结构中，并不包含作用域信息（在Clang的实现中，用于语义分析的类Sema实际上有作用域的处理）。当然，为了实现这个检测，我们可以手动构建作用域信息（通过TraverseCompoundStmt）。</p>
+
+<h2>宏</h2>
+
+<p>宏的处理属于预处理阶段，并不涵盖在语法分析阶段，所以通过Clang的语法树相关接口是无法处理的。跟宏相关的接口，都是通过Clang的<code>Preprocessor</code>相关接口。Clang为此提供了相应的处理机制，上层需要往<code>Preprocessor</code>对象中添加回调对象，例如：</p>
+
+<div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">MyPPCallback</span> <span class="o">:</span> <span class="n">public</span> <span class="n">PPCallbacks</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// 处理#include</span>
+    <span class="n">virtual</span> <span class="kt">void</span> <span class="n">InclusionDirective</span><span class="p">(</span><span class="n">SourceLocation</span> <span class="n">HashLoc</span><span class="p">,</span> <span class="k">const</span> <span class="n">Token</span> <span class="o">&amp;</span><span class="n">IncludeTok</span><span class="p">,</span>
+        <span class="n">StringRef</span> <span class="n">FileName</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">IsAngled</span><span class="p">,</span> <span class="n">CharSourceRange</span> <span class="n">FilenameRange</span><span class="p">,</span>
+        <span class="k">const</span> <span class="n">FileEntry</span> <span class="o">*</span><span class="n">File</span><span class="p">,</span> <span class="n">StringRef</span> <span class="n">SearchPath</span><span class="p">,</span> <span class="n">StringRef</span> <span class="n">RelativePath</span><span class="p">,</span> <span class="k">const</span> <span class="n">Module</span> <span class="o">*</span><span class="n">Imported</span><span class="p">)</span> <span class="p">{</span>
+    <span class="p">}</span>
+
+    <span class="c1">// 处理#define</span>
+    <span class="n">virtual</span> <span class="kt">void</span> <span class="n">MacroDefined</span><span class="p">(</span><span class="k">const</span> <span class="n">Token</span> <span class="o">&amp;</span><span class="n">MacroNameTok</span><span class="p">,</span> <span class="k">const</span> <span class="n">MacroInfo</span> <span class="o">*</span><span class="n">MI</span><span class="p">)</span> <span class="p">{</span>
+    <span class="p">}</span>
+
+    <span class="n">virtual</span> <span class="kt">void</span> <span class="n">MacroUndefined</span><span class="p">(</span><span class="k">const</span> <span class="n">Token</span> <span class="o">&amp;</span><span class="n">MacroNameTok</span><span class="p">,</span> <span class="k">const</span> <span class="n">MacroInfo</span> <span class="o">*</span><span class="n">MI</span><span class="p">)</span> <span class="p">{</span>
+    <span class="p">}</span> 
+<span class="p">}</span>
+
+<span class="n">inst</span><span class="p">.</span><span class="n">getPreprocessor</span><span class="p">().</span><span class="n">addPPCallbacks</span><span class="p">(</span><span class="n">new</span> <span class="n">MyPPCallback</span><span class="p">());</span>
+</code></pre>
+</div>
+
+
+<p>即，通过实现<code>PPCallbacks</code>中对应的接口，就可以获得处理宏的通知。</p>
+
+<p>Clang使用MacroInfo去表示一个宏。MacroInfo将宏体以一堆token来保存，例如我们要检测宏体中使用<code>##</code>和<code>#</code>的情况，则只能遍历这些tokens:</p>
+
+<div class="highlight"><pre><code class="c"><span class="c1">// 分别记录#和##在宏体中使用的数量</span>
+<span class="kt">int</span> <span class="n">hash</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">hashhash</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="k">for</span> <span class="p">(</span><span class="n">MacroInfo</span><span class="o">::</span><span class="n">tokens_iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">MI</span><span class="o">-&gt;</span><span class="n">tokens_begin</span><span class="p">();</span> <span class="n">it</span> <span class="o">!=</span> <span class="n">MI</span><span class="o">-&gt;</span><span class="n">tokens_end</span><span class="p">();</span> <span class="o">++</span><span class="n">it</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">const</span> <span class="n">Token</span> <span class="o">&amp;</span><span class="n">token</span> <span class="o">=</span> <span class="o">*</span><span class="n">it</span><span class="p">;</span>
+    <span class="n">hash</span> <span class="o">+=</span> <span class="p">(</span><span class="n">token</span><span class="p">.</span><span class="n">getKind</span><span class="p">()</span> <span class="o">==</span> <span class="n">tok</span><span class="o">::</span><span class="n">hash</span> <span class="o">?</span> <span class="mi">1</span> <span class="o">:</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="n">hashhash</span> <span class="o">+=</span> <span class="p">(</span><span class="n">token</span><span class="p">.</span><span class="n">getKind</span><span class="p">()</span> <span class="o">==</span> <span class="n">tok</span><span class="o">::</span><span class="n">hashhash</span> <span class="o">?</span> <span class="mi">1</span> <span class="o">:</span> <span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+<h2>其他</h2>
+
+<p>在我们所支持的编程规范中，有些规范是难以支持的，因此我使用了一些蹩脚的方式来实现。</p>
+
+<h3>手工解析</h3>
+
+<p>在针对函数的参数定义方面，我们支持的规范要求不能定义参数为空的函数，如果该函数没有参数，则必须以<code>void</code>显示标识，例如：</p>
+
+<div class="highlight"><pre><code class="c"><span class="kt">int</span> <span class="nf">func</span><span class="p">();</span> <span class="cm">/* 非法 */</span>
+<span class="kt">int</span> <span class="nf">func</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span> <span class="cm">/* 合法 */</span>
+</code></pre>
+</div>
+
+
+<p>对于Clang而言，函数定义（或声明）使用的是<code>FunctionDecl</code>，而Clang记录的信息仅包括该函数是否有参数，参数个数是多少，并不记录当其参数个数为0时是否使用<code>void</code>来声明（记录下来没多大意义）。解决这个问题的办法，可以通过<code>SourceLocation</code>获取到对应源代码中的文本内容，然后对此文本内容做手工分析即可。</p>
+
+<p>（注：<code>SourceLocation</code>是Clang中用于表示源代码位置的类，包括行号和列号，所有<code>Stmt</code>都会包含此信息）</p>
+
+<p>通过<code>SourceLocation</code>获取对应源码的内容：</p>
+
+<div class="highlight"><pre><code class="c"><span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">FileID</span><span class="p">,</span> <span class="kt">unsigned</span><span class="o">&gt;</span> <span class="n">locInfo</span> <span class="o">=</span> <span class="n">SM</span><span class="p">.</span><span class="n">getDecomposedLoc</span><span class="p">(</span><span class="n">loc</span><span class="p">);</span>
+<span class="kt">bool</span> <span class="n">invalidTemp</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+<span class="n">llvm</span><span class="o">::</span><span class="n">StringRef</span> <span class="n">file</span> <span class="o">=</span> <span class="n">SM</span><span class="p">.</span><span class="n">getBufferData</span><span class="p">(</span><span class="n">locInfo</span><span class="p">.</span><span class="n">first</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">invalidTemp</span><span class="p">);</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">invalidTemp</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+<span class="c1">// tokenBegin即为loc对应源码内容的起始点</span>
+<span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">tokenBegin</span> <span class="o">=</span> <span class="n">file</span><span class="p">.</span><span class="n">data</span><span class="p">()</span> <span class="o">+</span> <span class="n">locInfo</span><span class="p">.</span><span class="n">second</span><span class="p">;</span>
+</code></pre>
+</div>
+
+
+<p>要手工分析这些内容实际上还是有点繁杂，为此我们可以直接使用Clang中词法分析相关的组件来完成这件事：</p>
+
+<div class="highlight"><pre><code class="c"><span class="n">Lexer</span> <span class="o">*</span><span class="n">lexer</span> <span class="o">=</span> <span class="n">new</span> <span class="n">Lexer</span><span class="p">(</span><span class="n">SM</span><span class="p">.</span><span class="n">getLocForStartOfFile</span><span class="p">(</span><span class="n">locInfo</span><span class="p">.</span><span class="n">first</span><span class="p">),</span> <span class="n">opts</span><span class="p">,</span> <span class="n">file</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">tokenBegin</span><span class="p">,</span> <span class="n">file</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
+<span class="n">Token</span> <span class="n">tok</span><span class="p">;</span>
+<span class="n">lexer</span><span class="o">-&gt;</span><span class="n">Lex</span><span class="p">(</span><span class="n">tok</span><span class="p">);</span> <span class="c1">// 取得第一个tok，反复调用可以获取一段token流</span>
+</code></pre>
+</div>
+
+
+<h3>Diagnostic</h3>
+
+<p>Clang中用Diagnostic来进行编译错误的提示。每一个编译错误（警告、建议等）都会有一段文字描述，这些文字描述为了支持多国语言，使用了一种ID的表示方法。总之，对于一个特定的编译错误提示而言，其diagnostic ID是固定的。</p>
+
+<p>在我们的规范中，有些规范检测的代码在Clang中会直接编译出错，例如函数调用传递的参数个数不等于函数定义时的形参个数。当Clang编译出错时，其语法树实际上是不完善的。解决此问题的最简单办法，就是通过diagnostic实现。也就是说，我是通过将我们的特定规范映射到特定的diagnostic，当发生这个特定的编译错误时，就可以认定该规范实际上被检测到。对于简单的情况而言，这样的手段还算奏效。</p>
+
+<div class="highlight"><pre><code class="c"><span class="c1">// `TextDiagnosticPrinter`可以将错误信息打印在控制台上，为了调试方便我从它派生而来</span>
+<span class="n">class</span> <span class="n">MyDiagnosticConsumer</span> <span class="o">:</span> <span class="n">public</span> <span class="n">TextDiagnosticPrinter</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// 当一个错误发生时，会调用此函数，我会在这个函数里通过Info.getID()取得Diagnostic ID，然后对应地取出规范ID</span>
+    <span class="n">virtual</span> <span class="kt">void</span> <span class="n">HandleDiagnostic</span><span class="p">(</span><span class="n">DiagnosticsEngine</span><span class="o">::</span><span class="n">Level</span> <span class="n">DiagLevel</span><span class="p">,</span>
+        <span class="k">const</span> <span class="n">Diagnostic</span> <span class="o">&amp;</span><span class="n">Info</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">TextDiagnosticPrinter</span><span class="o">::</span><span class="n">HandleDiagnostic</span><span class="p">(</span><span class="n">DiagLevel</span><span class="p">,</span> <span class="n">Info</span><span class="p">);</span>
+        <span class="c1">// 例如检查三字母词(trigraph)的使用</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">Info</span><span class="p">.</span><span class="n">getID</span><span class="p">()</span> <span class="o">==</span> <span class="mi">816</span><span class="p">)</span>
+            <span class="cm">/* 报告使用了三字母词 */</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="c1">// 初始化时需传入自己定义的diagnostic</span>
+<span class="n">inst</span><span class="p">.</span><span class="n">createDiagnostics</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">new</span> <span class="n">MyDiagnosticConsumer</span><span class="p">(</span><span class="o">&amp;</span><span class="n">inst</span><span class="p">.</span><span class="n">getDiagnosticOpts</span><span class="p">()));</span>
+</code></pre>
+</div>
+
+
+<p>该例子代码演示了对三字母词(<a href="http://en.wikipedia.org/wiki/Digraphs_and_trigraphs">wiki trigraph</a>)使用限制的规范检测。</p>
+
+<p>全文完。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2013/02/12/using-clang/'>http://codemacro.com/2013/02/12/using-clang/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[C++陷阱：构造函数中的多态]]></title>
+    <link href="http://codemacro.com/2012/09/17/c-plus-plus-ctor-virtual/"/>
+    <updated>2012-09-17T16:01:00+08:00</updated>
+    <id>http://codemacro.com/2012/09/17/c-plus-plus-ctor-virtual</id>
+    <content type="html"><![CDATA[<p>C++中主要是通过给函数加上<code>virtual</code>关键字来实现多态。多态可用于改变一个接口的实现，也算是一种嵌入应用层代码到底层的实现手段。就算你用不到C++那些复杂的技术，多态肯定会被用到。</p>
+
+<p>但加上<code>virtual</code>不一定能保证多态成功：</p>
+
+<!-- more -->
+
+
+
+
+<div class="highlight"><pre><code class="c"><span class="cp">#include &lt;stdio.h&gt;</span>
+
+<span class="n">class</span> <span class="n">Base</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="n">Base</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">Init</span><span class="p">();</span>
+    <span class="p">}</span>
+
+    <span class="n">virtual</span> <span class="o">~</span><span class="n">Base</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">Release</span><span class="p">();</span>
+    <span class="p">}</span>
+
+    <span class="n">virtual</span> <span class="kt">void</span> <span class="n">Init</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Base::Init</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="n">virtual</span> <span class="kt">void</span> <span class="n">Release</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Base::Release</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="n">class</span> <span class="n">Derived</span> <span class="o">:</span> <span class="n">public</span> <span class="n">Base</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="n">virtual</span> <span class="kt">void</span> <span class="n">Init</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Derived::Init</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="n">virtual</span> <span class="kt">void</span> <span class="n">Release</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Derived:Release</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="n">Base</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="n">new</span> <span class="n">Derived</span><span class="p">();</span>
+    <span class="n">delete</span> <span class="n">obj</span><span class="p">;</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+<p>当在构造函数，包括析构函数中调用<code>virtual</code>函数时，预想中的多态是无法完成的，以上代码输出结果为：</p>
+
+<div class="highlight"><pre><code class="c"><span class="n">Base</span><span class="o">::</span><span class="n">Init</span>
+<span class="n">Base</span><span class="o">::</span><span class="n">Release</span>
+</code></pre>
+</div>
+
+
+<p>从语言设计角度来看，我个人是不接受这种行为的。我觉得对一门语言而言，几乎所有特性都应该是一致的，不应该或尽量少地出现这种“例外“。如果我构造一个对象，让它以不同的方式被构造，这和改变它的某个行为有什么区别？（从这句话来看，似乎还真有区别）</p>
+
+<p>当然，从语言实现来看，这样的运行结果又似乎是必然的。因为，基类的构造是早于派生类的（作为其一部分），只有当构造完派生类后，其用于支持多态的虚表才会被正确构造。也就是说，在基类中调用虚函数时，既然虚表都为正确构造，自然调用的不会是派生类的虚函数了。析构函数按照析构的顺序来看，也会面临同样的情况。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2012/09/17/c-plus-plus-ctor-virtual/'>http://codemacro.com/2012/09/17/c-plus-plus-ctor-virtual/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[C++陷阱：virtual析构函数]]></title>
+    <link href="http://codemacro.com/2012/09/13/c-plus-plus-virtual-destructor/"/>
+    <updated>2012-09-13T17:03:00+08:00</updated>
+    <id>http://codemacro.com/2012/09/13/c-plus-plus-virtual-destructor</id>
+    <content type="html"><![CDATA[<p>有一天有个同事在通过vld调试一个内存泄漏问题，折腾了很久然后找到我。我瞥了一眼他的代码，发现问题和我曾经遇到的一模一样：</p>
+
+<div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">Base</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="o">~</span><span class="n">Base</span><span class="p">();</span>
+<span class="p">};</span>
+
+<span class="n">class</span> <span class="n">Derived</span> <span class="o">:</span> <span class="n">public</span> <span class="n">Base</span> <span class="p">{</span>
+<span class="nl">privated:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">m_data</span><span class="p">;</span>    
+<span class="p">};</span>
+
+<span class="n">Base</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="n">new</span> <span class="n">Derived</span><span class="p">();</span>
+<span class="n">delete</span> <span class="n">obj</span><span class="p">;</span>
+</code></pre>
+</div>
+
+
+
+
+<!-- more -->
+
+
+<p>当然，实际代码比这个复杂得多(这也是导致从发现问题到找到问题耗费大量时间的原因)。vld在报内存泄漏时，当然报的位置是<code>new</code>的地方。这个同事检查了这个对象的整个生命周期，确定他正确地释放了这个对象。</p>
+
+<p>问题的关键就在于：<strong><code>Base</code>类的析构函数不是<code>virtual</code>的</strong>。因为不是<code>virtual</code>，所以在对一个<code>Base</code>类型的指针进行<code>delete</code>时，就不会调用到派生类<code>Derived</code>的析构函数。而派生类里的析构函数会用于析构其内部的子对象，也就是这里的<code>m_data</code>。这样，就造成了内存泄漏。</p>
+
+<p>这其实是一个很低级的失误。但毫不客气地说C++中有很多这种少个关键字或者代码位置不对就会造成另一个结果的例子。事实上，针对这些悲剧也有很多书提出一些准则来让大家去无脑遵守。例如针对这个例子，我就记得曾有书说，只要你觉得你的类会被继承，那么最好给析构函数加上virtual。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2012/09/13/c-plus-plus-virtual-destructor/'>http://codemacro.com/2012/09/13/c-plus-plus-virtual-destructor/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Octopress中的SEO]]></title>
+    <link href="http://codemacro.com/2012/09/06/octopress-seo/"/>
+    <updated>2012-09-06T19:02:00+08:00</updated>
+    <id>http://codemacro.com/2012/09/06/octopress-seo</id>
+    <content type="html"><![CDATA[<p>来自<a href="http://www.yatishmehta.in/seo-for-octopress">SEO for Octopress</a></p>
+
+<p>Octopress默认为每个页面添加<code>meta description</code>，其内容为当前文章的前150个字符，如果是首页就会是第一篇文章的前150个字符。这里主要通过增加<code>meta keywords</code>来提高SEO。</p>
+
+<!-- more -->
+
+
+<h2>为每篇文章增加keywors和description</h2>
+
+<p>就像我的这篇博客，这下文章头得填很多数据了，有点麻烦：</p>
+
+<div class="highlight"><pre><code class="yaml"><span class="nn">---</span>
+<span class="l-Scalar-Plain">layout</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">post</span>
+<span class="l-Scalar-Plain">title</span><span class="p-Indicator">:</span> <span class="s">&quot;Octopress中的SEO&quot;</span>
+<span class="l-Scalar-Plain">date</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">2012-09-06 19:02</span>
+<span class="l-Scalar-Plain">comments</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">true</span>
+<span class="l-Scalar-Plain">categories</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">tips</span>
+<span class="l-Scalar-Plain">tags</span><span class="p-Indicator">:</span> <span class="p-Indicator">[</span><span class="nv">tips</span><span class="p-Indicator">,</span> <span class="nv">octopress</span><span class="p-Indicator">]</span>
+<span class="l-Scalar-Plain">keywords</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">seo, octopress</span>
+<span class="l-Scalar-Plain">description</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">Octopress默认为每个页面添加`meta description`，其内容为当前文章的前150个字符，如果是首页就会是第一篇文章的前150个字符。这里主要通过增加`meta keywords`来提高SEO。</span>
+<span class="nn">---</span>
+</code></pre>
+</div>
+
+
+<p>这样，每篇文章页面头就会自动增加<code>meta keywords</code>项，<code>description</code>也会使用这里填的，而不是自动为文章前若干个字符。这个功能的实现在<code>_includes/head.html</code>中。</p>
+
+<div class="highlight"><pre><code class="html"><span class="nt">&lt;meta</span> <span class="na">name=</span><span class="s">&quot;author&quot;</span> <span class="na">content=</span><span class="s">&quot;Kevin Lynx&quot;</span><span class="nt">&gt;</span> 
+<span class="nt">&lt;meta</span> <span class="na">name=</span><span class="s">&quot;description&quot;</span> <span class="na">content=</span><span class="s">&quot; Octopress默认为每个页面添加`meta description`，其内容为当前文章的前150个字符，如果是首页就会是第一篇文章的前150个字符。这里主要通过增加`meta keywords`来提高SEO。 &quot;</span><span class="nt">&gt;</span> 
+<span class="nt">&lt;meta</span> <span class="na">name=</span><span class="s">&quot;keywords&quot;</span> <span class="na">content=</span><span class="s">&quot;seo, octopress&quot;</span><span class="nt">&gt;</span> 
+</code></pre>
+</div>
+
+
+<h2>为页面(Page)增加keywords</h2>
+
+<p>上面只是修正了每篇博客页面的<code>meta</code>信息，octopress中还有几个页面需要修正，例如首页，这个可以通过修改<code>_includes/head.html</code>来完成。替换相关内容为以下：</p>
+
+<div class="highlight"><pre><code class="html"><span class="nt">&lt;meta</span> <span class="na">name=</span><span class="s">&quot;author&quot;</span> <span class="na">content=</span><span class="s">&quot;{{ site.author }}&quot;</span><span class="nt">&gt;</span>
+{% capture description %}{% if page.description %}{{ page.description }}{% elsif site.description %}{{ site.description }}{%else%}{{ content | raw_content }}{% endif %}{% endcapture %}
+<span class="nt">&lt;meta</span> <span class="na">name=</span><span class="s">&quot;description&quot;</span> <span class="na">content=</span><span class="s">&quot;{{ description | strip_html | condense_spaces | truncate:150 }}&quot;</span><span class="nt">&gt;</span>
+{% if page.keywords %}<span class="nt">&lt;meta</span> <span class="na">name=</span><span class="s">&quot;keywords&quot;</span> <span class="na">content=</span><span class="s">&quot;{{ page.keywords }}&quot;</span><span class="nt">&gt;</span>{%else%}<span class="nt">&lt;meta</span> <span class="na">name=</span><span class="s">&quot;keywords&quot;</span> <span class="na">content=</span><span class="s">&quot;{{ site.keywords }}&quot;</span><span class="nt">&gt;</span>{% endif %}
+</code></pre>
+</div>
+
+
+<p>如果页面没有提供<code>keywords</code>或者<code>description</code>的话，就使用<code>site</code>里的设置，也就需要修改<code>_config.yml</code>：</p>
+
+<div class="highlight"><pre><code class="yaml"><span class="l-Scalar-Plain">description</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">loop in codes, Kevin Lynx blog</span>
+<span class="l-Scalar-Plain">keywords</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">c/c++, mmo, game develop, lisp, ruby, lua, web development</span>
+</code></pre>
+</div>
+
+
+
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2012/09/06/octopress-seo/'>http://codemacro.com/2012/09/06/octopress-seo/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[c/c++中几种操作位的方法]]></title>
+    <link href="http://codemacro.com/2012/09/04/bit-operation-in-c-slash-c-plus-plus/"/>
+    <updated>2012-09-04T19:49:00+08:00</updated>
+    <id>http://codemacro.com/2012/09/04/bit-operation-in-c-slash-c-plus-plus</id>
+    <content type="html"><![CDATA[<p>参考<a href="http://stackoverflow.com/questions/47981/how-do-you-set-clear-and-toggle-a-single-bit-in-c">How do you set, clear and toggle a single bit in C?</a></p>
+
+<p>c/c++中对二进制位的操作包括设置某位为1、清除某位（置为0）、开关某位(toggling a bit)、检查某位是否为1等。这些操作较为常见并且可以作为其他位运算的基础接口，以下罗列几种方法：</p>
+
+<h2>传统方法</h2>
+
+<ul>
+<li>设置某位为1</li>
+</ul>
+
+
+<div class="highlight"><pre><code class="c"><span class="n">number</span> <span class="o">|=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">x</span><span class="p">;</span> <span class="c1">// 设置第x位为1</span>
+</code></pre>
+</div>
+
+
+
+
+<!-- more -->
+
+
+<ul>
+<li>清除某位</li>
+</ul>
+
+
+<div class="highlight"><pre><code class="c"><span class="n">number</span> <span class="o">&amp;=</span> <span class="o">~</span><span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">x</span><span class="p">);</span> <span class="c1">// 置第x位为0</span>
+</code></pre>
+</div>
+
+
+<ul>
+<li>开关某位</li>
+</ul>
+
+
+<div class="highlight"><pre><code class="c"><span class="n">number</span> <span class="o">^=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">x</span><span class="p">;</span>
+</code></pre>
+</div>
+
+
+<ul>
+<li>检查某位</li>
+</ul>
+
+
+<div class="highlight"><pre><code class="c"><span class="k">if</span> <span class="p">(</span><span class="n">number</span> <span class="o">&amp;</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">x</span><span class="p">))</span>
+</code></pre>
+</div>
+
+
+<p>相应地我们可以将其封装起来，简便的方法是使用宏来封装：</p>
+
+<div class="highlight"><pre><code class="c"><span class="cp">#define BIT_SET(a,b) ((a) |= (1&lt;&lt;(b)))</span>
+<span class="cp">#define BIT_CLEAR(a,b) ((a) &amp;= ~(1&lt;&lt;(b)))</span>
+<span class="cp">#define BIT_FLIP(a,b) ((a) ^= (1&lt;&lt;(b)))</span>
+<span class="cp">#define BIT_CHECK(a,b) ((a) &amp; (1&lt;&lt;(b)))</span>
+</code></pre>
+</div>
+
+
+<h2>使用位结构操作</h2>
+
+<p>这个使用起来简单很多：</p>
+
+<div class="highlight"><pre><code class="c"><span class="k">struct</span> <span class="n">bits</span> <span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">a</span><span class="o">:</span><span class="mi">1</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">b</span><span class="o">:</span><span class="mi">1</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">c</span><span class="o">:</span><span class="mi">1</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="k">struct</span> <span class="n">bits</span> <span class="n">mybits</span><span class="p">;</span>
+
+<span class="c1">// set/clear a bit</span>
+<span class="n">mybits</span><span class="p">.</span><span class="n">b</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="n">mybits</span><span class="p">.</span><span class="n">c</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+<span class="c1">// toggle a bit</span>
+<span class="n">mybits</span><span class="p">.</span><span class="n">a</span> <span class="o">=</span> <span class="o">!</span><span class="n">mybits</span><span class="p">.</span><span class="n">a</span><span class="p">;</span>
+<span class="n">mybits</span><span class="p">.</span><span class="n">b</span> <span class="o">=</span> <span class="o">~</span><span class="n">mybits</span><span class="p">.</span><span class="n">b</span><span class="p">;</span>
+<span class="n">mybits</span><span class="p">.</span><span class="n">c</span> <span class="o">^=</span> <span class="mi">1</span><span class="p">;</span>
+
+<span class="c1">// check a bit</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">mybits</span><span class="p">.</span><span class="n">c</span><span class="p">)</span>
+</code></pre>
+</div>
+
+
+<h2>使用STL的std::bitset<N></h2>
+
+<p>这个方法其实类似于使用位结构，只不过STL包装了这个结构定义，当然还提供了很多便捷的接口：</p>
+
+<div class="highlight"><pre><code class="c"><span class="n">std</span><span class="o">::</span><span class="n">bitset</span><span class="o">&lt;</span><span class="mi">5</span><span class="o">&gt;</span> <span class="n">bits</span><span class="p">;</span>
+<span class="n">bits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+<span class="n">bits</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+<span class="n">bits</span><span class="p">.</span><span class="n">set</span><span class="p">(</span><span class="mi">2</span><span class="p">);</span>
+<span class="n">bits</span><span class="p">.</span><span class="n">flip</span><span class="p">(</span><span class="mi">3</span><span class="p">);</span>
+<span class="n">bits</span><span class="p">.</span><span class="n">reset</span><span class="p">(</span><span class="mi">2</span><span class="p">);</span>
+</code></pre>
+</div>
+
+
+
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2012/09/04/bit-operation-in-c-slash-c-plus-plus/'>http://codemacro.com/2012/09/04/bit-operation-in-c-slash-c-plus-plus/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[c/c++中的-->运算符]]></title>
+    <link href="http://codemacro.com/2012/09/03/goes-to-operator/"/>
+    <updated>2012-09-03T15:14:00+08:00</updated>
+    <id>http://codemacro.com/2012/09/03/goes-to-operator</id>
+    <content type="html"><![CDATA[<p>参考<a href="http://stackoverflow.com/questions/1642028/what-is-the-name-of-this-operator">What is the name of this operator: &#8220;&#8211;>&#8221;?</a></p>
+
+<p>c/c++中以下代码是合法的：</p>
+
+<div class="highlight"><pre><code class="c"><span class="cp">#include &lt;stdio.h&gt;</span>
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+<span class="p">{</span>
+     <span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+     <span class="k">while</span><span class="p">(</span> <span class="n">x</span> <span class="o">--&gt;</span> <span class="mi">0</span> <span class="p">)</span> <span class="c1">// x goes to 0</span>
+     <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d &quot;</span><span class="p">,</span> <span class="n">x</span><span class="p">);</span>
+     <span class="p">}</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+
+
+<!-- more -->
+
+
+<p><code>--&gt;</code>是一个合法的操作符，我打赌自认c/c++熟手的你们都不知道这个操作符。有人称它为<code>goes to</code>操作符，<code>x--&gt;0</code>表示x向0趋近。</p>
+
+<p><strong>其实我在忽悠你们。</strong> 并且我相信有很多人对此把戏相当熟悉。没错，<code>--&gt;</code>只是两个操作符恰好遇在了一起，他们是自减运算符<code>--</code>和大于比较运算符<code>&gt;</code>：</p>
+
+<div class="highlight"><pre><code class="c"><span class="k">while</span> <span class="p">(</span><span class="n">x</span><span class="o">--</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="p">...</span>
+</code></pre>
+</div>
+
+
+<p>类似的把戏还有：</p>
+
+<div class="highlight"><pre><code class="c"><span class="k">while</span> <span class="p">(</span><span class="n">x</span> <span class="o">--</span> \
+             \
+              \
+               \
+                <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d &quot;</span><span class="p">,</span> <span class="n">x</span><span class="p">);</span>
+</code></pre>
+</div>
+
+
+
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2012/09/03/goes-to-operator/'>http://codemacro.com/2012/09/03/goes-to-operator/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[为什么处理排序的数组要比非排序的快？]]></title>
+    <link href="http://codemacro.com/2012/08/29/branch-predictor/"/>
+    <updated>2012-08-29T19:55:00+08:00</updated>
+    <id>http://codemacro.com/2012/08/29/branch-predictor</id>
+    <content type="html"><![CDATA[<p>参考<a href="http://stackoverflow.com/questions/11227809/why-is-processing-a-sorted-array-faster-than-an-unsorted-array">Why is processing a sorted array faster than an unsorted array?</a></p>
+
+<h2>问题</h2>
+
+<p>看以下代码：</p>
+
+<div class="highlight"><pre><code class="c"><span class="cp">#include &lt;algorithm&gt;</span>
+<span class="cp">#include &lt;ctime&gt;</span>
+<span class="cp">#include &lt;iostream&gt;</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="c1">// generate data</span>
+    <span class="k">const</span> <span class="kt">unsigned</span> <span class="n">arraySize</span> <span class="o">=</span> <span class="mi">32768</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">data</span><span class="p">[</span><span class="n">arraySize</span><span class="p">];</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="n">c</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">c</span> <span class="o">&lt;</span> <span class="n">arraySize</span><span class="p">;</span> <span class="o">++</span><span class="n">c</span><span class="p">)</span>
+        <span class="n">data</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">rand</span><span class="p">()</span> <span class="o">%</span> <span class="mi">256</span><span class="p">;</span>
+
+
+    <span class="c1">// !!! with this, the next loop runs faster</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">sort</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">data</span> <span class="o">+</span> <span class="n">arraySize</span><span class="p">);</span>
+
+
+    <span class="c1">// test</span>
+    <span class="kt">clock_t</span> <span class="n">start</span> <span class="o">=</span> <span class="n">clock</span><span class="p">();</span>
+    <span class="kt">long</span> <span class="kt">long</span> <span class="n">sum</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">100000</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="c1">// primary loop</span>
+        <span class="k">for</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="n">c</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">c</span> <span class="o">&lt;</span> <span class="n">arraySize</span><span class="p">;</span> <span class="o">++</span><span class="n">c</span><span class="p">)</span>
+        <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">128</span><span class="p">)</span>
+                <span class="n">sum</span> <span class="o">+=</span> <span class="n">data</span><span class="p">[</span><span class="n">c</span><span class="p">];</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="kt">double</span> <span class="n">elapsedTime</span> <span class="o">=</span> <span class="n">static_cast</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="p">(</span><span class="n">clock</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span> <span class="o">/</span> <span class="n">CLOCKS_PER_SEC</span><span class="p">;</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">elapsedTime</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;sum = &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">sum</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+<p>问题就在于，去掉<code>std::sort</code>那一行，以上代码将运行更长的时间。在我的机器上未去掉<code>std::sort</code>耗时8.99s，去掉后耗时24.78s。编译器使用的是gcc4.4.3。事实上，以上代码跟编译器没有关系，甚至跟语言没有关系。那这是为什么呢？</p>
+
+<!-- more -->
+
+
+<p>这跟处理这个数组的逻辑有非常大的关系。如以上代码所示，这个循环里有个条件判断。条件判断被编译成二进制代码后，就是一个跳转指令，类似：</p>
+
+<p>具体为什么会不同，这涉及到计算机CPU执行指令时的行为。</p>
+
+<h2>CPU的流水线指令执行</h2>
+
+<p>想象现在有一堆指令等待CPU去执行，那么CPU是如何执行的呢？具体的细节可以找一本计算机组成原理的书来看。CPU执行一堆指令时，并不是单纯地一条一条取出来执行，而是按照一种流水线的方式，在CPU真正执行一条指令前，这条指令就像工厂里流水线生产的产品一样，已经被经过一些处理。简单来说，一条指令可能经过这些过程：取指(Fetch)、解码(Decode)、执行(Execute)、放回(Write-back)。</p>
+
+<p>假设现在有指令序列ABCDEFG。当CPU正在执行(execute)指令A时，CPU的其他处理单元（CPU是由若干部件构成的）其实已经预先处理到了指令A后面的指令，例如B可能已经被解码，C已经被取指。这就是流水线执行，这可以保证CPU高效地执行指令。</p>
+
+<h2>Branch Prediction</h2>
+
+<p>如上所说，CPU在执行一堆顺序执行的指令时，因为对于执行指令的部件来说，其基本不需要等待，因为诸如取指、解码这些过程早就被做了。但是，当CPU面临非顺序执行的指令序列时，例如之前提到的跳转指令，情况会怎样呢？</p>
+
+<p>取指、解码这些CPU单元并不知道程序流程会跳转，只有当CPU执行到跳转指令本身时，才知道该不该跳转。所以，取指解码这些单元就会继续取跳转指令之后的指令。当CPU执行到跳转指令时，如果真的发生了跳转，那么之前的预处理（取指、解码）就白做了。这个时候，CPU得从跳转目标处临时取指、解码，然后才开始执行，这意味着：CPU停了若干个时钟周期！</p>
+
+<p>这其实是个问题，如果CPU的设计放任这个问题，那么其速度就很难提升起来。为此，人们发明了一种技术，称为branch prediction，也就是分支预测。分支预测的作用，就是预测某个跳转指令是否会跳转。而CPU就根据自己的预测到目标地址取指令。这样，即可从一定程度提高运行速度。当然，分支预测在实现上有很多方法。</p>
+
+<p>简单的预测可以直接使用之前的实际执行结果。例如某个跳转指令某一次产生了跳转，那么下一次执行该指令时，CPU就直接从跳转目标地址处取指，而不是该跳转指令的下一条指令。</p>
+
+<h2>答案</h2>
+
+<p>了解了以上信息后，文章开头提出的问题就可以解释了。这个代码中有一个循环，这个循环里有一个条件判断。每一次CPU执行这个条件判断时，CPU都可能跳转到循环开始处的指令，即不执行if后的指令。使用分支预测技术，当处理已经排序的数组时，在若干次<code>data[c]&gt;=128</code>都不成立时（或第一次不成立时，取决于分支预测的实现），CPU预测这个分支是始终会跳转到循环开始的指令时，这个时候CPU将保持有效的执行，不需要重新等待到新的地址取指；同样，当<code>data[c]&gt;=128</code>条件成立若干次后，CPU也可以预测这个分支是不必跳转的，那么这个时候CPU也可以保持高效执行。</p>
+
+<p>相反，如果是无序的数组，CPU的分支预测在很大程度上都无法预测成功，基本就是50%的预测成功概率，这将消耗大量的时间，因为CPU很多时间都会等待取指单元重新取指。</p>
+
+<p>本文完。最后感叹下stackoverflow上这个帖子里那个老外回答问题的专业性，我要是楼主早就感动得涕泪横飞了。感谢每一个传播知识的人。</p>
+
+<h2>参考资料</h2>
+
+<ol>
+<li><a href="http://blog.sina.com.cn/s/blog_6c673e570100zfmo.html">http://blog.sina.com.cn/s/blog_6c673e570100zfmo.html</a></li>
+<li><a href="http://www.cnblogs.com/dongliqian/archive/2012/04/05/2433847.html">http://www.cnblogs.com/dongliqian/archive/2012/04/05/2433847.html</a></li>
+<li><a href="http://en.wikipedia.org/wiki/Branch_predictor">http://en.wikipedia.org/wiki/Branch_predictor</a></li>
+</ol>
+
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2012/08/29/branch-predictor/'>http://codemacro.com/2012/08/29/branch-predictor/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Null Object模式]]></title>
+    <link href="http://codemacro.com/2012/08/29/null-object-pattern/"/>
+    <updated>2012-08-29T15:57:00+08:00</updated>
+    <id>http://codemacro.com/2012/08/29/null-object-pattern</id>
+    <content type="html"><![CDATA[<p>Null Object模式用于代替空指针（C++中），以避免上层模块对返回值做空值判定。Null Object模式返回的不是一个空指针，而是一个空对象，上层模块对返回值做操作时，不需要做空判定，而是按正常逻辑调用这个对象的某个接口，只不过对于空对象而言，这个接口什么事也没做，例如：</p>
+
+<div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">animal</span> <span class="p">{</span>
+<span class="nl">public:</span>
+  <span class="n">virtual</span> <span class="kt">void</span> <span class="n">make_sound</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">};</span>
+ 
+<span class="n">class</span> <span class="n">dog</span> <span class="o">:</span> <span class="n">public</span> <span class="n">animal</span> <span class="p">{</span>
+  <span class="kt">void</span> <span class="n">make_sound</span><span class="p">()</span> <span class="p">{</span> <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;woof!&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span> <span class="p">}</span>
+<span class="p">};</span>
+ 
+<span class="n">class</span> <span class="n">null_animal</span> <span class="o">:</span> <span class="n">public</span> <span class="n">animal</span> <span class="p">{</span>
+  <span class="kt">void</span> <span class="n">make_sound</span><span class="p">()</span> <span class="p">{</span> <span class="p">}</span>
+<span class="p">};</span>
+</code></pre>
+</div>
+
+
+<p>在我看来这个模式在C++中其实挺扯淡的，因为去判断一个指针是否为NULL，远比创建一个空类，并且添加若干个空函数代价小更多。更何况，我们还不知道<code>null_animal</code>的生命周期如何管理。</p>
+
+<p>但是在我以往写的代码中，我也写过一些避免空指针判定的代码，例如我会使用引用。注意，引用肯定不能保证所对应的对象是合法的，这就像无法确定一个指针是不是野指针一样：</p>
+
+<div class="highlight"><pre><code class="c"><span class="k">const</span> <span class="n">Item</span> <span class="o">&amp;</span><span class="n">Container</span><span class="o">::</span><span class="n">FindItem</span><span class="p">(</span><span class="kt">int</span> <span class="n">id</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+    <span class="k">static</span> <span class="n">Item</span> <span class="n">null_item</span><span class="p">;</span>
+    <span class="n">Table</span><span class="o">::</span><span class="n">const_iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">m_items</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">id</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">it</span> <span class="o">==</span> <span class="n">m_items</span><span class="p">.</span><span class="n">end</span><span class="p">()</span> <span class="o">?</span> <span class="n">null_item</span> <span class="o">:</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">second</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+<p>参考<a href="http://en.wikipedia.org/wiki/Null_Object_pattern">http://en.wikipedia.org/wiki/Null_Object_pattern</a></p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2012/08/29/null-object-pattern/'>http://codemacro.com/2012/08/29/null-object-pattern/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[MMO聊天服务器设计]]></title>
+    <link href="http://codemacro.com/2012/08/29/mmo-chat-server/"/>
+    <updated>2012-08-29T09:54:00+08:00</updated>
+    <id>http://codemacro.com/2012/08/29/mmo-chat-server</id>
+    <content type="html"><![CDATA[<p>MMO中的聊天服务主要功能就是做客户端之间的聊天内容转发。但是聊天的形式有很多，例如私聊、同场景聊、队伍内聊、工会内聊、全服务器聊、甚至临时组建房间聊。这些逻辑功能其实都是可以做在逻辑服务器上的，最多改改世界服务器，但是这样完成功能的话，不免将聊天本身的逻辑与游戏逻辑关联起来。我们希望做得更上一层，将聊天服务本身脱离开来。但是独立聊天服务还不够，因为就算独立出来了，也有可能在实现上与具体的游戏逻辑相关联。所以，我们做了进一步的抽象，想实现一个更为通用的聊天服务器。</p>
+
+<h2>设计实现</h2>
+
+<h3>实体设计</h3>
+
+<p>聊天这个过程，我们将其抽象为实体(entity)与实体间的对话。这个实体概念其实很宽泛。任何可接收聊天消息的都算做实体，例如单个玩家、一个场景、一个队伍、一个房间、一个工会、甚至整个服务器。这个思想其实就是支持整个聊天服务器设计的最根本思想。最开始，我将聊天服务器分为个体和组两个概念，其实这个抽象程度都太低，并且会导致实现上的复杂。相反，将整个系统完全使用实体这个概念来组装，就简单很多。当然，实体是有很多种类的，在处理接收聊天消息这个动作时，其处理方式就不同。例如单个玩家实体仅做消息的发送，场景实体则是将消息发给场景内的所有玩家，队伍实体就是将消息发给队伍内的所有玩家。从这一点来看，我们的实体种类其实并不多，因为场景、队伍这些，都是组实体(group entity)。用C++来描述：</p>
+
+<!-- more -->
+
+
+
+
+<div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">Entity</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="c1">// send text to this entity</span>
+    <span class="n">virtual</span> <span class="kt">bool</span> <span class="n">Send</span><span class="p">(</span><span class="n">Entity</span> <span class="o">*</span><span class="n">sender</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">text</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+<span class="nl">protected:</span>
+    <span class="n">GUID</span> <span class="n">m_id</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">m_type</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="n">class</span> <span class="n">SockEntity</span> <span class="o">:</span> <span class="n">pubilc</span> <span class="n">Entity</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="n">virtual</span> <span class="kt">bool</span> <span class="n">Send</span><span class="p">(</span><span class="n">Entity</span> <span class="o">*</span><span class="n">sender</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">text</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// find the map socket and send text to the socket</span>
+        <span class="kt">long</span> <span class="n">socket</span> <span class="o">=</span> <span class="n">FindSocket</span><span class="p">(</span><span class="n">this</span><span class="p">);</span>
+        <span class="n">Message</span> <span class="nf">msg</span><span class="p">(</span><span class="n">MSG_CS2E_SENDTEXT</span><span class="p">);</span>
+        <span class="n">msg</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="n">sender</span><span class="o">-&gt;</span><span class="n">ID</span><span class="p">());</span>
+        <span class="n">msg</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="n">text</span><span class="p">);</span>
+        <span class="n">msg</span><span class="p">.</span><span class="n">SendToSocket</span><span class="p">(</span><span class="n">socket</span><span class="p">);</span>
+        <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="n">class</span> <span class="n">GroupEntity</span> <span class="o">:</span> <span class="n">public</span> <span class="n">Entity</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="n">virtual</span> <span class="kt">bool</span> <span class="n">Send</span><span class="p">(</span><span class="n">Entity</span> <span class="o">*</span><span class="n">sender</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">text</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">list</span><span class="o">&lt;</span><span class="n">Entity</span><span class="o">*&gt;::</span><span class="n">const_iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">m_mems</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span> <span class="n">it</span> <span class="o">!=</span> <span class="n">m_mems</span><span class="p">.</span><span class="n">end</span><span class="p">();</span> <span class="o">++</span><span class="n">it</span><span class="p">)</span> <span class="p">{</span>
+            <span class="p">(</span><span class="o">*</span><span class="n">it</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">Send</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">text</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="nl">private:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">list</span><span class="o">&lt;</span><span class="n">Entity</span><span class="o">*&gt;</span> <span class="n">m_mems</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre>
+</div>
+
+
+<p><code>SockEntity</code>用于表示物理上聊天服务器的客户端，例如游戏客户端。</p>
+
+<h3>网络拓扑</h3>
+
+<p>实际上，除了转发聊天内容外(Entity::Send)，实体还有很多其他行为，例如最起码的，创建组实体，往组实体里添加成员等。在设计上，组实体的创建由逻辑服务器或者其他服务器来完成，目前游戏客户端是没有创建组实体的权限的（实现上我们还为实体添加了权限验证机制）。在网络拓扑上，聊天服务器始终是作为服务器角色，而它的客户端则包括游戏客户端、逻辑服务器、甚至其他服务器，这样聊天服务器在提供了固定的协议后，它就是完全独立的，不依赖任何其他组件：</p>
+
+<pre><code>        CS
+      /  |  \
+     /   |   \
+    /    |    \
+   GC    GC   GS
+</code></pre>
+
+<p>(CS: Chat Server, GC: Game Client, GS: Game Server)</p>
+
+<p>基于此，我们扩充了Entity的类体系：</p>
+
+<div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">ClientEntity</span> <span class="o">:</span> <span class="n">public</span> <span class="n">SockEntity</span> <span class="p">{</span>
+
+<span class="nl">private:</span>
+    <span class="n">GUID</span> <span class="n">m_gsEntity</span><span class="p">;</span> <span class="c1">// 标示该客户端实体位于哪个逻辑服务器实体上</span>
+<span class="p">};</span>
+
+<span class="n">class</span> <span class="n">GSEntity</span> <span class="o">:</span> <span class="n">public</span> <span class="n">SockEntity</span> <span class="p">{</span>
+<span class="p">};</span>
+</code></pre>
+</div>
+
+
+<h3>消息协议</h3>
+
+<p>聊天服务器的核心实现，其实就是针对以上实体做操作。因此，聊天服务器的消息协议方面，也主要是针对这些实体的操作，包括：</p>
+
+<ul>
+<li><p>创建</p>
+
+<p>  实体的创建很简单，不同的实体其创建所需的参数都不一样。例如客户端实体创建时需要传入一个逻辑服务器实体的ID，组实体的创建可以携带组成员实体列表。为了处理权限和安全问题，在具体实现上，逻辑服务器实体的创建是由聊天服务器本地的配置决定，即聊天服务器启动则根据配置创建好逻辑服务器实体；客户端实体是当角色进入逻辑服务器后，由服务器创建，客户端无法创建实体。</p></li>
+<li><p>删除</p>
+
+<p>  实体的删除为了处理方便，约定删除请求必须由实体的创建者发起。因为从逻辑上将，某个模块如果可以创建一个实体，那么其必然知道什么时候该删除这个实体。</p></li>
+<li><p>修改</p>
+
+<p>  修改指的是修改实体内部实现的一些属性，例如组实体修改其组成员。这个操作是非常重要的。对于<code>SockEntity</code>而言，修改意味着修改其连接状态，例如当逻辑服务器在聊天服务器上创建了客户端实体后，实际上此时客户端并没有在网络方面连接聊天服务器，此时这个<code>Entity</code>实际上是不可用的，因为它无法用于发送消息。这个时候我们标志该实体的状态为非连接状态。当客户端主动连接上聊天服务器后，客户端就主动发起修改自己对应的客户端实体请求，该请求将自己的状态修改为连接状态。当客户端关闭时，聊天服务器网络层接收到连接断开通知，该通知肯定是早于逻辑服务器发来的删除实体通知的，此时将该客户端实体状态修改为断开状态，并在接收到逻辑服务器删除实体通知时将其真正删除。这里展示的这种状态修改策略，实际上在整个系统中是非常重要的。它用于指导网络连接和上层逻辑之间的关系，因为整个聊天系统中，各个进程的状态是不可预料的（随时可能宕掉），当某个进程尤其是逻辑服务器宕掉后，聊天服务器是得不到任何正常逻辑通知的，它只能得到网络连接的通知。</p></li>
+</ul>
+
+
+<h2>总结</h2>
+
+<p>整个系统实现下来，实际上是非常简单的，代码量也很少。当然还有很多细节问题，例如聊天信息中携带物品信息，这涉及到异步预处理聊天内容，这里就不方便细说了。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2012/08/29/mmo-chat-server/'>http://codemacro.com/2012/08/29/mmo-chat-server/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[C++11中lambda概览]]></title>
+    <link href="http://codemacro.com/2012/08/21/c-plus-plus-11-lambda-overview/"/>
+    <updated>2012-08-21T16:44:00+08:00</updated>
+    <id>http://codemacro.com/2012/08/21/c-plus-plus-11-lambda-overview</id>
+    <content type="html"><![CDATA[<p>虽然我对C++11没有什么兴趣，因为C++03就已经有很多复杂的技术了。我曾经试图把我学到的那些复杂的C++技术应用到项目中，但悲剧地发现这给团队其他成员带来了不小的负担。其实也给未来一段时间的自己带来了不小的负担。尤其是template的应用，template代码从外表上就一副唬人的样子，就像即使你会Lisp，并且对Lisp中的括号不以为然，但看到满屏幕的括号时依然内心不安。</p>
+
+<p>但是稍微对C++11的一些特性做了解后，单从理论上来说，还是挺让人有兴趣的。我感觉C++11加入了不少函数式语言的特性和思想，这是我感兴趣的最大理由。今天来看看C++11中的lambda。</p>
+
+<!-- more -->
+
+
+<p>C++03中，在使用STL容器时，或者我自己写的类中，常有遍历的需求，本来写个functor传进去就可以，但是这functor偏偏写的很恶心。因为你需要局部定义一个结构体，重载operator()，并且，如果这个operator()依赖这个functor构建时的上下文信息，你得往这个结构体里塞入若干成员，当然还得让构造函数的参数变得越来越长。最后，在包含你这个functor使用以及结构体定义的这个代码块中，在其代码格式上就变得非常奇怪。如果你像我一样常这样应用，一定深有感触。</p>
+
+<p>然后，C++11来了，C++11中的lambda，就我个人而言，其语法还是非常现代的。来看看其文法形式（截自<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2008/n2550.pdf">N2550</a>）：</p>
+
+<pre><code>lambda-expression:
+      lambda-introducer lambda-parameter-declaration compound-statement
+lambda-introducer:
+      [ lambda-capture ]
+lambda-capture:
+      capture-default
+      capture-list
+      capture-default , capture-list
+capture-default:
+      &amp;
+      =
+capture-list:
+      capture
+      capture-list , capture
+capture:
+      identifier
+      &amp; identifier
+      this
+lambda-parameter-declaration:
+      ( lambda-parameter-declaration-list ) exception-specification lambda-return-type-clause
+lambda-parameter-declaration-list:
+      lambda-parameter
+      lambda-parameter , lambda-parameter-declaration-list
+lambda-parameter:
+      decl-specifier-seq declarator
+lambda-return-type-clause:
+      -&gt; type-id
+</code></pre>
+
+<p>翻译过来大致就是这样的形式：</p>
+
+<pre><code>[capture] (parameter) spec -&gt;return-type { body }
+</code></pre>
+
+<p>capture就是这个lambda实现里可以访问的这个lambda定义时作用域里的变量列表，就像Lua里的upvalue。其实我觉得这个才是lambda最方便程序员的地方，一般的函数式语言其实不需要显示声明这个列表，直接引用这些变量即可。后面的部分都比较好理解，parameter就是这个lambda被调用时的形参列表，return-type就是这个lambda的返回值类型，body自然就是这个lambda的实现。至于spec，主要就是指定异常及body里对capture里的变量的使用权限。一个例子：</p>
+
+<div class="highlight"><pre><code class="c"><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">ints</span><span class="p">;</span>
+<span class="n">ints</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mi">99</span><span class="p">);</span>
+<span class="n">ints</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mi">100</span><span class="p">);</span>
+<span class="n">ints</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mi">101</span><span class="p">);</span>
+<span class="kt">int</span> <span class="n">threhold</span> <span class="o">=</span> <span class="mi">100</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">sum</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="n">for_each</span><span class="p">(</span><span class="n">ints</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">ints</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> 
+        <span class="p">[</span><span class="n">threhold</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">sum</span><span class="p">]</span> <span class="p">(</span><span class="kt">int</span> <span class="n">v</span><span class="p">)</span> <span class="p">{</span> 
+            <span class="k">if</span> <span class="p">(</span><span class="n">v</span> <span class="o">&gt;=</span> <span class="n">threhold</span><span class="p">)</span> <span class="o">++</span> <span class="n">sum</span><span class="p">;</span>
+            <span class="p">});</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">sum</span><span class="p">);</span>
+</code></pre>
+</div>
+
+
+<p>capture使用了threhold和sum，但是threhold仅使用其值，而sum则使用了其引用，通过结果可以看出lambda中改变了sum的值。</p>
+
+<p>C++11正在被越来越多的编译器支持，也慢慢地支持得更好。这里有个<a href="http://wiki.apache.org/stdcxx/C++0xCompilerSupport">表</a>，罗列了C++11的各个特性在各个编译器上的支持情况，仅供查阅（以上示例代码测试于vs2010，即MSVC10.0）。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2012/08/21/c-plus-plus-11-lambda-overview/'>http://codemacro.com/2012/08/21/c-plus-plus-11-lambda-overview/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[使用memcmp比较两个变量结果一定吗？]]></title>
+    <link href="http://codemacro.com/2012/08/17/memcmp-on-copy-value/"/>
+    <updated>2012-08-17T11:37:00+08:00</updated>
+    <id>http://codemacro.com/2012/08/17/memcmp-on-copy-value</id>
+    <content type="html"><![CDATA[<p>参考<a href="http://stackoverflow.com/questions/11994513/is-using-memcmp-on-array-of-int-strictly-conforming">Is using memcmp on array of int strictly conforming?</a></p>
+
+<p>以下代码一定会输出ok吗？</p>
+
+<div class="highlight"><pre><code class="c"><span class="cp">#include &lt;stdio.h&gt;</span>
+<span class="cp">#include &lt;string.h&gt;</span>
+
+<span class="k">struct</span> <span class="n">S</span> <span class="p">{</span> <span class="kt">int</span> <span class="n">array</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span> <span class="p">};</span>
+
+<span class="kt">int</span> <span class="nf">main</span> <span class="p">()</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">S</span> <span class="n">a</span> <span class="o">=</span> <span class="p">{</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="p">}</span> <span class="p">};</span>
+    <span class="k">struct</span> <span class="n">S</span> <span class="n">b</span><span class="p">;</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">memcmp</span><span class="p">(</span><span class="n">b</span><span class="p">.</span><span class="n">array</span><span class="p">,</span> <span class="n">a</span><span class="p">.</span><span class="n">array</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">b</span><span class="p">.</span><span class="n">array</span><span class="p">))</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">puts</span><span class="p">(</span><span class="s">&quot;ok&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+
+
+<!-- more -->
+
+
+<p>我在vs2005以及gcc4.4.3上做了测试，都输出了ok。但这并不意味这个代码会永远输出ok。问题主要集中于这里使用了赋值语句来复制值，但却使用了memcmp这个基于内存数据比较的函数来比较值。</p>
+
+<p>c语言中的赋值运算符（=）被定义为基于值的复制，而不是基于内存内容的复制。</p>
+
+<blockquote><p><strong>C99 section 6.5.16.1 p2:</strong> In simple assignment (=), the value of the right operand is converted to the type of the assignment expression and replaces the value stored in the object designated by the left operand.</p></blockquote>
+
+<p>这个其实很好理解，尤其在不同类型的数字类型间复制时，例如：</p>
+
+<div class="highlight"><pre><code class="c"><span class="kt">float</span> <span class="n">a</span> <span class="o">=</span> <span class="mf">1.1</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="p">;</span>
+</code></pre>
+</div>
+
+
+<p>因为浮点数和整形数的内存布局不一样，所以肯定是基于值的一种复制。另外，按照语言标准的思路来看，内存布局这种东西一般都属于实现相关的，所以语言标准是不会依赖实现去定义语言的。</p>
+
+<p>上面的定理同样用于复杂数据类型，例如结构体。我们都知道结构体每个成员之间可能会有字节补齐，而使用赋值运算符来复制时，会不会复制这些补齐字节的内容，是语言标准未规定的。这意味着使用memcmp比较两个通过赋值运算符复制的两个结构体时，其结果是未定的。</p>
+
+<p>但是上面的代码例子中，比较的其实是两个int数组。这也无法确认结果吗？这个问题最终集中于，难道int也会有不确定的补齐字节数据？</p>
+
+<blockquote><p><strong>C99 6.2.6.2 integer types</strong> For signed integer types, the bits of the object representation shall be divided into three groups: value bits, padding bits, and the sign bit. [&#8230;] The values of any padding bits are unspecified.</p></blockquote>
+
+<p>这话其实我也不太懂。一个有符号整数int，其内也有补齐二进制位(bits)？</p>
+
+<p>但无论如何，这个例子都不算严谨的代码。人们的建议是使用memcpy来复制这种数据，因为memcpy和memcmp都是基于内存内容来工作的。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2012/08/17/memcmp-on-copy-value/'>http://codemacro.com/2012/08/17/memcmp-on-copy-value/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Lisp中定义变量*var*和var有什么不同？]]></title>
+    <link href="http://codemacro.com/2012/08/14/dynamic-scope-in-lisp/"/>
+    <updated>2012-08-14T15:53:00+08:00</updated>
+    <id>http://codemacro.com/2012/08/14/dynamic-scope-in-lisp</id>
+    <content type="html"><![CDATA[<p>参考<a href="http://stackoverflow.com/questions/11932876/whats-difference-between-var-and-var-when-using-defvar">What&#8217;s difference between <em>var</em> and var when using defvar?</a></p>
+
+<p>其实，Common Lisp中使用defvar定义变量加不加星号没有区别。这只是一种Lisp程序员的约定。Lisp中并不使用特定的符号来影响语法元素，例如Ruby中通过给变量添加@前缀来标示该变量为类成员变量。这个问题引出了lisp总dynamic scope这个话题。</p>
+
+<!-- more -->
+
+
+<p>Lisp中变量分为两种，分别为<code>lexical</code>和<code>special</code>。这两种不同的变量有不同的作用域(scope)：词法作用域(lexical scope)和动态作用域(dynamic scope)。<code>special variables</code>通过<code>defvar/defparameter/declare</code>来定义。而<code>lexical variables</code>通常在<code>let</code>中定义。</p>
+
+<p>这两种作用域有什么不同呢？引用&lt;ANSI Common Lisp>里说的：</p>
+
+<blockquote><p>Under lexical scope, a symbol refers to the variable that has that name in the context where the symbol appears (define)</p>
+
+<p>With dynamic scope, we look for a variable in the environment where the function is called, not in the environment where it was defined.</p></blockquote>
+
+<p>所以：</p>
+
+<div class="highlight"><pre><code class="cl"><span class="p">(</span><span class="nb">defvar</span> <span class="nv">b</span> <span class="mi">3</span><span class="p">)</span>
+
+<span class="p">(</span><span class="nb">defun</span> <span class="nv">add-to-b</span> <span class="p">(</span><span class="nv">x</span><span class="p">)</span>
+  <span class="p">(</span><span class="nb">+</span> <span class="nv">x</span> <span class="nv">b</span><span class="p">))</span>
+
+<span class="p">(</span><span class="nv">add-to-b</span> <span class="mi">1</span><span class="p">)</span>
+  <span class="nv">=&gt;</span> <span class="mi">4</span>
+
+<span class="p">(</span><span class="k">let</span> <span class="p">((</span><span class="nv">b</span> <span class="mi">4</span><span class="p">))</span>
+  <span class="p">(</span><span class="nb">list</span> <span class="p">(</span><span class="nv">add-to-b</span> <span class="mi">1</span><span class="p">)</span> <span class="nv">b</span><span class="p">))</span>
+<span class="nv">=&gt;</span> <span class="p">(</span><span class="mi">5</span> <span class="mi">4</span><span class="p">)</span>
+
+<span class="p">(</span><span class="k">let</span> <span class="p">((</span><span class="nv">a</span> <span class="mi">3</span><span class="p">))</span>
+  <span class="p">(</span><span class="nb">defun</span> <span class="nv">add-to-a</span> <span class="p">(</span><span class="nv">x</span><span class="p">)</span>
+    <span class="p">(</span><span class="nb">+</span> <span class="nv">x</span> <span class="nv">a</span><span class="p">)))</span>
+
+<span class="p">(</span><span class="nv">add-to-a</span> <span class="mi">1</span><span class="p">)</span>
+  <span class="nv">=&gt;</span> <span class="mi">4</span>
+
+<span class="p">(</span><span class="k">let</span> <span class="p">((</span><span class="nv">a</span> <span class="mi">4</span><span class="p">))</span>
+  <span class="p">(</span><span class="nb">list</span> <span class="p">(</span><span class="nv">add-to-a</span> <span class="mi">1</span><span class="p">)</span> <span class="nv">a</span><span class="p">))</span>
+<span class="nv">=&gt;</span> <span class="p">(</span><span class="mi">4</span> <span class="mi">4</span><span class="p">)</span>
+</code></pre>
+</div>
+
+
+<p><code>add-to-b</code>这个函数中使用的变量<code>b</code>是<code>special variable</code>，所以在调用<code>add-to-b</code>时，取的就是调用(called)这个函数时环境中的变量，所以：</p>
+
+<div class="highlight"><pre><code class="cl"><span class="p">(</span><span class="k">let</span> <span class="p">((</span><span class="nv">b</span> <span class="mi">4</span><span class="p">))</span>
+  <span class="p">(</span><span class="nb">list</span> <span class="p">(</span><span class="nv">add-to-b</span> <span class="mi">1</span><span class="p">)</span> <span class="nv">b</span><span class="p">))</span>
+<span class="nv">=&gt;</span> <span class="p">(</span><span class="mi">5</span> <span class="mi">4</span><span class="p">)</span>
+</code></pre>
+</div>
+
+
+<p>取的就是let中临时出现的<code>b</code>。而<code>add-to-a</code>这个函数中使用的变量<code>a</code>是<code>lexical variable</code>，所以调用这个函数时，取的就是这个函数定义(defined)时的<code>a</code>，所以无论在哪里调用<code>add-to-a</code>，都是取的：</p>
+
+<div class="highlight"><pre><code class="cl"><span class="p">(</span><span class="k">let</span> <span class="p">((</span><span class="nv">a</span> <span class="mi">3</span><span class="p">))</span>
+  <span class="p">(</span><span class="nb">defun</span> <span class="nv">add-to-a</span> <span class="p">(</span><span class="nv">x</span><span class="p">)</span>
+    <span class="p">(</span><span class="nb">+</span> <span class="nv">x</span> <span class="nv">a</span><span class="p">)))</span>
+</code></pre>
+</div>
+
+
+<p>这里的<code>a</code>，也就是一直是3。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2012/08/14/dynamic-scope-in-lisp/'>http://codemacro.com/2012/08/14/dynamic-scope-in-lisp/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Lua中动态产生函数]]></title>
+    <link href="http://codemacro.com/2012/08/13/dynamic-method-in-lua/"/>
+    <updated>2012-08-13T15:56:00+08:00</updated>
+    <id>http://codemacro.com/2012/08/13/dynamic-method-in-lua</id>
+    <content type="html"><![CDATA[<p>可以结合<a href="http://codemacro.com/2012/08/02/simple-oo-in-lua/">Lua里实现简单的类-对象</a>看。在我的应用中，存在类似以下代码：</p>
+
+<div class="highlight"><pre><code class="lua"><span class="k">function</span> <span class="nc">Item</span><span class="p">.</span><span class="nf">new</span><span class="p">()</span>
+    <span class="kd">local</span> <span class="n">o</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">property</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">newObject</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">Item</span><span class="p">)</span>
+<span class="k">end</span>
+</code></pre>
+</div>
+
+
+<p><code>property</code>是一个key-value的表，里面的内容不是固定的。最开始我为Item类写了get/set函数，用于存取property表里的值。但这样写起来还是有点麻烦。Ruby里可以动态产生类成员函数，其实Lua里也可以。其思路就是通过metatable来做：</p>
+
+<!-- more -->
+
+
+
+
+<div class="highlight"><pre><code class="lua"><span class="c1">-- 为newObject增加一个可选参数，该参数是一个函数，当在表示类的table里无法找到成员时就调用该可选参数</span>
+<span class="k">function</span> <span class="nf">newObject</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">class</span><span class="p">,</span> <span class="n">after</span><span class="p">)</span>
+    <span class="n">class</span><span class="p">.</span><span class="n">__index</span> <span class="o">=</span> <span class="k">function</span> <span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span> <span class="k">return</span> <span class="n">class</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="ow">or</span> <span class="n">after</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span> <span class="k">end</span>
+    <span class="k">return</span> <span class="nb">setmetatable</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">class</span><span class="p">)</span>
+<span class="k">end</span>
+</code></pre>
+</div>
+
+
+<p>然后就是编写这个after函数，我的理想方式是，例如property里有Name和Index的key-value，那么就可以通过这样的方式来存取：</p>
+
+<div class="highlight"><pre><code class="lua"><span class="n">item</span> <span class="o">=</span> <span class="n">Item</span><span class="p">.</span><span class="n">new</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">item</span><span class="p">:</span><span class="n">Name</span><span class="p">())</span>
+<span class="n">item</span><span class="p">:</span><span class="n">SetName</span><span class="p">(</span><span class="s2">&quot;</span><span class="s">hello&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">item</span><span class="p">:</span><span class="n">Index</span><span class="p">()</span>
+<span class="n">item</span><span class="p">:</span><span class="n">SetIndex</span><span class="p">(</span><span class="mi">101</span><span class="p">)</span>
+</code></pre>
+</div>
+
+
+<p>after函数的实现：</p>
+
+<div class="highlight"><pre><code class="lua"><span class="k">function</span> <span class="nc">Item</span><span class="p">.</span><span class="nf">new</span><span class="p">()</span>
+    <span class="kd">local</span> <span class="n">o</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">property</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="p">}</span>
+    <span class="kd">local</span> <span class="k">function</span> <span class="nf">after</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+        <span class="kd">local</span> <span class="n">name</span> <span class="o">=</span> <span class="nb">string.match</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s">Set(%a+)&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="k">then</span> 
+            <span class="k">return</span> <span class="k">function</span> <span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+                <span class="n">self</span><span class="p">:</span><span class="n">set</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+            <span class="k">end</span>
+        <span class="k">else</span>
+            <span class="k">return</span> <span class="k">function</span> <span class="p">(</span><span class="n">self</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="n">property</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="ow">and</span> <span class="n">self</span><span class="p">.</span><span class="n">property</span><span class="p">[</span><span class="n">key</span><span class="p">].</span><span class="n">value</span>
+            <span class="k">end</span>
+        <span class="k">end</span>
+    <span class="k">end</span>
+    <span class="k">return</span> <span class="n">newObject</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">Item</span><span class="p">,</span> <span class="n">after</span><span class="p">)</span>
+<span class="k">end</span>
+</code></pre>
+</div>
+
+
+<p>执行过程就为：</p>
+
+<ul>
+<li>当item:Name()执行时，首先试图获取Item上的Name成员，没找到就调用传入的after函数，这个函数检查<code>Name</code>这个字符串是否是<code>SetXX</code>的形式，如果不是则返回一个获取函数；这个时候取得Name成员，然后将其作为函数调用，相当于调用了after刚才返回的函数</li>
+<li>item:SetName(&#8220;hello&#8221;)过程类似，只不过调用了另一个返回函数。</li>
+</ul>
+
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2012/08/13/dynamic-method-in-lua/'>http://codemacro.com/2012/08/13/dynamic-method-in-lua/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Ruby应用几则（解析HTML、XMLRPC）]]></title>
+    <link href="http://codemacro.com/2012/08/09/ruby-usage-example/"/>
+    <updated>2012-08-09T14:26:00+08:00</updated>
+    <id>http://codemacro.com/2012/08/09/ruby-usage-example</id>
+    <content type="html"><![CDATA[<h3>Ruby解析HTML</h3>
+
+<p>Ruby解析HTML（或XML）可以使用<a href="http://nokogiri.org/">nokogiri</a>。我的应用里需要查找HTML页面里的某个元素，结果发现实现方式非常简单，就像使用jquery一样。例如我要获取到octopress博客文章里的文章内容、文章标题、文章分类，就像这篇博客：</p>
+
+<div class="highlight"><pre><code class="ruby"><span class="c1"># get post title and content for an octopress post</span>
+<span class="k">def</span> <span class="nf">post_info</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+  <span class="n">doc</span> <span class="o">=</span> <span class="ss">Nokogiri</span><span class="p">:</span><span class="ss">:HTML</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">url</span><span class="p">))</span>
+  <span class="n">content</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">css</span><span class="p">(</span><span class="s1">&#39;div.entry-content&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">to_s</span>
+  <span class="n">title</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">css</span><span class="p">(</span><span class="s1">&#39;header h1.entry-title&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">inner_html</span>
+  <span class="n">categories</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">css</span><span class="p">(</span><span class="s1">&#39;a.category&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">collect</span> <span class="k">do</span> <span class="o">|</span><span class="n">link</span><span class="o">|</span> <span class="n">link</span><span class="o">.</span><span class="n">content</span> <span class="k">end</span>
+  <span class="k">return</span> <span class="n">title</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">categories</span>
+<span class="k">end</span>
+</code></pre>
+</div>
+
+
+
+
+<!-- more -->
+
+
+<p>最关键就是<code>doc.css('div.entry-content')</code>。想起以前用lisp写的那个版本，还手工遍历了整个HTML页面，实在太落后了。上面这个函数的作用就是取得一篇博文的HTML页面，然后返回该博文的内容、标题和分类。</p>
+
+<h3>Ruby调用xml-rpc</h3>
+
+<p>可以使用<code>rails-xmlrpc</code>这个库，直接使用gem安装：<code>gem install rails-xmlrpc</code>。这个库分为客户端和服务器两部分，我的应用是使用metaweblog API：</p>
+
+<div class="highlight"><pre><code class="ruby"><span class="k">class</span> <span class="nc">MetaWeblogClient</span> <span class="o">&lt;</span> <span class="ss">XMLRPC</span><span class="p">:</span><span class="ss">:Client</span>
+  <span class="k">def</span> <span class="nf">initialize</span><span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span>
+    <span class="k">super</span><span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span>
+    <span class="vi">@username</span> <span class="o">=</span> <span class="n">username</span>
+    <span class="vi">@password</span> <span class="o">=</span> <span class="n">password</span>
+  <span class="k">end</span>
+
+  <span class="k">def</span> <span class="nf">newPost</span><span class="p">(</span><span class="n">post</span><span class="p">,</span> <span class="n">publish</span><span class="p">)</span>
+    <span class="n">call</span><span class="p">(</span><span class="s2">&quot;metaWeblog.newPost&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">#{</span><span class="vi">@username</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">#{</span><span class="vi">@password</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">post</span><span class="p">,</span> <span class="n">publish</span><span class="p">)</span>
+  <span class="k">end</span>
+
+  <span class="c1"># other methods</span>
+
+<span class="k">end</span>
+
+<span class="k">def</span> <span class="nf">new_post</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span>
+  <span class="n">title</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">categories</span> <span class="o">=</span> <span class="n">post_info</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+  <span class="k">if</span> <span class="n">title</span><span class="o">.</span><span class="n">nil?</span> <span class="ow">or</span> <span class="n">content</span><span class="o">.</span><span class="n">nil?</span>
+    <span class="nb">puts</span> <span class="s2">&quot;get post info failed at </span><span class="si">#{</span><span class="n">url</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+    <span class="k">return</span>
+  <span class="k">end</span>
+  <span class="n">post</span> <span class="o">=</span> <span class="p">{</span> <span class="ss">:title</span> <span class="o">=&gt;</span> <span class="n">title</span><span class="p">,</span> <span class="ss">:description</span> <span class="o">=&gt;</span> <span class="n">content</span><span class="p">,</span> <span class="ss">:categories</span> <span class="o">=&gt;</span> <span class="n">categories</span> <span class="p">}</span>
+  <span class="n">api</span><span class="o">.</span><span class="n">newPost</span><span class="p">(</span><span class="n">post</span><span class="p">,</span> <span class="kp">true</span><span class="p">)</span>
+  <span class="nb">puts</span> <span class="s2">&quot;new post </span><span class="si">#{</span><span class="n">title</span><span class="si">}</span><span class="s2"> in </span><span class="si">#{</span><span class="n">categories</span><span class="si">}</span><span class="s2"> done</span><span class="se">\n</span><span class="s2">&quot;</span>
+<span class="k">end</span>
+
+<span class="n">api</span> <span class="o">=</span> <span class="no">MetaweblogClient</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span>
+<span class="n">new_post</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="s2">&quot;http://codemacro.com/2012/08/07/write-standalone-ruby-script/&quot;</span><span class="p">)</span>
+</code></pre>
+</div>
+
+
+<h3>Ruby读取yaml</h3>
+
+<p>就像Rails里那些配置文件一样，都属于yaml配置文件。我的应用里只需使用简单的key-value形式的yaml配置，就像：</p>
+
+<div class="highlight"><pre><code class="ruby"><span class="ss">host</span><span class="p">:</span> <span class="n">www</span><span class="o">.</span><span class="n">cppblog</span><span class="o">.</span><span class="n">com</span>
+<span class="ss">url</span><span class="p">:</span> <span class="sr">/kevinlynx/se</span><span class="n">rvices</span><span class="o">/</span><span class="n">metaweblog</span><span class="o">.</span><span class="n">aspx</span>
+<span class="ss">username</span><span class="p">:</span> <span class="n">kevinlynx</span>
+<span class="ss">password</span><span class="p">:</span> <span class="n">xxxxxx</span>
+</code></pre>
+</div>
+
+
+<p>解析的时候需要使用<code>yaml</code>库：</p>
+
+<div class="highlight"><pre><code class="ruby"><span class="n">file</span> <span class="o">=</span> <span class="no">File</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+<span class="n">cfg</span> <span class="o">=</span> <span class="ss">YAML</span><span class="p">:</span><span class="ss">:load</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+</code></pre>
+</div>
+
+
+<p>针对以上配置，<code>YAML::load</code>得到的结果就是一个hash表：</p>
+
+<div class="highlight"><pre><code class="ruby"><span class="nb">puts</span> <span class="n">cfg</span><span class="o">[</span><span class="s2">&quot;host&quot;</span><span class="o">]</span>
+<span class="nb">puts</span> <span class="n">cfg</span><span class="o">[</span><span class="s2">&quot;url&quot;</span><span class="o">]</span>
+</code></pre>
+</div>
+
+
+<p>以上，我写了一个小工具，可以让我每次在<a href="http://codemacro.com">codemacro.com</a>发表博客后，使用这个工具自动解析生成的文章，然后发表到CPPBLOG上。完整源码可在这个上：<a href="https://gist.github.com/3301662">https://gist.github.com/3301662</a></p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2012/08/09/ruby-usage-example/'>http://codemacro.com/2012/08/09/ruby-usage-example/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[编写独立的Ruby脚本]]></title>
+    <link href="http://codemacro.com/2012/08/07/write-standalone-ruby-script/"/>
+    <updated>2012-08-07T14:33:00+08:00</updated>
+    <id>http://codemacro.com/2012/08/07/write-standalone-ruby-script</id>
+    <content type="html"><![CDATA[<p>Ruby肯定不仅仅用于编写Rails程序。要使用Ruby编写独立的脚本/程序，就像shell一样，其方式也很简单：</p>
+
+<div class="highlight"><pre><code class="ruby"><span class="c1">#!/usr/bin/env ruby</span>
+<span class="k">if</span> <span class="no">ARGV</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span> 
+  <span class="nb">puts</span> <span class="s1">&#39;usage: program arg1 arg2&#39;</span>
+  <span class="nb">exit</span>
+<span class="k">end</span>
+<span class="no">ARGV</span><span class="o">.</span><span class="n">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">arg</span><span class="o">|</span> <span class="nb">print</span> <span class="n">arg</span> <span class="k">end</span>
+</code></pre>
+</div>
+
+
+<p>脚本内容没有什么限制，函数、类、模块的组织方式也随意。ARGV是一个特殊的变量，是一个数组，其内保存了传入脚本的参数，不包含程序名。当然，不要忘记给脚本加上可执行权限。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2012/08/07/write-standalone-ruby-script/'>http://codemacro.com/2012/08/07/write-standalone-ruby-script/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[让wxListCtrl支持子item编辑]]></title>
+    <link href="http://codemacro.com/2012/08/07/edit-item-wxlistctrl/"/>
+    <updated>2012-08-07T13:48:00+08:00</updated>
+    <id>http://codemacro.com/2012/08/07/edit-item-wxlistctrl</id>
+    <content type="html"><![CDATA[<p>我使用的wxLua版本信息为<code>wxLua 2.8.7.0 built with wxWidgets 2.8.8</code>，也就是LuaForWindows_v5.1.4-40.exe这个安装包里自带的wxLua。我不知道其他wxWidgets版本里wxListCtrl怎样，但我使用的版本里wxListCtrl是不支持编辑里面的子item的。在我使用的report模式下，子item也就是特定某一行一列的item。</p>
+
+<p>google了一下，发现悲剧地需要自己实现，主要就是自己显示一个wxTextCtrl：</p>
+
+<!-- more -->
+
+
+
+
+<div class="highlight"><pre><code class="lua"><span class="c1">--</span>
+<span class="c1">-- file: wxListCtrlTextEdit.lua</span>
+<span class="c1">-- author: Kevin Lynx</span>
+<span class="c1">-- date: 08.06.2012</span>
+<span class="c1">--</span>
+<span class="kd">local</span> <span class="n">EditList</span> <span class="o">=</span> <span class="p">{}</span>
+
+<span class="c1">-- get the column by an abs point</span>
+<span class="k">function</span> <span class="nf">EditList</span><span class="p">:</span><span class="n">getColumn</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="kd">local</span> <span class="n">cols</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">listctrl</span><span class="p">:</span><span class="n">GetColumnCount</span><span class="p">()</span>
+    <span class="kd">local</span> <span class="n">cx</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">cols</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">do</span>
+        <span class="kd">local</span> <span class="n">w</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">listctrl</span><span class="p">:</span><span class="n">GetColumnWidth</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">x</span> <span class="o">&lt;=</span> <span class="n">cx</span> <span class="o">+</span> <span class="n">w</span> <span class="k">then</span> <span class="k">return</span> <span class="n">i</span> <span class="k">end</span>
+        <span class="n">cx</span> <span class="o">=</span> <span class="n">cx</span> <span class="o">+</span> <span class="n">w</span>
+    <span class="k">end</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span>
+<span class="k">end</span>
+
+<span class="c1">-- when a mouse down, show a text edit control </span>
+<span class="k">function</span> <span class="nf">EditList</span><span class="p">:</span><span class="n">onLeftDown</span><span class="p">(</span><span class="n">evt</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">IsShown</span><span class="p">()</span> <span class="k">then</span>
+        <span class="n">self</span><span class="p">:</span><span class="n">closeEditor</span><span class="p">()</span>
+    <span class="k">end</span>
+    <span class="kd">local</span> <span class="n">p</span> <span class="o">=</span> <span class="n">evt</span><span class="p">:</span><span class="n">GetPoint</span><span class="p">()</span>
+    <span class="kd">local</span> <span class="n">row</span> <span class="o">=</span> <span class="n">evt</span><span class="p">:</span><span class="n">GetIndex</span><span class="p">()</span>
+    <span class="kd">local</span> <span class="n">col</span> <span class="o">=</span> <span class="n">self</span><span class="p">:</span><span class="n">getColumn</span><span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="n">x</span><span class="p">)</span>
+    <span class="kd">local</span> <span class="n">rect</span> <span class="o">=</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxListCtrlEx</span><span class="p">.</span><span class="n">GetSubItemRect</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">listctrl</span><span class="p">,</span> <span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span>
+    <span class="n">rect</span><span class="p">:</span><span class="n">SetHeight</span><span class="p">(</span><span class="n">rect</span><span class="p">:</span><span class="n">GetHeight</span><span class="p">()</span> <span class="o">+</span> <span class="mi">5</span><span class="p">)</span> <span class="c1">-- adjust</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">SetSize</span><span class="p">(</span><span class="n">rect</span><span class="p">)</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">Show</span><span class="p">()</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">SetValue</span><span class="p">(</span><span class="n">wx</span><span class="p">.</span><span class="n">wxListCtrlEx</span><span class="p">.</span><span class="n">GetItemText</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">listctrl</span><span class="p">,</span> <span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">))</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">SetFocus</span><span class="p">()</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">col</span> <span class="o">=</span> <span class="n">col</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">row</span> <span class="o">=</span> <span class="n">row</span>
+<span class="k">end</span>
+
+<span class="k">function</span> <span class="nf">EditList</span><span class="p">:</span><span class="n">closeEditor</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">IsShown</span><span class="p">()</span> <span class="k">then</span> <span class="k">return</span> <span class="k">end</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">Hide</span><span class="p">()</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">listctrl</span><span class="p">:</span><span class="n">SetItem</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">row</span><span class="p">,</span> <span class="n">self</span><span class="p">.</span><span class="n">col</span><span class="p">,</span> <span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">GetValue</span><span class="p">())</span>
+<span class="k">end</span>
+
+<span class="k">function</span> <span class="nf">EditList</span><span class="p">:</span><span class="n">initialize</span><span class="p">()</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">editor</span> <span class="o">=</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxTextCtrl</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">listctrl</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxID_ANY</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxDefaultPosition</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxDefaultSize</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxTE_PROCESS_ENTER</span> <span class="o">+</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxTE_RICH2</span><span class="p">)</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">Connect</span><span class="p">(</span><span class="n">wx</span><span class="p">.</span><span class="n">wxEVT_COMMAND_TEXT_ENTER</span><span class="p">,</span> <span class="k">function</span> <span class="p">()</span> <span class="n">self</span><span class="p">:</span><span class="n">closeEditor</span><span class="p">()</span> <span class="k">end</span><span class="p">)</span>
+    <span class="c1">-- not work actually</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">Connect</span><span class="p">(</span><span class="n">wx</span><span class="p">.</span><span class="n">wxEVT_COMMAND_KILL_FOCUS</span><span class="p">,</span> <span class="k">function</span> <span class="p">()</span> <span class="n">self</span><span class="p">:</span><span class="n">closeEditor</span><span class="p">()</span> <span class="k">end</span><span class="p">)</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">Hide</span><span class="p">()</span>
+<span class="k">end</span>
+
+<span class="k">function</span> <span class="nc">wx</span><span class="p">.</span><span class="nf">wxListCtrlTextEdit</span><span class="p">(</span><span class="n">listctrl</span><span class="p">)</span>
+    <span class="kd">local</span> <span class="n">o</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">listctrl</span> <span class="o">=</span> <span class="n">listctrl</span><span class="p">,</span>
+        <span class="n">editor</span> <span class="o">=</span> <span class="kc">nil</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="kd">local</span> <span class="n">editlist</span> <span class="o">=</span> <span class="n">newObject</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">EditList</span><span class="p">)</span>
+    <span class="n">editlist</span><span class="p">:</span><span class="n">initialize</span><span class="p">()</span>
+    <span class="n">listctrl</span><span class="p">:</span><span class="n">Connect</span><span class="p">(</span><span class="n">wx</span><span class="p">.</span><span class="n">wxEVT_COMMAND_LIST_ITEM_RIGHT_CLICK</span><span class="p">,</span> <span class="k">function</span> <span class="p">(</span><span class="n">evt</span><span class="p">)</span> <span class="n">editlist</span><span class="p">:</span><span class="n">onLeftDown</span><span class="p">(</span><span class="n">evt</span><span class="p">)</span> <span class="k">end</span><span class="p">)</span>
+    <span class="n">listctrl</span><span class="p">:</span><span class="n">Connect</span><span class="p">(</span><span class="n">wx</span><span class="p">.</span><span class="n">wxEVT_COMMAND_LIST_ITEM_FOCUSED</span><span class="p">,</span> <span class="k">function</span> <span class="p">()</span> <span class="n">editlist</span><span class="p">:</span><span class="n">closeEditor</span><span class="p">()</span> <span class="k">end</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">listctrl</span>
+<span class="k">end</span>
+</code></pre>
+</div>
+
+
+<p>其原理就是获取到当前鼠标点击所在的子item位置，然后在此位置显示一个wxEditCtrl即可。以上代码需要依赖我之前写的<a href="http://codemacro.com/2012/08/02/simple-oo-in-lua/">Lua里实现简单的类-对象</a>中的代码，同时依赖以下针对wxListCtrl的扩展接口：</p>
+
+<div class="highlight"><pre><code class="lua"><span class="c1">--</span>
+<span class="c1">-- file: wxListCtrlExtend.lua</span>
+<span class="c1">-- author: Kevin Lynx</span>
+<span class="c1">-- date: 08.07.2012</span>
+<span class="c1">-- brief: extend some util functions to wx.wxListCtrl</span>
+<span class="c1">-- </span>
+<span class="n">wx</span><span class="p">.</span><span class="n">wxListCtrlEx</span> <span class="o">=</span> <span class="p">{}</span>
+
+<span class="k">function</span> <span class="nc">wx</span><span class="p">.</span><span class="nf">wxListCtrlEx</span><span class="p">.</span><span class="n">GetSubItemRect</span><span class="p">(</span><span class="n">listctrl</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span>
+    <span class="kd">local</span> <span class="n">rect</span> <span class="o">=</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxRect</span><span class="p">()</span>
+    <span class="n">listctrl</span><span class="p">:</span><span class="n">GetItemRect</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">rect</span><span class="p">)</span>
+    <span class="kd">local</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="kd">local</span> <span class="n">w</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">col</span> <span class="k">do</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">listctrl</span><span class="p">:</span><span class="n">GetColumnWidth</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">w</span>
+    <span class="k">end</span>
+    <span class="k">return</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxRect</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">w</span><span class="p">,</span> <span class="n">rect</span><span class="p">:</span><span class="n">GetY</span><span class="p">(),</span> <span class="n">w</span><span class="p">,</span> <span class="n">rect</span><span class="p">:</span><span class="n">GetHeight</span><span class="p">())</span>
+<span class="k">end</span>
+
+<span class="k">function</span> <span class="nc">wx</span><span class="p">.</span><span class="nf">wxListCtrlEx</span><span class="p">.</span><span class="n">GetItemText</span><span class="p">(</span><span class="n">listctrl</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span>
+    <span class="kd">local</span> <span class="n">info</span> <span class="o">=</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxListItem</span><span class="p">()</span>
+    <span class="n">info</span><span class="p">:</span><span class="n">SetId</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+    <span class="n">info</span><span class="p">:</span><span class="n">SetColumn</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+    <span class="n">info</span><span class="p">:</span><span class="n">SetMask</span><span class="p">(</span><span class="n">wx</span><span class="p">.</span><span class="n">wxLIST_MASK_TEXT</span><span class="p">)</span>
+    <span class="n">listctrl</span><span class="p">:</span><span class="n">GetItem</span><span class="p">(</span><span class="n">info</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">info</span><span class="p">:</span><span class="n">GetText</span><span class="p">()</span>
+<span class="k">end</span>
+</code></pre>
+</div>
+
+
+<p>在我看到的wxWidgets官方文档里，其实wxListCtrl已经有<code>GetSubItemRect</code>接口，并且在另一些示例代码里，也看到了<code>GetItemText</code>接口，但是，我使用的版本里没有，所以只好自己写。基于以上，要使用这个可以支持编辑子item的wxListCtrl，可以：</p>
+
+<div class="highlight"><pre><code class="lua"><span class="n">list</span> <span class="o">=</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxListCtrlTextEdit</span><span class="p">(</span><span class="n">wx</span><span class="p">.</span><span class="n">wxListCtrl</span><span class="p">(</span><span class="n">dialog</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxID_ANY</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxDefaultPosition</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxDefaultSize</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxLC_REPORT</span><span class="p">))</span>
+</code></pre>
+</div>
+
+
+<p>也就是通过wx.wxListCtrlTextEdit这个函数做下处理，这个函数返回的是本身的wxListCtrl。当然更好的方式是使用继承之类的方式，开发一种新的控件，但在Lua中，针对usedata类型的扩展貌似只能这样了。</p>
+
+<p>最好吐槽下，这个控件扩展其实很恶心。本来我打算当编辑控件失去焦点后就隐藏它，但是往编辑控件上注册KILL_FOCUS事件始终不起作用；我又打算弄个ESC键盘事件去手动取消，但显然wxTextCtrl是不支持键盘事件的。好吧，凑合用了。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2012/08/07/edit-item-wxlistctrl/'>http://codemacro.com/2012/08/07/edit-item-wxlistctrl/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[『你会把Ruby的哪些特性加入Java』]]></title>
+    <link href="http://codemacro.com/2012/08/03/ruby-element-to-java/"/>
+    <updated>2012-08-03T14:14:00+08:00</updated>
+    <id>http://codemacro.com/2012/08/03/ruby-element-to-java</id>
+    <content type="html"><![CDATA[<p>参考（翻译、摘抄）于<a href="http://java.sys-con.com/node/251986">Can Ruby Live without Rails?</a>。这篇文章发表于2006年，受访者在回答“如果可以你会把Ruby的哪些特性加入Java“这个问题时，提到了Ruby的一些我个人认为比较突出的语法特性。其实并不是针对Java语言，何况6年时间过去，以Java语法特性的加入速度怕早就有Ruby这些特性了。我对Java不熟，仅限于曾经写的几个简单的android应用，买了&lt;Java编程思想>也没翻完。</p>
+
+<p>以下内容半翻译自原文。</p>
+
+<h3>Closure</h3>
+
+<p>闭包支持将代码块作为函数参数传递。这在写很多代码时会比较方便，例如以下代码打印10次字符串：</p>
+
+<div class="highlight"><pre><code class="ruby"><span class="mi">10</span><span class="o">.</span><span class="n">times</span> <span class="p">{</span> <span class="nb">puts</span> <span class="s2">&quot;Hello&quot;</span> <span class="p">}</span>
+</code></pre>
+</div>
+
+
+
+
+<!-- more -->
+
+
+<p>又例如针对数组的每个元素做一些事情（do&#8230;end是上例中{}的替代）：</p>
+
+<div class="highlight"><pre><code class="ruby"><span class="n">array</span><span class="o">.</span><span class="n">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">item</span><span class="o">|</span>
+  <span class="n">item</span><span class="o">.</span><span class="n">do_something</span>
+<span class="k">end</span>
+</code></pre>
+</div>
+
+
+<p>也可以构建一个新的数组：</p>
+
+<div class="highlight"><pre><code class="ruby"><span class="n">array</span><span class="o">.</span><span class="n">collect</span> <span class="p">{</span> <span class="o">|</span><span class="n">number</span><span class="o">|</span> <span class="n">number</span> <span class="o">*</span> <span class="n">number</span> <span class="p">}</span>
+</code></pre>
+</div>
+
+
+<p>Ruby中闭包的使用随处可见，它的语法形式太简单，这使得要使用它时所付出的代价很小（想想其他语言里得手动构造一个函数对象吧）。</p>
+
+<h3>Continuation</h3>
+
+<p>使用continuation你可以保存一块代码的执行状态，以便将来某个时刻恢复执行。这就像游戏存档一样，玩到一半存档，一段时间回来后取出存档从上次的进度继续玩。</p>
+
+<div class="highlight"><pre><code class="ruby"><span class="nb">require</span> <span class="s1">&#39;continuation&#39;</span> <span class="c1"># 原文中未给这句，须加上</span>
+
+<span class="k">def</span> <span class="nf">loop</span>
+  <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="mi">1</span><span class="o">.</span><span class="n">.</span><span class="mi">10</span>
+    <span class="nb">puts</span> <span class="n">i</span>
+    <span class="nb">callcc</span> <span class="p">{</span> <span class="o">|</span><span class="n">c</span><span class="o">|</span> <span class="k">return</span> <span class="n">c</span> <span class="p">}</span> <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">5</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+</code></pre>
+</div>
+
+
+<p><code>loop</code>函数执行里面那个循环时，当<code>i==5</code>就调用<code>callcc</code>函数（貌似现在Java已有这个了），该函数在回调传入的闭包时构建了一个continuation对象，以上代码直接将此对象返回，循环暂停于<code>i==5</code>。执行代码<code>continuation = loop</code>输出：</p>
+
+<div class="highlight"><pre><code class="ruby"><span class="mi">1</span>
+<span class="mi">2</span>
+<span class="mi">3</span>
+<span class="mi">4</span>
+<span class="mi">5</span>
+</code></pre>
+</div>
+
+
+<p>然后你可以在任意时刻恢复执行那个循环：<code>continuation.call</code>，得到：</p>
+
+<div class="highlight"><pre><code class="ruby"><span class="mi">6</span>
+<span class="mi">7</span>
+<span class="mi">8</span>
+<span class="mi">9</span>
+<span class="mi">10</span>
+</code></pre>
+</div>
+
+
+<p>这个continuation和Lua里的<code>coroutine</code>很像，可以用于实现轻量级的线程。</p>
+
+<h3>mix-ins</h3>
+
+<p>这节没看懂。提到了AOP、POJO之类的术语，大概是Java世界里的什么东西。看起来像是针对before/after method的东西，意思就是执行某个函数时，会先去执行before函数，完了后再执行after函数，Lisp里有这个概念。</p>
+
+<h3>Open class</h3>
+
+<p>这个算是Ruby里用的比较多的特性。open classes可以让你在很多情况下“打开“并重定义某个类，这个类可以是你使用的任意库里的类。Ruby里的类并不是一个封闭的代码集合，作为一个类库的使用者你甚至可以不用修改类库的代码而重新定义、扩展里面的接口。例如Ruby中的数字其实就是Fixnum类，而我们可以为Fixnum直接添加更多的接口（原文的代码有问题，以下我做了修改）：</p>
+
+<div class="highlight"><pre><code class="ruby"><span class="k">class</span> <span class="nc">Fixnum</span>
+  <span class="k">def</span> <span class="nf">days</span>
+    <span class="nb">self</span><span class="o">.</span><span class="n">hours</span> <span class="o">*</span> <span class="mi">24</span>
+  <span class="k">end</span>
+
+  <span class="k">def</span> <span class="nf">hours</span>
+    <span class="nb">self</span><span class="o">.</span><span class="n">minutes</span> <span class="o">*</span> <span class="mi">60</span>
+  <span class="k">end</span>
+
+  <span class="k">def</span> <span class="nf">minutes</span>
+    <span class="nb">self</span><span class="o">.</span><span class="n">seconds</span> <span class="o">*</span> <span class="mi">60</span>
+  <span class="k">end</span>
+
+  <span class="k">def</span> <span class="nf">seconds</span>
+    <span class="nb">self</span>
+  <span class="k">end</span>
+
+  <span class="k">def</span> <span class="nf">from_now</span>
+    <span class="no">Time</span><span class="o">.</span><span class="n">now</span> <span class="o">+</span> <span class="nb">self</span>
+  <span class="k">end</span>
+
+  <span class="k">def</span> <span class="nf">ago</span>
+    <span class="no">Time</span><span class="o">.</span><span class="n">now</span> <span class="o">-</span> <span class="nb">self</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+</code></pre>
+</div>
+
+
+<p>基于以上，我们可以写出<code>10.days.ago</code>或者<code>6.hours.from_now</code>这样的代码。这有助于构建DSL(domain specific language)。</p>
+
+<h3>Full object orientation</h3>
+
+<p>Ruby中一切都是对象。这让我们写代码变得更容易，因为不用处理特殊情况。这些特殊情况主要就是很多基础数据类型并非对象，但Ruby里是。Ruby里每个对象都有一个函数<code>class</code>，表示该对象的类型：</p>
+
+<div class="highlight"><pre><code class="ruby"><span class="mi">1</span><span class="o">.</span><span class="n">class</span> <span class="c1"># =&gt; Fixnum</span>
+<span class="mi">2</span><span class="o">.</span><span class="mi">5</span><span class="o">.</span><span class="n">class</span> <span class="c1"># = &gt; Float</span>
+<span class="s2">&quot;hello&quot;</span><span class="o">.</span><span class="n">class</span> <span class="c1"># =&gt; String</span>
+<span class="o">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="o">].</span><span class="n">class</span> <span class="c1"># =&gt; Array</span>
+<span class="p">(</span><span class="mi">1</span><span class="o">.</span><span class="n">.</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">class</span> <span class="c1"># =&gt; Range</span>
+</code></pre>
+</div>
+
+
+<p>全文完。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2012/08/03/ruby-element-to-java/'>http://codemacro.com/2012/08/03/ruby-element-to-java/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Lua里实现简单的类-对象]]></title>
+    <link href="http://codemacro.com/2012/08/02/simple-oo-in-lua/"/>
+    <updated>2012-08-02T10:18:00+08:00</updated>
+    <id>http://codemacro.com/2012/08/02/simple-oo-in-lua</id>
+    <content type="html"><![CDATA[<p>要在Lua里实现面向对象有很多方法，为了支持面向对象的一些特性（类、对象、继承、重载等），其实现可能会比较复杂。看看云风的<a href="http://blog.codingnow.com/2006/06/oo_lua.html">这篇</a>，以及后面的评论，有总结的不错的。这真是让人对Lua刮目相看。但是我并不需要这些机制，一般情况下我只需要支持类即可。</p>
+
+<p>类其实就是定义一个对象的函数模板，避免我写出带模块名并且第一个参数是操作对象的函数（像C一样）。以下代码提炼于rapanui（基于<a href="http://getmoai.com/">moai</a>的高层封装），摘抄于几个月前我基于rapanui移植到android上的一个<a href="https://github.com/kevinlynx/crazyeggs_mobile">小游戏</a>：</p>
+
+<!-- more -->
+
+
+
+
+<div class="highlight"><pre><code class="lua"><span class="kd">local</span> <span class="k">function</span> <span class="nf">newindex</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+    <span class="nb">getmetatable</span><span class="p">(</span><span class="n">self</span><span class="p">).</span><span class="n">__object</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+<span class="k">end</span>
+
+<span class="kd">local</span> <span class="k">function</span> <span class="nf">index</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">getmetatable</span><span class="p">(</span><span class="n">self</span><span class="p">).</span><span class="n">__object</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+<span class="k">end</span>
+
+<span class="k">function</span> <span class="nf">newObject</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">class</span><span class="p">)</span>
+    <span class="n">class</span><span class="p">.</span><span class="n">__index</span> <span class="o">=</span> <span class="n">class</span>
+    <span class="nb">setmetatable</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">class</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">setmetatable</span><span class="p">({},</span> <span class="p">{</span> <span class="n">__newindex</span> <span class="o">=</span> <span class="n">newindex</span><span class="p">,</span> <span class="n">__index</span> <span class="o">=</span> <span class="n">index</span><span class="p">,</span> <span class="n">__object</span> <span class="o">=</span> <span class="n">o</span> <span class="p">})</span>
+<span class="k">end</span>
+</code></pre>
+</div>
+
+
+<p>基于newObject函数，可以这样定义类：</p>
+
+<div class="highlight"><pre><code class="lua"><span class="n">Button</span> <span class="o">=</span> <span class="p">{}</span>
+
+<span class="k">function</span> <span class="nc">Button</span><span class="p">.</span><span class="nf">new</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">onclick</span><span class="p">,</span> <span class="n">parent</span><span class="p">)</span>
+    <span class="c1">-- 定义这个类的数据成员</span>
+    <span class="kd">local</span> <span class="n">obj</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">text</span><span class="p">,</span>
+        <span class="n">onclick</span> <span class="o">=</span> <span class="n">onclick</span><span class="p">,</span>
+        <span class="n">normal_img</span> <span class="o">=</span> <span class="kc">nil</span><span class="p">,</span>
+        <span class="n">text_inst</span> <span class="o">=</span> <span class="kc">nil</span><span class="p">,</span>
+        <span class="n">hover_img</span> <span class="o">=</span> <span class="kc">nil</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">obj</span> <span class="o">=</span> <span class="n">newObject</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Button</span><span class="p">)</span>
+    <span class="o">...</span>
+    <span class="k">return</span> <span class="n">obj</span>
+<span class="k">end</span>
+
+<span class="k">function</span> <span class="nf">Button</span><span class="p">:</span><span class="n">onTouchDown</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+    <span class="o">...</span>
+    <span class="c1">-- 可以访问成员，即使看起来normal_img不属于Button这个table</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">normal_img</span><span class="p">.</span><span class="n">visible</span> <span class="o">=</span> <span class="kc">true</span>
+<span class="k">end</span>
+
+<span class="k">function</span> <span class="nf">Button</span><span class="p">:</span><span class="n">onTouchUp</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+    <span class="o">...</span>
+<span class="k">end</span>
+</code></pre>
+</div>
+
+
+<p>通过以上定义后，就可以以面向对象的方式来使用Button类了：</p>
+
+<div class="highlight"><pre><code class="lua"><span class="kd">local</span> <span class="n">btn</span> <span class="o">=</span> <span class="n">Button</span><span class="p">.</span><span class="n">new</span><span class="p">()</span>
+<span class="n">btn</span><span class="p">:</span><span class="n">OnTouchDown</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+<span class="n">btn</span><span class="p">:</span><span class="n">OnTouchUp</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+</code></pre>
+</div>
+
+
+<p>其实现原理，主要就是将类的函数集通过<code>__index</code>开放给对象，在这些函数中，其<code>self</code>就像c++ 中的<code>this</code>一样拥有多态性，即其是创建出来的对象，而不是作为类角色的那个<code>table</code>（例如Button）。</p>
+
+<hr/>
+
+
+<h4>8.13.2012更新</h4>
+
+<p>其实根本没必要这么复杂，<code>newObject</code>函数多引入了一个空表，实在看不出有什么作用，修改后的版本简单直接：</p>
+
+<div class="highlight"><pre><code class="lua"><span class="k">function</span> <span class="nf">newObject</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">class</span><span class="p">)</span>
+    <span class="n">class</span><span class="p">.</span><span class="n">__index</span> <span class="o">=</span> <span class="n">class</span>
+    <span class="k">return</span> <span class="nb">setmetatable</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">class</span><span class="p">)</span>
+<span class="k">end</span>
+</code></pre>
+</div>
+
+
+<p>因为只需要将类定义的函数引入到实际对象里，使用方法相同。另外上文中提到的一句话：</p>
+
+<blockquote><p>在这些函数中，其<code>self</code>就像c++ 中的<code>this</code>一样拥有多态性，即其是创建出来的对象</p></blockquote>
+
+<p>其实这是不对的，这个self应该就是触发这个metamethod的table，不具备什么<code>多态性</code>。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2012/08/02/simple-oo-in-lua/'>http://codemacro.com/2012/08/02/simple-oo-in-lua/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[像写函数式语言代码一样写C++]]></title>
+    <link href="http://codemacro.com/2012/07/30/write-cpp-like-fp/"/>
+    <updated>2012-07-30T17:11:00+08:00</updated>
+    <id>http://codemacro.com/2012/07/30/write-cpp-like-fp</id>
+    <content type="html"><![CDATA[<p>忘记最早接触函数式编程语言是什么时候了，也忘记接触的第一门函数式语言是哪一门。断断续续接触过好几种函数式语言（当然都算不纯的，ruby/lisp不算纯吧），这些语言的思想在潜移默化中多多少少对我有所影响。</p>
+
+<p>我是个C++程序员，我不知道我平时写的都是些什么代码。最让人印象深刻就是我会经常写遍历STL容器的代码，是经常，这样的遍历你可能也不陌生：</p>
+
+<div class="highlight"><pre><code class="c"><span class="k">for</span> <span class="p">(</span><span class="n">ListType</span><span class="o">::</span><span class="n">iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">con</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span> <span class="n">it</span> <span class="o">!=</span> <span class="n">con</span><span class="p">.</span><span class="n">end</span><span class="p">();</span> <span class="o">++</span><span class="n">it</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">something</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+
+
+<!-- more -->
+
+
+<p>或者针对std::map/set等的查找：</p>
+
+<div class="highlight"><pre><code class="c"><span class="n">Table</span><span class="o">::</span><span class="n">iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">table</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">key</span><span class="p">);</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">it</span> <span class="o">==</span> <span class="n">table</span><span class="p">.</span><span class="n">end</span><span class="p">())</span>
+    <span class="k">do</span><span class="o">-</span><span class="n">something</span>
+<span class="k">do</span><span class="o">-</span><span class="n">something</span>
+</code></pre>
+</div>
+
+
+<p>多亏STL接口的一致性，这让我们写出了很多“一致性“代码。慢慢地我觉得恶心，不禁想起函数式编程语言中，对于这种需求一般都会提供类似的接口：</p>
+
+<div class="highlight"><pre><code class="lua"><span class="n">con</span><span class="p">.</span><span class="n">map</span><span class="p">(</span><span class="k">function</span> <span class="p">(</span><span class="n">it</span><span class="p">)</span> <span class="k">if</span> <span class="p">(</span><span class="n">it</span><span class="o">-&gt;</span><span class="n">some</span><span class="o">-</span><span class="n">filed</span> <span class="o">==</span> <span class="n">some</span><span class="o">-</span><span class="n">value</span><span class="p">)</span> <span class="k">return</span> <span class="n">something</span> <span class="k">end</span><span class="p">)</span>
+<span class="o">#</span> <span class="err">或者</span>
+<span class="n">con</span><span class="p">.</span><span class="n">each</span> <span class="k">do</span> <span class="err">|</span><span class="n">it</span><span class="err">|</span> <span class="k">if</span> <span class="n">it</span><span class="p">.</span><span class="n">some</span><span class="o">-</span><span class="n">filed</span> <span class="o">==</span> <span class="n">some</span><span class="o">-</span><span class="n">value</span> <span class="k">then</span> <span class="k">return</span> <span class="n">something</span> <span class="k">end</span> <span class="k">end</span>
+<span class="o">#</span> <span class="err">或者</span>
+<span class="p">(</span><span class="n">con</span><span class="p">.</span><span class="n">map</span> <span class="p">(</span><span class="n">lambda</span> <span class="p">(</span><span class="n">it</span><span class="p">)</span> <span class="p">(</span><span class="k">if</span> <span class="p">((</span><span class="o">=</span> <span class="n">it</span><span class="p">.</span><span class="n">some</span><span class="o">-</span><span class="n">filed</span> <span class="n">some</span><span class="o">-</span><span class="n">value</span><span class="p">))</span> <span class="p">(</span><span class="k">return</span> <span class="n">something</span><span class="p">))))</span>
+</code></pre>
+</div>
+
+
+<p>（好吧，lisp我又忘了）总之，这种针对容器的遍历操作，都会成为一种内置接口，并且通过lambda来让用户直接编写处理代码，少去写循环的冗余。然后，我写了类似下面的一组宏（随手敲的不保证能运行）：</p>
+
+<div class="highlight"><pre><code class="c"><span class="cp">#define IT_N __it</span>
+
+<span class="cp">#define TRAVERSE_MAP(type, map, exps) \</span>
+<span class="cp">    for (type::iterator IT_N = map.begin(); IT_N != map.end(); ++IT_N) { \</span>
+<span class="cp">        exps; \</span>
+<span class="cp">    }</span>
+<span class="cp">#define I_KEY (IT_N-&gt;first)</span>
+<span class="cp">#define I_VALUE (IT_N-&gt;second)</span>
+
+<span class="cp">#define TRAVERSE_LIST(type, list, exps) \</span>
+<span class="cp">    for (type::iterator IT_N = list.begin(); IT_N != list.end(); ++IT_N) { \</span>
+<span class="cp">        exps; \</span>
+<span class="cp">    }</span>
+<span class="cp">#define L_VALUE (*IT_N)</span>
+
+<span class="cp">#define FIND_MAP_ITEM(type, map, key, fexps, texps) \</span>
+<span class="cp">    do { \</span>
+<span class="cp">        type::iterator IT_N = map.find(key); \</span>
+<span class="cp">        if (IT_N == map.end()) { \</span>
+<span class="cp">            fexps; \</span>
+<span class="cp">        } else { \</span>
+<span class="cp">            texps; \</span>
+<span class="cp">        } \</span>
+<span class="cp">    } while(0)</span>
+
+<span class="cp">#define VAL_N __val</span>
+<span class="cp">#define FIND_LIST_ITEM_IF(type, list, cmp, fexps, texps) \</span>
+<span class="cp">    do { \</span>
+<span class="cp">        struct Comp { \</span>
+<span class="cp">            bool operator() (const type::value_type &amp;VAL_N) const { \</span>
+<span class="cp">                return cmp; \</span>
+<span class="cp">            } \</span>
+<span class="cp">        }; \</span>
+<span class="cp">        type::iterator IT_N = std::find_if(list.begin(), list.end(), Comp()); \</span>
+<span class="cp">        if (IT_N != list.end()) { \</span>
+<span class="cp">            texps; \</span>
+<span class="cp">        } else { \</span>
+<span class="cp">            fexps; \</span>
+<span class="cp">        } \</span>
+<span class="cp">    } while(0)</span>
+
+<span class="cp">#define NULL_EXP ;</span>
+</code></pre>
+</div>
+
+
+<p>当然，以上接口都还包含一些const版本，用于const容器的使用。使用的时候（截取的项目中的使用例子）：</p>
+
+<div class="highlight"><pre><code class="c"><span class="n">TRAVERSE_MAP</span><span class="p">(</span><span class="n">TimerTable</span><span class="p">,</span> <span class="n">m_timers</span><span class="p">,</span> 
+        <span class="n">I_VALUE</span><span class="p">.</span><span class="n">obj</span><span class="o">-&gt;</span><span class="n">OnTimerCancel</span><span class="p">(</span><span class="n">I_KEY</span><span class="p">,</span> <span class="n">I_VALUE</span><span class="p">.</span><span class="n">arg</span><span class="p">);</span>
+        <span class="n">TIMER_CANCEL</span><span class="p">(</span><span class="n">I_VALUE</span><span class="p">.</span><span class="n">id</span><span class="p">));</span> 
+
+<span class="n">TRAVERSE_LIST</span><span class="p">(</span><span class="n">AreaList</span><span class="p">,</span> <span class="n">areas</span><span class="p">,</span>
+        <span class="n">ids</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">L_VALUE</span><span class="o">-&gt;</span><span class="n">ID</span><span class="p">()));</span>
+
+<span class="n">FIND_MAP_ITEM</span><span class="p">(</span><span class="n">PropertyTable</span><span class="p">,</span> <span class="n">m_properties</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span>
+        <span class="n">LogWarn</span><span class="p">(</span><span class="s">&quot;set a non-existed property %s&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">.</span><span class="n">c_str</span><span class="p">());</span> <span class="k">return</span> <span class="n">NIL_VALUE</span><span class="p">,</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">val</span><span class="p">.</span><span class="n">Type</span><span class="p">()</span> <span class="o">!=</span> <span class="n">I_VALUE</span><span class="p">.</span><span class="n">type</span><span class="p">())</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">NIL_VALUE</span><span class="p">;</span> 
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="n">GValue</span> <span class="n">old</span> <span class="o">=</span> <span class="n">I_VALUE</span><span class="p">;</span>
+            <span class="n">I_VALUE</span> <span class="o">=</span> <span class="n">val</span><span class="p">;</span> 
+            <span class="k">return</span> <span class="n">old</span><span class="p">;</span>
+        <span class="p">});</span>
+</code></pre>
+</div>
+
+
+<p>多亏了C/C++宏对一切内容的可容纳性，可以让我往宏参数里塞进像if这种复合语句，甚至多条语句（例如最后一个例子）。这些宏我使用了一段时间，开始觉得挺爽，很多函数的实现里，我再也不用写那些重复的代码了。但是后来我发觉这些代码越来越恶心了。最大的弊端在于不可调试，我只能将断点下到更深的代码层；然后就是看起来特不直观，连作者自己都看得觉得不直观了，可想而知那些连函数式编程语言都不知道是什么的C++程序员看到这些代码会是什么心情（可以想象哥已经被诅咒了多少次）。</p>
+
+<p>函数式语言让人写出更短的代码，这一点也对我有影响，例如我最近又写下了一些邪恶代码：</p>
+
+<div class="highlight"><pre><code class="c"><span class="c1">// split a string into several sub strings by a split character i.e:</span>
+<span class="c1">// &quot;a;b;c;&quot; =&gt; &quot;a&quot;, &quot;b&quot;, &quot;c&quot;</span>
+<span class="c1">// &quot;a;b;c&quot; =&gt; &quot;a&quot;, &quot;b&quot;, &quot;c&quot;</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">SplitString</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">str</span><span class="p">,</span> <span class="kt">char</span> <span class="n">split</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">ret</span><span class="p">;</span>
+    <span class="kt">size_t</span> <span class="n">last</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">pos</span> <span class="o">=</span> <span class="n">str</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">split</span><span class="p">);</span> <span class="n">pos</span> <span class="o">!=</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">::</span><span class="n">npos</span><span class="p">;</span> <span class="n">last</span> <span class="o">=</span> <span class="n">pos</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">pos</span> <span class="o">=</span> <span class="n">str</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">split</span><span class="p">,</span> <span class="n">last</span><span class="p">))</span> <span class="p">{</span>
+        <span class="n">ret</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">str</span><span class="p">.</span><span class="n">substr</span><span class="p">(</span><span class="n">last</span><span class="p">,</span> <span class="n">pos</span> <span class="o">-</span> <span class="n">last</span><span class="p">));</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">last</span> <span class="o">&lt;</span> <span class="n">str</span><span class="p">.</span><span class="n">length</span><span class="p">()</span> <span class="o">?</span> <span class="n">ret</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">str</span><span class="p">.</span><span class="n">substr</span><span class="p">(</span><span class="n">last</span><span class="p">))</span> <span class="o">:</span> <span class="mi">0</span><span class="p">,</span> <span class="n">ret</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+<p>恶心的就是最后那条return语句，因为我需要处理&#8221;a;b;c&#8221;这种c后面没加分隔符的情况，但我并不愿意为了这个需求再写一个会占超过一行的if语句。因为，我太喜欢ruby里的if了：</p>
+
+<div class="highlight"><pre><code class="ruby"><span class="k">do</span><span class="o">-</span><span class="n">something</span> <span class="k">if</span> <span class="n">exp</span>
+</code></pre>
+</div>
+
+
+<p>也就是ruby里允许这种只有一行if的代码将if放在其后并作为一条语句。我的不愿意其实是有理由的，在c/c++中有太多只有一行条件体的if语句，对这些语句参合进编程风格/可读性进来后，就不得不让你写出不安的代码，例如：</p>
+
+<div class="highlight"><pre><code class="c"><span class="k">if</span> <span class="p">(</span><span class="n">something</span><span class="p">)</span> <span class="k">return</span> <span class="n">something</span><span class="p">;</span> <span class="c1">// 某些编程风格里不允许这样做，因为它不方便调试</span>
+
+<span class="k">if</span> <span class="p">(</span><span class="n">something</span><span class="p">)</span> 
+    <span class="k">return</span> <span class="n">something</span><span class="p">;</span> <span class="c1">// 某些风格里又有大括号的统一要求</span>
+
+<span class="k">if</span> <span class="p">(</span><span class="n">something</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">something</span><span class="p">;</span> <span class="c1">// 就算符合风格了，但这一条语句就得多个大括号</span>
+<span class="p">}</span>
+
+<span class="k">if</span> <span class="p">(</span><span class="n">something</span><span class="p">)</span> 
+<span class="p">{</span>
+    <span class="k">return</span> <span class="n">something</span><span class="p">;</span> <span class="c1">// 某些风格里这大括号就更奢侈了</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+<p>这个return除了乍看上去有点纠结外，其实也不算什么大问题，但是那个问号表达式返回的0实在没有任何意义，而正是没有意义才会让它误导人。本来我是可以写成：</p>
+
+<div class="highlight"><pre><code class="c"><span class="k">return</span> <span class="n">last</span> <span class="o">&lt;</span> <span class="n">str</span><span class="p">.</span><span class="n">length</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="n">ret</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">str</span><span class="p">.</span><span class="n">substr</span><span class="p">(</span><span class="n">last</span><span class="p">)),</span> <span class="n">ret</span><span class="p">;</span>
+</code></pre>
+</div>
+
+
+<p>这样利用条件表达式的短路运算，代码也清晰多了。但是，std::vector::push_back是一个没有返回值的函数，所以。</p>
+
+<p>全文完。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2012/07/30/write-cpp-like-fp/'>http://codemacro.com/2012/07/30/write-cpp-like-fp/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[为octopress每篇文章添加一个文章信息]]></title>
+    <link href="http://codemacro.com/2012/07/26/post-footer-plugin-for-octopress/"/>
+    <updated>2012-07-26T14:27:00+08:00</updated>
+    <id>http://codemacro.com/2012/07/26/post-footer-plugin-for-octopress</id>
+    <content type="html"><![CDATA[<p>当你的博客文章被转载时，你肯定希望转载者能添加一个原始地址。或者你的文章被各种RSS抓取器抓取时，你也希望能在明显的位置显示这个原始地址。使用octopress写博客时，可以通过插件来做这件事。最开始，我只是想单纯地添加这个“原始地址“，一番google未能找到现成的插件，所以只好动手。</p>
+
+<p>话说编写octopress真不是件容易事，因为我实在没找到编写插件的文档。octopress基于jekyll，jekyll又使用了liquid。最后我把这几个项目的文档都翻了下，也仅仅看到几个代码示例，而且liquid的API页面居然出错。无奈之下只好多翻了些现有插件的代码，摸索着来写。写octopress的插件，主要分为generator/tag/filter几种。tag很好理解，就是在文章中插入一个插件注册的tag，然后生成页面时就会调用到对应的插件。filter大概就是把文章内容过滤一遍转换成其他内容输出。</p>
+
+<!-- more -->
+
+
+<p>后来发现了一篇文章<a href="http://xoyo.name/2012/04/auto-spacing-for-octopress/">&lt;给中英文间加个空格></a>，这人写的插件从流程上大致是我需要的，模仿如下：</p>
+
+<div class="highlight"><pre><code class="ruby"><span class="c1">#</span>
+<span class="c1"># post_footer_filter.rb</span>
+<span class="c1"># Append every post some footer infomation like original url </span>
+<span class="c1"># Kevin Lynx</span>
+<span class="c1"># 7.26.2012</span>
+<span class="c1">#</span>
+<span class="nb">require</span> <span class="s1">&#39;./plugins/post_filters&#39;</span>
+
+<span class="k">module</span> <span class="nn">AppendFooterFilter</span>
+  <span class="k">def</span> <span class="nf">append</span><span class="p">(</span><span class="n">post</span><span class="p">)</span>
+     <span class="n">author</span> <span class="o">=</span> <span class="n">post</span><span class="o">.</span><span class="n">site</span><span class="o">.</span><span class="n">config</span><span class="o">[</span><span class="s1">&#39;author&#39;</span><span class="o">]</span>
+     <span class="n">url</span> <span class="o">=</span> <span class="n">post</span><span class="o">.</span><span class="n">site</span><span class="o">.</span><span class="n">config</span><span class="o">[</span><span class="s1">&#39;url&#39;</span><span class="o">]</span>
+     <span class="n">pre</span> <span class="o">=</span> <span class="n">post</span><span class="o">.</span><span class="n">site</span><span class="o">.</span><span class="n">config</span><span class="o">[</span><span class="s1">&#39;original_url_pre&#39;</span><span class="o">]</span>
+     <span class="n">post</span><span class="o">.</span><span class="n">content</span> <span class="o">+</span> <span class="sx">%Q[&lt;p class=&#39;post-footer&#39;&gt;</span>
+<span class="sx">            </span><span class="si">#{</span><span class="n">pre</span> <span class="ow">or</span> <span class="s2">&quot;original link:&quot;</span><span class="si">}</span><span class="sx"></span>
+<span class="sx">            &lt;a href=&#39;</span><span class="si">#{</span><span class="n">post</span><span class="o">.</span><span class="n">full_url</span><span class="si">}</span><span class="sx">&#39;&gt;</span><span class="si">#{</span><span class="n">post</span><span class="o">.</span><span class="n">full_url</span><span class="si">}</span><span class="sx">&lt;/a&gt;&lt;br/&gt;</span>
+<span class="sx">            &amp;nbsp;written by &lt;a href=&#39;</span><span class="si">#{</span><span class="n">url</span><span class="si">}</span><span class="sx">&#39;&gt;</span><span class="si">#{</span><span class="n">author</span><span class="si">}</span><span class="sx">&lt;/a&gt;</span>
+<span class="sx">            &amp;nbsp;posted at &lt;a href=&#39;</span><span class="si">#{</span><span class="n">url</span><span class="si">}</span><span class="sx">&#39;&gt;</span><span class="si">#{</span><span class="n">url</span><span class="si">}</span><span class="sx">&lt;/a&gt;</span>
+<span class="sx">            &lt;/p&gt;]</span>
+  <span class="k">end</span> 
+<span class="k">end</span>
+
+<span class="k">module</span> <span class="nn">Jekyll</span>
+  <span class="k">class</span> <span class="nc">AppendFooter</span> <span class="o">&lt;</span> <span class="no">PostFilter</span>
+    <span class="kp">include</span> <span class="no">AppendFooterFilter</span>
+    <span class="k">def</span> <span class="nf">pre_render</span><span class="p">(</span><span class="n">post</span><span class="p">)</span>
+      <span class="n">post</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="n">append</span><span class="p">(</span><span class="n">post</span><span class="p">)</span> <span class="k">if</span> <span class="n">post</span><span class="o">.</span><span class="n">is_post?</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="ss">Liquid</span><span class="p">:</span><span class="ss">:Template</span><span class="o">.</span><span class="n">register_filter</span> <span class="no">AppendFooterFilter</span>
+</code></pre>
+</div>
+
+
+<p>大概就是当传入的页面是post时，就添加页脚信息，我这里主要添加了原始地址和作者信息，并且留了个post-footer作为这个段落的样式定制。附加的信息对于RSS输出同样有效。</p>
+
+<p>这个插件的使用方式很简单，直接放到plugins目录下即可。可以在_config.yml中配置下origional_url_pre，例如配置为“原始地址：“。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2012/07/26/post-footer-plugin-for-octopress/'>http://codemacro.com/2012/07/26/post-footer-plugin-for-octopress/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
+  
+</feed>

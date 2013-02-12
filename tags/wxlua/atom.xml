@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Tag: wxLua | loop in codes]]></title>
+  <link href="http://codemacro.com/tags/wxlua/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-12T21:33:16+08:00</updated>
+  <id>http://codemacro.com/</id>
+  <author>
+    <name><![CDATA[Kevin Lynx]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[让wxListCtrl支持子item编辑]]></title>
+    <link href="http://codemacro.com/2012/08/07/edit-item-wxlistctrl/"/>
+    <updated>2012-08-07T13:48:00+08:00</updated>
+    <id>http://codemacro.com/2012/08/07/edit-item-wxlistctrl</id>
+    <content type="html"><![CDATA[<p>我使用的wxLua版本信息为<code>wxLua 2.8.7.0 built with wxWidgets 2.8.8</code>，也就是LuaForWindows_v5.1.4-40.exe这个安装包里自带的wxLua。我不知道其他wxWidgets版本里wxListCtrl怎样，但我使用的版本里wxListCtrl是不支持编辑里面的子item的。在我使用的report模式下，子item也就是特定某一行一列的item。</p>
+
+<p>google了一下，发现悲剧地需要自己实现，主要就是自己显示一个wxTextCtrl：</p>
+
+<!-- more -->
+
+
+<h2>{% highlight lua %}</h2>
+
+<p>-- file: wxListCtrlTextEdit.lua
+-- author: Kevin Lynx</p>
+
+<h2>-- date: 08.06.2012</h2>
+
+<p>local EditList = {}</p>
+
+<p>-- get the column by an abs point
+function EditList:getColumn(x)</p>
+
+<pre><code>local cols = self.listctrl:GetColumnCount()
+local cx = 0
+for i = 0, cols - 1 do
+    local w = self.listctrl:GetColumnWidth(i)
+    if x &lt;= cx + w then return i end
+    cx = cx + w
+end
+return -1
+</code></pre>
+
+<p>end</p>
+
+<p>-- when a mouse down, show a text edit control
+function EditList:onLeftDown(evt)</p>
+
+<pre><code>if self.editor:IsShown() then
+    self:closeEditor()
+end
+local p = evt:GetPoint()
+local row = evt:GetIndex()
+local col = self:getColumn(p.x)
+local rect = wx.wxListCtrlEx.GetSubItemRect(self.listctrl, row, col)
+rect:SetHeight(rect:GetHeight() + 5) -- adjust
+self.editor:SetSize(rect)
+self.editor:Show()
+self.editor:SetValue(wx.wxListCtrlEx.GetItemText(self.listctrl, row, col))
+self.editor:SetFocus()
+self.col = col
+self.row = row
+</code></pre>
+
+<p>end</p>
+
+<p>function EditList:closeEditor()</p>
+
+<pre><code>if not self.editor:IsShown() then return end
+self.editor:Hide()
+self.listctrl:SetItem(self.row, self.col, self.editor:GetValue())
+</code></pre>
+
+<p>end</p>
+
+<p>function EditList:initialize()</p>
+
+<pre><code>self.editor = wx.wxTextCtrl(self.listctrl, wx.wxID_ANY, "", wx.wxDefaultPosition, wx.wxDefaultSize, wx.wxTE_PROCESS_ENTER + wx.wxTE_RICH2)
+self.editor:Connect(wx.wxEVT_COMMAND_TEXT_ENTER, function () self:closeEditor() end)
+-- not work actually
+self.editor:Connect(wx.wxEVT_COMMAND_KILL_FOCUS, function () self:closeEditor() end)
+self.editor:Hide()
+</code></pre>
+
+<p>end</p>
+
+<p>function wx.wxListCtrlTextEdit(listctrl)</p>
+
+<pre><code>local o = {
+    listctrl = listctrl,
+    editor = nil,
+}
+local editlist = newObject(o, EditList)
+editlist:initialize()
+listctrl:Connect(wx.wxEVT_COMMAND_LIST_ITEM_RIGHT_CLICK, function (evt) editlist:onLeftDown(evt) end)
+listctrl:Connect(wx.wxEVT_COMMAND_LIST_ITEM_FOCUSED, function () editlist:closeEditor() end)
+return listctrl
+</code></pre>
+
+<p>end</p>
+
+<p>{% endhighlight %}</p>
+
+<p>其原理就是获取到当前鼠标点击所在的子item位置，然后在此位置显示一个wxEditCtrl即可。以上代码需要依赖我之前写的<a href="http://codemacro.com/2012/08/02/simple-oo-in-lua/">Lua里实现简单的类-对象</a>中的代码，同时依赖以下针对wxListCtrl的扩展接口：</p>
+
+<h2>{% highlight lua %}</h2>
+
+<p>-- file: wxListCtrlExtend.lua
+-- author: Kevin Lynx
+-- date: 08.07.2012</p>
+
+<h2>-- brief: extend some util functions to wx.wxListCtrl</h2>
+
+<p>wx.wxListCtrlEx = {}</p>
+
+<p>function wx.wxListCtrlEx.GetSubItemRect(listctrl, item, col)</p>
+
+<pre><code>local rect = wx.wxRect()
+listctrl:GetItemRect(item, rect)
+local x = 0
+local w = 0
+for i = 0, col do
+    w = listctrl:GetColumnWidth(i)
+    x = x + w
+end
+return wx.wxRect(x - w, rect:GetY(), w, rect:GetHeight())
+</code></pre>
+
+<p>end</p>
+
+<p>function wx.wxListCtrlEx.GetItemText(listctrl, item, col)</p>
+
+<pre><code>local info = wx.wxListItem()
+info:SetId(item)
+info:SetColumn(col)
+info:SetMask(wx.wxLIST_MASK_TEXT)
+listctrl:GetItem(info)
+return info:GetText()
+</code></pre>
+
+<p>end</p>
+
+<p>{% endhighlight %}</p>
+
+<p>在我看到的wxWidgets官方文档里，其实wxListCtrl已经有<code>GetSubItemRect</code>接口，并且在另一些示例代码里，也看到了<code>GetItemText</code>接口，但是，我使用的版本里没有，所以只好自己写。基于以上，要使用这个可以支持编辑子item的wxListCtrl，可以：</p>
+
+<p>{% highlight lua %}
+list = wx.wxListCtrlTextEdit(wx.wxListCtrl(dialog, wx.wxID_ANY, wx.wxDefaultPosition, wx.wxDefaultSize, wx.wxLC_REPORT))
+{% endhighlight %}</p>
+
+<p>也就是通过wx.wxListCtrlTextEdit这个函数做下处理，这个函数返回的是本身的wxListCtrl。当然更好的方式是使用继承之类的方式，开发一种新的控件，但在Lua中，针对usedata类型的扩展貌似只能这样了。</p>
+
+<p>最好吐槽下，这个控件扩展其实很恶心。本来我打算当编辑控件失去焦点后就隐藏它，但是往编辑控件上注册KILL_FOCUS事件始终不起作用；我又打算弄个ESC键盘事件去手动取消，但显然wxTextCtrl是不支持键盘事件的。好吧，凑合用了。</p>
+]]></content>
+  </entry>
+  
+</feed>

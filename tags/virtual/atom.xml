@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Tag: virtual | loop in codes]]></title>
+  <link href="http://codemacro.com/tags/virtual/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-12T21:33:16+08:00</updated>
+  <id>http://codemacro.com/</id>
+  <author>
+    <name><![CDATA[Kevin Lynx]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[C++陷阱：构造函数中的多态]]></title>
+    <link href="http://codemacro.com/2012/09/17/c-plus-plus-ctor-virtual/"/>
+    <updated>2012-09-17T16:01:00+08:00</updated>
+    <id>http://codemacro.com/2012/09/17/c-plus-plus-ctor-virtual</id>
+    <content type="html"><![CDATA[<p>C++中主要是通过给函数加上<code>virtual</code>关键字来实现多态。多态可用于改变一个接口的实现，也算是一种嵌入应用层代码到底层的实现手段。就算你用不到C++那些复杂的技术，多态肯定会被用到。</p>
+
+<p>但加上<code>virtual</code>不一定能保证多态成功：</p>
+
+<!-- more -->
+
+
+<p>{% highlight c++ %}
+{% raw %}</p>
+
+<h1>include &lt;stdio.h></h1>
+
+<p>class Base {
+public:</p>
+
+<pre><code>Base() {
+    Init();
+}
+
+virtual ~Base() {
+    Release();
+}
+
+virtual void Init() {
+    printf("Base::Init\n");
+}
+
+virtual void Release() {
+    printf("Base::Release\n");
+}
+</code></pre>
+
+<p>};</p>
+
+<p>class Derived : public Base {
+public:</p>
+
+<pre><code>virtual void Init() {
+    printf("Derived::Init\n");
+}
+
+virtual void Release() {
+    printf("Derived:Release\n");
+}
+</code></pre>
+
+<p>};</p>
+
+<p>int main()
+{</p>
+
+<pre><code>Base *obj = new Derived();
+delete obj;
+return 0;
+</code></pre>
+
+<p>}
+{% endraw %}
+{% endhighlight %}</p>
+
+<p>当在构造函数，包括析构函数中调用<code>virtual</code>函数时，预想中的多态是无法完成的，以上代码输出结果为：</p>
+
+<p>{% highlight c++ %}
+Base::Init
+Base::Release
+{% endhighlight %}</p>
+
+<p>从语言设计角度来看，我个人是不接受这种行为的。我觉得对一门语言而言，几乎所有特性都应该是一致的，不应该或尽量少地出现这种“例外“。如果我构造一个对象，让它以不同的方式被构造，这和改变它的某个行为有什么区别？（从这句话来看，似乎还真有区别）</p>
+
+<p>当然，从语言实现来看，这样的运行结果又似乎是必然的。因为，基类的构造是早于派生类的（作为其一部分），只有当构造完派生类后，其用于支持多态的虚表才会被正确构造。也就是说，在基类中调用虚函数时，既然虚表都为正确构造，自然调用的不会是派生类的虚函数了。析构函数按照析构的顺序来看，也会面临同样的情况。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[C++陷阱：virtual析构函数]]></title>
+    <link href="http://codemacro.com/2012/09/13/c-plus-plus-virtual-destructor/"/>
+    <updated>2012-09-13T17:03:00+08:00</updated>
+    <id>http://codemacro.com/2012/09/13/c-plus-plus-virtual-destructor</id>
+    <content type="html"><![CDATA[<p>有一天有个同事在通过vld调试一个内存泄漏问题，折腾了很久然后找到我。我瞥了一眼他的代码，发现问题和我曾经遇到的一模一样：</p>
+
+<p>{% highlight c++ %}
+class Base {
+public:</p>
+
+<pre><code>~Base();
+</code></pre>
+
+<p>};</p>
+
+<p>class Derived : public Base {
+privated:</p>
+
+<pre><code>std::vector&lt;int&gt; m_data;    
+</code></pre>
+
+<p>};</p>
+
+<p>Base *obj = new Derived();
+delete obj;
+{% endhighlight %}</p>
+
+<!-- more -->
+
+
+<p>当然，实际代码比这个复杂得多(这也是导致从发现问题到找到问题耗费大量时间的原因)。vld在报内存泄漏时，当然报的位置是<code>new</code>的地方。这个同事检查了这个对象的整个生命周期，确定他正确地释放了这个对象。</p>
+
+<p>问题的关键就在于：<strong><code>Base</code>类的析构函数不是<code>virtual</code>的</strong>。因为不是<code>virtual</code>，所以在对一个<code>Base</code>类型的指针进行<code>delete</code>时，就不会调用到派生类<code>Derived</code>的析构函数。而派生类里的析构函数会用于析构其内部的子对象，也就是这里的<code>m_data</code>。这样，就造成了内存泄漏。</p>
+
+<p>这其实是一个很低级的失误。但毫不客气地说C++中有很多这种少个关键字或者代码位置不对就会造成另一个结果的例子。事实上，针对这些悲剧也有很多书提出一些准则来让大家去无脑遵守。例如针对这个例子，我就记得曾有书说，只要你觉得你的类会被继承，那么最好给析构函数加上virtual。</p>
+]]></content>
+  </entry>
+  
+</feed>

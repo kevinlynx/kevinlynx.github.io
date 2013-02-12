@@ -20,7 +20,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://codemacro.com">
+  <link rel="canonical" href="http://codemacro.com/page/4">
   <link href="/favicon.ico" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <script src="/javascripts/modernizr-2.0.js"></script>
@@ -74,7 +74,7 @@
       
   <header>
     
-      <h1 class="entry-title"><a href="/2013/02/12/using-clang/">使用Clang实现C语言编程规范检查</a></h1>
+      <h1 class="entry-title"><a href="/2012/08/07/edit-item-wxlistctrl/">让wxListCtrl支持子item编辑</a></h1>
     
     
       <p class="meta">
@@ -90,28 +90,22 @@
   
 
 
-<time datetime="2013-02-12T00:00:00+08:00" pubdate data-updated="true">Feb 12<span>th</span>, 2013</time>
+<time datetime="2012-08-07T13:48:00+08:00" pubdate data-updated="true">Aug 7<span>th</span>, 2012</time>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><h2>概述</h2>
+  <div class="entry-content"><p>我使用的wxLua版本信息为<code>wxLua 2.8.7.0 built with wxWidgets 2.8.8</code>，也就是LuaForWindows_v5.1.4-40.exe这个安装包里自带的wxLua。我不知道其他wxWidgets版本里wxListCtrl怎样，但我使用的版本里wxListCtrl是不支持编辑里面的子item的。在我使用的report模式下，子item也就是特定某一行一列的item。</p>
 
-<p>Clang是LLVM编译器工具集的前端部分，也就是涵盖词法分析、语法语义分析的部分。而LLVM是Apple在Mac OS上用于替代GCC工具集的编译器软件集合。Clang支持类C语言的语言，例如C、C++、Objective C。Clang的与众不同在于其模块化的设计，使其不仅实现编译器前端部分，并且包装成库的形式提供给上层应用。使用Clang可以做诸如语法高亮、语法检查、编程规范检查方面的工作，当然也可以作为你自己的编译器前端。</p>
-
-<p>编程规范一般包含编码格式和语义规范两部分。编码格式用于约定代码的排版、符号命名等；而语义规范则用于约定诸如类型匹配、表达式复杂度等，例如不允许对常数做逻辑运算、检查变量使用前是否被赋值等。本文描述的主要是基于语义方面的检查，其经验来自于最近做的一个检查工具，该工具实现了超过130条的规范。这份规范部分规则来自于<a href="http://en.wikipedia.org/wiki/MISRA_C">MISRA C</a></p>
-
-<h2>编程模式</h2>
-
-<p>编译器前端部分主要是输出代码对应的抽象语法树(AST)。Clang提供给上层的接口也主要是围绕语法树来做操作。通过google一些Clang的资料，你可能会如我当初一样对该如何正确地使用Clang心存疑惑。我最后使用的方式是基于RecursiveASTVisitor。这是一种类似回调的使用机制，通过提供特定语法树节点的接口，Clang在遍历语法树的时候，在遇到该节点时，就会调用到上层代码。不能说这是最好的方式，但起码它可以工作。基于RecursiveASTVisitor使用Clang，程序主体框架大致为：</p>
+<p>google了一下，发现悲剧地需要自己实现，主要就是自己显示一个wxTextCtrl：</p>
 
 </div>
   
   
     <footer>
-      <a rel="full-article" href="/2013/02/12/using-clang/">Read on &rarr;</a>
+      <a rel="full-article" href="/2012/08/07/edit-item-wxlistctrl/">Read on &rarr;</a>
     </footer>
   
 
@@ -123,7 +117,7 @@
       
   <header>
     
-      <h1 class="entry-title"><a href="/2012/09/17/c-plus-plus-ctor-virtual/">C++陷阱：构造函数中的多态</a></h1>
+      <h1 class="entry-title"><a href="/2012/08/03/ruby-element-to-java/">『你会把Ruby的哪些特性加入Java』</a></h1>
     
     
       <p class="meta">
@@ -139,70 +133,22 @@
   
 
 
-<time datetime="2012-09-17T16:01:00+08:00" pubdate data-updated="true">Sep 17<span>th</span>, 2012</time>
+<time datetime="2012-08-03T14:14:00+08:00" pubdate data-updated="true">Aug 3<span>rd</span>, 2012</time>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><p>C++中主要是通过给函数加上<code>virtual</code>关键字来实现多态。多态可用于改变一个接口的实现，也算是一种嵌入应用层代码到底层的实现手段。就算你用不到C++那些复杂的技术，多态肯定会被用到。</p>
+  <div class="entry-content"><p>参考（翻译、摘抄）于<a href="http://java.sys-con.com/node/251986">Can Ruby Live without Rails?</a>。这篇文章发表于2006年，受访者在回答“如果可以你会把Ruby的哪些特性加入Java“这个问题时，提到了Ruby的一些我个人认为比较突出的语法特性。其实并不是针对Java语言，何况6年时间过去，以Java语法特性的加入速度怕早就有Ruby这些特性了。我对Java不熟，仅限于曾经写的几个简单的android应用，买了&lt;Java编程思想>也没翻完。</p>
 
-<p>但加上<code>virtual</code>不一定能保证多态成功：</p>
+<p>以下内容半翻译自原文。</p>
 
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/09/17/c-plus-plus-ctor-virtual/">Read on &rarr;</a>
-    </footer>
-  
+<h3>Closure</h3>
 
+<p>闭包支持将代码块作为函数参数传递。这在写很多代码时会比较方便，例如以下代码打印10次字符串：</p>
 
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/09/13/c-plus-plus-virtual-destructor/">C++陷阱：virtual析构函数</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-13T17:03:00+08:00" pubdate data-updated="true">Sep 13<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>有一天有个同事在通过vld调试一个内存泄漏问题，折腾了很久然后找到我。我瞥了一眼他的代码，发现问题和我曾经遇到的一模一样：</p>
-
-<div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">Base</span> <span class="p">{</span>
-<span class="nl">public:</span>
-    <span class="o">~</span><span class="n">Base</span><span class="p">();</span>
-<span class="p">};</span>
-
-<span class="n">class</span> <span class="n">Derived</span> <span class="o">:</span> <span class="n">public</span> <span class="n">Base</span> <span class="p">{</span>
-<span class="nl">privated:</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">m_data</span><span class="p">;</span>    
-<span class="p">};</span>
-
-<span class="n">Base</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="n">new</span> <span class="n">Derived</span><span class="p">();</span>
-<span class="n">delete</span> <span class="n">obj</span><span class="p">;</span>
+<div class="highlight"><pre><code class="ruby"><span class="mi">10</span><span class="o">.</span><span class="n">times</span> <span class="p">{</span> <span class="nb">puts</span> <span class="s2">&quot;Hello&quot;</span> <span class="p">}</span>
 </code></pre>
 </div>
 
@@ -213,7 +159,7 @@
   
   
     <footer>
-      <a rel="full-article" href="/2012/09/13/c-plus-plus-virtual-destructor/">Read on &rarr;</a>
+      <a rel="full-article" href="/2012/08/03/ruby-element-to-java/">Read on &rarr;</a>
     </footer>
   
 
@@ -225,7 +171,7 @@
       
   <header>
     
-      <h1 class="entry-title"><a href="/2012/09/06/octopress-seo/">Octopress中的SEO</a></h1>
+      <h1 class="entry-title"><a href="/2012/08/02/simple-oo-in-lua/">Lua里实现简单的类-对象</a></h1>
     
     
       <p class="meta">
@@ -241,22 +187,22 @@
   
 
 
-<time datetime="2012-09-06T19:02:00+08:00" pubdate data-updated="true">Sep 6<span>th</span>, 2012</time>
+<time datetime="2012-08-02T10:18:00+08:00" pubdate data-updated="true">Aug 2<span>nd</span>, 2012</time>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><p>来自<a href="http://www.yatishmehta.in/seo-for-octopress">SEO for Octopress</a></p>
+  <div class="entry-content"><p>要在Lua里实现面向对象有很多方法，为了支持面向对象的一些特性（类、对象、继承、重载等），其实现可能会比较复杂。看看云风的<a href="http://blog.codingnow.com/2006/06/oo_lua.html">这篇</a>，以及后面的评论，有总结的不错的。这真是让人对Lua刮目相看。但是我并不需要这些机制，一般情况下我只需要支持类即可。</p>
 
-<p>Octopress默认为每个页面添加<code>meta description</code>，其内容为当前文章的前150个字符，如果是首页就会是第一篇文章的前150个字符。这里主要通过增加<code>meta keywords</code>来提高SEO。</p>
+<p>类其实就是定义一个对象的函数模板，避免我写出带模块名并且第一个参数是操作对象的函数（像C一样）。以下代码提炼于rapanui（基于<a href="http://getmoai.com/">moai</a>的高层封装），摘抄于几个月前我基于rapanui移植到android上的一个<a href="https://github.com/kevinlynx/crazyeggs_mobile">小游戏</a>：</p>
 
 </div>
   
   
     <footer>
-      <a rel="full-article" href="/2012/09/06/octopress-seo/">Read on &rarr;</a>
+      <a rel="full-article" href="/2012/08/02/simple-oo-in-lua/">Read on &rarr;</a>
     </footer>
   
 
@@ -268,7 +214,7 @@
       
   <header>
     
-      <h1 class="entry-title"><a href="/2012/09/04/bit-operation-in-c-slash-c-plus-plus/">C/c++中几种操作位的方法</a></h1>
+      <h1 class="entry-title"><a href="/2012/07/30/write-cpp-like-fp/">像写函数式语言代码一样写C++</a></h1>
     
     
       <p class="meta">
@@ -284,25 +230,20 @@
   
 
 
-<time datetime="2012-09-04T19:49:00+08:00" pubdate data-updated="true">Sep 4<span>th</span>, 2012</time>
+<time datetime="2012-07-30T17:11:00+08:00" pubdate data-updated="true">Jul 30<span>th</span>, 2012</time>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><p>参考<a href="http://stackoverflow.com/questions/47981/how-do-you-set-clear-and-toggle-a-single-bit-in-c">How do you set, clear and toggle a single bit in C?</a></p>
+  <div class="entry-content"><p>忘记最早接触函数式编程语言是什么时候了，也忘记接触的第一门函数式语言是哪一门。断断续续接触过好几种函数式语言（当然都算不纯的，ruby/lisp不算纯吧），这些语言的思想在潜移默化中多多少少对我有所影响。</p>
 
-<p>c/c++中对二进制位的操作包括设置某位为1、清除某位（置为0）、开关某位(toggling a bit)、检查某位是否为1等。这些操作较为常见并且可以作为其他位运算的基础接口，以下罗列几种方法：</p>
+<p>我是个C++程序员，我不知道我平时写的都是些什么代码。最让人印象深刻就是我会经常写遍历STL容器的代码，是经常，这样的遍历你可能也不陌生：</p>
 
-<h2>传统方法</h2>
-
-<ul>
-<li>设置某位为1</li>
-</ul>
-
-
-<div class="highlight"><pre><code class="c"><span class="n">number</span> <span class="o">|=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">x</span><span class="p">;</span> <span class="c1">// 设置第x位为1</span>
+<div class="highlight"><pre><code class="c"><span class="k">for</span> <span class="p">(</span><span class="n">ListType</span><span class="o">::</span><span class="n">iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">con</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span> <span class="n">it</span> <span class="o">!=</span> <span class="n">con</span><span class="p">.</span><span class="n">end</span><span class="p">();</span> <span class="o">++</span><span class="n">it</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">something</span>
+<span class="p">}</span>
 </code></pre>
 </div>
 
@@ -313,7 +254,50 @@
   
   
     <footer>
-      <a rel="full-article" href="/2012/09/04/bit-operation-in-c-slash-c-plus-plus/">Read on &rarr;</a>
+      <a rel="full-article" href="/2012/07/30/write-cpp-like-fp/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2012/07/26/post-footer-plugin-for-octopress/">为octopress每篇文章添加一个文章信息</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-07-26T14:27:00+08:00" pubdate data-updated="true">Jul 26<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>当你的博客文章被转载时，你肯定希望转载者能添加一个原始地址。或者你的文章被各种RSS抓取器抓取时，你也希望能在明显的位置显示这个原始地址。使用octopress写博客时，可以通过插件来做这件事。最开始，我只是想单纯地添加这个“原始地址“，一番google未能找到现成的插件，所以只好动手。</p>
+
+<p>话说编写octopress真不是件容易事，因为我实在没找到编写插件的文档。octopress基于jekyll，jekyll又使用了liquid。最后我把这几个项目的文档都翻了下，也仅仅看到几个代码示例，而且liquid的API页面居然出错。无奈之下只好多翻了些现有插件的代码，摸索着来写。写octopress的插件，主要分为generator/tag/filter几种。tag很好理解，就是在文章中插入一个插件注册的tag，然后生成页面时就会调用到对应的插件。filter大概就是把文章内容过滤一遍转换成其他内容输出。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2012/07/26/post-footer-plugin-for-octopress/">Read on &rarr;</a>
     </footer>
   
 
@@ -322,9 +306,11 @@
   
   <div class="pagination">
     
-      <a class="prev" href="/page/2/">&larr; Older</a>
+      <a class="prev" href="/page/5/">&larr; Older</a>
     
     <a href="/blog/archives">Blog Archives</a>
+    
+    <a class="next" href="/page/3/">Newer &rarr;</a>
     
   </div>
 </div>

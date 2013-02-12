@@ -1,0 +1,366 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: other | loop in codes]]></title>
+  <link href="http://codemacro.com/categories/other/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-12T21:33:16+08:00</updated>
+  <id>http://codemacro.com/</id>
+  <author>
+    <name><![CDATA[Kevin Lynx]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[为什么处理排序的数组要比非排序的快？]]></title>
+    <link href="http://codemacro.com/2012/08/29/branch-predictor/"/>
+    <updated>2012-08-29T19:55:00+08:00</updated>
+    <id>http://codemacro.com/2012/08/29/branch-predictor</id>
+    <content type="html"><![CDATA[<p>参考<a href="http://stackoverflow.com/questions/11227809/why-is-processing-a-sorted-array-faster-than-an-unsorted-array">Why is processing a sorted array faster than an unsorted array?</a></p>
+
+<h2>问题</h2>
+
+<p>看以下代码：</p>
+
+<p>{% highlight c++ %}</p>
+
+<h1>include <algorithm></h1>
+
+<h1>include <ctime></h1>
+
+<h1>include <iostream></h1>
+
+<p>int main()
+{</p>
+
+<pre><code>// generate data
+const unsigned arraySize = 32768;
+int data[arraySize];
+
+for (unsigned c = 0; c &lt; arraySize; ++c)
+    data[c] = std::rand() % 256;
+
+
+// !!! with this, the next loop runs faster
+std::sort(data, data + arraySize);
+
+
+// test
+clock_t start = clock();
+long long sum = 0;
+
+for (unsigned i = 0; i &lt; 100000; ++i)
+{
+    // primary loop
+    for (unsigned c = 0; c &lt; arraySize; ++c)
+    {
+        if (data[c] &gt;= 128)
+            sum += data[c];
+    }
+}
+
+double elapsedTime = static_cast&lt;double&gt;(clock() - start) / CLOCKS_PER_SEC;
+
+std::cout &lt;&lt; elapsedTime &lt;&lt; std::endl;
+std::cout &lt;&lt; "sum = " &lt;&lt; sum &lt;&lt; std::endl;
+</code></pre>
+
+<p>}</p>
+
+<p>{% endhighlight %}</p>
+
+<p>问题就在于，去掉<code>std::sort</code>那一行，以上代码将运行更长的时间。在我的机器上未去掉<code>std::sort</code>耗时8.99s，去掉后耗时24.78s。编译器使用的是gcc4.4.3。事实上，以上代码跟编译器没有关系，甚至跟语言没有关系。那这是为什么呢？</p>
+
+<!-- more -->
+
+
+<p>这跟处理这个数组的逻辑有非常大的关系。如以上代码所示，这个循环里有个条件判断。条件判断被编译成二进制代码后，就是一个跳转指令，类似：</p>
+
+<p>{% highlight asm %}
+jl SHORT $LN3@main
+{% endhighlight %}</p>
+
+<p>具体为什么会不同，这涉及到计算机CPU执行指令时的行为。</p>
+
+<h2>CPU的流水线指令执行</h2>
+
+<p>想象现在有一堆指令等待CPU去执行，那么CPU是如何执行的呢？具体的细节可以找一本计算机组成原理的书来看。CPU执行一堆指令时，并不是单纯地一条一条取出来执行，而是按照一种流水线的方式，在CPU真正执行一条指令前，这条指令就像工厂里流水线生产的产品一样，已经被经过一些处理。简单来说，一条指令可能经过这些过程：取指(Fetch)、解码(Decode)、执行(Execute)、放回(Write-back)。</p>
+
+<p>假设现在有指令序列ABCDEFG。当CPU正在执行(execute)指令A时，CPU的其他处理单元（CPU是由若干部件构成的）其实已经预先处理到了指令A后面的指令，例如B可能已经被解码，C已经被取指。这就是流水线执行，这可以保证CPU高效地执行指令。</p>
+
+<h2>Branch Prediction</h2>
+
+<p>如上所说，CPU在执行一堆顺序执行的指令时，因为对于执行指令的部件来说，其基本不需要等待，因为诸如取指、解码这些过程早就被做了。但是，当CPU面临非顺序执行的指令序列时，例如之前提到的跳转指令，情况会怎样呢？</p>
+
+<p>取指、解码这些CPU单元并不知道程序流程会跳转，只有当CPU执行到跳转指令本身时，才知道该不该跳转。所以，取指解码这些单元就会继续取跳转指令之后的指令。当CPU执行到跳转指令时，如果真的发生了跳转，那么之前的预处理（取指、解码）就白做了。这个时候，CPU得从跳转目标处临时取指、解码，然后才开始执行，这意味着：CPU停了若干个时钟周期！</p>
+
+<p>这其实是个问题，如果CPU的设计放任这个问题，那么其速度就很难提升起来。为此，人们发明了一种技术，称为branch prediction，也就是分支预测。分支预测的作用，就是预测某个跳转指令是否会跳转。而CPU就根据自己的预测到目标地址取指令。这样，即可从一定程度提高运行速度。当然，分支预测在实现上有很多方法。</p>
+
+<p>简单的预测可以直接使用之前的实际执行结果。例如某个跳转指令某一次产生了跳转，那么下一次执行该指令时，CPU就直接从跳转目标地址处取指，而不是该跳转指令的下一条指令。</p>
+
+<h2>答案</h2>
+
+<p>了解了以上信息后，文章开头提出的问题就可以解释了。这个代码中有一个循环，这个循环里有一个条件判断。每一次CPU执行这个条件判断时，CPU都可能跳转到循环开始处的指令，即不执行if后的指令。使用分支预测技术，当处理已经排序的数组时，在若干次<code>data[c]&gt;=128</code>都不成立时（或第一次不成立时，取决于分支预测的实现），CPU预测这个分支是始终会跳转到循环开始的指令时，这个时候CPU将保持有效的执行，不需要重新等待到新的地址取指；同样，当<code>data[c]&gt;=128</code>条件成立若干次后，CPU也可以预测这个分支是不必跳转的，那么这个时候CPU也可以保持高效执行。</p>
+
+<p>相反，如果是无序的数组，CPU的分支预测在很大程度上都无法预测成功，基本就是50%的预测成功概率，这将消耗大量的时间，因为CPU很多时间都会等待取指单元重新取指。</p>
+
+<p>本文完。最后感叹下stackoverflow上这个帖子里那个老外回答问题的专业性，我要是楼主早就感动得涕泪横飞了。感谢每一个传播知识的人。</p>
+
+<h2>参考资料</h2>
+
+<ol>
+<li><a href="http://blog.sina.com.cn/s/blog_6c673e570100zfmo.html">http://blog.sina.com.cn/s/blog_6c673e570100zfmo.html</a></li>
+<li><a href="http://www.cnblogs.com/dongliqian/archive/2012/04/05/2433847.html">http://www.cnblogs.com/dongliqian/archive/2012/04/05/2433847.html</a></li>
+<li><a href="http://en.wikipedia.org/wiki/Branch_predictor">http://en.wikipedia.org/wiki/Branch_predictor</a></li>
+</ol>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[为octopress每篇文章添加一个文章信息]]></title>
+    <link href="http://codemacro.com/2012/07/26/post-footer-plugin-for-octopress/"/>
+    <updated>2012-07-26T14:27:00+08:00</updated>
+    <id>http://codemacro.com/2012/07/26/post-footer-plugin-for-octopress</id>
+    <content type="html"><![CDATA[<p>当你的博客文章被转载时，你肯定希望转载者能添加一个原始地址。或者你的文章被各种RSS抓取器抓取时，你也希望能在明显的位置显示这个原始地址。使用octopress写博客时，可以通过插件来做这件事。最开始，我只是想单纯地添加这个“原始地址“，一番google未能找到现成的插件，所以只好动手。</p>
+
+<p>话说编写octopress真不是件容易事，因为我实在没找到编写插件的文档。octopress基于jekyll，jekyll又使用了liquid。最后我把这几个项目的文档都翻了下，也仅仅看到几个代码示例，而且liquid的API页面居然出错。无奈之下只好多翻了些现有插件的代码，摸索着来写。写octopress的插件，主要分为generator/tag/filter几种。tag很好理解，就是在文章中插入一个插件注册的tag，然后生成页面时就会调用到对应的插件。filter大概就是把文章内容过滤一遍转换成其他内容输出。</p>
+
+<!-- more -->
+
+
+<p>后来发现了一篇文章<a href="http://xoyo.name/2012/04/auto-spacing-for-octopress/">&lt;给中英文间加个空格></a>，这人写的插件从流程上大致是我需要的，模仿如下：</p>
+
+<p>{% highlight ruby %}
+{% raw %}
+#</p>
+
+<h1>post_footer_filter.rb</h1>
+
+<h1>Append every post some footer infomation like original url</h1>
+
+<h1>Kevin Lynx</h1>
+
+<h1>7.26.2012</h1>
+
+<p>#
+require './plugins/post_filters'</p>
+
+<p>module AppendFooterFilter
+  def append(post)</p>
+
+<pre><code> author = post.site.config['author']
+ url = post.site.config['url']
+ pre = post.site.config['original_url_pre']
+ post.content + %Q[&lt;p class='post-footer'&gt;
+        #{pre or "original link:"}
+        &lt;a href='#{post.full_url}'&gt;#{post.full_url}&lt;/a&gt;&lt;br/&gt;
+        &amp;nbsp;written by &lt;a href='#{url}'&gt;#{author}&lt;/a&gt;
+        &amp;nbsp;posted at &lt;a href='#{url}'&gt;#{url}&lt;/a&gt;
+        &lt;/p&gt;]
+</code></pre>
+
+<p>  end
+end</p>
+
+<p>module Jekyll
+  class AppendFooter &lt; PostFilter</p>
+
+<pre><code>include AppendFooterFilter
+def pre_render(post)
+  post.content = append(post) if post.is_post?
+end
+</code></pre>
+
+<p>  end
+end</p>
+
+<p>Liquid::Template.register_filter AppendFooterFilter
+{% endraw %}
+{% endhighlight %}</p>
+
+<p>大概就是当传入的页面是post时，就添加页脚信息，我这里主要添加了原始地址和作者信息，并且留了个post-footer作为这个段落的样式定制。附加的信息对于RSS输出同样有效。</p>
+
+<p>这个插件的使用方式很简单，直接放到plugins目录下即可。可以在_config.yml中配置下origional_url_pre，例如配置为“原始地址：“。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[开始记录编程方面的技巧]]></title>
+    <link href="http://codemacro.com/2012/07/18/start-to-write-tips/"/>
+    <updated>2012-07-18T17:01:00+08:00</updated>
+    <id>http://codemacro.com/2012/07/18/start-to-write-tips</id>
+    <content type="html"><![CDATA[<p>回首上篇博客的发表时间，又2个月时间过去了。在我博客生涯的过去两三年里，总会有好几个月的时间没有编写任何文章。我觉得这真是一个不好的习惯。这个情况的产生，有很多原因。例如自己太懒、工作偶尔忙、自己偶尔处于混沌时期、自己偶尔怀疑人生，如是种种。但最大的原因还是，不敢写。</p>
+
+<p>在刚出来工作那会，作为一个懵懂的青年，接触个什么新技术都内心激动骄傲，然后就特别有动力将所学记录下来，注意下言辞还能折腾个像那么回事的教程出来。后来慢慢地，我就觉得，这些东西太肤浅。先别说教人用个什么IDE，配置个什么数据库，就算你是学个新语言，好好研究下TCP，甚至还能折腾个IOCP框架，这些都还是他妈的特肤浅。你说任何一个有那么点经验和学习能力的程序员，谁花点时间整不出来这些？谁他妈要你在这里装逼卖萌，甚至贻笑大方。除此之外，我个人也觉得无聊了。</p>
+
+<p>另一方面我觉得写博客还有个好处就是帮助自己记录技术，以便将来万一又需要曾经学习过的技术了，回头温习一下就好。但是后来慢慢地我又觉得，这也是没必要的事情。因为反正需要这个技术的时候，也花不了多少时间。</p>
+
+<p>基于这些乱七八糟的原因，我虽然经常打开自己的博客，看看有没人评论啊，留言啊，但发表博客的频率始终上不去。</p>
+
+<!-- more -->
+
+
+<p>后来呢，在google reader上断断续续也看了些别的程序员的故事。例如有傻逼坚持1年每天一篇博客，后来竟然写了本书；例如有傻逼坚持每天翻译一篇英文文章。我琢磨着这些人该有多么大的毅力啊，就算是翻译文章，这从找文章筛选文章到最好发表出来这尼玛又该睡觉了啊亲。心生佩服之余，我觉得自己应该向这些傻逼们学习。作为一个已经没有那么多青年时光的青年，试想以后每天下班回家带娃的日子，而曾经竟碌碌无为地磨过每一个工作日耍过每一个工作日晚上，这是件比带娃更悲剧的事情。</p>
+
+<p>所以，我也决定坚持干一件虽一日不用一次但也望每周那么几次的事情。我决定在博客上记录一些编程方面的技巧(tips)，集中于某个小问题的解决、某个小功能的实现。这些技巧相比前文说的，就更肤浅了，肤浅到你一google出来的结果你都吓一跳的程度。但是我依然觉得这是有用的，就像我用rails做网站，每一个小功能我都得google一遍，然后积累于心，然后一段时间后忘掉。为了不忘掉，为了查阅起来简单，我决定记录下来。但是仅靠我自己的经验，是肯定无法做到频繁地更新的，所以，我决定上stackoverflow上随机找些问题/答案翻译出来。stackoverflow非常适合满足这种需求，我发现我google某个rails技巧时，基本是从stackoverflow上获取下来的。</p>
+
+<p>这样，我的博客<a href="http://codemacro.com">http://codemacro.com</a>的rss输出可能会繁杂点，这对于某些人而言估计会起到恶心的效果。而我自己的博客可能也会变得不那么像个人博客。我也想过单独做个网站出来，但仔细想想还是制止自己少瞎折腾了。如有建议欢迎批评。</p>
+
+<p>好，就这样，没了。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[使用Github Page来写博客]]></title>
+    <link href="http://codemacro.com/2012/04/20/blog-on-github/"/>
+    <updated>2012-04-20T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2012/04/20/blog-on-github</id>
+    <content type="html"><![CDATA[<p>最开始知道<a href="http://pages.github.com/">Github Page</a>，是通过<a href="http://codertrace.com">codertrace</a>上的某些注册用户，他们的BLOG就建立在Github Page上，并且清一色的干净整洁（简陋），这看起来很酷。</p>
+
+<p>Github提供了很多很合coder口味的东西，例如Gist，也包括这里提到的Page。Page并不是特用于建立博客的产品，它仅提供静态页面的显示。它最酷的地方，是通过Git的方式来让你管理这些静态页面。通过建立一个repository，并使用markdown语法来编写文章，然后通过Git来管理这些文章，你就可以自动将其发布出去。</p>
+
+<!-- more -->
+
+
+<p>当然，要搭建一个像样点的博客，使用Github Page还不太方便。这里可以使用<a href="https://github.com/mojombo/jekyll">Jekyll</a>。Jekyll是一个静态网页生成器，它可以将你的markdown文件自动输出为对应的网页。而Github Page也支持Jekyll。</p>
+
+<p>为了更方便地搭建博客，我还使用了<a href="http://jekyllbootstrap.com">Jekyll-bootstrap</a>。jekyll-bootstrap其实就是一些模板文件，提供了一些博客所需的特殊功能，例如评论，访问统计。</p>
+
+<p>基于以上，我就可以像在Github上做项目一样，编写markdown文章，然后git push即可。可以使用jekyll --server在本地开启一个WEB SERVER，然后编写文章时，可以在本地预览。</p>
+
+<p>Github Page还支持custom domain，如你所见，我将我的域名codemacro.com绑定到了Github Page所提供的IP，而不再是我的VPS。你可以通过kevinlynx.github.com或者codemacro.com访问这个博客。</p>
+
+<hr/>
+
+
+<p>当然实际情况并没有那么简单，例如并没有太多的theme可供选择，虽然jekyll-bootstrap提供了一些，但还是太少。虽然，你甚至可以fork别人的jekyll博客，使用别人定制的theme，但，这对于一个不想过于折腾的人说，门槛也过高了点。</p>
+
+<p>jekyll-bootstrap使用了twitter的bootstrap css引擎，但我并不懂这个，所以，我也只能定制些基本的页面样式。</p>
+
+<hr/>
+
+
+<p>1年前我编写了<a href="https://github.com/kevinlynx/ext-blog">ext-blog</a>，并且在我的VPS上开启了codemacro.com这个博客。本来，它是一个ext-blog很好的演示例子，但维护这个博客给我带来诸多不便。例如，每次发布文章我都需要使用更早前用lisp写的cl-writer，我为什么就不愿意去做更多的包装来让cl-writer更好用？这真是一个垃圾软件，虽然它是我写的。另一方面，codemacro.com使用的主题，虽然是我抄的，但依然太丑，并且恶心。</p>
+
+<p>更别说那个消耗我VPS所有内存的lisp解释器，以及那恶心的两位数字乘法的验证码---你能想象别人得有多强烈的留言欲望，才愿意开一个计算器？</p>
+
+<hr/>
+
+
+<p>说说codertrace.com。我其实写了篇关于codertrace.com的总结，但没有作为博客发布。做这个事情的结果，简单总结来说就是瞎JB折腾没有任何结果。我真的是个苦逼双子男，我每次做件事情都需要巨大的毅力才能让自己专注下去。</p>
+
+<p>整个过程中，收到了些网友的邮件，看到了些评论，虽然不多。邮件/评论中有建议的，也有单纯的交流的，也有单纯鼓励的。我想说的是，thanks guys。</p>
+
+<hr/>
+
+
+<p>Anyway, try Github Page, save your VPS money :D.</p>
+
+<hr/>
+
+
+<p><strong>update</strong></p>
+
+<p>具体的搭建步骤，其实Github Page以及Jekyll的帮助文档中其实已经有说明。而Jekyll-bootstrap给了更为详细的说明：</p>
+
+<ul>
+<li><a href="http://jekyllbootstrap.com/index.html#start-now">安装</a></li>
+<li><a href="http://jekyllbootstrap.com/usage/jekyll-quick-start.html">发布</a></li>
+</ul>
+
+
+<p>其大概步骤，差不多为：</p>
+
+<ul>
+<li>Github上创建一个repository</li>
+<li>安装jekyll（这是一个ruby gem），这是为了本地预览</li>
+<li>clone Jekyll-bootstrap到你刚创建的repository</li>
+<li>在_post目录下创建日志</li>
+<li>提交日志到Github</li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[写了个简单的网站，codertrace.com]]></title>
+    <link href="http://codemacro.com/2012/02/04/codertrace/"/>
+    <updated>2012-02-04T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2012/02/04/codertrace</id>
+    <content type="html"><![CDATA[<h2>简介</h2>
+
+<p>因为写 <a href="https://github.com/kevinlynx/ext-blog">ext-blog</a>
+的原因，慢慢喜欢上github_ 。然后突然有一天产生了一个想法：如果可以把自己的博客_ 和
+<a href="https://github.com/kevinlynx">github主页</a>
+集中到一块展示给别人，会不会是一种很方便的自我简介方式？然后我就动手写了
+<a href="http://codertrace.com">codertrace.com</a> 。</p>
+
+<!-- more -->
+
+
+<p>所以， <a href="http://codertrace.com">codertrace.com</a>
+这个网站的作用就是用来集中让程序员炫耀的。它通过RSS抓取，将你的博客，github主页，或其他有RSS输出的信息集中到一块展示给别人。这些信息通常就可以代表一个程序员。</p>
+
+<p>如果你是程序员，也不妨试试。</p>
+
+<p><img src="http://codemacro.com/assets/res/codertrace/codertrace.png" alt="image" width="100%"/></p>
+
+<h2>技术信息</h2>
+
+<p>不知道哪个王八蛋说的，程序员每一年得学一门新语言。我2010年末接触了Lisp，然后莫名其妙地写了
+<a href="https://github.com/kevinlynx/ext-blog">ext-blog</a>
+，又莫名其妙地在2011年末接触了Ruby。因为大学期间太痴迷C++，我勤奋努力，几乎通晓这门语言的各种细节；后来又稍微实践了下编译原理。在这若干年间，断断续续也接触过其他脚本类语言，我甚至在android上用java写过几个
+<a href="http://kevinlynx.iteye.com">小应用</a>
+。基于这些积累，我发现我可以很快上手Ruby，然后再上手Rails，然后就有了
+<a href="http://codertrace.com">codertrace.com</a> （当然还做过一些小的
+<a href="http://klquiz.heroku.com">APP</a> )</p>
+
+<p>所以， <a href="http://codertrace.com">codertrace.com</a> 就是一个Ruby on
+Rails的应用。当我用这货来做WEB的时候，我才发现曾经用Lisp写博客是多么geek。这种感觉就像你在用汇编写一个GUI程序一样。我的意思是，ruby/rails的世界里有太多现成的东西，但lisp的世界里没有。</p>
+
+<p>而且，ruby是一个很爽的语言。我太喜欢它的closure语法，简洁，不需要加其他关键字就可以构造（例如其他语言map(function
+(item) xxxx end)，或者map(lambda (item) xxx
+)）。但我不喜欢在使用的地方通过yield去调用---这就像一个hack。我更不喜欢ruby用proc去封装closure。好吧，这其实是我自我分裂，为什么我要把ruby看成一个函数式语言？</p>
+
+<p>脚本语言真是太酷了。</p>
+
+<h2>服务器信息</h2>
+
+<p>我很穷。不管你信不信，我真的舍不得花1000RMB买个VPS来架设
+<a href="http://codertrace.com">codertrace.com</a> 。目前，
+<a href="http://codertrace.com">codertrace.com</a> 架设在
+<a href="http://heroku.com">heroku.com</a> ，而且还使用的是免费服务。免费服务竟然只有5M数据库。
+<a href="http://codertrace.com">codertrace.com</a>
+后台为了异步抓取用户提供的RSS，还使用了一个单独的进程(delayed_job ruby gem)。这也不是免费的。</p>
+
+<p>但ruby的世界里有太多现成的东西了，甚至有很多现成的库解决这里的两个问题：heroku_external_db，这个gem可以让codertrace使用heroku以外的数据库，然后我就在我的VPS上搭了个mysql，这下流量和网站响应速度悲剧了啊，你想你请求个页面，这个页面直接涉及到若干条数据库查询。而这些查询的请求和回应竟然是通过internet网络传输的。</p>
+
+<p>workless，这个gem可以在有异步任务时，例如codertrace上读取RSS，就会自动开启这个worker进程，然后heroku开始计费，当没有任务时，它又自动关闭这个进程。虽然省了美元，但再一次让网站的响应速度打了折扣。</p>
+
+<p>为了实现自定义域名，我需要将 <a href="http://codertrace.com">codertrace.com</a> 指向
+<a href="http://heroku.com">heroku.com</a>
+提供的IP。但也许你会同我一样愤怒，因为它提供的几个IP都被GFW墙了！所以，目前的实现方案是，我将
+<a href="http://codertrace.com">codertrace.com</a>
+指向了我博客对应的VPS，然后在VPS上使用nginx反向代理到 <a href="http://heroku.com">heroku.com</a>
+提供的IP。即使如此，我最近甚至发现 <a href="http://codertrace.com">codertrace.com</a>
+竟然神奇般地会域名解析错误，难道godaddy的name server也要被GFW和谐？？</p>
+
+<h2>故事</h2>
+
+<p>作为一个宅男，在工作的若干年中，若干个假期我都用来打游戏，或者写程序。</p>
+
+<p>所以，当这个成为习惯的时候， <a href="http://codertrace.com">codertrace.com</a>
+，就顺理成章地消费了我今年的春节假期。我发现一个人窝在租的小房子里写代码是件很爽的事情。在当前这个社会环境下，你可以专注地去干件喜欢的事情，还不用处理各种生活琐事，真是太爽了。</p>
+
+<p>但为什么我平时得不到这种感觉？因为，我，是一个没钱的程序员。我和我老婆租在一个标间里。在这样狭小的空间里，多个人就是多几倍干扰。这太残酷了。</p>
+
+<h2>末了</h2>
+
+<p>曾经我以为我很牛逼，曾经我以为程序员很牛逼。后来我慢慢发现自己很垃圾。我没有写出来过牛逼的程序，大概也没能力写。还记得那个程序员的故事吗？就是有个傻逼也以为程序员很牛逼，但不幸在一家非IT公司的IT部门工作，他的程序员同事的工作就是每周填个excel表格。他后来很绝望，因为他没有为世界贡献过任何代码。后来，这货丢下一切，坐上去某地的飞机走了。</p>
+]]></content>
+  </entry>
+  
+</feed>

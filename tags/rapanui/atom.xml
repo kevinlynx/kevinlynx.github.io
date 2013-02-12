@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Tag: rapanui | loop in codes]]></title>
+  <link href="http://codemacro.com/tags/rapanui/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-12T21:33:16+08:00</updated>
+  <id>http://codemacro.com/</id>
+  <author>
+    <name><![CDATA[Kevin Lynx]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Lua里实现简单的类-对象]]></title>
+    <link href="http://codemacro.com/2012/08/02/simple-oo-in-lua/"/>
+    <updated>2012-08-02T10:18:00+08:00</updated>
+    <id>http://codemacro.com/2012/08/02/simple-oo-in-lua</id>
+    <content type="html"><![CDATA[<p>要在Lua里实现面向对象有很多方法，为了支持面向对象的一些特性（类、对象、继承、重载等），其实现可能会比较复杂。看看云风的<a href="http://blog.codingnow.com/2006/06/oo_lua.html">这篇</a>，以及后面的评论，有总结的不错的。这真是让人对Lua刮目相看。但是我并不需要这些机制，一般情况下我只需要支持类即可。</p>
+
+<p>类其实就是定义一个对象的函数模板，避免我写出带模块名并且第一个参数是操作对象的函数（像C一样）。以下代码提炼于rapanui（基于<a href="http://getmoai.com/">moai</a>的高层封装），摘抄于几个月前我基于rapanui移植到android上的一个<a href="https://github.com/kevinlynx/crazyeggs_mobile">小游戏</a>：</p>
+
+<!-- more -->
+
+
+<p>{% highlight lua %}
+local function newindex(self, key, value)</p>
+
+<pre><code>getmetatable(self).__object[key] = value
+</code></pre>
+
+<p>end</p>
+
+<p>local function index(self, key)</p>
+
+<pre><code>return getmetatable(self).__object[key]
+</code></pre>
+
+<p>end</p>
+
+<p>function newObject(o, class)</p>
+
+<pre><code>class.__index = class
+setmetatable(o, class)
+return setmetatable({}, { __newindex = newindex, __index = index, __object = o })
+</code></pre>
+
+<p>end
+{% endhighlight %}</p>
+
+<p>基于newObject函数，可以这样定义类：</p>
+
+<p>{% highlight lua %}
+Button = {}</p>
+
+<p>function Button.new(text, x, y, onclick, parent)</p>
+
+<pre><code>-- 定义这个类的数据成员
+local obj = {
+    text = text,
+    onclick = onclick,
+    normal_img = nil,
+    text_inst = nil,
+    hover_img = nil,
+}
+obj = newObject(obj, Button)
+...
+return obj
+</code></pre>
+
+<p>end</p>
+
+<p>function Button:onTouchDown(x, y)</p>
+
+<pre><code>...
+-- 可以访问成员，即使看起来normal_img不属于Button这个table
+self.normal_img.visible = true
+</code></pre>
+
+<p>end</p>
+
+<p>function Button:onTouchUp(x, y)</p>
+
+<pre><code>...
+</code></pre>
+
+<p>end
+{% endhighlight %}</p>
+
+<p>通过以上定义后，就可以以面向对象的方式来使用Button类了：</p>
+
+<p>{% highlight lua %}
+local btn = Button.new()
+btn:OnTouchDown(100, 100)
+btn:OnTouchUp(100, 100)
+{% endhighlight %}</p>
+
+<p>其实现原理，主要就是将类的函数集通过<code>__index</code>开放给对象，在这些函数中，其<code>self</code>就像c++ 中的<code>this</code>一样拥有多态性，即其是创建出来的对象，而不是作为类角色的那个<code>table</code>（例如Button）。</p>
+
+<hr/>
+
+
+<h4>8.13.2012更新</h4>
+
+<p>其实根本没必要这么复杂，<code>newObject</code>函数多引入了一个空表，实在看不出有什么作用，修改后的版本简单直接：</p>
+
+<p>{% highlight lua %}
+function newObject(o, class)</p>
+
+<pre><code>class.__index = class
+return setmetatable(o, class)
+</code></pre>
+
+<p>end
+{% endhighlight %}</p>
+
+<p>因为只需要将类定义的函数引入到实际对象里，使用方法相同。另外上文中提到的一句话：</p>
+
+<blockquote><p>在这些函数中，其<code>self</code>就像c++ 中的<code>this</code>一样拥有多态性，即其是创建出来的对象</p></blockquote>
+
+<p>其实这是不对的，这个self应该就是触发这个metamethod的table，不具备什么<code>多态性</code>。</p>
+]]></content>
+  </entry>
+  
+</feed>

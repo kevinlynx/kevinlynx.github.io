@@ -1,0 +1,367 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>HTML中table的高亮以及tooltip - loop in codes</title>
+  <meta name="author" content="Kevin Lynx">
+
+  
+  <meta name="description" content=" loop in codes, Kevin Lynx blog ">
+  
+    <meta name="keywords" content="c/c++, mmo, game develop, lisp, ruby, lua, web development">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://codemacro.com/2012/07/24/html-table-hover">
+  <link href="/favicon.ico" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">loop in codes</a></h1>
+  
+    <h2>Kevin Lynx BLOG</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:codemacro.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/tips">Tips</a></li>
+  <li><a href="/about.html">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">HTML中table的高亮以及tooltip</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-07-24T16:08:00+08:00" pubdate data-updated="true">Jul 24<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>在一个需要显示很多数据的表格(table)中，为了更友好地查看一行数据，常常需要在鼠标指针移到某一行时，高亮此行。要实现这个效果有很多方法，这里列举一个方法：</p>
+
+<div class="highlight"><pre><code class="javascript"><span class="kd">function</span> <span class="nx">setTableHover</span><span class="p">(</span><span class="nx">t</span><span class="p">)</span> <span class="p">{</span>
+  <span class="nx">$</span><span class="p">(</span><span class="nx">t</span> <span class="o">+</span> <span class="s2">&quot; tbody tr&quot;</span><span class="p">)</span>
+      <span class="p">.</span><span class="nx">mouseover</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span> <span class="nx">$</span><span class="p">(</span><span class="k">this</span><span class="p">).</span><span class="nx">addClass</span><span class="p">(</span><span class="s2">&quot;hover&quot;</span><span class="p">);})</span>
+      <span class="p">.</span><span class="nx">mouseout</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span> <span class="nx">$</span><span class="p">(</span><span class="k">this</span><span class="p">).</span><span class="nx">removeClass</span><span class="p">(</span><span class="s2">&quot;hover&quot;</span><span class="p">);</span> <span class="p">})</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+<p>主要就是在鼠标移到某一行时，为该行添加一个高亮的css class，鼠标离开时移除该class即可。可以为一个特定的table设定：</p>
+
+<!-- more -->
+
+
+
+
+<div class="highlight"><pre><code class="html"><span class="nt">&lt;table</span> <span class="na">id=</span><span class="s">&quot;test&quot;</span><span class="nt">&gt;</span>
+<span class="nt">&lt;/table&gt;</span>
+<span class="nt">&lt;script&gt;</span>
+    <span class="nx">setTableHover</span><span class="p">(</span><span class="s1">&#39;#test&#39;</span><span class="p">)</span>
+<span class="nt">&lt;/script&gt;</span>
+</code></pre>
+</div>
+
+
+<p>甚至可以为将某个页面的所有table设为高亮：</p>
+
+<div class="highlight"><pre><code class="html"><span class="nt">&lt;script&gt;</span>
+    <span class="nx">setTableHover</span><span class="p">(</span><span class="s1">&#39;table&#39;</span><span class="p">)</span>
+<span class="nt">&lt;/script&gt;</span>
+</code></pre>
+</div>
+
+
+<p>css里需要编写这个hover：</p>
+
+<div class="highlight"><pre><code class="css"><span class="nc">.hover</span> <span class="p">{</span>
+  <span class="k">background</span><span class="o">:</span> <span class="m">#e9cffa</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+
+
+<hr/>
+
+
+<p>除了高亮显示某一行外，可能还需要在鼠标移动到某个单元格时，弹出一个tooltip。这里的tooltip可以是<a href="http://codemacro.com/2012/07/19/popup-window-in-html/">弹出窗口</a>，也就是一个div元素。</p>
+
+<div class="highlight"><pre><code class="html"><span class="nt">&lt;tr&gt;</span>
+  <span class="nt">&lt;td</span> <span class="na">class=</span><span class="s">&quot;tip&quot;</span><span class="nt">&gt;</span>
+    hello
+    <span class="nt">&lt;div</span> <span class="na">class=</span><span class="s">&#39;popup&#39;</span> <span class="na">style=</span><span class="s">&#39;display:none;&#39;</span><span class="nt">&gt;</span>this is the tip<span class="nt">&lt;/div&gt;</span>
+  <span class="nt">&lt;/td&gt;</span>
+<span class="nt">&lt;/tr&gt;</span>
+</code></pre>
+</div>
+
+
+<p>要实现此效果，可以通过修改包含tip class的鼠标事件响应：</p>
+
+<div class="highlight"><pre><code class="javascript"><span class="nx">$</span><span class="p">(</span><span class="kd">function</span> <span class="p">()</span> <span class="p">{</span>
+    <span class="nx">$</span><span class="p">(</span><span class="s1">&#39;.tip&#39;</span><span class="p">).</span><span class="nx">hover</span><span class="p">(</span>
+        <span class="kd">function</span> <span class="p">()</span> <span class="p">{</span>
+            <span class="nx">show_popupex</span><span class="p">(</span><span class="nx">$</span><span class="p">(</span><span class="k">this</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s2">&quot;div&quot;</span><span class="p">),</span> <span class="nx">$</span><span class="p">(</span><span class="k">this</span><span class="p">));</span>
+        <span class="p">},</span>
+        <span class="kd">function</span> <span class="p">()</span> <span class="p">{</span>
+            <span class="nx">$</span><span class="p">(</span><span class="k">this</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s2">&quot;div&quot;</span><span class="p">).</span><span class="nx">hide</span><span class="p">();</span>
+        <span class="p">}</span>
+        <span class="p">);</span>
+<span class="p">});</span>
+</code></pre>
+</div>
+
+
+<p>hover的第一个参数表示鼠标进入的响应，第二个参数表示鼠标离开的响应。show_popupex用于将一个元素以绝对位置显示在指定元素（这里是单元格）附近，可以参看<a href="http://codemacro.com/2012/07/19/popup-window-in-html/">弹出窗口</a>那篇文章。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2012/07/24/html-table-hover/'>http://codemacro.com/2012/07/24/html-table-hover/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-07-24T16:08:00+08:00" pubdate data-updated="true">Jul 24<span>th</span>, 2012</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/categories/tips/'>tips</a>, <a class='category' href='/categories/web/'>web</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/2012/07/20/get-client-timezone-in-rails/" title="Previous Post: Rails中获取客户端时区">&laquo; Rails中获取客户端时区</a>
+      
+      
+        <a class="basic-alignment right" href="/2012/07/26/ruby-case-when/" title="Next Post: ruby中的case...when语法">ruby中的case...when语法 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Categories</h1>
+  <ul id="categories">
+    <li class='category'><a href='/categories/c-c-/'>c/c++ (11)</a></li>
+<li class='category'><a href='/categories/clang/'>clang (1)</a></li>
+<li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
+<li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
+<li class='category'><a href='/categories/lua/'>lua (5)</a></li>
+<li class='category'><a href='/categories/module/'>module (1)</a></li>
+<li class='category'><a href='/categories/other/'>other (5)</a></li>
+<li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
+<li class='category'><a href='/categories/tips/'>tips (20)</a></li>
+<li class='category'><a href='/categories/web/'>web (3)</a></li>
+
+  </ul>
+</section>
+
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2013/02/12/using-clang/">使用Clang实现C语言编程规范检查</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2012/09/17/c-plus-plus-ctor-virtual/">C++陷阱：构造函数中的多态</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2012/09/13/c-plus-plus-virtual-destructor/">C++陷阱：virtual析构函数</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2012/09/06/octopress-seo/">Octopress中的SEO</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2012/09/04/bit-operation-in-c-slash-c-plus-plus/">c/c++中几种操作位的方法</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+<div id="recentcomments" class="dsq-widget">
+<h1 class="dsq-widget-title">Recent Comments</h1>
+<script type="text/javascript" src="http://loopincodes.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
+</div>
+<a href="http://disqus.com/">Powered by Disqus</a>
+</section>
+<section>
+  <h1>Tags</h1>
+  <ul class="tag-cloud">
+<a style="font-size: 118%" href="/tags/blog/">blog</a>
+<a style="font-size: 90%" href="/tags/branck-predictor/">branck predictor</a>
+<a style="font-size: 180%" href="/tags/c-c-/">c/c++</a>
+<a style="font-size: 90%" href="/tags/chat-server/">chat server</a>
+<a style="font-size: 90%" href="/tags/clang/">clang</a>
+<a style="font-size: 90%" href="/tags/destructor/">destructor</a>
+<a style="font-size: 135%" href="/tags/game-develop/">game develop</a>
+<a style="font-size: 90%" href="/tags/github/">github</a>
+<a style="font-size: 118%" href="/tags/html/">html</a>
+<a style="font-size: 90%" href="/tags/java/">java</a>
+<a style="font-size: 90%" href="/tags/jekyll/">jekyll</a>
+<a style="font-size: 156%" href="/tags/lisp/">lisp</a>
+<a style="font-size: 156%" href="/tags/lua/">lua</a>
+<a style="font-size: 90%" href="/tags/mmo/">mmo</a>
+<a style="font-size: 146%" href="/tags/octopress/">octopress</a>
+<a style="font-size: 146%" href="/tags/ruby/">ruby</a>
+<a style="font-size: 210%" href="/tags/tips/">tips</a>
+<a style="font-size: 90%" href="/tags/tolua/">tolua</a>
+<a style="font-size: 118%" href="/tags/virtual/">virtual</a>
+<a style="font-size: 118%" href="/tags/web/">web</a>
+
+  </ul>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - Kevin Lynx -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'loopincodes';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://codemacro.com/2012/07/24/html-table-hover/';
+        var disqus_url = 'http://codemacro.com/2012/07/24/html-table-hover/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
+<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
+
+
+
+</body>
+</html>

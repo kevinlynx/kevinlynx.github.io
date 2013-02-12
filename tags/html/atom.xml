@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Tag: html | loop in codes]]></title>
+  <link href="http://codemacro.com/tags/html/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-12T21:33:16+08:00</updated>
+  <id>http://codemacro.com/</id>
+  <author>
+    <name><![CDATA[Kevin Lynx]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[HTML中table的高亮以及tooltip]]></title>
+    <link href="http://codemacro.com/2012/07/24/html-table-hover/"/>
+    <updated>2012-07-24T16:08:00+08:00</updated>
+    <id>http://codemacro.com/2012/07/24/html-table-hover</id>
+    <content type="html"><![CDATA[<p>在一个需要显示很多数据的表格(table)中，为了更友好地查看一行数据，常常需要在鼠标指针移到某一行时，高亮此行。要实现这个效果有很多方法，这里列举一个方法：</p>
+
+<p>{% highlight javascript %}
+{% raw %}
+function setTableHover(t) {
+  $(t + " tbody tr")</p>
+
+<pre><code>  .mouseover(function() { $(this).addClass("hover");})
+  .mouseout(function() { $(this).removeClass("hover"); })
+</code></pre>
+
+<p>}
+{% endraw %}
+{% endhighlight %}</p>
+
+<p>主要就是在鼠标移到某一行时，为该行添加一个高亮的css class，鼠标离开时移除该class即可。可以为一个特定的table设定：</p>
+
+<!-- more -->
+
+
+<p>{% highlight html %}
+{% raw %}</p>
+
+<table id="test">
+</table>
+
+
+<script>
+    setTableHover('#test')
+</script>
+
+
+<p>{% endraw %}
+{% endhighlight %}</p>
+
+<p>甚至可以为将某个页面的所有table设为高亮：</p>
+
+<p>{% highlight html %}
+{% raw %}</p>
+
+<script>
+    setTableHover('table')
+</script>
+
+
+<p>{% endraw %}
+{% endhighlight %}</p>
+
+<p>css里需要编写这个hover：</p>
+
+<p>{% highlight css %}
+{% raw %}
+.hover {
+  background: #e9cffa;
+}
+{% endraw %}
+{% endhighlight %}</p>
+
+<hr/>
+
+
+<p>除了高亮显示某一行外，可能还需要在鼠标移动到某个单元格时，弹出一个tooltip。这里的tooltip可以是<a href="http://codemacro.com/2012/07/19/popup-window-in-html/">弹出窗口</a>，也就是一个div元素。</p>
+
+<p>{% highlight html %}
+{% raw %}
+<tr>
+  <td class="tip"></p>
+
+<pre><code>hello
+&lt;div class='popup' style='display:none;'&gt;this is the tip&lt;/div&gt;
+</code></pre>
+
+<p>  </td>
+</tr>
+{% endraw %}
+{% endhighlight %}</p>
+
+<p>要实现此效果，可以通过修改包含tip class的鼠标事件响应：</p>
+
+<p>{% highlight javascript %}
+{% raw %}
+$(function () {</p>
+
+<pre><code>$('.tip').hover(
+    function () {
+        show_popupex($(this).find("div"), $(this));
+    },
+    function () {
+        $(this).find("div").hide();
+    }
+    );
+</code></pre>
+
+<p>});
+{% endraw %}
+{% endhighlight %}</p>
+
+<p>hover的第一个参数表示鼠标进入的响应，第二个参数表示鼠标离开的响应。show_popupex用于将一个元素以绝对位置显示在指定元素（这里是单元格）附近，可以参看<a href="http://codemacro.com/2012/07/19/popup-window-in-html/">弹出窗口</a>那篇文章。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[HTML中实现弹出窗口]]></title>
+    <link href="http://codemacro.com/2012/07/19/popup-window-in-html/"/>
+    <updated>2012-07-19T14:56:00+08:00</updated>
+    <id>http://codemacro.com/2012/07/19/popup-window-in-html</id>
+    <content type="html"><![CDATA[<p>{% img right /assets/res/popup-window-tip.png %}</p>
+
+<p>做网页时弹出一个窗口显示一些内容是一种很常见的交互方式，如图中用户点击“个人资料“时并不是转到一个新页面，而是在当前页面弹出修改密码的窗口。弹出窗口的实现方式有很多，这里罗列一种。</p>
+
+<p>弹出窗口的内容是作为一个单独的div存在的，这个div可以在页面刚开始载入时不填入内容，而在以后通过json或者直接返回js来填入。其次，弹出窗口的显示位置一般是绝对位置，一方面是不影响页面布局，另一方面也希望其作为一个顶层窗口来呈现，所以需要指定其position css。</p>
+
+<!-- more -->
+
+
+<p>{% highlight html %}</p>
+
+<div id='userprofile' class='popup' style="display:none;"></div>
+
+
+<p>{% endhighlight %}</p>
+
+<p>{% highlight css %}
+{% raw %}
+.popup {
+  position: absolute;
+  z-index: 200;
+  left: 0px;
+  top: 0px;
+  border: 1px solid #666;
+  background: white;
+  padding: 8px 5px 5px;
+  margin: 10px 5px;
+}
+{% endraw %}
+{% endhighlight %}</p>
+
+<p>我这里div里的内容是后面填入的，预先填入也可以。当要显示时，就通过js将这个div显示即可。为此我封装了几个js函数。</p>
+
+<p>{% highlight javascript %}
+{% raw %}
+function show_popupex(pannel, target, manual) {</p>
+
+<pre><code>var pos = target.position();
+var height = target.outerHeight();
+pannel.css('left', pos.left + 'px');
+pannel.css('top', pos.top + height + 'px');
+pannel.show();
+if (!manual) {
+    pannel.mouseleave(function() { pannel.hide(); });
+}
+</code></pre>
+
+<p>}</p>
+
+<p>function show_popup(pannel_id, target_id, manual) {</p>
+
+<pre><code>var target = $(target_id);
+var pannel = $(pannel_id);
+show_popupex(pannel, target, manual);
+</code></pre>
+
+<p>}</p>
+
+<p>function hide_popup(pannel_id) {</p>
+
+<pre><code>$(pannel_id).hide();
+</code></pre>
+
+<p>}
+{% endraw %}
+{% endhighlight %}</p>
+
+<p>show_popup函数主要就是将目标元素的位置做调整，然后显示。通常情况下我只需传入元素的id，manual属性指定弹出窗口是否手动关闭。对于tooltip的实现，则需要让其自动关闭。针对以上例子，使用方式为：</p>
+
+<p>{% highlight js %}
+show_popup('#userprofile', '#profile-link', true);
+{% endhighlight %}</p>
+
+<p>其中profile-link就是那个“个人资料“链接。</p>
+]]></content>
+  </entry>
+  
+</feed>
