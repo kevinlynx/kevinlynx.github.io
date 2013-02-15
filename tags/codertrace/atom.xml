@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Tag: codertrace | loop in codes]]></title>
-  <link href="http://codemacro.com/tags/codertrace/atom.xml" rel="self"/>
-  <link href="http://codemacro.com/"/>
-  <updated>2013-02-12T21:33:16+08:00</updated>
-  <id>http://codemacro.com/</id>
+  <link href="http://kevinlynx.github.com/codemacro/tags/codertrace/atom.xml" rel="self"/>
+  <link href="http://kevinlynx.github.com/codemacro/"/>
+  <updated>2013-02-15T15:08:33+08:00</updated>
+  <id>http://kevinlynx.github.com/codemacro/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[写了个简单的网站，codertrace.com]]></title>
-    <link href="http://codemacro.com/2012/02/04/codertrace/"/>
+    <link href="http://kevinlynx.github.com/codemacro/2012/02/04/codertrace/"/>
     <updated>2012-02-04T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2012/02/04/codertrace</id>
+    <id>http://kevinlynx.github.com/codemacro/2012/02/04/codertrace</id>
     <content type="html"><![CDATA[<h2>简介</h2>
 
 <p>因为写 <a href="https://github.com/kevinlynx/ext-blog">ext-blog</a>
@@ -34,7 +34,7 @@
 
 <p>如果你是程序员，也不妨试试。</p>
 
-<p><img src="http://codemacro.com/assets/res/codertrace/codertrace.png" alt="image" width="100%"/></p>
+<p><img src="http://kevinlynx.github.com/codemacro/assets/res/codertrace/codertrace.png" alt="image" width="100%"/></p>
 
 <h2>技术信息</h2>
 

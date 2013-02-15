@@ -20,7 +20,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://codemacro.com">
+  <link rel="canonical" href="http://kevinlynx.github.com/codemacro">
   <link href="/favicon.ico" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <script src="/javascripts/modernizr-2.0.js"></script>
@@ -51,7 +51,7 @@
   
 <form action="http://google.com/search" method="get">
   <fieldset role="search">
-    <input type="hidden" name="q" value="site:codemacro.com" />
+    <input type="hidden" name="q" value="site:kevinlynx.github.com/codemacro" />
     <input class="search" type="text" name="q" results="0" placeholder="Search"/>
   </fieldset>
 </form>
@@ -68,6 +68,61 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2013/02/15/ice-overview/">分布式程序开发平台ICE概览</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-02-15T00:00:00+08:00" pubdate data-updated="true">Feb 15<span>th</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>本文基于ICE Manual及相关文档就ICE的一些主要特性做一个概览，它不是一个tutorial，不是一个guid，更不是manual。</p>
+
+<h2>概览</h2>
+
+<p><a href="http://www.zeroc.com/index.html">ICE</a>，Internet Communications Engine，按照官方介绍，是一个支持C++、.Net、Java、Python、Objective-C、Ruby、PHP及ActionScript等语言的分布式程序开发平台。按照我的理解，简单来说它是一个核心功能包装RPC的库。要把这个RPC包装得漂亮，自然而然，对于使用者而言，调用一个远端的接口和调用一个本地的接口没有什么区别，例如：</p>
+
+<div class="highlight"><pre><code class="c">    <span class="n">Object</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="n">xxx</span>
+    <span class="n">obj</span><span class="o">-&gt;</span><span class="n">sayHello</span><span class="p">();</span> 
+</code></pre>
+</div>
+
+
+<p>ICE包装<code>sayHello</code>接口，当应用层调用该接口时，ICE发送调用请求到远端服务器，接收返回结果并返回给应用层。ICE在接口提供方面，做到了这一点。</p>
+
+<p>以下，我将逐个给出ICE中的一些工具、组件、特性说明，以展示它作为一个分布式程序开发平台所拥有的能力。到目前为止，所有这些信息均来自于ICE相关文档，总结出来权当为自己服务。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/02/15/ice-overview/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -263,63 +318,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/09/04/bit-operation-in-c-slash-c-plus-plus/">C/c++中几种操作位的方法</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-04T19:49:00+08:00" pubdate data-updated="true">Sep 4<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>参考<a href="http://stackoverflow.com/questions/47981/how-do-you-set-clear-and-toggle-a-single-bit-in-c">How do you set, clear and toggle a single bit in C?</a></p>
-
-<p>c/c++中对二进制位的操作包括设置某位为1、清除某位（置为0）、开关某位(toggling a bit)、检查某位是否为1等。这些操作较为常见并且可以作为其他位运算的基础接口，以下罗列几种方法：</p>
-
-<h2>传统方法</h2>
-
-<ul>
-<li>设置某位为1</li>
-</ul>
-
-
-<div class="highlight"><pre><code class="c"><span class="n">number</span> <span class="o">|=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">x</span><span class="p">;</span> <span class="c1">// 设置第x位为1</span>
-</code></pre>
-</div>
-
-
-
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/09/04/bit-operation-in-c-slash-c-plus-plus/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/2/">&larr; Older</a>
@@ -333,7 +331,8 @@
     <section>
   <h1>Categories</h1>
   <ul id="categories">
-    <li class='category'><a href='/categories/c-c-/'>c/c++ (11)</a></li>
+    <li class='category'><a href='/categories/ice/'>ICE (1)</a></li>
+<li class='category'><a href='/categories/c-c-/'>c/c++ (12)</a></li>
 <li class='category'><a href='/categories/clang/'>clang (1)</a></li>
 <li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
 <li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
@@ -352,6 +351,10 @@
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/2013/02/15/ice-overview/">分布式程序开发平台ICE概览</a>
+      </li>
+    
+      <li class="post">
         <a href="/2013/02/12/using-clang/">使用Clang实现C语言编程规范检查</a>
       </li>
     
@@ -365,10 +368,6 @@
     
       <li class="post">
         <a href="/2012/09/06/octopress-seo/">Octopress中的SEO</a>
-      </li>
-    
-      <li class="post">
-        <a href="/2012/09/04/bit-operation-in-c-slash-c-plus-plus/">c/c++中几种操作位的方法</a>
       </li>
     
   </ul>
@@ -390,8 +389,8 @@
 <a style="font-size: 90%" href="/tags/clang/">clang</a>
 <a style="font-size: 90%" href="/tags/destructor/">destructor</a>
 <a style="font-size: 135%" href="/tags/game-develop/">game develop</a>
-<a style="font-size: 90%" href="/tags/github/">github</a>
 <a style="font-size: 118%" href="/tags/html/">html</a>
+<a style="font-size: 90%" href="/tags/ice/">ice</a>
 <a style="font-size: 90%" href="/tags/java/">java</a>
 <a style="font-size: 90%" href="/tags/jekyll/">jekyll</a>
 <a style="font-size: 156%" href="/tags/lisp/">lisp</a>

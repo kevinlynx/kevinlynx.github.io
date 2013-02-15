@@ -1,0 +1,584 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>分布式程序开发平台ICE概览 - loop in codes</title>
+  <meta name="author" content="Kevin Lynx">
+
+  
+  <meta name="description" content=" 本文基于ICE Manual及相关文档就ICE的一些主要特性做一个概览 ">
+  
+    <meta name="keywords" content="ICE">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://kevinlynx.github.com/codemacro/2013/02/15/ice-overview">
+  <link href="/favicon.ico" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">loop in codes</a></h1>
+  
+    <h2>Kevin Lynx BLOG</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:kevinlynx.github.com/codemacro" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/tips">Tips</a></li>
+  <li><a href="/about.html">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">分布式程序开发平台ICE概览</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-02-15T00:00:00+08:00" pubdate data-updated="true">Feb 15<span>th</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>本文基于ICE Manual及相关文档就ICE的一些主要特性做一个概览，它不是一个tutorial，不是一个guid，更不是manual。</p>
+
+<h2>概览</h2>
+
+<p><a href="http://www.zeroc.com/index.html">ICE</a>，Internet Communications Engine，按照官方介绍，是一个支持C++、.Net、Java、Python、Objective-C、Ruby、PHP及ActionScript等语言的分布式程序开发平台。按照我的理解，简单来说它是一个核心功能包装RPC的库。要把这个RPC包装得漂亮，自然而然，对于使用者而言，调用一个远端的接口和调用一个本地的接口没有什么区别，例如：</p>
+
+<div class="highlight"><pre><code class="c">    <span class="n">Object</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="n">xxx</span>
+    <span class="n">obj</span><span class="o">-&gt;</span><span class="n">sayHello</span><span class="p">();</span> 
+</code></pre>
+</div>
+
+
+<p>ICE包装<code>sayHello</code>接口，当应用层调用该接口时，ICE发送调用请求到远端服务器，接收返回结果并返回给应用层。ICE在接口提供方面，做到了这一点。</p>
+
+<p>以下，我将逐个给出ICE中的一些工具、组件、特性说明，以展示它作为一个分布式程序开发平台所拥有的能力。到目前为止，所有这些信息均来自于ICE相关文档，总结出来权当为自己服务。</p>
+
+<!-- more -->
+
+
+<h2>Slice</h2>
+
+<p>Slice(Specification Language for Ice)是ICE定义的一种中间语言，其语法类似于C++。对于一个RPC过程而言，例如上面调用远端的<code>sayHello</code>接口，其主要涉及到调用这个接口的参数和返回值传递，当然接口本身的传递不在话下，ICE为了包装这个过程，其使用了这样一种方式：使用者使用Slice语言描述RPC过程中调用的接口，例如该接口属于哪个类，该接口有哪些参数哪些返回值；然后使用者使用ICE提供的Slice编译器（实际上是一个语言翻译程序）将Slice源码翻译成目标语言。而这个目标语言，则是使用者开发应用程序的开发语言，即上文提到的C++、.Net、Java等。</p>
+
+<p>这些翻译出来的目标代码，就封装了<code>sayHello</code>底层实现的一切细节。当然事情没有这么简单，但我们目前只需关注简单的这一部分。ICE之所以支持那么多种开发语言，正是Slice立下的功劳。Slice语言本身的语言特性，实际上受限于目标语言的语言特性，例如Slice支持异常，恰是因为Slice转换的所有语言都包含异常这个语法特性。</p>
+
+<p>Slice还有一个重要特性，在于一份Slice源码被翻译出来的目标代码，一般情况是被服务器和客户端同时使用。</p>
+
+<h2>开发步骤</h2>
+
+<p>使用ICE开发应用程序，其步骤遵循：</p>
+
+<ol>
+<li>编写Slice，说明整个RPC中涉及到的接口调用，编译它</li>
+<li>基于Slice目标代码和ICE库编写Server</li>
+<li>基于Slice目标带啊和ICE库编写Client</li>
+</ol>
+
+
+<h2>一个例子</h2>
+
+<p>有必要展示一个例子，以获得使用ICE开发应用程序的感性认识。这个例子是一个简单的hello world程序，客户端让服务器打印一个字符串。</p>
+
+<ul>
+<li>编写Slice</li>
+</ul>
+
+
+<div class="highlight"><pre><code class="c">    <span class="c1">// Printer.ice，Slice源码后缀为ice</span>
+    <span class="n">module</span> <span class="n">Demo</span> <span class="p">{</span>
+        <span class="n">interface</span> <span class="n">Printer</span> <span class="p">{</span>
+            <span class="kt">void</span> <span class="n">printString</span><span class="p">(</span><span class="n">string</span> <span class="n">s</span><span class="p">);</span>
+        <span class="p">};</span>
+    <span class="p">};</span>
+</code></pre>
+</div>
+
+
+<p>使用ICE提供的程序翻译为C++代码：</p>
+
+<div class="highlight"><pre><code class="c">    <span class="err">$</span> <span class="n">slice2cpp</span> <span class="n">Printer</span><span class="p">.</span><span class="n">ice</span>
+</code></pre>
+</div>
+
+
+<p>得到Printer.cpp和Printer.h。Slice翻译出来的目标代码除了封装RPC交互的一些细节外，最重要的，因为本身Slice文件其实是定义接口，但接口的实现，则需要应用层来做。</p>
+
+<ul>
+<li>服务器端使用生成的Printer.cpp/.h，并实现Printer接口</li>
+</ul>
+
+
+<div class="highlight"><pre><code class="c">    <span class="c1">// 翻译出来的Printer.h中有对应于Slice中定义的Printer类，及需要实现的printString接口</span>
+    <span class="n">class</span> <span class="n">PrinterI</span> <span class="o">:</span> <span class="n">public</span> <span class="n">Printer</span> <span class="p">{</span>
+    <span class="nl">public:</span>
+        <span class="n">virtual</span> <span class="kt">void</span> <span class="n">printString</span><span class="p">(</span><span class="k">const</span> <span class="n">string</span><span class="o">&amp;</span> <span class="n">s</span><span class="p">,</span> <span class="k">const</span> <span class="n">Ice</span><span class="o">::</span><span class="n">Current</span><span class="o">&amp;</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">count</span> <span class="o">&lt;&lt;</span> <span class="n">s</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">};</span>
+</code></pre>
+</div>
+
+
+<ul>
+<li>客户端使用生成的Printer.cpp/.h，通过ICE获得一个<code>Printer</code>对象，然后调用其<code>printString</code>接口</li>
+</ul>
+
+
+<div class="highlight"><pre><code class="c">    <span class="c1">// don&#39;t care about this</span>
+    <span class="n">PrinterPrx</span> <span class="n">printer</span> <span class="o">=</span> <span class="n">PrinterPrx</span><span class="o">::</span><span class="n">checkedCast</span><span class="p">(</span><span class="n">base</span><span class="p">);</span>
+    <span class="n">printer</span><span class="o">-&gt;</span><span class="n">printString</span><span class="p">(</span><span class="s">&quot;Hello World!&quot;</span><span class="p">);</span>
+</code></pre>
+</div>
+
+
+<p>使用ICE开发应用程序，整体过程即为以上展示。</p>
+
+<h2>概念</h2>
+
+<p>ICE包含了很多概念，作为一个开发平台而言，有其专有术语一点不过分，熟悉这些概念可以更容易学习ICE。这里罗列一些关键概念。</p>
+
+<h3>服务器端和客户端</h3>
+
+<p>ICE中的服务器端和客户端和一般网络程序中的概念不太一样。在若干个交互的网络程序中，我们都很好理解这样一种现象：某个程序有多个角色，它可能是作为A程序的服务器端，也可能是作为B程序的客户端。ICE中的服务器和客户端角色更容易变换。</p>
+
+<p>以Printer例子为例，如果我们的<code>printString</code>接口有一个回调函数参数（这在ICE中很常见），服务器实现<code>printString</code>时，当其打印出字符串后，需通过该回调函数通知客户端。这样的回调机制在ICE的实现中，会创建一个新的网络连接，而此时，这个原有的服务器端就变成了原有客户端的客户。当然，你也可以避免这样的情况出现。</p>
+
+<h3>ICE Objects/Object Adapter/Facet</h3>
+
+<p>对于<code>Printer</code>例子，一个<code>Printer</code>对象可以被看作是一个ICE Objects。Object可以说是服务器端提供给客户端的接口。所以在服务器端通常会创建出很多个Object。服务器端使用Object Adapter对象去保存这些Object。例如，一个典型的ICE对象在初始化时可能包含以下代码：</p>
+
+<div class="highlight"><pre><code class="c">    <span class="c1">// 创建一个Object Adapter</span>
+    <span class="n">Ice</span><span class="o">::</span><span class="n">ObjectAdapterPtr</span> <span class="n">adapter</span> <span class="o">=</span> <span class="n">communicator</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">createObjectAdapter</span><span class="p">(</span><span class="s">&quot;Hello&quot;</span><span class="p">);</span>
+    <span class="c1">// 创建一个Object，形如Printer</span>
+    <span class="n">Demo</span><span class="o">::</span><span class="n">HelloPtr</span> <span class="n">hello</span> <span class="o">=</span> <span class="n">new</span> <span class="n">HelloI</span><span class="p">;</span>
+    <span class="c1">// 将Object加入到Object Adapter</span>
+    <span class="n">adapter</span><span class="o">-&gt;</span><span class="n">add</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="n">communicator</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">stringToIdentity</span><span class="p">(</span><span class="s">&quot;hello&quot;</span><span class="p">));</span>
+</code></pre>
+</div>
+
+
+<p>Facet是Object的一部分，或者说Object是Facet的一个集合，摘Ice manual中的一句话：</p>
+
+<blockquote><p>An Ice object is actually a collection of sub-objects known as facets whose types are not necessarily related.</p></blockquote>
+
+<h3>Proxy</h3>
+
+<p>Proxy是ICE客户端里的概念。客户端通过Proxy访问服务器端上的Object，通过Proxy调用服务器端Object上提供的接口。在客户端上一般有类似以下代码：</p>
+
+<div class="highlight"><pre><code class="c">    <span class="n">Ice</span><span class="o">::</span><span class="n">ObjectPrx</span> <span class="n">base</span> <span class="o">=</span> <span class="n">ic</span><span class="o">-&gt;</span><span class="n">stringToProxy</span><span class="p">(</span><span class="s">&quot;SimplePrinter:default -p 10000&quot;</span><span class="p">);</span>
+    <span class="c1">// Printer Proxy</span>
+    <span class="n">PrinterPrx</span> <span class="n">printer</span> <span class="o">=</span> <span class="n">PrinterPrx</span><span class="o">::</span><span class="n">checkedCast</span><span class="p">(</span><span class="n">base</span><span class="p">);</span>
+    <span class="n">printer</span><span class="o">-&gt;</span><span class="n">printString</span><span class="p">(</span><span class="s">&quot;Hello World!&quot;</span><span class="p">);</span>
+</code></pre>
+</div>
+
+
+<p>Proxy又分为几种，包括：</p>
+
+<h4>Direct Proxy</h4>
+
+<p>Direct Proxy，这里的<code>direct</code>意指这个proxy访问的object时，是否携带了地址(EndPoint)信息，例如上面例子中<code>SimplePrinter:default -p 10000</code>就是一个地址。</p>
+
+<h4>Indirect Proxy</h4>
+
+<p>Indirect Proxy相对Direct Proxy而言，其没有具体的地址，仅仅是一个符号。通常包含两种形式：</p>
+
+<ul>
+<li>SimplePrinter</li>
+<li>SimplePrinter@PrinterAdapter</li>
+</ul>
+
+
+<p>为了获取真正的地址，客户端需要一个定位服务（location service）来获取这个符号对应的地址。ICE中提供了一些默认的服务程序，IceGrid就是其中之一，而IceGrid的作用就包括定位具体的地址，即翻译符号地址到具体的地址。</p>
+
+<p>这里Indirect Proxy可以看作一个域名，而Direct Proxy可以看作是IP地址。Indirect Proxy使用时，就需要借助DNS翻译得到域名对应的IP地址。</p>
+
+<h4>Fixed Proxy</h4>
+
+<p>由于Proxy是用于与服务器端的Object通信的，客户端借助Proxy来访问服务器端的Object，所以Proxy通常都会对应一个真实的网络连接。在ICE中，一般的Proxy于网络连接(Connection)实际上是没有太大关联的。一个Proxy可以没有Connection，也可以在建立这个Connection后又断开之。但是，ICE提供了一种特殊的Proxy，Fixed Proxy，这种Proxy紧密地与一个Connection绑定在一起，其生命周期被强制关联起来。</p>
+
+<p>关于Fixed Proxy可以参看ICE Manual <a href="http://doc.zeroc.com/display/Doc/Connection+Management+in+Ice">Connection Management</a>。</p>
+
+<h3>其他</h3>
+
+<ul>
+<li>AMI</li>
+</ul>
+
+
+<p>Asynchronous Method Invocation，对于客户端而言，用于表示某个服务器端接口是异步操作，需在Slice中使用metadata来修饰这个接口，例如：</p>
+
+<div class="highlight"><pre><code class="c">    <span class="p">[</span><span class="s">&quot;ami&quot;</span><span class="p">]</span>  <span class="kt">void</span> <span class="n">sayHello</span><span class="p">(</span><span class="kt">int</span> <span class="n">delay</span><span class="p">)</span>
+</code></pre>
+</div>
+
+
+<ul>
+<li>AMD</li>
+</ul>
+
+
+<p>Asynchronous method dispatch，这个针对于服务器端，同样表示这个接口是异步操作，需在Slice中使用metadata来修饰这个接口：</p>
+
+<div class="highlight"><pre><code class="c">    <span class="p">[</span><span class="s">&quot;ami&quot;</span><span class="p">,</span> <span class="s">&quot;amd&quot;</span><span class="p">]</span>  <span class="kt">void</span> <span class="n">sayHello</span><span class="p">(</span><span class="kt">int</span> <span class="n">delay</span><span class="p">)</span>
+</code></pre>
+</div>
+
+
+<p>通常对于这种异步接口而言，都需要使用Slice metadata <code>ami</code>和<code>amd</code>同时修饰。</p>
+
+<ul>
+<li>idempotent</li>
+</ul>
+
+
+<p>idempotent是Slice中的概念，同const一样用于修饰某个接口的特性。idempotent表示该接口无论调用多少次，其执行结果都是相同的，例如一般的<code>get</code>类接口。</p>
+
+<ul>
+<li>batched invocation</li>
+</ul>
+
+
+<p>客户端调用服务器端的接口这个动作称为<code>invocation</code>。就像网络层的数据缓存一样，ICE对于接口调用也可能暂时缓存，当多个提交请求缓存起来后，然后调用刷新接口全部刷新到服务器端，则称为<code>batched invocation</code>。</p>
+
+<h2>服务</h2>
+
+<p>ICE除了提供一个库之外，还提供了一些应用程序。这些应用程序本身也是一些服务器，提供了一些方便的功能方便我们开发分布式程序。</p>
+
+<h3>Freeze</h3>
+
+<p>Freeze用于将Slice对象持久化到数据库中，按照Manual里的说法，它应该是一个编译器，可以生成一些持久化操作的代码。Freeze持久化对象时使用的数据库是Berkeley DB。</p>
+
+<blockquote><p>Ice has a built-in object persistence service, known as Freeze. Freeze makes it easy to store object state in a database: you define the state stored by your objects in Slice, and the Freeze compiler generates code that stores and retrieves object state to and from a database. Freeze uses Berkeley DB as its database.</p></blockquote>
+
+<p>FreezeScript有点类似于Rails中的数据库操作工具，可用于操作持久化到数据库中的对象数据。</p>
+
+<blockquote><p>Ice also offers a tool set collectively called FreezeScript that makes it easier to maintain databases and to migrate the contents of existing databases to a new schema if the type definitions of objects change.</p></blockquote>
+
+<h3>IceBox</h3>
+
+<p>IceBox可用于管理服务器中的动态组件。这些动态组件本质上也是提供服务的ICE程序。在形式上，这些组件可以是动态连接库。</p>
+
+<blockquote><p>IceBox is a simple application server that can orchestrate the starting and stopping of a number of application components. Application components can be deployed as a dynamic library instead of as a process.</p></blockquote>
+
+<h3>IceGrid</h3>
+
+<p>IceGrid相当于一个DNS解析服务，可以让服务器不用配置EndPoint，客户端也不用指定服务器的EndPoint，以方便大量的服务器部署。在一般的应用中，我们需要为ICE服务器指定绑定的网络地址（IP和端口），同时也需要为客户端指定服务器端的地址信息。当服务增加到一定数量时，就会存在管理上和配置上的麻烦。而IceGrid则是用于避免这种麻烦，将服务器端和客户端上的地址信息通过一个符号代替，就像我们把Internet上的服务器使用域名来标识一样。</p>
+
+<p>但IceGrid的作用不仅如此，通过配合部署一系列称为IceGrid Node的程序，IceGrid还可以管理各个服务器的启动、关闭、宕机重启等，其中甚至包括负载均衡。</p>
+
+<blockquote><p>IceGrid provides a facility to activate servers on demand, when a client first invokes an operation.
+Server activation is taken care of by IceGrid nodes. You must run an IceGrid node on each machine on which you want IceGrid to start servers on demand.</p></blockquote>
+
+<p>简要介绍可以参看ICE Manual <a href="http://doc.zeroc.com/display/Doc/Teach+Yourself+IceGrid+in+10+Minutes">Teach Yourself IceGrid in 10 minutes</a></p>
+
+<h3>Glacier2</h3>
+
+<blockquote><p>Glacier2 is a lightweight firewall traversal solution for Ice applications.</p></blockquote>
+
+<p>按我的理解，Glacier2就像一个网关服务器。它被部署在服务器和客户端之间，我们的服务器群部署在内网，外网不可访问，然后通过Glacier2，外部网络的客户端就可以访问内网的服务器群提供的服务。</p>
+
+<p>对于服务器的开发而言，使用Glacier2，服务器端不需要做任何改动。客户端需要配置Glacier2服务的地址信息，也需要配置要使用服务器的地址信息。Glacier2通过客户端欲访问的服务器地址，在内网定位到真实的服务器，并转发请求提供服务。</p>
+
+<p>Glacier2支持验证客户端，从这一点看来，它又有点像一个验证服务器。通过验证客户端，以提供被正确授权的客户端以完整服务。</p>
+
+<p>Glacier2的工作过程可以描述为：</p>
+
+<blockquote><p>When a client invokes an operation on a routed proxy, the client connects to one of Glacier2&#8217;s client endpoints and sends the request as if Glacier2 is the server. Glacier2 then establishes an outgoing connection to the client&#8217;s intended server in the private network, forwards the request to that server, and returns the reply (if any) to the client. Glacier2 is essentially acting as a local client on behalf of the remote client.</p></blockquote>
+
+<p>一个Glacier2可服务于若干个客户端和服务器。</p>
+
+<p>详细参看ICE Manual <a href="http://doc.zeroc.com/display/Ice/Glacier2">Glacier2</a></p>
+
+<h2>管理</h2>
+
+<p>ICE服务器可以提供给外部一定的管理功能，包括：关闭服务器、读取服务器配置。这个功能是通过操作Ice.Admin这个Ice Object来实现的。这个Object包含两个Facet：Process和Property，分别对应于关闭服务器和读取服务器配置功能。</p>
+
+<p>对于需要管理服务器的客户端而言，可以大致通过如下代码来完成：</p>
+
+<div class="highlight"><pre><code class="c">    <span class="c1">// 可以通过communicator来获取这个admin object</span>
+    <span class="n">Ice</span><span class="o">::</span><span class="n">ObjectPrx</span> <span class="n">adminObj</span> <span class="o">=</span> <span class="p">...;</span>
+    <span class="c1">// 获取admin object里的property facet</span>
+    <span class="n">Ice</span><span class="o">::</span><span class="n">PropertiesAdminPrx</span> <span class="n">propAdmin</span> <span class="o">=</span> <span class="n">Ice</span><span class="o">::</span><span class="n">PropertiesAdminPrx</span><span class="o">::</span><span class="n">checkedCast</span><span class="p">(</span><span class="n">adminObj</span><span class="p">,</span> <span class="s">&quot;Properties&quot;</span><span class="p">);</span>
+    <span class="n">Ice</span><span class="o">::</span><span class="n">PropertyDict</span> <span class="n">props</span> <span class="o">=</span> <span class="n">propAdmin</span><span class="o">-&gt;</span><span class="n">getPropertiesForPrefix</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">);</span>
+</code></pre>
+</div>
+
+
+<p>详细参看ICE Manual <a href="http://doc.zeroc.com/display/Ice/Administrative+Facility">Administrative Facility</a></p>
+
+<h2>连接管理</h2>
+
+<p>前已述及，ICE中的网络连接隐藏于Proxy之下。Proxy有两个接口可以获取这个连接对象：</p>
+
+<div class="highlight"><pre><code class="c">    <span class="n">ice_getConnection</span>
+    <span class="n">ice_getCachedConnection</span>
+</code></pre>
+</div>
+
+
+<p>例如：</p>
+
+<div class="highlight"><pre><code class="c">    <span class="n">HelloPrx</span> <span class="n">hello</span> <span class="o">=</span> <span class="n">HelloPrx</span><span class="o">::</span><span class="n">uncheckedCast</span><span class="p">(</span><span class="n">communicator</span><span class="o">-&gt;</span><span class="n">stringToProxy</span><span class="p">(</span><span class="s">&quot;hello:tcp -h remote.host.com -p 10000&quot;</span><span class="p">));</span>
+    <span class="n">ConnectionPtr</span> <span class="n">conn</span> <span class="o">=</span> <span class="n">hello</span><span class="o">-&gt;</span><span class="n">ice_getConnection</span><span class="p">();</span>
+</code></pre>
+</div>
+
+
+<p>ICE隐藏了网络连接的细节。当ICE发现需要建立连接时才会去建立，例如以上例子中当获得一个Proxy时（这里是HelloPrx），ICE并不建立网络连接，当某个时刻通过该Proxy调用服务器端的某个接口时，ICE发现对应的网络连接没有建立，则发起网络连接。</p>
+
+<p>以上例子在获取Proxy时，使用了<code>uncheckCast</code>，关于<code>checkedCast</code>和<code>uncheckedCast</code>，也影响着网络连接的建立逻辑：</p>
+
+<blockquote><p>On the other hand, if the code were to use a checkedCast instead, then connection establishment would take place as part of the checkedCast, because a checked cast requires a remote call to determine whether the target object supports the specified interface.</p></blockquote>
+
+<p>关于连接管理，ICE使用了一个称为ACM的机制，即Active connection management。当某个连接非active一段时间后，ICE就会主动关闭此连接。应用层当然可以控制这个行为。</p>
+
+<p>详细参看ICE Manual <a href="http://doc.zeroc.com/display/Doc/Connection+Management+in+Ice">Connection Management</a></p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://kevinlynx.github.com/codemacro/2013/02/15/ice-overview/'>http://kevinlynx.github.com/codemacro/2013/02/15/ice-overview/</a><br/>
+            written by <a href='http://kevinlynx.github.com/codemacro'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://kevinlynx.github.com/codemacro'>http://kevinlynx.github.com/codemacro</a>
+            </p>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-02-15T00:00:00+08:00" pubdate data-updated="true">Feb 15<span>th</span>, 2013</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/categories/ice/'>ICE</a>, <a class='category' href='/categories/c-c-/'>c/c++</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/2013/02/12/using-clang/" title="Previous Post: 使用Clang实现C语言编程规范检查">&laquo; 使用Clang实现C语言编程规范检查</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Categories</h1>
+  <ul id="categories">
+    <li class='category'><a href='/categories/ice/'>ICE (1)</a></li>
+<li class='category'><a href='/categories/c-c-/'>c/c++ (12)</a></li>
+<li class='category'><a href='/categories/clang/'>clang (1)</a></li>
+<li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
+<li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
+<li class='category'><a href='/categories/lua/'>lua (5)</a></li>
+<li class='category'><a href='/categories/module/'>module (1)</a></li>
+<li class='category'><a href='/categories/other/'>other (5)</a></li>
+<li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
+<li class='category'><a href='/categories/tips/'>tips (20)</a></li>
+<li class='category'><a href='/categories/web/'>web (3)</a></li>
+
+  </ul>
+</section>
+
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2013/02/15/ice-overview/">分布式程序开发平台ICE概览</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2013/02/12/using-clang/">使用Clang实现C语言编程规范检查</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2012/09/17/c-plus-plus-ctor-virtual/">C++陷阱：构造函数中的多态</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2012/09/13/c-plus-plus-virtual-destructor/">C++陷阱：virtual析构函数</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2012/09/06/octopress-seo/">Octopress中的SEO</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+<div id="recentcomments" class="dsq-widget">
+<h1 class="dsq-widget-title">Recent Comments</h1>
+<script type="text/javascript" src="http://loopincodes.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
+</div>
+<a href="http://disqus.com/">Powered by Disqus</a>
+</section>
+<section>
+  <h1>Tags</h1>
+  <ul class="tag-cloud">
+<a style="font-size: 118%" href="/tags/blog/">blog</a>
+<a style="font-size: 90%" href="/tags/branck-predictor/">branck predictor</a>
+<a style="font-size: 180%" href="/tags/c-c-/">c/c++</a>
+<a style="font-size: 90%" href="/tags/chat-server/">chat server</a>
+<a style="font-size: 90%" href="/tags/clang/">clang</a>
+<a style="font-size: 90%" href="/tags/destructor/">destructor</a>
+<a style="font-size: 135%" href="/tags/game-develop/">game develop</a>
+<a style="font-size: 118%" href="/tags/html/">html</a>
+<a style="font-size: 90%" href="/tags/ice/">ice</a>
+<a style="font-size: 90%" href="/tags/java/">java</a>
+<a style="font-size: 90%" href="/tags/jekyll/">jekyll</a>
+<a style="font-size: 156%" href="/tags/lisp/">lisp</a>
+<a style="font-size: 156%" href="/tags/lua/">lua</a>
+<a style="font-size: 90%" href="/tags/mmo/">mmo</a>
+<a style="font-size: 146%" href="/tags/octopress/">octopress</a>
+<a style="font-size: 146%" href="/tags/ruby/">ruby</a>
+<a style="font-size: 210%" href="/tags/tips/">tips</a>
+<a style="font-size: 90%" href="/tags/tolua/">tolua</a>
+<a style="font-size: 118%" href="/tags/virtual/">virtual</a>
+<a style="font-size: 118%" href="/tags/web/">web</a>
+
+  </ul>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - Kevin Lynx -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'loopincodes';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://kevinlynx.github.com/codemacro/2013/02/15/ice-overview/';
+        var disqus_url = 'http://kevinlynx.github.com/codemacro/2013/02/15/ice-overview/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
+<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
+
+
+
+</body>
+</html>

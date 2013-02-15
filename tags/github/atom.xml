@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Tag: github | loop in codes]]></title>
-  <link href="http://codemacro.com/tags/github/atom.xml" rel="self"/>
-  <link href="http://codemacro.com/"/>
-  <updated>2013-02-12T21:33:16+08:00</updated>
-  <id>http://codemacro.com/</id>
+  <link href="http://kevinlynx.github.com/codemacro/tags/github/atom.xml" rel="self"/>
+  <link href="http://kevinlynx.github.com/codemacro/"/>
+  <updated>2013-02-15T15:08:33+08:00</updated>
+  <id>http://kevinlynx.github.com/codemacro/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[使用Github Page来写博客]]></title>
-    <link href="http://codemacro.com/2012/04/20/blog-on-github/"/>
+    <link href="http://kevinlynx.github.com/codemacro/2012/04/20/blog-on-github/"/>
     <updated>2012-04-20T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2012/04/20/blog-on-github</id>
+    <id>http://kevinlynx.github.com/codemacro/2012/04/20/blog-on-github</id>
     <content type="html"><![CDATA[<p>最开始知道<a href="http://pages.github.com/">Github Page</a>，是通过<a href="http://codertrace.com">codertrace</a>上的某些注册用户，他们的BLOG就建立在Github Page上，并且清一色的干净整洁（简陋），这看起来很酷。</p>
 
 <p>Github提供了很多很合coder口味的东西，例如Gist，也包括这里提到的Page。Page并不是特用于建立博客的产品，它仅提供静态页面的显示。它最酷的地方，是通过Git的方式来让你管理这些静态页面。通过建立一个repository，并使用markdown语法来编写文章，然后通过Git来管理这些文章，你就可以自动将其发布出去。</p>

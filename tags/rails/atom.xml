@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Tag: rails | loop in codes]]></title>
-  <link href="http://codemacro.com/tags/rails/atom.xml" rel="self"/>
-  <link href="http://codemacro.com/"/>
-  <updated>2013-02-12T21:33:16+08:00</updated>
-  <id>http://codemacro.com/</id>
+  <link href="http://kevinlynx.github.com/codemacro/tags/rails/atom.xml" rel="self"/>
+  <link href="http://kevinlynx.github.com/codemacro/"/>
+  <updated>2013-02-15T15:08:33+08:00</updated>
+  <id>http://kevinlynx.github.com/codemacro/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
     
@@ -15,25 +15,23 @@
   
   <entry>
     <title type="html"><![CDATA[Rails中获取客户端时区]]></title>
-    <link href="http://codemacro.com/2012/07/20/get-client-timezone-in-rails/"/>
+    <link href="http://kevinlynx.github.com/codemacro/2012/07/20/get-client-timezone-in-rails/"/>
     <updated>2012-07-20T16:42:00+08:00</updated>
-    <id>http://codemacro.com/2012/07/20/get-client-timezone-in-rails</id>
+    <id>http://kevinlynx.github.com/codemacro/2012/07/20/get-client-timezone-in-rails</id>
     <content type="html"><![CDATA[<p>开发网站功能时，有时候需要获取客户端（浏览器）所在的时区，然后根据不同的时区做一些不同的逻辑功能。这里提供一种方法，其思路为客户端通过js获取时区，然后发送给服务器，服务器存储时区到session中。</p>
 
-<p>{% highlight javascript %}
-{% raw %}
-function submit_timezone(url) {
-  $.get(url, {'offset_min' : (-1 * (new Date()).getTimezoneOffset())});
-}</p>
+<p><div class="highlight"><pre><code class="javascript"><span class="kd">function</span> <span class="nx">submit_timezone</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span> <span class="p">{</span>
+  <span class="nx">$</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="nx">url</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;offset_min&#39;</span> <span class="o">:</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="p">(</span><span class="k">new</span> <span class="nb">Date</span><span class="p">()).</span><span class="nx">getTimezoneOffset</span><span class="p">())});</span>
+<span class="p">}</span><span class="o">&lt;</span><span class="err">/p&gt;</span>
 
-<p>$(document).ready(function() {</p>
+<span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span><span class="nx">$</span><span class="p">(</span><span class="nb">document</span><span class="p">).</span><span class="nx">ready</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span><span class="o">&lt;</span><span class="err">/p&gt;</span>
 
-<pre><code>submit_timezone('&lt;%= sys_timezone_path %&gt;');
+<span class="o">&lt;</span><span class="nx">pre</span><span class="o">&gt;&lt;</span><span class="nx">code</span><span class="o">&gt;</span><span class="nx">submit_timezone</span><span class="p">(</span><span class="s1">&#39;&amp;lt;%= sys_timezone_path %&amp;gt;&#39;</span><span class="p">);</span>
+<span class="o">&lt;</span><span class="err">/code&gt;&lt;/pre&gt;</span>
+
+<span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span><span class="p">});</span>
 </code></pre>
-
-<p>});
-{% endraw %}
-{% endhighlight %}</p>
+</div></p>
 
 <!-- more -->
 
@@ -42,27 +40,27 @@ function submit_timezone(url) {
 
 <p>然后根据offset_min获取到时区名：</p>
 
-<p>{% highlight ruby %}
-def timezone
-  offset_sec = params[:offset_min].to_i * 60
-  zone = ActiveSupport::TimeZone[offset_sec]
-  zone = ActiveSupport::TimeZone["UTC"] unless zone
-  session[:zone_name] = zone.name if zone
-  respond_to do |format|</p>
+<p><div class="highlight"><pre><code class="ruby"><span class="k">def</span> <span class="nf">timezone</span>
+  <span class="n">offset_sec</span> <span class="o">=</span> <span class="n">params</span><span class="o">[</span><span class="ss">:offset_min</span><span class="o">].</span><span class="n">to_i</span> <span class="o">*</span> <span class="mi">60</span>
+  <span class="n">zone</span> <span class="o">=</span> <span class="ss">ActiveSupport</span><span class="p">:</span><span class="ss">:TimeZone</span><span class="o">[</span><span class="n">offset_sec</span><span class="o">]</span>
+  <span class="n">zone</span> <span class="o">=</span> <span class="ss">ActiveSupport</span><span class="p">:</span><span class="ss">:TimeZone</span><span class="o">[</span><span class="s2">&quot;UTC&quot;</span><span class="o">]</span> <span class="k">unless</span> <span class="n">zone</span>
+  <span class="n">session</span><span class="o">[</span><span class="ss">:zone_name</span><span class="o">]</span> <span class="o">=</span> <span class="n">zone</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="n">zone</span>
+  <span class="n">respond_to</span> <span class="k">do</span> <span class="o">|</span><span class="nb">format</span><span class="o">|&lt;</span><span class="sr">/p&gt;</span>
 
-<pre><code>format.js
+<span class="sr">&lt;pre&gt;&lt;code&gt;format.js</span>
+<span class="sr">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;</span><span class="sr">/pre&gt;</span>
+
+<span class="sr">&lt;p&gt;  end</span>
+<span class="sr">end</span>
 </code></pre>
-
-<p>  end
-end
-{% endhighlight %}</p>
+</div></p>
 
 <p>以上，获取到时区名后存储到session[:zone_name]里。在之后处理这个客户端的请求时，就可以通过这个时区名取得对应的时区，例如：</p>
 
-<p>{% highlight ruby %}
-zone_name = session[:zone_name]
-zone = ActiveSupport::TimeZone[zone_name] if zone_name
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="ruby"><span class="n">zone_name</span> <span class="o">=</span> <span class="n">session</span><span class="o">[</span><span class="ss">:zone_name</span><span class="o">]</span>
+<span class="n">zone</span> <span class="o">=</span> <span class="ss">ActiveSupport</span><span class="p">:</span><span class="ss">:TimeZone</span><span class="o">[</span><span class="n">zone_name</span><span class="o">]</span> <span class="k">if</span> <span class="n">zone_name</span>
+</code></pre>
+</div></p>
 
 <p>但经过我实际测试，部署在heroku上的应用偶尔会发现session[:zone_name]取出来是nil，尽管我确认了timezone函数是被调用过的。这难道跟session的超时有关？后来我只好将timezone name写到客户端页面中，然后在其他请求中再把这个时区名发回来。</p>
 ]]></content>
