@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Tag: module | loop in codes]]></title>
-  <link href="http://kevinlynx.github.com/codemacro/tags/module/atom.xml" rel="self"/>
-  <link href="http://kevinlynx.github.com/codemacro/"/>
-  <updated>2013-02-15T15:08:33+08:00</updated>
-  <id>http://kevinlynx.github.com/codemacro/</id>
+  <link href="http://codemacro.com/tags/module/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-15T15:19:53+08:00</updated>
+  <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[浅谈代码分层：构建模块化程序]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2011/04/04/module-level/"/>
+    <link href="http://codemacro.com/2011/04/04/module-level/"/>
     <updated>2011-04-04T00:00:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2011/04/04/module-level</id>
+    <id>http://codemacro.com/2011/04/04/module-level</id>
     <content type="html"><![CDATA[<p>模块化的程序是怎样的程序？我们可以说一个具有明显物理结构的软件是模块化的，例如带
 插件的软件，一个完整的软件由若干运行时库共同构建；也可以说一个高度面向对象的库是
 模块化的，例如图形引擎OGRE；也可以说一些具有明显层次结构的代码是模块化的。</p>

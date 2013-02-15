@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Tag: lua | loop in codes]]></title>
-  <link href="http://kevinlynx.github.com/codemacro/tags/lua/atom.xml" rel="self"/>
-  <link href="http://kevinlynx.github.com/codemacro/"/>
-  <updated>2013-02-15T15:08:33+08:00</updated>
-  <id>http://kevinlynx.github.com/codemacro/</id>
+  <link href="http://codemacro.com/tags/lua/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-15T15:19:53+08:00</updated>
+  <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[Lua中动态产生函数]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/13/dynamic-method-in-lua/"/>
+    <link href="http://codemacro.com/2012/08/13/dynamic-method-in-lua/"/>
     <updated>2012-08-13T15:56:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/13/dynamic-method-in-lua</id>
+    <id>http://codemacro.com/2012/08/13/dynamic-method-in-lua</id>
     <content type="html"><![CDATA[<p>可以结合<a href="http://codemacro.com/2012/08/02/simple-oo-in-lua/">Lua里实现简单的类-对象</a>看。在我的应用中，存在类似以下代码：</p>
 
 <p><div class="highlight"><pre><code class="lua"><span class="k">function</span> <span class="nc">Item</span><span class="p">.</span><span class="nf">new</span><span class="p">()</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
@@ -96,9 +96,9 @@
   
   <entry>
     <title type="html"><![CDATA[让wxListCtrl支持子item编辑]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/07/edit-item-wxlistctrl/"/>
+    <link href="http://codemacro.com/2012/08/07/edit-item-wxlistctrl/"/>
     <updated>2012-08-07T13:48:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/07/edit-item-wxlistctrl</id>
+    <id>http://codemacro.com/2012/08/07/edit-item-wxlistctrl</id>
     <content type="html"><![CDATA[<p>我使用的wxLua版本信息为<code>wxLua 2.8.7.0 built with wxWidgets 2.8.8</code>，也就是LuaForWindows_v5.1.4-40.exe这个安装包里自带的wxLua。我不知道其他wxWidgets版本里wxListCtrl怎样，但我使用的版本里wxListCtrl是不支持编辑里面的子item的。在我使用的report模式下，子item也就是特定某一行一列的item。</p>
 
 <p>google了一下，发现悲剧地需要自己实现，主要就是自己显示一个wxTextCtrl：</p>
@@ -247,9 +247,9 @@
   
   <entry>
     <title type="html"><![CDATA[Lua里实现简单的类-对象]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/02/simple-oo-in-lua/"/>
+    <link href="http://codemacro.com/2012/08/02/simple-oo-in-lua/"/>
     <updated>2012-08-02T10:18:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/02/simple-oo-in-lua</id>
+    <id>http://codemacro.com/2012/08/02/simple-oo-in-lua</id>
     <content type="html"><![CDATA[<p>要在Lua里实现面向对象有很多方法，为了支持面向对象的一些特性（类、对象、继承、重载等），其实现可能会比较复杂。看看云风的<a href="http://blog.codingnow.com/2006/06/oo_lua.html">这篇</a>，以及后面的评论，有总结的不错的。这真是让人对Lua刮目相看。但是我并不需要这些机制，一般情况下我只需要支持类即可。</p>
 
 <p>类其实就是定义一个对象的函数模板，避免我写出带模块名并且第一个参数是操作对象的函数（像C一样）。以下代码提炼于rapanui（基于<a href="http://getmoai.com/">moai</a>的高层封装），摘抄于几个月前我基于rapanui移植到android上的一个<a href="https://github.com/kevinlynx/crazyeggs_mobile">小游戏</a>：</p>
@@ -358,9 +358,9 @@
   
   <entry>
     <title type="html"><![CDATA[tolua的tolua_toxxx系列API设计]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/05/10/tolua-api/"/>
+    <link href="http://codemacro.com/2012/05/10/tolua-api/"/>
     <updated>2012-05-10T00:00:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/05/10/tolua-api</id>
+    <id>http://codemacro.com/2012/05/10/tolua-api</id>
     <content type="html"><![CDATA[<p>我们使用tolua++手工绑定c/c++接口到lua中，在绑定的接口实现里，就需要取出传入的参数。tolua++中提供了一系列tolua_toxxx函数，例如：</p>
 
 <p><div class="highlight"><pre><code class="c"><span class="n">lua_Number</span> <span class="n">tolua_tonumber</span><span class="p">(</span><span class="n">lua_State</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">narg</span><span class="p">,</span> <span class="n">lua_Number</span> <span class="n">def</span><span class="p">)</span>
@@ -447,9 +447,9 @@
   
   <entry>
     <title type="html"><![CDATA[传递Lua函数到C/C++中]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2011/05/09/lua-function-arg/"/>
+    <link href="http://codemacro.com/2011/05/09/lua-function-arg/"/>
     <updated>2011-05-09T00:00:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2011/05/09/lua-function-arg</id>
+    <id>http://codemacro.com/2011/05/09/lua-function-arg</id>
     <content type="html"><![CDATA[<h2>问题</h2>
 
 <p>在Lua中，因为函数也是第一类值，所以会出现将函数作为另一个函数的参数，或者函数作

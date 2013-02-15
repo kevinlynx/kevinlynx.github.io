@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Tag: java | loop in codes]]></title>
-  <link href="http://kevinlynx.github.com/codemacro/tags/java/atom.xml" rel="self"/>
-  <link href="http://kevinlynx.github.com/codemacro/"/>
-  <updated>2013-02-15T15:08:33+08:00</updated>
-  <id>http://kevinlynx.github.com/codemacro/</id>
+  <link href="http://codemacro.com/tags/java/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-15T15:19:53+08:00</updated>
+  <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[『你会把Ruby的哪些特性加入Java』]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/03/ruby-element-to-java/"/>
+    <link href="http://codemacro.com/2012/08/03/ruby-element-to-java/"/>
     <updated>2012-08-03T14:14:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/03/ruby-element-to-java</id>
+    <id>http://codemacro.com/2012/08/03/ruby-element-to-java</id>
     <content type="html"><![CDATA[<p>参考（翻译、摘抄）于<a href="http://java.sys-con.com/node/251986">Can Ruby Live without Rails?</a>。这篇文章发表于2006年，受访者在回答“如果可以你会把Ruby的哪些特性加入Java“这个问题时，提到了Ruby的一些我个人认为比较突出的语法特性。其实并不是针对Java语言，何况6年时间过去，以Java语法特性的加入速度怕早就有Ruby这些特性了。我对Java不熟，仅限于曾经写的几个简单的android应用，买了&lt;Java编程思想>也没翻完。</p>
 
 <p>以下内容半翻译自原文。</p>

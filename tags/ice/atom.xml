@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Tag: ice | loop in codes]]></title>
-  <link href="http://kevinlynx.github.com/codemacro/tags/ice/atom.xml" rel="self"/>
-  <link href="http://kevinlynx.github.com/codemacro/"/>
-  <updated>2013-02-15T15:08:33+08:00</updated>
-  <id>http://kevinlynx.github.com/codemacro/</id>
+  <link href="http://codemacro.com/tags/ice/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-15T15:19:53+08:00</updated>
+  <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[分布式程序开发平台ICE概览]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2013/02/15/ice-overview/"/>
+    <link href="http://codemacro.com/2013/02/15/ice-overview/"/>
     <updated>2013-02-15T00:00:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2013/02/15/ice-overview</id>
+    <id>http://codemacro.com/2013/02/15/ice-overview</id>
     <content type="html"><![CDATA[<p>本文基于ICE Manual及相关文档就ICE的一些主要特性做一个概览，它不是一个tutorial，不是一个guid，更不是manual。</p>
 
 <h2>概览</h2>

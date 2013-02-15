@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Tag: virtual | loop in codes]]></title>
-  <link href="http://kevinlynx.github.com/codemacro/tags/virtual/atom.xml" rel="self"/>
-  <link href="http://kevinlynx.github.com/codemacro/"/>
-  <updated>2013-02-15T15:08:33+08:00</updated>
-  <id>http://kevinlynx.github.com/codemacro/</id>
+  <link href="http://codemacro.com/tags/virtual/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-15T15:19:53+08:00</updated>
+  <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[C++陷阱：构造函数中的多态]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/09/17/c-plus-plus-ctor-virtual/"/>
+    <link href="http://codemacro.com/2012/09/17/c-plus-plus-ctor-virtual/"/>
     <updated>2012-09-17T16:01:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/09/17/c-plus-plus-ctor-virtual</id>
+    <id>http://codemacro.com/2012/09/17/c-plus-plus-ctor-virtual</id>
     <content type="html"><![CDATA[<p>C++中主要是通过给函数加上<code>virtual</code>关键字来实现多态。多态可用于改变一个接口的实现，也算是一种嵌入应用层代码到底层的实现手段。就算你用不到C++那些复杂的技术，多态肯定会被用到。</p>
 
 <p>但加上<code>virtual</code>不一定能保证多态成功：</p>
@@ -92,9 +92,9 @@
   
   <entry>
     <title type="html"><![CDATA[C++陷阱：virtual析构函数]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/09/13/c-plus-plus-virtual-destructor/"/>
+    <link href="http://codemacro.com/2012/09/13/c-plus-plus-virtual-destructor/"/>
     <updated>2012-09-13T17:03:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/09/13/c-plus-plus-virtual-destructor</id>
+    <id>http://codemacro.com/2012/09/13/c-plus-plus-virtual-destructor</id>
     <content type="html"><![CDATA[<p>有一天有个同事在通过vld调试一个内存泄漏问题，折腾了很久然后找到我。我瞥了一眼他的代码，发现问题和我曾经遇到的一模一样：</p>
 
 <p><div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">Base</span> <span class="p">{</span>

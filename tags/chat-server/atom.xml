@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Tag: chat server | loop in codes]]></title>
-  <link href="http://kevinlynx.github.com/codemacro/tags/chat-server/atom.xml" rel="self"/>
-  <link href="http://kevinlynx.github.com/codemacro/"/>
-  <updated>2013-02-15T15:08:33+08:00</updated>
-  <id>http://kevinlynx.github.com/codemacro/</id>
+  <link href="http://codemacro.com/tags/chat-server/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-15T15:19:53+08:00</updated>
+  <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[MMO聊天服务器设计]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/29/mmo-chat-server/"/>
+    <link href="http://codemacro.com/2012/08/29/mmo-chat-server/"/>
     <updated>2012-08-29T09:54:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/29/mmo-chat-server</id>
+    <id>http://codemacro.com/2012/08/29/mmo-chat-server</id>
     <content type="html"><![CDATA[<p>MMO中的聊天服务主要功能就是做客户端之间的聊天内容转发。但是聊天的形式有很多，例如私聊、同场景聊、队伍内聊、工会内聊、全服务器聊、甚至临时组建房间聊。这些逻辑功能其实都是可以做在逻辑服务器上的，最多改改世界服务器，但是这样完成功能的话，不免将聊天本身的逻辑与游戏逻辑关联起来。我们希望做得更上一层，将聊天服务本身脱离开来。但是独立聊天服务还不够，因为就算独立出来了，也有可能在实现上与具体的游戏逻辑相关联。所以，我们做了进一步的抽象，想实现一个更为通用的聊天服务器。</p>
 
 <h2>设计实现</h2>

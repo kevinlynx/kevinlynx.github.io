@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Tag: rails | loop in codes]]></title>
-  <link href="http://kevinlynx.github.com/codemacro/tags/rails/atom.xml" rel="self"/>
-  <link href="http://kevinlynx.github.com/codemacro/"/>
-  <updated>2013-02-15T15:08:33+08:00</updated>
-  <id>http://kevinlynx.github.com/codemacro/</id>
+  <link href="http://codemacro.com/tags/rails/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-15T15:19:53+08:00</updated>
+  <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[Rails中获取客户端时区]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/07/20/get-client-timezone-in-rails/"/>
+    <link href="http://codemacro.com/2012/07/20/get-client-timezone-in-rails/"/>
     <updated>2012-07-20T16:42:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/07/20/get-client-timezone-in-rails</id>
+    <id>http://codemacro.com/2012/07/20/get-client-timezone-in-rails</id>
     <content type="html"><![CDATA[<p>开发网站功能时，有时候需要获取客户端（浏览器）所在的时区，然后根据不同的时区做一些不同的逻辑功能。这里提供一种方法，其思路为客户端通过js获取时区，然后发送给服务器，服务器存储时区到session中。</p>
 
 <p><div class="highlight"><pre><code class="javascript"><span class="kd">function</span> <span class="nx">submit_timezone</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span> <span class="p">{</span>

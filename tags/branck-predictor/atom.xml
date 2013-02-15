@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Tag: branck predictor | loop in codes]]></title>
-  <link href="http://kevinlynx.github.com/codemacro/tags/branck-predictor/atom.xml" rel="self"/>
-  <link href="http://kevinlynx.github.com/codemacro/"/>
-  <updated>2013-02-15T15:08:33+08:00</updated>
-  <id>http://kevinlynx.github.com/codemacro/</id>
+  <link href="http://codemacro.com/tags/branck-predictor/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-15T15:19:53+08:00</updated>
+  <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[为什么处理排序的数组要比非排序的快？]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/29/branch-predictor/"/>
+    <link href="http://codemacro.com/2012/08/29/branch-predictor/"/>
     <updated>2012-08-29T19:55:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/29/branch-predictor</id>
+    <id>http://codemacro.com/2012/08/29/branch-predictor</id>
     <content type="html"><![CDATA[<p>参考<a href="http://stackoverflow.com/questions/11227809/why-is-processing-a-sorted-array-faster-than-an-unsorted-array">Why is processing a sorted array faster than an unsorted array?</a></p>
 
 <h2>问题</h2>

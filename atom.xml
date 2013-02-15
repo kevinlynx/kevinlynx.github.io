@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[loop in codes]]></title>
-  <link href="http://kevinlynx.github.com/codemacro/atom.xml" rel="self"/>
-  <link href="http://kevinlynx.github.com/codemacro/"/>
-  <updated>2013-02-15T15:08:33+08:00</updated>
-  <id>http://kevinlynx.github.com/codemacro/</id>
+  <link href="http://codemacro.com/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-15T15:19:53+08:00</updated>
+  <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[分布式程序开发平台ICE概览]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2013/02/15/ice-overview/"/>
+    <link href="http://codemacro.com/2013/02/15/ice-overview/"/>
     <updated>2013-02-15T00:00:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2013/02/15/ice-overview</id>
+    <id>http://codemacro.com/2013/02/15/ice-overview</id>
     <content type="html"><![CDATA[<p>本文基于ICE Manual及相关文档就ICE的一些主要特性做一个概览，它不是一个tutorial，不是一个guid，更不是manual。</p>
 
 <h2>概览</h2>
@@ -318,9 +318,9 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
 
 <p class='post-footer'>
             原文地址：
-            <a href='http://kevinlynx.github.com/codemacro/2013/02/15/ice-overview/'>http://kevinlynx.github.com/codemacro/2013/02/15/ice-overview/</a><br/>
-            written by <a href='http://kevinlynx.github.com/codemacro'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://kevinlynx.github.com/codemacro'>http://kevinlynx.github.com/codemacro</a>
+            <a href='http://codemacro.com/2013/02/15/ice-overview/'>http://codemacro.com/2013/02/15/ice-overview/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
 
 ]]></content>
@@ -328,9 +328,9 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
   
   <entry>
     <title type="html"><![CDATA[使用Clang实现C语言编程规范检查]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2013/02/12/using-clang/"/>
+    <link href="http://codemacro.com/2013/02/12/using-clang/"/>
     <updated>2013-02-12T00:00:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2013/02/12/using-clang</id>
+    <id>http://codemacro.com/2013/02/12/using-clang</id>
     <content type="html"><![CDATA[<h2>概述</h2>
 
 <p>Clang是LLVM编译器工具集的前端部分，也就是涵盖词法分析、语法语义分析的部分。而LLVM是Apple在Mac OS上用于替代GCC工具集的编译器软件集合。Clang支持类C语言的语言，例如C、C++、Objective C。Clang的与众不同在于其模块化的设计，使其不仅实现编译器前端部分，并且包装成库的形式提供给上层应用。使用Clang可以做诸如语法高亮、语法检查、编程规范检查方面的工作，当然也可以作为你自己的编译器前端。</p>
@@ -726,9 +726,9 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
 
 <p class='post-footer'>
             原文地址：
-            <a href='http://kevinlynx.github.com/codemacro/2013/02/12/using-clang/'>http://kevinlynx.github.com/codemacro/2013/02/12/using-clang/</a><br/>
-            written by <a href='http://kevinlynx.github.com/codemacro'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://kevinlynx.github.com/codemacro'>http://kevinlynx.github.com/codemacro</a>
+            <a href='http://codemacro.com/2013/02/12/using-clang/'>http://codemacro.com/2013/02/12/using-clang/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
 
 ]]></content>
@@ -736,9 +736,9 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
   
   <entry>
     <title type="html"><![CDATA[C++陷阱：构造函数中的多态]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/09/17/c-plus-plus-ctor-virtual/"/>
+    <link href="http://codemacro.com/2012/09/17/c-plus-plus-ctor-virtual/"/>
     <updated>2012-09-17T16:01:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/09/17/c-plus-plus-ctor-virtual</id>
+    <id>http://codemacro.com/2012/09/17/c-plus-plus-ctor-virtual</id>
     <content type="html"><![CDATA[<p>C++中主要是通过给函数加上<code>virtual</code>关键字来实现多态。多态可用于改变一个接口的实现，也算是一种嵌入应用层代码到底层的实现手段。就算你用不到C++那些复杂的技术，多态肯定会被用到。</p>
 
 <p>但加上<code>virtual</code>不一定能保证多态成功：</p>
@@ -804,9 +804,9 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
 
 <p class='post-footer'>
             原文地址：
-            <a href='http://kevinlynx.github.com/codemacro/2012/09/17/c-plus-plus-ctor-virtual/'>http://kevinlynx.github.com/codemacro/2012/09/17/c-plus-plus-ctor-virtual/</a><br/>
-            written by <a href='http://kevinlynx.github.com/codemacro'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://kevinlynx.github.com/codemacro'>http://kevinlynx.github.com/codemacro</a>
+            <a href='http://codemacro.com/2012/09/17/c-plus-plus-ctor-virtual/'>http://codemacro.com/2012/09/17/c-plus-plus-ctor-virtual/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
 
 ]]></content>
@@ -814,9 +814,9 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
   
   <entry>
     <title type="html"><![CDATA[C++陷阱：virtual析构函数]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/09/13/c-plus-plus-virtual-destructor/"/>
+    <link href="http://codemacro.com/2012/09/13/c-plus-plus-virtual-destructor/"/>
     <updated>2012-09-13T17:03:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/09/13/c-plus-plus-virtual-destructor</id>
+    <id>http://codemacro.com/2012/09/13/c-plus-plus-virtual-destructor</id>
     <content type="html"><![CDATA[<p>有一天有个同事在通过vld调试一个内存泄漏问题，折腾了很久然后找到我。我瞥了一眼他的代码，发现问题和我曾经遇到的一模一样：</p>
 
 <div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">Base</span> <span class="p">{</span>
@@ -848,9 +848,9 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
 
 <p class='post-footer'>
             原文地址：
-            <a href='http://kevinlynx.github.com/codemacro/2012/09/13/c-plus-plus-virtual-destructor/'>http://kevinlynx.github.com/codemacro/2012/09/13/c-plus-plus-virtual-destructor/</a><br/>
-            written by <a href='http://kevinlynx.github.com/codemacro'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://kevinlynx.github.com/codemacro'>http://kevinlynx.github.com/codemacro</a>
+            <a href='http://codemacro.com/2012/09/13/c-plus-plus-virtual-destructor/'>http://codemacro.com/2012/09/13/c-plus-plus-virtual-destructor/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
 
 ]]></content>
@@ -858,9 +858,9 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
   
   <entry>
     <title type="html"><![CDATA[Octopress中的SEO]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/09/06/octopress-seo/"/>
+    <link href="http://codemacro.com/2012/09/06/octopress-seo/"/>
     <updated>2012-09-06T19:02:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/09/06/octopress-seo</id>
+    <id>http://codemacro.com/2012/09/06/octopress-seo</id>
     <content type="html"><![CDATA[<p>来自<a href="http://www.yatishmehta.in/seo-for-octopress">SEO for Octopress</a></p>
 
 <p>Octopress默认为每个页面添加<code>meta description</code>，其内容为当前文章的前150个字符，如果是首页就会是第一篇文章的前150个字符。这里主要通过增加<code>meta keywords</code>来提高SEO。</p>
@@ -919,9 +919,9 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
 
 <p class='post-footer'>
             原文地址：
-            <a href='http://kevinlynx.github.com/codemacro/2012/09/06/octopress-seo/'>http://kevinlynx.github.com/codemacro/2012/09/06/octopress-seo/</a><br/>
-            written by <a href='http://kevinlynx.github.com/codemacro'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://kevinlynx.github.com/codemacro'>http://kevinlynx.github.com/codemacro</a>
+            <a href='http://codemacro.com/2012/09/06/octopress-seo/'>http://codemacro.com/2012/09/06/octopress-seo/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
 
 ]]></content>
@@ -929,9 +929,9 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
   
   <entry>
     <title type="html"><![CDATA[c/c++中几种操作位的方法]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/09/04/bit-operation-in-c-slash-c-plus-plus/"/>
+    <link href="http://codemacro.com/2012/09/04/bit-operation-in-c-slash-c-plus-plus/"/>
     <updated>2012-09-04T19:49:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/09/04/bit-operation-in-c-slash-c-plus-plus</id>
+    <id>http://codemacro.com/2012/09/04/bit-operation-in-c-slash-c-plus-plus</id>
     <content type="html"><![CDATA[<p>参考<a href="http://stackoverflow.com/questions/47981/how-do-you-set-clear-and-toggle-a-single-bit-in-c">How do you set, clear and toggle a single bit in C?</a></p>
 
 <p>c/c++中对二进制位的操作包括设置某位为1、清除某位（置为0）、开关某位(toggling a bit)、检查某位是否为1等。这些操作较为常见并且可以作为其他位运算的基础接口，以下罗列几种方法：</p>
@@ -1038,9 +1038,9 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
 
 <p class='post-footer'>
             原文地址：
-            <a href='http://kevinlynx.github.com/codemacro/2012/09/04/bit-operation-in-c-slash-c-plus-plus/'>http://kevinlynx.github.com/codemacro/2012/09/04/bit-operation-in-c-slash-c-plus-plus/</a><br/>
-            written by <a href='http://kevinlynx.github.com/codemacro'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://kevinlynx.github.com/codemacro'>http://kevinlynx.github.com/codemacro</a>
+            <a href='http://codemacro.com/2012/09/04/bit-operation-in-c-slash-c-plus-plus/'>http://codemacro.com/2012/09/04/bit-operation-in-c-slash-c-plus-plus/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
 
 ]]></content>
@@ -1048,9 +1048,9 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
   
   <entry>
     <title type="html"><![CDATA[c/c++中的-->运算符]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/09/03/goes-to-operator/"/>
+    <link href="http://codemacro.com/2012/09/03/goes-to-operator/"/>
     <updated>2012-09-03T15:14:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/09/03/goes-to-operator</id>
+    <id>http://codemacro.com/2012/09/03/goes-to-operator</id>
     <content type="html"><![CDATA[<p>参考<a href="http://stackoverflow.com/questions/1642028/what-is-the-name-of-this-operator">What is the name of this operator: &#8220;&#8211;>&#8221;?</a></p>
 
 <p>c/c++中以下代码是合法的：</p>
@@ -1099,9 +1099,9 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
 
 <p class='post-footer'>
             原文地址：
-            <a href='http://kevinlynx.github.com/codemacro/2012/09/03/goes-to-operator/'>http://kevinlynx.github.com/codemacro/2012/09/03/goes-to-operator/</a><br/>
-            written by <a href='http://kevinlynx.github.com/codemacro'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://kevinlynx.github.com/codemacro'>http://kevinlynx.github.com/codemacro</a>
+            <a href='http://codemacro.com/2012/09/03/goes-to-operator/'>http://codemacro.com/2012/09/03/goes-to-operator/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
 
 ]]></content>
@@ -1109,9 +1109,9 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
   
   <entry>
     <title type="html"><![CDATA[为什么处理排序的数组要比非排序的快？]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/29/branch-predictor/"/>
+    <link href="http://codemacro.com/2012/08/29/branch-predictor/"/>
     <updated>2012-08-29T19:55:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/29/branch-predictor</id>
+    <id>http://codemacro.com/2012/08/29/branch-predictor</id>
     <content type="html"><![CDATA[<p>参考<a href="http://stackoverflow.com/questions/11227809/why-is-processing-a-sorted-array-faster-than-an-unsorted-array">Why is processing a sorted array faster than an unsorted array?</a></p>
 
 <h2>问题</h2>
@@ -1203,9 +1203,9 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
 
 <p class='post-footer'>
             原文地址：
-            <a href='http://kevinlynx.github.com/codemacro/2012/08/29/branch-predictor/'>http://kevinlynx.github.com/codemacro/2012/08/29/branch-predictor/</a><br/>
-            written by <a href='http://kevinlynx.github.com/codemacro'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://kevinlynx.github.com/codemacro'>http://kevinlynx.github.com/codemacro</a>
+            <a href='http://codemacro.com/2012/08/29/branch-predictor/'>http://codemacro.com/2012/08/29/branch-predictor/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
 
 ]]></content>
@@ -1213,9 +1213,9 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
   
   <entry>
     <title type="html"><![CDATA[Null Object模式]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/29/null-object-pattern/"/>
+    <link href="http://codemacro.com/2012/08/29/null-object-pattern/"/>
     <updated>2012-08-29T15:57:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/29/null-object-pattern</id>
+    <id>http://codemacro.com/2012/08/29/null-object-pattern</id>
     <content type="html"><![CDATA[<p>Null Object模式用于代替空指针（C++中），以避免上层模块对返回值做空值判定。Null Object模式返回的不是一个空指针，而是一个空对象，上层模块对返回值做操作时，不需要做空判定，而是按正常逻辑调用这个对象的某个接口，只不过对于空对象而言，这个接口什么事也没做，例如：</p>
 
 <div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">animal</span> <span class="p">{</span>
@@ -1251,9 +1251,9 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
 
 <p class='post-footer'>
             原文地址：
-            <a href='http://kevinlynx.github.com/codemacro/2012/08/29/null-object-pattern/'>http://kevinlynx.github.com/codemacro/2012/08/29/null-object-pattern/</a><br/>
-            written by <a href='http://kevinlynx.github.com/codemacro'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://kevinlynx.github.com/codemacro'>http://kevinlynx.github.com/codemacro</a>
+            <a href='http://codemacro.com/2012/08/29/null-object-pattern/'>http://codemacro.com/2012/08/29/null-object-pattern/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
 
 ]]></content>
@@ -1261,9 +1261,9 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
   
   <entry>
     <title type="html"><![CDATA[MMO聊天服务器设计]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/29/mmo-chat-server/"/>
+    <link href="http://codemacro.com/2012/08/29/mmo-chat-server/"/>
     <updated>2012-08-29T09:54:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/29/mmo-chat-server</id>
+    <id>http://codemacro.com/2012/08/29/mmo-chat-server</id>
     <content type="html"><![CDATA[<p>MMO中的聊天服务主要功能就是做客户端之间的聊天内容转发。但是聊天的形式有很多，例如私聊、同场景聊、队伍内聊、工会内聊、全服务器聊、甚至临时组建房间聊。这些逻辑功能其实都是可以做在逻辑服务器上的，最多改改世界服务器，但是这样完成功能的话，不免将聊天本身的逻辑与游戏逻辑关联起来。我们希望做得更上一层，将聊天服务本身脱离开来。但是独立聊天服务还不够，因为就算独立出来了，也有可能在实现上与具体的游戏逻辑相关联。所以，我们做了进一步的抽象，想实现一个更为通用的聊天服务器。</p>
 
 <h2>设计实现</h2>
@@ -1367,9 +1367,9 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
 
 <p class='post-footer'>
             原文地址：
-            <a href='http://kevinlynx.github.com/codemacro/2012/08/29/mmo-chat-server/'>http://kevinlynx.github.com/codemacro/2012/08/29/mmo-chat-server/</a><br/>
-            written by <a href='http://kevinlynx.github.com/codemacro'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://kevinlynx.github.com/codemacro'>http://kevinlynx.github.com/codemacro</a>
+            <a href='http://codemacro.com/2012/08/29/mmo-chat-server/'>http://codemacro.com/2012/08/29/mmo-chat-server/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
 
 ]]></content>
@@ -1377,9 +1377,9 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
   
   <entry>
     <title type="html"><![CDATA[C++11中lambda概览]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/21/c-plus-plus-11-lambda-overview/"/>
+    <link href="http://codemacro.com/2012/08/21/c-plus-plus-11-lambda-overview/"/>
     <updated>2012-08-21T16:44:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/21/c-plus-plus-11-lambda-overview</id>
+    <id>http://codemacro.com/2012/08/21/c-plus-plus-11-lambda-overview</id>
     <content type="html"><![CDATA[<p>虽然我对C++11没有什么兴趣，因为C++03就已经有很多复杂的技术了。我曾经试图把我学到的那些复杂的C++技术应用到项目中，但悲剧地发现这给团队其他成员带来了不小的负担。其实也给未来一段时间的自己带来了不小的负担。尤其是template的应用，template代码从外表上就一副唬人的样子，就像即使你会Lisp，并且对Lisp中的括号不以为然，但看到满屏幕的括号时依然内心不安。</p>
 
 <p>但是稍微对C++11的一些特性做了解后，单从理论上来说，还是挺让人有兴趣的。我感觉C++11加入了不少函数式语言的特性和思想，这是我感兴趣的最大理由。今天来看看C++11中的lambda。</p>
@@ -1448,9 +1448,9 @@ lambda-return-type-clause:
 
 <p class='post-footer'>
             原文地址：
-            <a href='http://kevinlynx.github.com/codemacro/2012/08/21/c-plus-plus-11-lambda-overview/'>http://kevinlynx.github.com/codemacro/2012/08/21/c-plus-plus-11-lambda-overview/</a><br/>
-            written by <a href='http://kevinlynx.github.com/codemacro'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://kevinlynx.github.com/codemacro'>http://kevinlynx.github.com/codemacro</a>
+            <a href='http://codemacro.com/2012/08/21/c-plus-plus-11-lambda-overview/'>http://codemacro.com/2012/08/21/c-plus-plus-11-lambda-overview/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
 
 ]]></content>
@@ -1458,9 +1458,9 @@ lambda-return-type-clause:
   
   <entry>
     <title type="html"><![CDATA[使用memcmp比较两个变量结果一定吗？]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/17/memcmp-on-copy-value/"/>
+    <link href="http://codemacro.com/2012/08/17/memcmp-on-copy-value/"/>
     <updated>2012-08-17T11:37:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/17/memcmp-on-copy-value</id>
+    <id>http://codemacro.com/2012/08/17/memcmp-on-copy-value</id>
     <content type="html"><![CDATA[<p>参考<a href="http://stackoverflow.com/questions/11994513/is-using-memcmp-on-array-of-int-strictly-conforming">Is using memcmp on array of int strictly conforming?</a></p>
 
 <p>以下代码一定会输出ok吗？</p>
@@ -1516,9 +1516,9 @@ lambda-return-type-clause:
 
 <p class='post-footer'>
             原文地址：
-            <a href='http://kevinlynx.github.com/codemacro/2012/08/17/memcmp-on-copy-value/'>http://kevinlynx.github.com/codemacro/2012/08/17/memcmp-on-copy-value/</a><br/>
-            written by <a href='http://kevinlynx.github.com/codemacro'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://kevinlynx.github.com/codemacro'>http://kevinlynx.github.com/codemacro</a>
+            <a href='http://codemacro.com/2012/08/17/memcmp-on-copy-value/'>http://codemacro.com/2012/08/17/memcmp-on-copy-value/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
 
 ]]></content>
@@ -1526,9 +1526,9 @@ lambda-return-type-clause:
   
   <entry>
     <title type="html"><![CDATA[Lisp中定义变量*var*和var有什么不同？]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/14/dynamic-scope-in-lisp/"/>
+    <link href="http://codemacro.com/2012/08/14/dynamic-scope-in-lisp/"/>
     <updated>2012-08-14T15:53:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/14/dynamic-scope-in-lisp</id>
+    <id>http://codemacro.com/2012/08/14/dynamic-scope-in-lisp</id>
     <content type="html"><![CDATA[<p>参考<a href="http://stackoverflow.com/questions/11932876/whats-difference-between-var-and-var-when-using-defvar">What&#8217;s difference between <em>var</em> and var when using defvar?</a></p>
 
 <p>其实，Common Lisp中使用defvar定义变量加不加星号没有区别。这只是一种Lisp程序员的约定。Lisp中并不使用特定的符号来影响语法元素，例如Ruby中通过给变量添加@前缀来标示该变量为类成员变量。这个问题引出了lisp总dynamic scope这个话题。</p>
@@ -1594,9 +1594,9 @@ lambda-return-type-clause:
 
 <p class='post-footer'>
             原文地址：
-            <a href='http://kevinlynx.github.com/codemacro/2012/08/14/dynamic-scope-in-lisp/'>http://kevinlynx.github.com/codemacro/2012/08/14/dynamic-scope-in-lisp/</a><br/>
-            written by <a href='http://kevinlynx.github.com/codemacro'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://kevinlynx.github.com/codemacro'>http://kevinlynx.github.com/codemacro</a>
+            <a href='http://codemacro.com/2012/08/14/dynamic-scope-in-lisp/'>http://codemacro.com/2012/08/14/dynamic-scope-in-lisp/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
 
 ]]></content>
@@ -1604,9 +1604,9 @@ lambda-return-type-clause:
   
   <entry>
     <title type="html"><![CDATA[Lua中动态产生函数]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/13/dynamic-method-in-lua/"/>
+    <link href="http://codemacro.com/2012/08/13/dynamic-method-in-lua/"/>
     <updated>2012-08-13T15:56:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/13/dynamic-method-in-lua</id>
+    <id>http://codemacro.com/2012/08/13/dynamic-method-in-lua</id>
     <content type="html"><![CDATA[<p>可以结合<a href="http://codemacro.com/2012/08/02/simple-oo-in-lua/">Lua里实现简单的类-对象</a>看。在我的应用中，存在类似以下代码：</p>
 
 <div class="highlight"><pre><code class="lua"><span class="k">function</span> <span class="nc">Item</span><span class="p">.</span><span class="nf">new</span><span class="p">()</span>
@@ -1680,9 +1680,9 @@ lambda-return-type-clause:
 
 <p class='post-footer'>
             原文地址：
-            <a href='http://kevinlynx.github.com/codemacro/2012/08/13/dynamic-method-in-lua/'>http://kevinlynx.github.com/codemacro/2012/08/13/dynamic-method-in-lua/</a><br/>
-            written by <a href='http://kevinlynx.github.com/codemacro'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://kevinlynx.github.com/codemacro'>http://kevinlynx.github.com/codemacro</a>
+            <a href='http://codemacro.com/2012/08/13/dynamic-method-in-lua/'>http://codemacro.com/2012/08/13/dynamic-method-in-lua/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
 
 ]]></content>
@@ -1690,9 +1690,9 @@ lambda-return-type-clause:
   
   <entry>
     <title type="html"><![CDATA[Ruby应用几则（解析HTML、XMLRPC）]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/09/ruby-usage-example/"/>
+    <link href="http://codemacro.com/2012/08/09/ruby-usage-example/"/>
     <updated>2012-08-09T14:26:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/09/ruby-usage-example</id>
+    <id>http://codemacro.com/2012/08/09/ruby-usage-example</id>
     <content type="html"><![CDATA[<h3>Ruby解析HTML</h3>
 
 <p>Ruby解析HTML（或XML）可以使用<a href="http://nokogiri.org/">nokogiri</a>。我的应用里需要查找HTML页面里的某个元素，结果发现实现方式非常简单，就像使用jquery一样。例如我要获取到octopress博客文章里的文章内容、文章标题、文章分类，就像这篇博客：</p>
@@ -1784,9 +1784,9 @@ lambda-return-type-clause:
 
 <p class='post-footer'>
             原文地址：
-            <a href='http://kevinlynx.github.com/codemacro/2012/08/09/ruby-usage-example/'>http://kevinlynx.github.com/codemacro/2012/08/09/ruby-usage-example/</a><br/>
-            written by <a href='http://kevinlynx.github.com/codemacro'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://kevinlynx.github.com/codemacro'>http://kevinlynx.github.com/codemacro</a>
+            <a href='http://codemacro.com/2012/08/09/ruby-usage-example/'>http://codemacro.com/2012/08/09/ruby-usage-example/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
 
 ]]></content>
@@ -1794,9 +1794,9 @@ lambda-return-type-clause:
   
   <entry>
     <title type="html"><![CDATA[编写独立的Ruby脚本]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/07/write-standalone-ruby-script/"/>
+    <link href="http://codemacro.com/2012/08/07/write-standalone-ruby-script/"/>
     <updated>2012-08-07T14:33:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/07/write-standalone-ruby-script</id>
+    <id>http://codemacro.com/2012/08/07/write-standalone-ruby-script</id>
     <content type="html"><![CDATA[<p>Ruby肯定不仅仅用于编写Rails程序。要使用Ruby编写独立的脚本/程序，就像shell一样，其方式也很简单：</p>
 
 <div class="highlight"><pre><code class="ruby"><span class="c1">#!/usr/bin/env ruby</span>
@@ -1813,9 +1813,9 @@ lambda-return-type-clause:
 
 <p class='post-footer'>
             原文地址：
-            <a href='http://kevinlynx.github.com/codemacro/2012/08/07/write-standalone-ruby-script/'>http://kevinlynx.github.com/codemacro/2012/08/07/write-standalone-ruby-script/</a><br/>
-            written by <a href='http://kevinlynx.github.com/codemacro'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://kevinlynx.github.com/codemacro'>http://kevinlynx.github.com/codemacro</a>
+            <a href='http://codemacro.com/2012/08/07/write-standalone-ruby-script/'>http://codemacro.com/2012/08/07/write-standalone-ruby-script/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
 
 ]]></content>
@@ -1823,9 +1823,9 @@ lambda-return-type-clause:
   
   <entry>
     <title type="html"><![CDATA[让wxListCtrl支持子item编辑]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/07/edit-item-wxlistctrl/"/>
+    <link href="http://codemacro.com/2012/08/07/edit-item-wxlistctrl/"/>
     <updated>2012-08-07T13:48:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/07/edit-item-wxlistctrl</id>
+    <id>http://codemacro.com/2012/08/07/edit-item-wxlistctrl</id>
     <content type="html"><![CDATA[<p>我使用的wxLua版本信息为<code>wxLua 2.8.7.0 built with wxWidgets 2.8.8</code>，也就是LuaForWindows_v5.1.4-40.exe这个安装包里自带的wxLua。我不知道其他wxWidgets版本里wxListCtrl怎样，但我使用的版本里wxListCtrl是不支持编辑里面的子item的。在我使用的report模式下，子item也就是特定某一行一列的item。</p>
 
 <p>google了一下，发现悲剧地需要自己实现，主要就是自己显示一个wxTextCtrl：</p>
@@ -1948,9 +1948,9 @@ lambda-return-type-clause:
 
 <p class='post-footer'>
             原文地址：
-            <a href='http://kevinlynx.github.com/codemacro/2012/08/07/edit-item-wxlistctrl/'>http://kevinlynx.github.com/codemacro/2012/08/07/edit-item-wxlistctrl/</a><br/>
-            written by <a href='http://kevinlynx.github.com/codemacro'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://kevinlynx.github.com/codemacro'>http://kevinlynx.github.com/codemacro</a>
+            <a href='http://codemacro.com/2012/08/07/edit-item-wxlistctrl/'>http://codemacro.com/2012/08/07/edit-item-wxlistctrl/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
 
 ]]></content>
@@ -1958,9 +1958,9 @@ lambda-return-type-clause:
   
   <entry>
     <title type="html"><![CDATA[『你会把Ruby的哪些特性加入Java』]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/03/ruby-element-to-java/"/>
+    <link href="http://codemacro.com/2012/08/03/ruby-element-to-java/"/>
     <updated>2012-08-03T14:14:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/03/ruby-element-to-java</id>
+    <id>http://codemacro.com/2012/08/03/ruby-element-to-java</id>
     <content type="html"><![CDATA[<p>参考（翻译、摘抄）于<a href="http://java.sys-con.com/node/251986">Can Ruby Live without Rails?</a>。这篇文章发表于2006年，受访者在回答“如果可以你会把Ruby的哪些特性加入Java“这个问题时，提到了Ruby的一些我个人认为比较突出的语法特性。其实并不是针对Java语言，何况6年时间过去，以Java语法特性的加入速度怕早就有Ruby这些特性了。我对Java不熟，仅限于曾经写的几个简单的android应用，买了&lt;Java编程思想>也没翻完。</p>
 
 <p>以下内容半翻译自原文。</p>
@@ -2093,9 +2093,9 @@ lambda-return-type-clause:
 
 <p class='post-footer'>
             原文地址：
-            <a href='http://kevinlynx.github.com/codemacro/2012/08/03/ruby-element-to-java/'>http://kevinlynx.github.com/codemacro/2012/08/03/ruby-element-to-java/</a><br/>
-            written by <a href='http://kevinlynx.github.com/codemacro'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://kevinlynx.github.com/codemacro'>http://kevinlynx.github.com/codemacro</a>
+            <a href='http://codemacro.com/2012/08/03/ruby-element-to-java/'>http://codemacro.com/2012/08/03/ruby-element-to-java/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
 
 ]]></content>
@@ -2103,9 +2103,9 @@ lambda-return-type-clause:
   
   <entry>
     <title type="html"><![CDATA[Lua里实现简单的类-对象]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/02/simple-oo-in-lua/"/>
+    <link href="http://codemacro.com/2012/08/02/simple-oo-in-lua/"/>
     <updated>2012-08-02T10:18:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/02/simple-oo-in-lua</id>
+    <id>http://codemacro.com/2012/08/02/simple-oo-in-lua</id>
     <content type="html"><![CDATA[<p>要在Lua里实现面向对象有很多方法，为了支持面向对象的一些特性（类、对象、继承、重载等），其实现可能会比较复杂。看看云风的<a href="http://blog.codingnow.com/2006/06/oo_lua.html">这篇</a>，以及后面的评论，有总结的不错的。这真是让人对Lua刮目相看。但是我并不需要这些机制，一般情况下我只需要支持类即可。</p>
 
 <p>类其实就是定义一个对象的函数模板，避免我写出带模块名并且第一个参数是操作对象的函数（像C一样）。以下代码提炼于rapanui（基于<a href="http://getmoai.com/">moai</a>的高层封装），摘抄于几个月前我基于rapanui移植到android上的一个<a href="https://github.com/kevinlynx/crazyeggs_mobile">小游戏</a>：</p>
@@ -2197,9 +2197,9 @@ lambda-return-type-clause:
 
 <p class='post-footer'>
             原文地址：
-            <a href='http://kevinlynx.github.com/codemacro/2012/08/02/simple-oo-in-lua/'>http://kevinlynx.github.com/codemacro/2012/08/02/simple-oo-in-lua/</a><br/>
-            written by <a href='http://kevinlynx.github.com/codemacro'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://kevinlynx.github.com/codemacro'>http://kevinlynx.github.com/codemacro</a>
+            <a href='http://codemacro.com/2012/08/02/simple-oo-in-lua/'>http://codemacro.com/2012/08/02/simple-oo-in-lua/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
 
 ]]></content>
@@ -2207,9 +2207,9 @@ lambda-return-type-clause:
   
   <entry>
     <title type="html"><![CDATA[像写函数式语言代码一样写C++]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/07/30/write-cpp-like-fp/"/>
+    <link href="http://codemacro.com/2012/07/30/write-cpp-like-fp/"/>
     <updated>2012-07-30T17:11:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/07/30/write-cpp-like-fp</id>
+    <id>http://codemacro.com/2012/07/30/write-cpp-like-fp</id>
     <content type="html"><![CDATA[<p>忘记最早接触函数式编程语言是什么时候了，也忘记接触的第一门函数式语言是哪一门。断断续续接触过好几种函数式语言（当然都算不纯的，ruby/lisp不算纯吧），这些语言的思想在潜移默化中多多少少对我有所影响。</p>
 
 <p>我是个C++程序员，我不知道我平时写的都是些什么代码。最让人印象深刻就是我会经常写遍历STL容器的代码，是经常，这样的遍历你可能也不陌生：</p>
@@ -2375,9 +2375,9 @@ lambda-return-type-clause:
 
 <p class='post-footer'>
             原文地址：
-            <a href='http://kevinlynx.github.com/codemacro/2012/07/30/write-cpp-like-fp/'>http://kevinlynx.github.com/codemacro/2012/07/30/write-cpp-like-fp/</a><br/>
-            written by <a href='http://kevinlynx.github.com/codemacro'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://kevinlynx.github.com/codemacro'>http://kevinlynx.github.com/codemacro</a>
+            <a href='http://codemacro.com/2012/07/30/write-cpp-like-fp/'>http://codemacro.com/2012/07/30/write-cpp-like-fp/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
 
 ]]></content>

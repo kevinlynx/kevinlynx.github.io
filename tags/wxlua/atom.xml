@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Tag: wxLua | loop in codes]]></title>
-  <link href="http://kevinlynx.github.com/codemacro/tags/wxlua/atom.xml" rel="self"/>
-  <link href="http://kevinlynx.github.com/codemacro/"/>
-  <updated>2013-02-15T15:08:33+08:00</updated>
-  <id>http://kevinlynx.github.com/codemacro/</id>
+  <link href="http://codemacro.com/tags/wxlua/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-15T15:19:53+08:00</updated>
+  <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[让wxListCtrl支持子item编辑]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/07/edit-item-wxlistctrl/"/>
+    <link href="http://codemacro.com/2012/08/07/edit-item-wxlistctrl/"/>
     <updated>2012-08-07T13:48:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/07/edit-item-wxlistctrl</id>
+    <id>http://codemacro.com/2012/08/07/edit-item-wxlistctrl</id>
     <content type="html"><![CDATA[<p>我使用的wxLua版本信息为<code>wxLua 2.8.7.0 built with wxWidgets 2.8.8</code>，也就是LuaForWindows_v5.1.4-40.exe这个安装包里自带的wxLua。我不知道其他wxWidgets版本里wxListCtrl怎样，但我使用的版本里wxListCtrl是不支持编辑里面的子item的。在我使用的report模式下，子item也就是特定某一行一列的item。</p>
 
 <p>google了一下，发现悲剧地需要自己实现，主要就是自己显示一个wxTextCtrl：</p>

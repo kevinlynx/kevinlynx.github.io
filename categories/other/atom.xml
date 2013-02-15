@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: other | loop in codes]]></title>
-  <link href="http://kevinlynx.github.com/codemacro/categories/other/atom.xml" rel="self"/>
-  <link href="http://kevinlynx.github.com/codemacro/"/>
-  <updated>2013-02-15T15:08:33+08:00</updated>
-  <id>http://kevinlynx.github.com/codemacro/</id>
+  <link href="http://codemacro.com/categories/other/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-15T15:19:53+08:00</updated>
+  <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[为什么处理排序的数组要比非排序的快？]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/29/branch-predictor/"/>
+    <link href="http://codemacro.com/2012/08/29/branch-predictor/"/>
     <updated>2012-08-29T19:55:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/29/branch-predictor</id>
+    <id>http://codemacro.com/2012/08/29/branch-predictor</id>
     <content type="html"><![CDATA[<p>参考<a href="http://stackoverflow.com/questions/11227809/why-is-processing-a-sorted-array-faster-than-an-unsorted-array">Why is processing a sorted array faster than an unsorted array?</a></p>
 
 <h2>问题</h2>
@@ -121,9 +121,9 @@
   
   <entry>
     <title type="html"><![CDATA[为octopress每篇文章添加一个文章信息]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/07/26/post-footer-plugin-for-octopress/"/>
+    <link href="http://codemacro.com/2012/07/26/post-footer-plugin-for-octopress/"/>
     <updated>2012-07-26T14:27:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/07/26/post-footer-plugin-for-octopress</id>
+    <id>http://codemacro.com/2012/07/26/post-footer-plugin-for-octopress</id>
     <content type="html"><![CDATA[<p>当你的博客文章被转载时，你肯定希望转载者能添加一个原始地址。或者你的文章被各种RSS抓取器抓取时，你也希望能在明显的位置显示这个原始地址。使用octopress写博客时，可以通过插件来做这件事。最开始，我只是想单纯地添加这个“原始地址“，一番google未能找到现成的插件，所以只好动手。</p>
 
 <p>话说编写octopress真不是件容易事，因为我实在没找到编写插件的文档。octopress基于jekyll，jekyll又使用了liquid。最后我把这几个项目的文档都翻了下，也仅仅看到几个代码示例，而且liquid的API页面居然出错。无奈之下只好多翻了些现有插件的代码，摸索着来写。写octopress的插件，主要分为generator/tag/filter几种。tag很好理解，就是在文章中插入一个插件注册的tag，然后生成页面时就会调用到对应的插件。filter大概就是把文章内容过滤一遍转换成其他内容输出。</p>
@@ -187,9 +187,9 @@
   
   <entry>
     <title type="html"><![CDATA[开始记录编程方面的技巧]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/07/18/start-to-write-tips/"/>
+    <link href="http://codemacro.com/2012/07/18/start-to-write-tips/"/>
     <updated>2012-07-18T17:01:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/07/18/start-to-write-tips</id>
+    <id>http://codemacro.com/2012/07/18/start-to-write-tips</id>
     <content type="html"><![CDATA[<p>回首上篇博客的发表时间，又2个月时间过去了。在我博客生涯的过去两三年里，总会有好几个月的时间没有编写任何文章。我觉得这真是一个不好的习惯。这个情况的产生，有很多原因。例如自己太懒、工作偶尔忙、自己偶尔处于混沌时期、自己偶尔怀疑人生，如是种种。但最大的原因还是，不敢写。</p>
 
 <p>在刚出来工作那会，作为一个懵懂的青年，接触个什么新技术都内心激动骄傲，然后就特别有动力将所学记录下来，注意下言辞还能折腾个像那么回事的教程出来。后来慢慢地，我就觉得，这些东西太肤浅。先别说教人用个什么IDE，配置个什么数据库，就算你是学个新语言，好好研究下TCP，甚至还能折腾个IOCP框架，这些都还是他妈的特肤浅。你说任何一个有那么点经验和学习能力的程序员，谁花点时间整不出来这些？谁他妈要你在这里装逼卖萌，甚至贻笑大方。除此之外，我个人也觉得无聊了。</p>
@@ -213,9 +213,9 @@
   
   <entry>
     <title type="html"><![CDATA[使用Github Page来写博客]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/04/20/blog-on-github/"/>
+    <link href="http://codemacro.com/2012/04/20/blog-on-github/"/>
     <updated>2012-04-20T00:00:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/04/20/blog-on-github</id>
+    <id>http://codemacro.com/2012/04/20/blog-on-github</id>
     <content type="html"><![CDATA[<p>最开始知道<a href="http://pages.github.com/">Github Page</a>，是通过<a href="http://codertrace.com">codertrace</a>上的某些注册用户，他们的BLOG就建立在Github Page上，并且清一色的干净整洁（简陋），这看起来很酷。</p>
 
 <p>Github提供了很多很合coder口味的东西，例如Gist，也包括这里提到的Page。Page并不是特用于建立博客的产品，它仅提供静态页面的显示。它最酷的地方，是通过Git的方式来让你管理这些静态页面。通过建立一个repository，并使用markdown语法来编写文章，然后通过Git来管理这些文章，你就可以自动将其发布出去。</p>
@@ -285,9 +285,9 @@
   
   <entry>
     <title type="html"><![CDATA[写了个简单的网站，codertrace.com]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/02/04/codertrace/"/>
+    <link href="http://codemacro.com/2012/02/04/codertrace/"/>
     <updated>2012-02-04T00:00:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/02/04/codertrace</id>
+    <id>http://codemacro.com/2012/02/04/codertrace</id>
     <content type="html"><![CDATA[<h2>简介</h2>
 
 <p>因为写 <a href="https://github.com/kevinlynx/ext-blog">ext-blog</a>
@@ -304,7 +304,7 @@
 
 <p>如果你是程序员，也不妨试试。</p>
 
-<p><img src="http://kevinlynx.github.com/codemacro/assets/res/codertrace/codertrace.png" alt="image" width="100%"/></p>
+<p><img src="http://codemacro.com/assets/res/codertrace/codertrace.png" alt="image" width="100%"/></p>
 
 <h2>技术信息</h2>
 

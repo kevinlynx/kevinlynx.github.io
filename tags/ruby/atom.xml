@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Tag: ruby | loop in codes]]></title>
-  <link href="http://kevinlynx.github.com/codemacro/tags/ruby/atom.xml" rel="self"/>
-  <link href="http://kevinlynx.github.com/codemacro/"/>
-  <updated>2013-02-15T15:08:33+08:00</updated>
-  <id>http://kevinlynx.github.com/codemacro/</id>
+  <link href="http://codemacro.com/tags/ruby/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-15T15:19:53+08:00</updated>
+  <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[Ruby应用几则（解析HTML、XMLRPC）]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/09/ruby-usage-example/"/>
+    <link href="http://codemacro.com/2012/08/09/ruby-usage-example/"/>
     <updated>2012-08-09T14:26:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/09/ruby-usage-example</id>
+    <id>http://codemacro.com/2012/08/09/ruby-usage-example</id>
     <content type="html"><![CDATA[<h3>Ruby解析HTML</h3>
 
 <p>Ruby解析HTML（或XML）可以使用<a href="http://nokogiri.org/">nokogiri</a>。我的应用里需要查找HTML页面里的某个元素，结果发现实现方式非常简单，就像使用jquery一样。例如我要获取到octopress博客文章里的文章内容、文章标题、文章分类，就像这篇博客：</p>
@@ -118,9 +118,9 @@
   
   <entry>
     <title type="html"><![CDATA[编写独立的Ruby脚本]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/07/write-standalone-ruby-script/"/>
+    <link href="http://codemacro.com/2012/08/07/write-standalone-ruby-script/"/>
     <updated>2012-08-07T14:33:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/07/write-standalone-ruby-script</id>
+    <id>http://codemacro.com/2012/08/07/write-standalone-ruby-script</id>
     <content type="html"><![CDATA[<p>Ruby肯定不仅仅用于编写Rails程序。要使用Ruby编写独立的脚本/程序，就像shell一样，其方式也很简单：</p>
 
 <p><div class="highlight"><pre><code class="ruby"><span class="o">&lt;</span><span class="sr">/p&gt;</span>
@@ -141,9 +141,9 @@
   
   <entry>
     <title type="html"><![CDATA[『你会把Ruby的哪些特性加入Java』]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/03/ruby-element-to-java/"/>
+    <link href="http://codemacro.com/2012/08/03/ruby-element-to-java/"/>
     <updated>2012-08-03T14:14:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/03/ruby-element-to-java</id>
+    <id>http://codemacro.com/2012/08/03/ruby-element-to-java</id>
     <content type="html"><![CDATA[<p>参考（翻译、摘抄）于<a href="http://java.sys-con.com/node/251986">Can Ruby Live without Rails?</a>。这篇文章发表于2006年，受访者在回答“如果可以你会把Ruby的哪些特性加入Java“这个问题时，提到了Ruby的一些我个人认为比较突出的语法特性。其实并不是针对Java语言，何况6年时间过去，以Java语法特性的加入速度怕早就有Ruby这些特性了。我对Java不熟，仅限于曾经写的几个简单的android应用，买了&lt;Java编程思想>也没翻完。</p>
 
 <p>以下内容半翻译自原文。</p>
@@ -289,9 +289,9 @@
   
   <entry>
     <title type="html"><![CDATA[ruby中的case...when语法]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/07/26/ruby-case-when/"/>
+    <link href="http://codemacro.com/2012/07/26/ruby-case-when/"/>
     <updated>2012-07-26T10:13:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/07/26/ruby-case-when</id>
+    <id>http://codemacro.com/2012/07/26/ruby-case-when</id>
     <content type="html"><![CDATA[<p>参考<a href="http://stackoverflow.com/questions/948135/how-to-write-a-switch-statement-in-ruby">How to write a switch statement in Ruby?</a></p>
 
 <p>其实用Rails写个业务逻辑不算复杂的app根本用不上ruby的很多高级语法，更别说&lt;meta programming in ruby>中的东西了（凡是打上meta programming标签的都不是什么简单的东西，参考c++/lisp）。ruby中的case...when语句和c/c++中的switch...case其实根本不是一回事。&lt;Programming in Ruby 2nd>：</p>

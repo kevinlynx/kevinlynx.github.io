@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: clang | loop in codes]]></title>
-  <link href="http://kevinlynx.github.com/codemacro/categories/clang/atom.xml" rel="self"/>
-  <link href="http://kevinlynx.github.com/codemacro/"/>
-  <updated>2013-02-15T15:08:33+08:00</updated>
-  <id>http://kevinlynx.github.com/codemacro/</id>
+  <link href="http://codemacro.com/categories/clang/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-15T15:19:53+08:00</updated>
+  <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[使用Clang实现C语言编程规范检查]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2013/02/12/using-clang/"/>
+    <link href="http://codemacro.com/2013/02/12/using-clang/"/>
     <updated>2013-02-12T00:00:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2013/02/12/using-clang</id>
+    <id>http://codemacro.com/2013/02/12/using-clang</id>
     <content type="html"><![CDATA[<h2>概述</h2>
 
 <p>Clang是LLVM编译器工具集的前端部分，也就是涵盖词法分析、语法语义分析的部分。而LLVM是Apple在Mac OS上用于替代GCC工具集的编译器软件集合。Clang支持类C语言的语言，例如C、C++、Objective C。Clang的与众不同在于其模块化的设计，使其不仅实现编译器前端部分，并且包装成库的形式提供给上层应用。使用Clang可以做诸如语法高亮、语法检查、编程规范检查方面的工作，当然也可以作为你自己的编译器前端。</p>

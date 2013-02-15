@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Tag: tolua | loop in codes]]></title>
-  <link href="http://kevinlynx.github.com/codemacro/tags/tolua/atom.xml" rel="self"/>
-  <link href="http://kevinlynx.github.com/codemacro/"/>
-  <updated>2013-02-15T15:08:33+08:00</updated>
-  <id>http://kevinlynx.github.com/codemacro/</id>
+  <link href="http://codemacro.com/tags/tolua/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-15T15:19:53+08:00</updated>
+  <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[tolua的tolua_toxxx系列API设计]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/05/10/tolua-api/"/>
+    <link href="http://codemacro.com/2012/05/10/tolua-api/"/>
     <updated>2012-05-10T00:00:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/05/10/tolua-api</id>
+    <id>http://codemacro.com/2012/05/10/tolua-api</id>
     <content type="html"><![CDATA[<p>我们使用tolua++手工绑定c/c++接口到lua中，在绑定的接口实现里，就需要取出传入的参数。tolua++中提供了一系列tolua_toxxx函数，例如：</p>
 
 <p><div class="highlight"><pre><code class="c"><span class="n">lua_Number</span> <span class="n">tolua_tonumber</span><span class="p">(</span><span class="n">lua_State</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">narg</span><span class="p">,</span> <span class="n">lua_Number</span> <span class="n">def</span><span class="p">)</span>

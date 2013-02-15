@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: lisp | loop in codes]]></title>
-  <link href="http://kevinlynx.github.com/codemacro/categories/lisp/atom.xml" rel="self"/>
-  <link href="http://kevinlynx.github.com/codemacro/"/>
-  <updated>2013-02-15T15:08:33+08:00</updated>
-  <id>http://kevinlynx.github.com/codemacro/</id>
+  <link href="http://codemacro.com/categories/lisp/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-15T15:19:53+08:00</updated>
+  <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[Lisp中定义变量*var*和var有什么不同？]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/08/14/dynamic-scope-in-lisp/"/>
+    <link href="http://codemacro.com/2012/08/14/dynamic-scope-in-lisp/"/>
     <updated>2012-08-14T15:53:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/08/14/dynamic-scope-in-lisp</id>
+    <id>http://codemacro.com/2012/08/14/dynamic-scope-in-lisp</id>
     <content type="html"><![CDATA[<p>参考<a href="http://stackoverflow.com/questions/11932876/whats-difference-between-var-and-var-when-using-defvar">What's difference between <em>var</em> and var when using defvar?</a></p>
 
 <p>其实，Common Lisp中使用defvar定义变量加不加星号没有区别。这只是一种Lisp程序员的约定。Lisp中并不使用特定的符号来影响语法元素，例如Ruby中通过给变量添加@前缀来标示该变量为类成员变量。这个问题引出了lisp总dynamic scope这个话题。</p>
@@ -88,9 +88,9 @@
   
   <entry>
     <title type="html"><![CDATA[使用Lisp搭建独立博客]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2011/09/29/build-blog-by-lisp/"/>
+    <link href="http://codemacro.com/2011/09/29/build-blog-by-lisp/"/>
     <updated>2011-09-29T00:00:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2011/09/29/build-blog-by-lisp</id>
+    <id>http://codemacro.com/2011/09/29/build-blog-by-lisp</id>
     <content type="html"><![CDATA[<p>本文描述如何使用Lisp工具集搭建一个完整的个人博客站点。一个搭建好的例子站点可以参看我的个人博客：http://codemacro.com。</p>
 
 <p>要搭建一个独立博客，需要两方面的支持。一是博客软件，二是根据选择的博客软件取得必须的“硬件“。例如我这里使用的是Lisp工具集，就需要一个可以完全控制的服务器，所以这里我需要一个VPS。当然，购买一个合适的域名也是必须的。以下将针对这些内容做描述。</p>
@@ -255,9 +255,9 @@ API，因此可以使用一些博客客户端来发表文章（仅测过我自�
   
   <entry>
     <title type="html"><![CDATA[Lisp实践：开发RSS阅读器]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2011/03/30/lisp-rss/"/>
+    <link href="http://codemacro.com/2011/03/30/lisp-rss/"/>
     <updated>2011-03-30T00:00:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2011/03/30/lisp-rss</id>
+    <id>http://codemacro.com/2011/03/30/lisp-rss</id>
     <content type="html"><![CDATA[<h1>一、RSS阅读器的实现</h1>
 
 <p>RSS Reader的实现并不像它看上去那么复杂。当初在决定写这个作为Lisp练习时，甚至觉得
@@ -469,9 +469,9 @@ Reader里订阅的一些RSS。最大的问题，就是关于HTTP重定向的问�
   
   <entry>
     <title type="html"><![CDATA[Lisp一瞥：增强型变量Symbol]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2011/03/21/lisp-symbol/"/>
+    <link href="http://codemacro.com/2011/03/21/lisp-symbol/"/>
     <updated>2011-03-21T00:00:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2011/03/21/lisp-symbol</id>
+    <id>http://codemacro.com/2011/03/21/lisp-symbol</id>
     <content type="html"><![CDATA[<p>变量，是所有编程语言里都有的语法概念。在C/C++中，变量用于标示一个内存地址，而变
 量名则在语法层面上代表这个地址。当链接器最终链接我们的程序时，就将这些名字替换
 为实际的地址。在其他语言中，变量虽然或多或少有其他不同的含义，但也大致如此。</p>
@@ -767,9 +767,9 @@ Function来使用。如何解决这个问题？想想，symbol-function可以取
   
   <entry>
     <title type="html"><![CDATA[用lisp开发博客客户端]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2011/03/13/lisp-writer/"/>
+    <link href="http://codemacro.com/2011/03/13/lisp-writer/"/>
     <updated>2011-03-13T00:00:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2011/03/13/lisp-writer</id>
+    <id>http://codemacro.com/2011/03/13/lisp-writer</id>
     <content type="html"><![CDATA[<p>最近一直在学习Lisp这门语言。回头一看，基本上接近1个月了。刚开始接触Lisp是因为看
 了&lt;Lisp本质&gt;，然后我发现有很多人宗教般地忠诚这门语言，于是就来了兴趣。</p>
 

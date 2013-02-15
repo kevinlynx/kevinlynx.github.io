@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Tag: html | loop in codes]]></title>
-  <link href="http://kevinlynx.github.com/codemacro/tags/html/atom.xml" rel="self"/>
-  <link href="http://kevinlynx.github.com/codemacro/"/>
-  <updated>2013-02-15T15:08:33+08:00</updated>
-  <id>http://kevinlynx.github.com/codemacro/</id>
+  <link href="http://codemacro.com/tags/html/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-02-15T15:19:53+08:00</updated>
+  <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[HTML中table的高亮以及tooltip]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/07/24/html-table-hover/"/>
+    <link href="http://codemacro.com/2012/07/24/html-table-hover/"/>
     <updated>2012-07-24T16:08:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/07/24/html-table-hover</id>
+    <id>http://codemacro.com/2012/07/24/html-table-hover</id>
     <content type="html"><![CDATA[<p>在一个需要显示很多数据的表格(table)中，为了更友好地查看一行数据，常常需要在鼠标指针移到某一行时，高亮此行。要实现这个效果有很多方法，这里列举一个方法：</p>
 
 <p><div class="highlight"><pre><code class="javascript"><span class="kd">function</span> <span class="nx">setTableHover</span><span class="p">(</span><span class="nx">t</span><span class="p">)</span> <span class="p">{</span>
@@ -113,9 +113,9 @@
   
   <entry>
     <title type="html"><![CDATA[HTML中实现弹出窗口]]></title>
-    <link href="http://kevinlynx.github.com/codemacro/2012/07/19/popup-window-in-html/"/>
+    <link href="http://codemacro.com/2012/07/19/popup-window-in-html/"/>
     <updated>2012-07-19T14:56:00+08:00</updated>
-    <id>http://kevinlynx.github.com/codemacro/2012/07/19/popup-window-in-html</id>
+    <id>http://codemacro.com/2012/07/19/popup-window-in-html</id>
     <content type="html"><![CDATA[<p><img class="right" src="/assets/res/popup-window-tip.png"></p>
 
 <p>做网页时弹出一个窗口显示一些内容是一种很常见的交互方式，如图中用户点击“个人资料“时并不是转到一个新页面，而是在当前页面弹出修改密码的窗口。弹出窗口的实现方式有很多，这里罗列一种。</p>
