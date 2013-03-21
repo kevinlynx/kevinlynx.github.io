@@ -4,7 +4,7 @@
   <title><![CDATA[Tag: nokogiri | loop in codes]]></title>
   <link href="http://codemacro.com/tags/nokogiri/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2013-02-15T15:19:53+08:00</updated>
+  <updated>2013-03-21T21:22:08+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -22,19 +22,20 @@
 
 <p>Ruby解析HTML（或XML）可以使用<a href="http://nokogiri.org/">nokogiri</a>。我的应用里需要查找HTML页面里的某个元素，结果发现实现方式非常简单，就像使用jquery一样。例如我要获取到octopress博客文章里的文章内容、文章标题、文章分类，就像这篇博客：</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="o">&lt;</span><span class="sr">/p&gt;</span>
+<p>{% highlight ruby %}
+{% raw %}</p>
 
-<span class="sr">&lt;h1&gt;get post title and content for an octopress post&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>get post title and content for an octopress post</h1>
 
-<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span><span class="k">def</span> <span class="nf">post_info</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
-  <span class="n">doc</span> <span class="o">=</span> <span class="ss">Nokogiri</span><span class="p">:</span><span class="ss">:HTML</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">url</span><span class="p">))</span>
-  <span class="n">content</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">css</span><span class="p">(</span><span class="s1">&#39;div.entry-content&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">to_s</span>
-  <span class="n">title</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">css</span><span class="p">(</span><span class="s1">&#39;header h1.entry-title&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">inner_html</span>
-  <span class="n">categories</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">css</span><span class="p">(</span><span class="s1">&#39;a.category&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">collect</span> <span class="k">do</span> <span class="o">|</span><span class="n">link</span><span class="o">|</span> <span class="n">link</span><span class="o">.</span><span class="n">content</span> <span class="k">end</span>
-  <span class="k">return</span> <span class="n">title</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">categories</span>
-<span class="k">end</span>
-</code></pre>
-</div></p>
+<p>def post_info(url)
+  doc = Nokogiri::HTML(open(url))
+  content = doc.css('div.entry-content').to_s
+  title = doc.css('header h1.entry-title').inner_html
+  categories = doc.css('a.category').collect do |link| link.content end
+  return title, content, categories
+end
+{% endraw %}
+{% endhighlight %}</p>
 
 <!-- more -->
 
@@ -45,72 +46,75 @@
 
 <p>可以使用<code>rails-xmlrpc</code>这个库，直接使用gem安装：<code>gem install rails-xmlrpc</code>。这个库分为客户端和服务器两部分，我的应用是使用metaweblog API：</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="k">class</span> <span class="nc">MetaWeblogClient</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="ss">XMLRPC</span><span class="p">:</span><span class="ss">:Client</span>
-  <span class="k">def</span> <span class="nf">initialize</span><span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
+<p>{% highlight ruby %}
+{% raw %}
+class MetaWeblogClient &lt; XMLRPC::Client
+  def initialize(username, password, host, url)</p>
 
-<span class="sr">&lt;pre&gt;&lt;code&gt;super(host, url)</span>
-<span class="sr">@username = username</span>
-<span class="sr">@password = password</span>
-<span class="sr">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;</span><span class="sr">/pre&gt;</span>
-
-<span class="sr">&lt;p&gt;  end&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span>  <span class="k">def</span> <span class="nf">newPost</span><span class="p">(</span><span class="n">post</span><span class="p">,</span> <span class="n">publish</span><span class="p">)</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
-
-<span class="sr">&lt;pre&gt;&lt;code&gt;call(&quot;metaWeblog.newPost&quot;, &quot;0&quot;, &quot;</span><span class="si">#{</span><span class="vi">@username</span><span class="si">}</span><span class="sr">&quot;, &quot;</span><span class="si">#{</span><span class="vi">@password</span><span class="si">}</span><span class="sr">&quot;, post, publish)</span>
-<span class="sr">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;</span><span class="sr">/pre&gt;</span>
-
-<span class="sr">&lt;p&gt;  end&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span>  <span class="c1"># other methods&lt;/p&gt;</span>
-
-<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
-
-<span class="sr">&lt;p&gt;def new_post(api, url)</span>
-<span class="sr">  title, content, categories = post_info(url)</span>
-<span class="sr">  if title.nil? or content.nil?&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="nb">puts</span> <span class="s2">&quot;get post info failed at </span><span class="si">#{</span><span class="n">url</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
-<span class="k">return</span>
-<span class="o">&lt;</span><span class="sr">/code&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span>  <span class="k">end</span>
-  <span class="n">post</span> <span class="o">=</span> <span class="p">{</span> <span class="ss">:title</span> <span class="o">=&gt;</span> <span class="n">title</span><span class="p">,</span> <span class="ss">:description</span> <span class="o">=&gt;</span> <span class="n">content</span><span class="p">,</span> <span class="ss">:categories</span> <span class="o">=&gt;</span> <span class="n">categories</span> <span class="p">}</span>
-  <span class="n">api</span><span class="o">.</span><span class="n">newPost</span><span class="p">(</span><span class="n">post</span><span class="p">,</span> <span class="kp">true</span><span class="p">)</span>
-  <span class="nb">puts</span> <span class="s2">&quot;new post </span><span class="si">#{</span><span class="n">title</span><span class="si">}</span><span class="s2"> in </span><span class="si">#{</span><span class="n">categories</span><span class="si">}</span><span class="s2"> done</span><span class="se">\n</span><span class="s2">&quot;</span>
-<span class="k">end</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
-
-<span class="sr">&lt;p&gt;api = MetaweblogClient.new(username, password, host, url)</span>
-<span class="sr">new_post(api, &quot;http:/</span><span class="o">/</span><span class="n">codemacro</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="mi">2012</span><span class="o">/</span><span class="mi">08</span><span class="o">/</span><span class="mo">07</span><span class="o">/</span><span class="n">write</span><span class="o">-</span><span class="n">standalone</span><span class="o">-</span><span class="n">ruby</span><span class="o">-</span><span class="n">script</span><span class="o">/</span><span class="s2">&quot;)&lt;/p&gt;</span>
-
-<span class="s2">&lt;p&gt;</span>
+<pre><code>super(host, url)
+@username = username
+@password = password
 </code></pre>
-</div></p>
+
+<p>  end</p>
+
+<p>  def newPost(post, publish)</p>
+
+<pre><code>call("metaWeblog.newPost", "0", "#{@username}", "#{@password}", post, publish)
+</code></pre>
+
+<p>  end</p>
+
+<p>  # other methods</p>
+
+<p>end</p>
+
+<p>def new_post(api, url)
+  title, content, categories = post_info(url)
+  if title.nil? or content.nil?</p>
+
+<pre><code>puts "get post info failed at #{url}\n"
+return
+</code></pre>
+
+<p>  end
+  post = { :title => title, :description => content, :categories => categories }
+  api.newPost(post, true)
+  puts "new post #{title} in #{categories} done\n"
+end</p>
+
+<p>api = MetaweblogClient.new(username, password, host, url)
+new_post(api, "http://codemacro.com/2012/08/07/write-standalone-ruby-script/")</p>
+
+<p>{% endraw %}
+{% endhighlight %}</p>
 
 <h3>Ruby读取yaml</h3>
 
 <p>就像Rails里那些配置文件一样，都属于yaml配置文件。我的应用里只需使用简单的key-value形式的yaml配置，就像：</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="ss">host</span><span class="p">:</span> <span class="n">www</span><span class="o">.</span><span class="n">cppblog</span><span class="o">.</span><span class="n">com</span>
-<span class="ss">url</span><span class="p">:</span> <span class="sr">/kevinlynx/se</span><span class="n">rvices</span><span class="o">/</span><span class="n">metaweblog</span><span class="o">.</span><span class="n">aspx</span>
-<span class="ss">username</span><span class="p">:</span> <span class="n">kevinlynx</span>
-<span class="ss">password</span><span class="p">:</span> <span class="n">xxxxxx</span>
-</code></pre>
-</div></p>
+<p>{% highlight ruby %}
+host: www.cppblog.com
+url: /kevinlynx/services/metaweblog.aspx
+username: kevinlynx
+password: xxxxxx
+{% endhighlight %}</p>
 
 <p>解析的时候需要使用<code>yaml</code>库：</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="n">file</span> <span class="o">=</span> <span class="no">File</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
-<span class="n">cfg</span> <span class="o">=</span> <span class="ss">YAML</span><span class="p">:</span><span class="ss">:load</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
-</code></pre>
-</div></p>
+<p>{% highlight ruby %}
+file = File.open(filename)
+cfg = YAML::load(file)
+{% endhighlight %}</p>
 
 <p>针对以上配置，<code>YAML::load</code>得到的结果就是一个hash表：</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="nb">puts</span> <span class="n">cfg</span><span class="o">[</span><span class="s2">&quot;host&quot;</span><span class="o">]</span>
-<span class="nb">puts</span> <span class="n">cfg</span><span class="o">[</span><span class="s2">&quot;url&quot;</span><span class="o">]</span>
-</code></pre>
-</div></p>
+<p>{% highlight ruby %}
+{% raw %}
+puts cfg["host"]
+puts cfg["url"]
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>以上，我写了一个小工具，可以让我每次在<a href="http://codemacro.com">codemacro.com</a>发表博客后，使用这个工具自动解析生成的文章，然后发表到CPPBLOG上。完整源码可在这个上：<a href="https://gist.github.com/3301662">https://gist.github.com/3301662</a></p>
 ]]></content>

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: ICE | loop in codes]]></title>
   <link href="http://codemacro.com/categories/ice/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2013-02-15T15:19:53+08:00</updated>
+  <updated>2013-03-21T21:22:08+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -24,15 +24,13 @@
 
 <p><a href="http://www.zeroc.com/index.html">ICE</a>，Internet Communications Engine，按照官方介绍，是一个支持C++、.Net、Java、Python、Objective-C、Ruby、PHP及ActionScript等语言的分布式程序开发平台。按照我的理解，简单来说它是一个核心功能包装RPC的库。要把这个RPC包装得漂亮，自然而然，对于使用者而言，调用一个远端的接口和调用一个本地的接口没有什么区别，例如：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">Object</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="n">xxx</span>
-<span class="n">obj</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">sayHello</span><span class="p">();</span> 
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>Object *obj = xxx
+obj-&gt;sayHello(); 
 </code></pre>
-</div></p>
+
+<p>{% endhighlight %}</p>
 
 <p>ICE包装<code>sayHello</code>接口，当应用层调用该接口时，ICE发送调用请求到远端服务器，接收返回结果并返回给应用层。ICE在接口提供方面，做到了这一点。</p>
 
@@ -69,30 +67,26 @@
 </ul>
 
 
-<p><div class="highlight"><pre><code class="c"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="c1">// Printer.ice，Slice源码后缀为ice</span>
-<span class="n">module</span> <span class="n">Demo</span> <span class="p">{</span>
-    <span class="n">interface</span> <span class="n">Printer</span> <span class="p">{</span>
-        <span class="kt">void</span> <span class="n">printString</span><span class="p">(</span><span class="n">string</span> <span class="n">s</span><span class="p">);</span>
-    <span class="p">};</span>
-<span class="p">};</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>// Printer.ice，Slice源码后缀为ice
+module Demo {
+    interface Printer {
+        void printString(string s);
+    };
+};
 </code></pre>
-</div></p>
+
+<p>{% endhighlight %}</p>
 
 <p>使用ICE提供的程序翻译为C++代码：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="err">$</span> <span class="n">slice2cpp</span> <span class="n">Printer</span><span class="p">.</span><span class="n">ice</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>$ slice2cpp Printer.ice
 </code></pre>
-</div></p>
+
+<p>{% endhighlight %}</p>
 
 <p>得到Printer.cpp和Printer.h。Slice翻译出来的目标代码除了封装RPC交互的一些细节外，最重要的，因为本身Slice文件其实是定义接口，但接口的实现，则需要应用层来做。</p>
 
@@ -101,36 +95,32 @@
 </ul>
 
 
-<p><div class="highlight"><pre><code class="c"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="c1">// 翻译出来的Printer.h中有对应于Slice中定义的Printer类，及需要实现的printString接口</span>
-<span class="n">class</span> <span class="n">PrinterI</span> <span class="o">:</span> <span class="n">public</span> <span class="n">Printer</span> <span class="p">{</span>
-<span class="nl">public:</span>
-    <span class="n">virtual</span> <span class="kt">void</span> <span class="n">printString</span><span class="p">(</span><span class="k">const</span> <span class="n">string</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">s</span><span class="p">,</span> <span class="k">const</span> <span class="n">Ice</span><span class="o">::</span><span class="n">Current</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;)</span> <span class="p">{</span>
-        <span class="n">count</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">s</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">endl</span><span class="p">;</span>
-    <span class="p">}</span>
-<span class="p">};</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>// 翻译出来的Printer.h中有对应于Slice中定义的Printer类，及需要实现的printString接口
+class PrinterI : public Printer {
+public:
+    virtual void printString(const string&amp; s, const Ice::Current&amp;) {
+        count &lt;&lt; s &lt;&lt; endl;
+    }
+};
 </code></pre>
-</div></p>
+
+<p>{% endhighlight %}</p>
 
 <ul>
 <li>客户端使用生成的Printer.cpp/.h，通过ICE获得一个<code>Printer</code>对象，然后调用其<code>printString</code>接口</li>
 </ul>
 
 
-<p><div class="highlight"><pre><code class="c"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="c1">// don&#39;t care about this</span>
-<span class="n">PrinterPrx</span> <span class="n">printer</span> <span class="o">=</span> <span class="n">PrinterPrx</span><span class="o">::</span><span class="n">checkedCast</span><span class="p">(</span><span class="n">base</span><span class="p">);</span>
-<span class="n">printer</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">printString</span><span class="p">(</span><span class="s">&quot;Hello World!&quot;</span><span class="p">);</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>// don't care about this
+PrinterPrx printer = PrinterPrx::checkedCast(base);
+printer-&gt;printString("Hello World!");
 </code></pre>
-</div></p>
+
+<p>{% endhighlight %}</p>
 
 <p>使用ICE开发应用程序，整体过程即为以上展示。</p>
 
@@ -148,19 +138,17 @@
 
 <p>对于<code>Printer</code>例子，一个<code>Printer</code>对象可以被看作是一个ICE Objects。Object可以说是服务器端提供给客户端的接口。所以在服务器端通常会创建出很多个Object。服务器端使用Object Adapter对象去保存这些Object。例如，一个典型的ICE对象在初始化时可能包含以下代码：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="c1">// 创建一个Object Adapter</span>
-<span class="n">Ice</span><span class="o">::</span><span class="n">ObjectAdapterPtr</span> <span class="n">adapter</span> <span class="o">=</span> <span class="n">communicator</span><span class="p">()</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">createObjectAdapter</span><span class="p">(</span><span class="s">&quot;Hello&quot;</span><span class="p">);</span>
-<span class="c1">// 创建一个Object，形如Printer</span>
-<span class="n">Demo</span><span class="o">::</span><span class="n">HelloPtr</span> <span class="n">hello</span> <span class="o">=</span> <span class="n">new</span> <span class="n">HelloI</span><span class="p">;</span>
-<span class="c1">// 将Object加入到Object Adapter</span>
-<span class="n">adapter</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">add</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="n">communicator</span><span class="p">()</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">stringToIdentity</span><span class="p">(</span><span class="s">&quot;hello&quot;</span><span class="p">));</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>// 创建一个Object Adapter
+Ice::ObjectAdapterPtr adapter = communicator()-&gt;createObjectAdapter("Hello");
+// 创建一个Object，形如Printer
+Demo::HelloPtr hello = new HelloI;
+// 将Object加入到Object Adapter
+adapter-&gt;add(hello, communicator()-&gt;stringToIdentity("hello"));
 </code></pre>
-</div></p>
+
+<p>{% endhighlight %}</p>
 
 <p>Facet是Object的一部分，或者说Object是Facet的一个集合，摘Ice manual中的一句话：</p>
 
@@ -170,17 +158,15 @@
 
 <p>Proxy是ICE客户端里的概念。客户端通过Proxy访问服务器端上的Object，通过Proxy调用服务器端Object上提供的接口。在客户端上一般有类似以下代码：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">Ice</span><span class="o">::</span><span class="n">ObjectPrx</span> <span class="n">base</span> <span class="o">=</span> <span class="n">ic</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">stringToProxy</span><span class="p">(</span><span class="s">&quot;SimplePrinter:default -p 10000&quot;</span><span class="p">);</span>
-<span class="c1">// Printer Proxy</span>
-<span class="n">PrinterPrx</span> <span class="n">printer</span> <span class="o">=</span> <span class="n">PrinterPrx</span><span class="o">::</span><span class="n">checkedCast</span><span class="p">(</span><span class="n">base</span><span class="p">);</span>
-<span class="n">printer</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">printString</span><span class="p">(</span><span class="s">&quot;Hello World!&quot;</span><span class="p">);</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>Ice::ObjectPrx base = ic-&gt;stringToProxy("SimplePrinter:default -p 10000");
+// Printer Proxy
+PrinterPrx printer = PrinterPrx::checkedCast(base);
+printer-&gt;printString("Hello World!");
 </code></pre>
-</div></p>
+
+<p>{% endhighlight %}</p>
 
 <p>Proxy又分为几种，包括：</p>
 
@@ -217,14 +203,12 @@
 
 <p>Asynchronous Method Invocation，对于客户端而言，用于表示某个服务器端接口是异步操作，需在Slice中使用metadata来修饰这个接口，例如：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="p">[</span><span class="s">&quot;ami&quot;</span><span class="p">]</span>  <span class="kt">void</span> <span class="n">sayHello</span><span class="p">(</span><span class="kt">int</span> <span class="n">delay</span><span class="p">)</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>["ami"]  void sayHello(int delay)
 </code></pre>
-</div></p>
+
+<p>{% endhighlight %}</p>
 
 <ul>
 <li>AMD</li>
@@ -233,14 +217,12 @@
 
 <p>Asynchronous method dispatch，这个针对于服务器端，同样表示这个接口是异步操作，需在Slice中使用metadata来修饰这个接口：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="p">[</span><span class="s">&quot;ami&quot;</span><span class="p">,</span> <span class="s">&quot;amd&quot;</span><span class="p">]</span>  <span class="kt">void</span> <span class="n">sayHello</span><span class="p">(</span><span class="kt">int</span> <span class="n">delay</span><span class="p">)</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>["ami", "amd"]  void sayHello(int delay)
 </code></pre>
-</div></p>
+
+<p>{% endhighlight %}</p>
 
 <p>通常对于这种异步接口而言，都需要使用Slice metadata <code>ami</code>和<code>amd</code>同时修饰。</p>
 
@@ -313,18 +295,16 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
 
 <p>对于需要管理服务器的客户端而言，可以大致通过如下代码来完成：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="c1">// 可以通过communicator来获取这个admin object</span>
-<span class="n">Ice</span><span class="o">::</span><span class="n">ObjectPrx</span> <span class="n">adminObj</span> <span class="o">=</span> <span class="p">...;</span>
-<span class="c1">// 获取admin object里的property facet</span>
-<span class="n">Ice</span><span class="o">::</span><span class="n">PropertiesAdminPrx</span> <span class="n">propAdmin</span> <span class="o">=</span> <span class="n">Ice</span><span class="o">::</span><span class="n">PropertiesAdminPrx</span><span class="o">::</span><span class="n">checkedCast</span><span class="p">(</span><span class="n">adminObj</span><span class="p">,</span> <span class="s">&quot;Properties&quot;</span><span class="p">);</span>
-<span class="n">Ice</span><span class="o">::</span><span class="n">PropertyDict</span> <span class="n">props</span> <span class="o">=</span> <span class="n">propAdmin</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">getPropertiesForPrefix</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">);</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>// 可以通过communicator来获取这个admin object
+Ice::ObjectPrx adminObj = ...;
+// 获取admin object里的property facet
+Ice::PropertiesAdminPrx propAdmin = Ice::PropertiesAdminPrx::checkedCast(adminObj, "Properties");
+Ice::PropertyDict props = propAdmin-&gt;getPropertiesForPrefix("");
 </code></pre>
-</div></p>
+
+<p>{% endhighlight %}</p>
 
 <p>详细参看ICE Manual <a href="http://doc.zeroc.com/display/Ice/Administrative+Facility">Administrative Facility</a></p>
 
@@ -332,27 +312,23 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
 
 <p>前已述及，ICE中的网络连接隐藏于Proxy之下。Proxy有两个接口可以获取这个连接对象：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">ice_getConnection</span>
-<span class="n">ice_getCachedConnection</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>ice_getConnection
+ice_getCachedConnection
 </code></pre>
-</div></p>
+
+<p>{% endhighlight %}</p>
 
 <p>例如：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">HelloPrx</span> <span class="n">hello</span> <span class="o">=</span> <span class="n">HelloPrx</span><span class="o">::</span><span class="n">uncheckedCast</span><span class="p">(</span><span class="n">communicator</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">stringToProxy</span><span class="p">(</span><span class="s">&quot;hello:tcp -h remote.host.com -p 10000&quot;</span><span class="p">));</span>
-<span class="n">ConnectionPtr</span> <span class="n">conn</span> <span class="o">=</span> <span class="n">hello</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">ice_getConnection</span><span class="p">();</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>HelloPrx hello = HelloPrx::uncheckedCast(communicator-&gt;stringToProxy("hello:tcp -h remote.host.com -p 10000"));
+ConnectionPtr conn = hello-&gt;ice_getConnection();
 </code></pre>
-</div></p>
+
+<p>{% endhighlight %}</p>
 
 <p>ICE隐藏了网络连接的细节。当ICE发现需要建立连接时才会去建立，例如以上例子中当获得一个Proxy时（这里是HelloPrx），ICE并不建立网络连接，当某个时刻通过该Proxy调用服务器端的某个接口时，ICE发现对应的网络连接没有建立，则发起网络连接。</p>
 
