@@ -4,7 +4,7 @@
   <title><![CDATA[Tag: wxLua | loop in codes]]></title>
   <link href="http://codemacro.com/tags/wxlua/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2013-03-21T21:22:08+08:00</updated>
+  <updated>2013-03-21T21:28:51+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -25,134 +25,138 @@
 <!-- more -->
 
 
-<h2>{% highlight lua %}</h2>
+<h2><div class="highlight"><pre><code class="lua"><span class="o">&lt;/</span><span class="n">h2</span><span class="o">&gt;</span>
 
-<p>-- file: wxListCtrlTextEdit.lua
--- author: Kevin Lynx</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">-- file: wxListCtrlTextEdit.lua</span>
+<span class="c1">-- author: Kevin Lynx&lt;/p&gt;</span>
 
-<h2>-- date: 08.06.2012</h2>
+<span class="o">&lt;</span><span class="n">h2</span><span class="o">&gt;</span><span class="c1">-- date: 08.06.2012&lt;/h2&gt;</span>
 
-<p>local EditList = {}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kd">local</span> <span class="n">EditList</span> <span class="o">=</span> <span class="p">{}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>-- get the column by an abs point
-function EditList:getColumn(x)</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">-- get the column by an abs point</span>
+<span class="k">function</span> <span class="nf">EditList</span><span class="p">:</span><span class="n">getColumn</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>local cols = self.listctrl:GetColumnCount()
-local cx = 0
-for i = 0, cols - 1 do
-    local w = self.listctrl:GetColumnWidth(i)
-    if x &lt;= cx + w then return i end
-    cx = cx + w
-end
-return -1
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kd">local</span> <span class="n">cols</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">listctrl</span><span class="p">:</span><span class="n">GetColumnCount</span><span class="p">()</span>
+<span class="kd">local</span> <span class="n">cx</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">cols</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">do</span>
+    <span class="kd">local</span> <span class="n">w</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">listctrl</span><span class="p">:</span><span class="n">GetColumnWidth</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">x</span> <span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">=</span> <span class="n">cx</span> <span class="o">+</span> <span class="n">w</span> <span class="k">then</span> <span class="k">return</span> <span class="n">i</span> <span class="k">end</span>
+    <span class="n">cx</span> <span class="o">=</span> <span class="n">cx</span> <span class="o">+</span> <span class="n">w</span>
+<span class="k">end</span>
+<span class="k">return</span> <span class="o">-</span><span class="mi">1</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">-- when a mouse down, show a text edit control</span>
+<span class="k">function</span> <span class="nf">EditList</span><span class="p">:</span><span class="n">onLeftDown</span><span class="p">(</span><span class="n">evt</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">if</span> <span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">IsShown</span><span class="p">()</span> <span class="k">then</span>
+    <span class="n">self</span><span class="p">:</span><span class="n">closeEditor</span><span class="p">()</span>
+<span class="k">end</span>
+<span class="kd">local</span> <span class="n">p</span> <span class="o">=</span> <span class="n">evt</span><span class="p">:</span><span class="n">GetPoint</span><span class="p">()</span>
+<span class="kd">local</span> <span class="n">row</span> <span class="o">=</span> <span class="n">evt</span><span class="p">:</span><span class="n">GetIndex</span><span class="p">()</span>
+<span class="kd">local</span> <span class="n">col</span> <span class="o">=</span> <span class="n">self</span><span class="p">:</span><span class="n">getColumn</span><span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="n">x</span><span class="p">)</span>
+<span class="kd">local</span> <span class="n">rect</span> <span class="o">=</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxListCtrlEx</span><span class="p">.</span><span class="n">GetSubItemRect</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">listctrl</span><span class="p">,</span> <span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span>
+<span class="n">rect</span><span class="p">:</span><span class="n">SetHeight</span><span class="p">(</span><span class="n">rect</span><span class="p">:</span><span class="n">GetHeight</span><span class="p">()</span> <span class="o">+</span> <span class="mi">5</span><span class="p">)</span> <span class="c1">-- adjust</span>
+<span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">SetSize</span><span class="p">(</span><span class="n">rect</span><span class="p">)</span>
+<span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">Show</span><span class="p">()</span>
+<span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">SetValue</span><span class="p">(</span><span class="n">wx</span><span class="p">.</span><span class="n">wxListCtrlEx</span><span class="p">.</span><span class="n">GetItemText</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">listctrl</span><span class="p">,</span> <span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">))</span>
+<span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">SetFocus</span><span class="p">()</span>
+<span class="n">self</span><span class="p">.</span><span class="n">col</span> <span class="o">=</span> <span class="n">col</span>
+<span class="n">self</span><span class="p">.</span><span class="n">row</span> <span class="o">=</span> <span class="n">row</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">function</span> <span class="nf">EditList</span><span class="p">:</span><span class="n">closeEditor</span><span class="p">()</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">if</span> <span class="ow">not</span> <span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">IsShown</span><span class="p">()</span> <span class="k">then</span> <span class="k">return</span> <span class="k">end</span>
+<span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">Hide</span><span class="p">()</span>
+<span class="n">self</span><span class="p">.</span><span class="n">listctrl</span><span class="p">:</span><span class="n">SetItem</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">row</span><span class="p">,</span> <span class="n">self</span><span class="p">.</span><span class="n">col</span><span class="p">,</span> <span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">GetValue</span><span class="p">())</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">function</span> <span class="nf">EditList</span><span class="p">:</span><span class="n">initialize</span><span class="p">()</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">self</span><span class="p">.</span><span class="n">editor</span> <span class="o">=</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxTextCtrl</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">listctrl</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxID_ANY</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxDefaultPosition</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxDefaultSize</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxTE_PROCESS_ENTER</span> <span class="o">+</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxTE_RICH2</span><span class="p">)</span>
+<span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">Connect</span><span class="p">(</span><span class="n">wx</span><span class="p">.</span><span class="n">wxEVT_COMMAND_TEXT_ENTER</span><span class="p">,</span> <span class="k">function</span> <span class="p">()</span> <span class="n">self</span><span class="p">:</span><span class="n">closeEditor</span><span class="p">()</span> <span class="k">end</span><span class="p">)</span>
+<span class="c1">-- not work actually</span>
+<span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">Connect</span><span class="p">(</span><span class="n">wx</span><span class="p">.</span><span class="n">wxEVT_COMMAND_KILL_FOCUS</span><span class="p">,</span> <span class="k">function</span> <span class="p">()</span> <span class="n">self</span><span class="p">:</span><span class="n">closeEditor</span><span class="p">()</span> <span class="k">end</span><span class="p">)</span>
+<span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">Hide</span><span class="p">()</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">function</span> <span class="nc">wx</span><span class="p">.</span><span class="nf">wxListCtrlTextEdit</span><span class="p">(</span><span class="n">listctrl</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kd">local</span> <span class="n">o</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">listctrl</span> <span class="o">=</span> <span class="n">listctrl</span><span class="p">,</span>
+    <span class="n">editor</span> <span class="o">=</span> <span class="kc">nil</span><span class="p">,</span>
+<span class="p">}</span>
+<span class="kd">local</span> <span class="n">editlist</span> <span class="o">=</span> <span class="n">newObject</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">EditList</span><span class="p">)</span>
+<span class="n">editlist</span><span class="p">:</span><span class="n">initialize</span><span class="p">()</span>
+<span class="n">listctrl</span><span class="p">:</span><span class="n">Connect</span><span class="p">(</span><span class="n">wx</span><span class="p">.</span><span class="n">wxEVT_COMMAND_LIST_ITEM_RIGHT_CLICK</span><span class="p">,</span> <span class="k">function</span> <span class="p">(</span><span class="n">evt</span><span class="p">)</span> <span class="n">editlist</span><span class="p">:</span><span class="n">onLeftDown</span><span class="p">(</span><span class="n">evt</span><span class="p">)</span> <span class="k">end</span><span class="p">)</span>
+<span class="n">listctrl</span><span class="p">:</span><span class="n">Connect</span><span class="p">(</span><span class="n">wx</span><span class="p">.</span><span class="n">wxEVT_COMMAND_LIST_ITEM_FOCUSED</span><span class="p">,</span> <span class="k">function</span> <span class="p">()</span> <span class="n">editlist</span><span class="p">:</span><span class="n">closeEditor</span><span class="p">()</span> <span class="k">end</span><span class="p">)</span>
+<span class="k">return</span> <span class="n">listctrl</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
 </code></pre>
-
-<p>end</p>
-
-<p>-- when a mouse down, show a text edit control
-function EditList:onLeftDown(evt)</p>
-
-<pre><code>if self.editor:IsShown() then
-    self:closeEditor()
-end
-local p = evt:GetPoint()
-local row = evt:GetIndex()
-local col = self:getColumn(p.x)
-local rect = wx.wxListCtrlEx.GetSubItemRect(self.listctrl, row, col)
-rect:SetHeight(rect:GetHeight() + 5) -- adjust
-self.editor:SetSize(rect)
-self.editor:Show()
-self.editor:SetValue(wx.wxListCtrlEx.GetItemText(self.listctrl, row, col))
-self.editor:SetFocus()
-self.col = col
-self.row = row
-</code></pre>
-
-<p>end</p>
-
-<p>function EditList:closeEditor()</p>
-
-<pre><code>if not self.editor:IsShown() then return end
-self.editor:Hide()
-self.listctrl:SetItem(self.row, self.col, self.editor:GetValue())
-</code></pre>
-
-<p>end</p>
-
-<p>function EditList:initialize()</p>
-
-<pre><code>self.editor = wx.wxTextCtrl(self.listctrl, wx.wxID_ANY, "", wx.wxDefaultPosition, wx.wxDefaultSize, wx.wxTE_PROCESS_ENTER + wx.wxTE_RICH2)
-self.editor:Connect(wx.wxEVT_COMMAND_TEXT_ENTER, function () self:closeEditor() end)
--- not work actually
-self.editor:Connect(wx.wxEVT_COMMAND_KILL_FOCUS, function () self:closeEditor() end)
-self.editor:Hide()
-</code></pre>
-
-<p>end</p>
-
-<p>function wx.wxListCtrlTextEdit(listctrl)</p>
-
-<pre><code>local o = {
-    listctrl = listctrl,
-    editor = nil,
-}
-local editlist = newObject(o, EditList)
-editlist:initialize()
-listctrl:Connect(wx.wxEVT_COMMAND_LIST_ITEM_RIGHT_CLICK, function (evt) editlist:onLeftDown(evt) end)
-listctrl:Connect(wx.wxEVT_COMMAND_LIST_ITEM_FOCUSED, function () editlist:closeEditor() end)
-return listctrl
-</code></pre>
-
-<p>end</p>
-
-<p>{% endhighlight %}</p>
+</div></p>
 
 <p>其原理就是获取到当前鼠标点击所在的子item位置，然后在此位置显示一个wxEditCtrl即可。以上代码需要依赖我之前写的<a href="http://codemacro.com/2012/08/02/simple-oo-in-lua/">Lua里实现简单的类-对象</a>中的代码，同时依赖以下针对wxListCtrl的扩展接口：</p>
 
-<h2>{% highlight lua %}</h2>
+<h2><div class="highlight"><pre><code class="lua"><span class="o">&lt;/</span><span class="n">h2</span><span class="o">&gt;</span>
 
-<p>-- file: wxListCtrlExtend.lua
--- author: Kevin Lynx
--- date: 08.07.2012</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">-- file: wxListCtrlExtend.lua</span>
+<span class="c1">-- author: Kevin Lynx</span>
+<span class="c1">-- date: 08.07.2012&lt;/p&gt;</span>
 
-<h2>-- brief: extend some util functions to wx.wxListCtrl</h2>
+<span class="o">&lt;</span><span class="n">h2</span><span class="o">&gt;</span><span class="c1">-- brief: extend some util functions to wx.wxListCtrl&lt;/h2&gt;</span>
 
-<p>wx.wxListCtrlEx = {}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">wx</span><span class="p">.</span><span class="n">wxListCtrlEx</span> <span class="o">=</span> <span class="p">{}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>function wx.wxListCtrlEx.GetSubItemRect(listctrl, item, col)</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">function</span> <span class="nc">wx</span><span class="p">.</span><span class="nf">wxListCtrlEx</span><span class="p">.</span><span class="n">GetSubItemRect</span><span class="p">(</span><span class="n">listctrl</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>local rect = wx.wxRect()
-listctrl:GetItemRect(item, rect)
-local x = 0
-local w = 0
-for i = 0, col do
-    w = listctrl:GetColumnWidth(i)
-    x = x + w
-end
-return wx.wxRect(x - w, rect:GetY(), w, rect:GetHeight())
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kd">local</span> <span class="n">rect</span> <span class="o">=</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxRect</span><span class="p">()</span>
+<span class="n">listctrl</span><span class="p">:</span><span class="n">GetItemRect</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">rect</span><span class="p">)</span>
+<span class="kd">local</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="kd">local</span> <span class="n">w</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">col</span> <span class="k">do</span>
+    <span class="n">w</span> <span class="o">=</span> <span class="n">listctrl</span><span class="p">:</span><span class="n">GetColumnWidth</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">w</span>
+<span class="k">end</span>
+<span class="k">return</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxRect</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">w</span><span class="p">,</span> <span class="n">rect</span><span class="p">:</span><span class="n">GetY</span><span class="p">(),</span> <span class="n">w</span><span class="p">,</span> <span class="n">rect</span><span class="p">:</span><span class="n">GetHeight</span><span class="p">())</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">function</span> <span class="nc">wx</span><span class="p">.</span><span class="nf">wxListCtrlEx</span><span class="p">.</span><span class="n">GetItemText</span><span class="p">(</span><span class="n">listctrl</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kd">local</span> <span class="n">info</span> <span class="o">=</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxListItem</span><span class="p">()</span>
+<span class="n">info</span><span class="p">:</span><span class="n">SetId</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+<span class="n">info</span><span class="p">:</span><span class="n">SetColumn</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+<span class="n">info</span><span class="p">:</span><span class="n">SetMask</span><span class="p">(</span><span class="n">wx</span><span class="p">.</span><span class="n">wxLIST_MASK_TEXT</span><span class="p">)</span>
+<span class="n">listctrl</span><span class="p">:</span><span class="n">GetItem</span><span class="p">(</span><span class="n">info</span><span class="p">)</span>
+<span class="k">return</span> <span class="n">info</span><span class="p">:</span><span class="n">GetText</span><span class="p">()</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
 </code></pre>
-
-<p>end</p>
-
-<p>function wx.wxListCtrlEx.GetItemText(listctrl, item, col)</p>
-
-<pre><code>local info = wx.wxListItem()
-info:SetId(item)
-info:SetColumn(col)
-info:SetMask(wx.wxLIST_MASK_TEXT)
-listctrl:GetItem(info)
-return info:GetText()
-</code></pre>
-
-<p>end</p>
-
-<p>{% endhighlight %}</p>
+</div></p>
 
 <p>在我看到的wxWidgets官方文档里，其实wxListCtrl已经有<code>GetSubItemRect</code>接口，并且在另一些示例代码里，也看到了<code>GetItemText</code>接口，但是，我使用的版本里没有，所以只好自己写。基于以上，要使用这个可以支持编辑子item的wxListCtrl，可以：</p>
 
-<p>{% highlight lua %}
-list = wx.wxListCtrlTextEdit(wx.wxListCtrl(dialog, wx.wxID_ANY, wx.wxDefaultPosition, wx.wxDefaultSize, wx.wxLC_REPORT))
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="lua"><span class="n">list</span> <span class="o">=</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxListCtrlTextEdit</span><span class="p">(</span><span class="n">wx</span><span class="p">.</span><span class="n">wxListCtrl</span><span class="p">(</span><span class="n">dialog</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxID_ANY</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxDefaultPosition</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxDefaultSize</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxLC_REPORT</span><span class="p">))</span>
+</code></pre>
+</div></p>
 
 <p>也就是通过wx.wxListCtrlTextEdit这个函数做下处理，这个函数返回的是本身的wxListCtrl。当然更好的方式是使用继承之类的方式，开发一种新的控件，但在Lua中，针对usedata类型的扩展貌似只能这样了。</p>
 

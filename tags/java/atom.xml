@@ -4,7 +4,7 @@
   <title><![CDATA[Tag: java | loop in codes]]></title>
   <link href="http://codemacro.com/tags/java/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2013-03-21T21:22:08+08:00</updated>
+  <updated>2013-03-21T21:28:51+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -26,26 +26,26 @@
 
 <p>闭包支持将代码块作为函数参数传递。这在写很多代码时会比较方便，例如以下代码打印10次字符串：</p>
 
-<p>{% highlight ruby %}
-10.times { puts "Hello" }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="ruby"><span class="mi">10</span><span class="o">.</span><span class="n">times</span> <span class="p">{</span> <span class="nb">puts</span> <span class="s2">&quot;Hello&quot;</span> <span class="p">}</span>
+</code></pre>
+</div></p>
 
 <!-- more -->
 
 
 <p>又例如针对数组的每个元素做一些事情（do...end是上例中{}的替代）：</p>
 
-<p>{% highlight ruby %}
-array.each do |item|
-  item.do_something
-end
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="ruby"><span class="n">array</span><span class="o">.</span><span class="n">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">item</span><span class="o">|</span>
+  <span class="n">item</span><span class="o">.</span><span class="n">do_something</span>
+<span class="k">end</span>
+</code></pre>
+</div></p>
 
 <p>也可以构建一个新的数组：</p>
 
-<p>{% highlight ruby %}
-array.collect { |number| number * number }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="ruby"><span class="n">array</span><span class="o">.</span><span class="n">collect</span> <span class="p">{</span> <span class="o">|</span><span class="n">number</span><span class="o">|</span> <span class="n">number</span> <span class="o">*</span> <span class="n">number</span> <span class="p">}</span>
+</code></pre>
+</div></p>
 
 <p>Ruby中闭包的使用随处可见，它的语法形式太简单，这使得要使用它时所付出的代价很小（想想其他语言里得手动构造一个函数对象吧）。</p>
 
@@ -53,39 +53,39 @@ array.collect { |number| number * number }
 
 <p>使用continuation你可以保存一块代码的执行状态，以便将来某个时刻恢复执行。这就像游戏存档一样，玩到一半存档，一段时间回来后取出存档从上次的进度继续玩。</p>
 
-<p>{% highlight ruby %}
-require 'continuation' # 原文中未给这句，须加上</p>
+<p><div class="highlight"><pre><code class="ruby"><span class="nb">require</span> <span class="s1">&#39;continuation&#39;</span> <span class="c1"># 原文中未给这句，须加上&lt;/p&gt;</span>
 
-<p>def loop
-  for i in 1..10</p>
+<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span><span class="k">def</span> <span class="nf">loop</span>
+  <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="mi">1</span><span class="o">.</span><span class="n">.</span><span class="mi">10</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
 
-<pre><code>puts i
-callcc { |c| return c } if i == 5
+<span class="sr">&lt;pre&gt;&lt;code&gt;puts i</span>
+<span class="sr">callcc { |c| return c } if i == 5</span>
+<span class="sr">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;</span><span class="sr">/pre&gt;</span>
+
+<span class="sr">&lt;p&gt;  end</span>
+<span class="sr">end</span>
 </code></pre>
-
-<p>  end
-end
-{% endhighlight %}</p>
+</div></p>
 
 <p><code>loop</code>函数执行里面那个循环时，当<code>i==5</code>就调用<code>callcc</code>函数（貌似现在Java已有这个了），该函数在回调传入的闭包时构建了一个continuation对象，以上代码直接将此对象返回，循环暂停于<code>i==5</code>。执行代码<code>continuation = loop</code>输出：</p>
 
-<p>{% highlight ruby %}
-1
-2
-3
-4
-5
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="ruby"><span class="mi">1</span>
+<span class="mi">2</span>
+<span class="mi">3</span>
+<span class="mi">4</span>
+<span class="mi">5</span>
+</code></pre>
+</div></p>
 
 <p>然后你可以在任意时刻恢复执行那个循环：<code>continuation.call</code>，得到：</p>
 
-<p>{% highlight ruby %}
-6
-7
-8
-9
-10
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="ruby"><span class="mi">6</span>
+<span class="mi">7</span>
+<span class="mi">8</span>
+<span class="mi">9</span>
+<span class="mi">10</span>
+</code></pre>
+</div></p>
 
 <p>这个continuation和Lua里的<code>coroutine</code>很像，可以用于实现轻量级的线程。</p>
 
@@ -97,51 +97,51 @@ end
 
 <p>这个算是Ruby里用的比较多的特性。open classes可以让你在很多情况下“打开“并重定义某个类，这个类可以是你使用的任意库里的类。Ruby里的类并不是一个封闭的代码集合，作为一个类库的使用者你甚至可以不用修改类库的代码而重新定义、扩展里面的接口。例如Ruby中的数字其实就是Fixnum类，而我们可以为Fixnum直接添加更多的接口（原文的代码有问题，以下我做了修改）：</p>
 
-<p>{% highlight ruby %}
-class Fixnum
-  def days</p>
+<p><div class="highlight"><pre><code class="ruby"><span class="k">class</span> <span class="nc">Fixnum</span>
+  <span class="k">def</span> <span class="nf">days</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
 
-<pre><code>self.hours * 24
+<span class="sr">&lt;pre&gt;&lt;code&gt;self.hours * 24</span>
+<span class="sr">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;</span><span class="sr">/pre&gt;</span>
+
+<span class="sr">&lt;p&gt;  end&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span>  <span class="k">def</span> <span class="nf">hours</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
+
+<span class="sr">&lt;pre&gt;&lt;code&gt;self.minutes * 60</span>
+<span class="sr">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;</span><span class="sr">/pre&gt;</span>
+
+<span class="sr">&lt;p&gt;  end&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span>  <span class="k">def</span> <span class="nf">minutes</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
+
+<span class="sr">&lt;pre&gt;&lt;code&gt;self.seconds * 60</span>
+<span class="sr">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;</span><span class="sr">/pre&gt;</span>
+
+<span class="sr">&lt;p&gt;  end&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span>  <span class="k">def</span> <span class="nf">seconds</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
+
+<span class="sr">&lt;pre&gt;&lt;code&gt;self</span>
+<span class="sr">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;</span><span class="sr">/pre&gt;</span>
+
+<span class="sr">&lt;p&gt;  end&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span>  <span class="k">def</span> <span class="nf">from_now</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
+
+<span class="sr">&lt;pre&gt;&lt;code&gt;Time.now + self</span>
+<span class="sr">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;</span><span class="sr">/pre&gt;</span>
+
+<span class="sr">&lt;p&gt;  end&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span>  <span class="k">def</span> <span class="nf">ago</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
+
+<span class="sr">&lt;pre&gt;&lt;code&gt;Time.now - self</span>
+<span class="sr">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;</span><span class="sr">/pre&gt;</span>
+
+<span class="sr">&lt;p&gt;  end</span>
+<span class="sr">end</span>
 </code></pre>
-
-<p>  end</p>
-
-<p>  def hours</p>
-
-<pre><code>self.minutes * 60
-</code></pre>
-
-<p>  end</p>
-
-<p>  def minutes</p>
-
-<pre><code>self.seconds * 60
-</code></pre>
-
-<p>  end</p>
-
-<p>  def seconds</p>
-
-<pre><code>self
-</code></pre>
-
-<p>  end</p>
-
-<p>  def from_now</p>
-
-<pre><code>Time.now + self
-</code></pre>
-
-<p>  end</p>
-
-<p>  def ago</p>
-
-<pre><code>Time.now - self
-</code></pre>
-
-<p>  end
-end
-{% endhighlight %}</p>
+</div></p>
 
 <p>基于以上，我们可以写出<code>10.days.ago</code>或者<code>6.hours.from_now</code>这样的代码。这有助于构建DSL(domain specific language)。</p>
 
@@ -149,13 +149,13 @@ end
 
 <p>Ruby中一切都是对象。这让我们写代码变得更容易，因为不用处理特殊情况。这些特殊情况主要就是很多基础数据类型并非对象，但Ruby里是。Ruby里每个对象都有一个函数<code>class</code>，表示该对象的类型：</p>
 
-<p>{% highlight ruby %}
-1.class # => Fixnum
-2.5.class # = > Float
-"hello".class # => String
-[1, 2].class # => Array
-(1..2).class # => Range
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="ruby"><span class="mi">1</span><span class="o">.</span><span class="n">class</span> <span class="c1"># =&gt; Fixnum</span>
+<span class="mi">2</span><span class="o">.</span><span class="mi">5</span><span class="o">.</span><span class="n">class</span> <span class="c1"># = &gt; Float</span>
+<span class="s2">&quot;hello&quot;</span><span class="o">.</span><span class="n">class</span> <span class="c1"># =&gt; String</span>
+<span class="o">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="o">].</span><span class="n">class</span> <span class="c1"># =&gt; Array</span>
+<span class="p">(</span><span class="mi">1</span><span class="o">.</span><span class="n">.</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">class</span> <span class="c1"># =&gt; Range</span>
+</code></pre>
+</div></p>
 
 <p>全文完。</p>
 ]]></content>

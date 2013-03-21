@@ -4,7 +4,7 @@
   <title><![CDATA[Tag: moai | loop in codes]]></title>
   <link href="http://codemacro.com/tags/moai/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2013-03-21T21:22:08+08:00</updated>
+  <updated>2013-03-21T21:28:51+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -25,77 +25,77 @@
 <!-- more -->
 
 
-<p>{% highlight lua %}
-local function newindex(self, key, value)</p>
+<p><div class="highlight"><pre><code class="lua"><span class="kd">local</span> <span class="k">function</span> <span class="nf">newindex</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>getmetatable(self).__object[key] = value
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="nb">getmetatable</span><span class="p">(</span><span class="n">self</span><span class="p">).</span><span class="n">__object</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kd">local</span> <span class="k">function</span> <span class="nf">index</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">return</span> <span class="nb">getmetatable</span><span class="p">(</span><span class="n">self</span><span class="p">).</span><span class="n">__object</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">function</span> <span class="nf">newObject</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">class</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">class</span><span class="p">.</span><span class="n">__index</span> <span class="o">=</span> <span class="n">class</span>
+<span class="nb">setmetatable</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">class</span><span class="p">)</span>
+<span class="k">return</span> <span class="nb">setmetatable</span><span class="p">({},</span> <span class="p">{</span> <span class="n">__newindex</span> <span class="o">=</span> <span class="n">newindex</span><span class="p">,</span> <span class="n">__index</span> <span class="o">=</span> <span class="n">index</span><span class="p">,</span> <span class="n">__object</span> <span class="o">=</span> <span class="n">o</span> <span class="p">})</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span>
 </code></pre>
-
-<p>end</p>
-
-<p>local function index(self, key)</p>
-
-<pre><code>return getmetatable(self).__object[key]
-</code></pre>
-
-<p>end</p>
-
-<p>function newObject(o, class)</p>
-
-<pre><code>class.__index = class
-setmetatable(o, class)
-return setmetatable({}, { __newindex = newindex, __index = index, __object = o })
-</code></pre>
-
-<p>end
-{% endhighlight %}</p>
+</div></p>
 
 <p>基于newObject函数，可以这样定义类：</p>
 
-<p>{% highlight lua %}
-Button = {}</p>
+<p><div class="highlight"><pre><code class="lua"><span class="n">Button</span> <span class="o">=</span> <span class="p">{}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>function Button.new(text, x, y, onclick, parent)</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">function</span> <span class="nc">Button</span><span class="p">.</span><span class="nf">new</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">onclick</span><span class="p">,</span> <span class="n">parent</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>-- 定义这个类的数据成员
-local obj = {
-    text = text,
-    onclick = onclick,
-    normal_img = nil,
-    text_inst = nil,
-    hover_img = nil,
-}
-obj = newObject(obj, Button)
-...
-return obj
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="c1">-- 定义这个类的数据成员</span>
+<span class="kd">local</span> <span class="n">obj</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="n">text</span><span class="p">,</span>
+    <span class="n">onclick</span> <span class="o">=</span> <span class="n">onclick</span><span class="p">,</span>
+    <span class="n">normal_img</span> <span class="o">=</span> <span class="kc">nil</span><span class="p">,</span>
+    <span class="n">text_inst</span> <span class="o">=</span> <span class="kc">nil</span><span class="p">,</span>
+    <span class="n">hover_img</span> <span class="o">=</span> <span class="kc">nil</span><span class="p">,</span>
+<span class="p">}</span>
+<span class="n">obj</span> <span class="o">=</span> <span class="n">newObject</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Button</span><span class="p">)</span>
+<span class="o">...</span>
+<span class="k">return</span> <span class="n">obj</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">function</span> <span class="nf">Button</span><span class="p">:</span><span class="n">onTouchDown</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;...</span>
+<span class="c1">-- 可以访问成员，即使看起来normal_img不属于Button这个table</span>
+<span class="n">self</span><span class="p">.</span><span class="n">normal_img</span><span class="p">.</span><span class="n">visible</span> <span class="o">=</span> <span class="kc">true</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">function</span> <span class="nf">Button</span><span class="p">:</span><span class="n">onTouchUp</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;...</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span>
 </code></pre>
-
-<p>end</p>
-
-<p>function Button:onTouchDown(x, y)</p>
-
-<pre><code>...
--- 可以访问成员，即使看起来normal_img不属于Button这个table
-self.normal_img.visible = true
-</code></pre>
-
-<p>end</p>
-
-<p>function Button:onTouchUp(x, y)</p>
-
-<pre><code>...
-</code></pre>
-
-<p>end
-{% endhighlight %}</p>
+</div></p>
 
 <p>通过以上定义后，就可以以面向对象的方式来使用Button类了：</p>
 
-<p>{% highlight lua %}
-local btn = Button.new()
-btn:OnTouchDown(100, 100)
-btn:OnTouchUp(100, 100)
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="lua"><span class="kd">local</span> <span class="n">btn</span> <span class="o">=</span> <span class="n">Button</span><span class="p">.</span><span class="n">new</span><span class="p">()</span>
+<span class="n">btn</span><span class="p">:</span><span class="n">OnTouchDown</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+<span class="n">btn</span><span class="p">:</span><span class="n">OnTouchUp</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+</code></pre>
+</div></p>
 
 <p>其实现原理，主要就是将类的函数集通过<code>__index</code>开放给对象，在这些函数中，其<code>self</code>就像c++ 中的<code>this</code>一样拥有多态性，即其是创建出来的对象，而不是作为类角色的那个<code>table</code>（例如Button）。</p>
 
@@ -106,15 +106,15 @@ btn:OnTouchUp(100, 100)
 
 <p>其实根本没必要这么复杂，<code>newObject</code>函数多引入了一个空表，实在看不出有什么作用，修改后的版本简单直接：</p>
 
-<p>{% highlight lua %}
-function newObject(o, class)</p>
+<p><div class="highlight"><pre><code class="lua"><span class="k">function</span> <span class="nf">newObject</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">class</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>class.__index = class
-return setmetatable(o, class)
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">class</span><span class="p">.</span><span class="n">__index</span> <span class="o">=</span> <span class="n">class</span>
+<span class="k">return</span> <span class="nb">setmetatable</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">class</span><span class="p">)</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span>
 </code></pre>
-
-<p>end
-{% endhighlight %}</p>
+</div></p>
 
 <p>因为只需要将类定义的函数引入到实际对象里，使用方法相同。另外上文中提到的一句话：</p>
 

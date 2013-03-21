@@ -4,7 +4,7 @@
   <title><![CDATA[Tag: virtual | loop in codes]]></title>
   <link href="http://codemacro.com/tags/virtual/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2013-03-21T21:22:08+08:00</updated>
+  <updated>2013-03-21T21:28:51+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -25,65 +25,64 @@
 <!-- more -->
 
 
-<p>{% highlight c++ %}
-{% raw %}</p>
+<p><div class="highlight"><pre><code class="c"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<h1>include &lt;stdio.h></h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<p>class Base {
-public:</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">class</span> <span class="n">Base</span> <span class="p">{</span>
+<span class="nl">public:</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>Base() {
-    Init();
-}
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">Base</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">Init</span><span class="p">();</span>
+<span class="p">}</span>
 
-virtual ~Base() {
-    Release();
-}
+<span class="n">virtual</span> <span class="o">~</span><span class="n">Base</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">Release</span><span class="p">();</span>
+<span class="p">}</span>
 
-virtual void Init() {
-    printf("Base::Init\n");
-}
+<span class="n">virtual</span> <span class="kt">void</span> <span class="n">Init</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Base::Init</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
 
-virtual void Release() {
-    printf("Base::Release\n");
-}
+<span class="n">virtual</span> <span class="kt">void</span> <span class="n">Release</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Base::Release</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">class</span> <span class="n">Derived</span> <span class="o">:</span> <span class="n">public</span> <span class="n">Base</span> <span class="p">{</span>
+<span class="nl">public:</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">virtual</span> <span class="kt">void</span> <span class="n">Init</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Derived::Init</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="n">virtual</span> <span class="kt">void</span> <span class="n">Release</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Derived:Release</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">()</span>
+<span class="p">{</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">Base</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="n">new</span> <span class="n">Derived</span><span class="p">();</span>
+<span class="n">delete</span> <span class="n">obj</span><span class="p">;</span>
+<span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span>
 </code></pre>
-
-<p>};</p>
-
-<p>class Derived : public Base {
-public:</p>
-
-<pre><code>virtual void Init() {
-    printf("Derived::Init\n");
-}
-
-virtual void Release() {
-    printf("Derived:Release\n");
-}
-</code></pre>
-
-<p>};</p>
-
-<p>int main()
-{</p>
-
-<pre><code>Base *obj = new Derived();
-delete obj;
-return 0;
-</code></pre>
-
-<p>}
-{% endraw %}
-{% endhighlight %}</p>
+</div></p>
 
 <p>当在构造函数，包括析构函数中调用<code>virtual</code>函数时，预想中的多态是无法完成的，以上代码输出结果为：</p>
 
-<p>{% highlight c++ %}
-Base::Init
-Base::Release
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="c"><span class="n">Base</span><span class="o">::</span><span class="n">Init</span>
+<span class="n">Base</span><span class="o">::</span><span class="n">Release</span>
+</code></pre>
+</div></p>
 
 <p>从语言设计角度来看，我个人是不接受这种行为的。我觉得对一门语言而言，几乎所有特性都应该是一致的，不应该或尽量少地出现这种“例外“。如果我构造一个对象，让它以不同的方式被构造，这和改变它的某个行为有什么区别？（从这句话来看，似乎还真有区别）</p>
 
@@ -98,26 +97,26 @@ Base::Release
     <id>http://codemacro.com/2012/09/13/c-plus-plus-virtual-destructor</id>
     <content type="html"><![CDATA[<p>有一天有个同事在通过vld调试一个内存泄漏问题，折腾了很久然后找到我。我瞥了一眼他的代码，发现问题和我曾经遇到的一模一样：</p>
 
-<p>{% highlight c++ %}
-class Base {
-public:</p>
+<p><div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">Base</span> <span class="p">{</span>
+<span class="nl">public:</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>~Base();
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;~</span><span class="n">Base</span><span class="p">();</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">class</span> <span class="n">Derived</span> <span class="o">:</span> <span class="n">public</span> <span class="n">Base</span> <span class="p">{</span>
+<span class="nl">privated:</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="kt">int</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="n">m_data</span><span class="p">;</span>    
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">Base</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="n">new</span> <span class="n">Derived</span><span class="p">();</span>
+<span class="n">delete</span> <span class="n">obj</span><span class="p">;</span>
 </code></pre>
-
-<p>};</p>
-
-<p>class Derived : public Base {
-privated:</p>
-
-<pre><code>std::vector&lt;int&gt; m_data;    
-</code></pre>
-
-<p>};</p>
-
-<p>Base *obj = new Derived();
-delete obj;
-{% endhighlight %}</p>
+</div></p>
 
 <!-- more -->
 
