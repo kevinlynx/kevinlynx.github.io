@@ -13,4 +13,7 @@ comments: true
 
 不介意接收各种乱七八糟的邮件，但享有是否回复的权利，我的联系方式：kevinlynx at gmail dot com。
 
+我的腾讯微博：[kevinlynx](http://t.qq.com/kevinlynx)
+
+2012.12月离开待了5年的游戏公司，天下没有不散之宴席，目前在做一个SOA架构的网络平台，兼维护一个测试软件。
 
