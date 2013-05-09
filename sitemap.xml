@@ -169,8 +169,16 @@
         <lastmod>2013-03-21T21:22:08+08:00</lastmod>
     </url>
     <url>
+        <loc>http://codemacro.com/2013/04/11/programmer-erlang-team-shit/</loc>
+        <lastmod>2013-04-12T21:09:55+08:00</lastmod>
+    </url>
+    <url>
         <loc>http://codemacro.com/2013/04/11/rabbitmq-erlang/</loc>
         <lastmod>2013-04-12T21:02:50+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://codemacro.com/2013/05/08/thought-about-erlang/</loc>
+        <lastmod>2013-05-09T21:12:57+08:00</lastmod>
     </url>
     <url>
         <loc>http://codemacro.com/about.html</loc>
@@ -178,11 +186,11 @@
     </url>
     <url>
         <loc>http://codemacro.com/blog/archives/</loc>
-        <lastmod>2013-04-12T21:02:50+08:00</lastmod>
+        <lastmod>2013-05-09T21:12:57+08:00</lastmod>
     </url>
     <url>
         <loc>http://codemacro.com/</loc>
-        <lastmod>2013-04-12T21:02:50+08:00</lastmod>
+        <lastmod>2013-05-09T21:12:57+08:00</lastmod>
     </url>
     <url>
         <loc>http://codemacro.com/tips/</loc>

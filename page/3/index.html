@@ -74,6 +74,94 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2012/08/29/branch-predictor/">为什么处理排序的数组要比非排序的快？</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-08-29T19:55:00+08:00" pubdate data-updated="true">Aug 29<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>参考<a href="http://stackoverflow.com/questions/11227809/why-is-processing-a-sorted-array-faster-than-an-unsorted-array">Why is processing a sorted array faster than an unsorted array?</a></p>
+
+<h2>问题</h2>
+
+<p>看以下代码：</p>
+
+<div class="highlight"><pre><code class="c"><span class="cp">#include &lt;algorithm&gt;</span>
+<span class="cp">#include &lt;ctime&gt;</span>
+<span class="cp">#include &lt;iostream&gt;</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="c1">// generate data</span>
+    <span class="k">const</span> <span class="kt">unsigned</span> <span class="n">arraySize</span> <span class="o">=</span> <span class="mi">32768</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">data</span><span class="p">[</span><span class="n">arraySize</span><span class="p">];</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="n">c</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">c</span> <span class="o">&lt;</span> <span class="n">arraySize</span><span class="p">;</span> <span class="o">++</span><span class="n">c</span><span class="p">)</span>
+        <span class="n">data</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">rand</span><span class="p">()</span> <span class="o">%</span> <span class="mi">256</span><span class="p">;</span>
+
+
+    <span class="c1">// !!! with this, the next loop runs faster</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">sort</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">data</span> <span class="o">+</span> <span class="n">arraySize</span><span class="p">);</span>
+
+
+    <span class="c1">// test</span>
+    <span class="kt">clock_t</span> <span class="n">start</span> <span class="o">=</span> <span class="n">clock</span><span class="p">();</span>
+    <span class="kt">long</span> <span class="kt">long</span> <span class="n">sum</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">100000</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="c1">// primary loop</span>
+        <span class="k">for</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="n">c</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">c</span> <span class="o">&lt;</span> <span class="n">arraySize</span><span class="p">;</span> <span class="o">++</span><span class="n">c</span><span class="p">)</span>
+        <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">128</span><span class="p">)</span>
+                <span class="n">sum</span> <span class="o">+=</span> <span class="n">data</span><span class="p">[</span><span class="n">c</span><span class="p">];</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="kt">double</span> <span class="n">elapsedTime</span> <span class="o">=</span> <span class="n">static_cast</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="p">(</span><span class="n">clock</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span> <span class="o">/</span> <span class="n">CLOCKS_PER_SEC</span><span class="p">;</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">elapsedTime</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;sum = &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">sum</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+<p>问题就在于，去掉<code>std::sort</code>那一行，以上代码将运行更长的时间。在我的机器上未去掉<code>std::sort</code>耗时8.99s，去掉后耗时24.78s。编译器使用的是gcc4.4.3。事实上，以上代码跟编译器没有关系，甚至跟语言没有关系。那这是为什么呢？</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2012/08/29/branch-predictor/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2012/08/29/null-object-pattern/">Null Object模式</a></h1>
     
     
@@ -297,49 +385,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/08/14/dynamic-scope-in-lisp/">Lisp中定义变量*var*和var有什么不同？</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-08-14T15:53:00+08:00" pubdate data-updated="true">Aug 14<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>参考<a href="http://stackoverflow.com/questions/11932876/whats-difference-between-var-and-var-when-using-defvar">What&#8217;s difference between <em>var</em> and var when using defvar?</a></p>
-
-<p>其实，Common Lisp中使用defvar定义变量加不加星号没有区别。这只是一种Lisp程序员的约定。Lisp中并不使用特定的符号来影响语法元素，例如Ruby中通过给变量添加@前缀来标示该变量为类成员变量。这个问题引出了lisp总dynamic scope这个话题。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/08/14/dynamic-scope-in-lisp/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/4/">&larr; Older</a>
@@ -358,7 +403,7 @@
     <li class='category'><a href='/categories/ice/'>ICE (1)</a></li>
 <li class='category'><a href='/categories/c-c-/'>c/c++ (12)</a></li>
 <li class='category'><a href='/categories/clang/'>clang (1)</a></li>
-<li class='category'><a href='/categories/erlang/'>erlang (1)</a></li>
+<li class='category'><a href='/categories/erlang/'>erlang (2)</a></li>
 <li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
 <li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
 <li class='category'><a href='/categories/lua/'>lua (5)</a></li>
@@ -376,6 +421,10 @@
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/2013/05/08/thought-about-erlang/">erlang使用感受</a>
+      </li>
+    
+      <li class="post">
         <a href="/2013/04/11/rabbitmq-erlang/">erlang和RabbitMQ学习总结</a>
       </li>
     
@@ -389,10 +438,6 @@
     
       <li class="post">
         <a href="/2013/02/12/using-clang/">使用Clang实现C语言编程规范检查</a>
-      </li>
-    
-      <li class="post">
-        <a href="/2012/09/17/c-plus-plus-ctor-virtual/">C++陷阱：构造函数中的多态</a>
       </li>
     
   </ul>
@@ -413,6 +458,7 @@
 <a style="font-size: 90%" href="/tags/chat-server/">chat server</a>
 <a style="font-size: 90%" href="/tags/clang/">clang</a>
 <a style="font-size: 90%" href="/tags/destructor/">destructor</a>
+<a style="font-size: 118%" href="/tags/erlang/">erlang</a>
 <a style="font-size: 135%" href="/tags/game-develop/">game develop</a>
 <a style="font-size: 118%" href="/tags/html/">html</a>
 <a style="font-size: 90%" href="/tags/ice/">ice</a>
@@ -424,7 +470,6 @@
 <a style="font-size: 146%" href="/tags/ruby/">ruby</a>
 <a style="font-size: 90%" href="/tags/rup/">rup</a>
 <a style="font-size: 210%" href="/tags/tips/">tips</a>
-<a style="font-size: 90%" href="/tags/tolua/">tolua</a>
 <a style="font-size: 118%" href="/tags/virtual/">virtual</a>
 <a style="font-size: 118%" href="/tags/web/">web</a>
 
