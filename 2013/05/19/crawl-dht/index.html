@@ -216,6 +216,26 @@
 
 <p>最终的DHT爬虫除了需要实现DHT协议之外，还需要实现P2P文件下载协议，甚至包括一个种子文件解析模块。看起来包含不小的工作量。而如果要包装为一个资源搜索引擎，还会涉及到资源存储以及搜索，更别说前端呈现了。这个时候，如果你使用的语言不包含这些工具库，那实在是太悲剧了。没错，我就没找到一个erlang DHT库（倒是有erlang实现的BT客户端，懒得去剥了）。</p>
 
+<h2>UPDATE</h2>
+
+<p>通过详细阅读transmission里的DHT实现，一些之前的疑惑随之解开。</p>
+
+<h3>announce_peer会发给哪些节点</h3>
+
+<p>在一次对infohash的查询过程中，所有对本节点发出的get_peer作出回应的节点（不论这个回应节点回应的是nodes还是peers），当本节点取得peer信息时，就会对所有这些节点发出announce_peer。get_peer的回应消息里，不论是peer还是node，都会携带一个token，这样在将来收到对方的announce_peer时，就可以验证该token。</p>
+
+<h3>节点和bucket状态</h3>
+
+<p>在本地的路由表中，保存的node是有状态之分的。状态分为三种：good/dubious/bad。good节点基本可以断定该节点是一个在线的并且可以正常回应消息的节点；而bad节点则是可确定的无效节点，通常会尽快从路由表中移除；而dubious则是介于good和bad节点之间，表示可能有问题的节点，需要进一步发送例如ping消息来确认其状态。路由表中应该尽可能保证保存的是good节点，对查询消息的回应里也需携带好的节点。</p>
+
+<p>bucket也是有状态的，当一个bucket中的所有节点在一定时间之内都没有任何活动的时候，该bucket则应该考虑进行状态的确认，确认方式可以随机选择该bucket中的节点进行find_node操作（这也是find_node除了用于启动之外的唯一作用，但具体实现不见得使用这种方式）。没有消息来往的bucket则应该考虑移除。DHT中几乎所有操作都会涉及到bucket的索引，如果索引到一个所有节点都有问题的bucket，那么该操作可能就无法完成。</p>
+
+<h3>search在何时停止</h3>
+
+<p>首先，某次发起的search，无论是对node还是对peer，都可能导致进一步产生若干个search。这些search都是基于transaction id来标识的。由一次search导致产生的所有子search都拥有相同的transaction id，以使得在该search成功或失败时可以通过该transaction id来删除对应的所有search。transaction id也就是DHT中每个消息消息头&#8221;t&#8221;的值。</p>
+
+<p>但是search何时停止？transmission中是通过超时机制来停止。在search过程中，如果长时间没有收到跟该search关联的节点发来的回应消息，那么就撤销该search，表示搜索失败。</p>
+
 <h2>参考资料</h2>
 
 <ul>
