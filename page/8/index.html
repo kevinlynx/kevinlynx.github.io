@@ -74,6 +74,51 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2012/04/23/game-server-info-1/">谈谈我们的游戏逻辑服务器实现（一）</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-04-23T00:00:00+08:00" pubdate data-updated="true">Apr 23<span>rd</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>我们的逻辑服务器(Game Server，以下简称GS)主要逻辑大概是从去年夏天开始写的。因为很多基础模块，包括整体结构沿用了上个项目的代码，所以算不上从头开始做。转眼又快一年，我觉得回头总结下对于经验的积累太有必要。</p>
+
+<h2>整体架构</h2>
+
+<p>GS的架构很大程度取决于游戏的功能需求，当然更受限于上个项目的基础架构。基础架构包括场景、对象的关系管理，消息广播等。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2012/04/23/game-server-info-1/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2012/04/20/blog-on-github/">使用Github Page来写博客</a></h1>
     
     
@@ -263,47 +308,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2011/05/02/entity-property/">MMO游戏对象属性设计</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2011-05-02T00:00:00+08:00" pubdate data-updated="true">May 2<span>nd</span>, 2011</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>一般的MMORPG中，游戏对象主要包括怪物和玩家。这两类对象在经过游戏性方面的不断“进化”后，其属性数量及与之相关的逻辑往往会变得很巨大。如何将这一块做得既不损失效率，又能保证结构的灵活、清晰、可维护？本文将提供一种简单的结构。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2011/05/02/entity-property/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/9/">&larr; Older</a>
@@ -322,7 +326,7 @@
     <li class='category'><a href='/categories/ice/'>ICE (1)</a></li>
 <li class='category'><a href='/categories/c-c-/'>c/c++ (12)</a></li>
 <li class='category'><a href='/categories/clang/'>clang (1)</a></li>
-<li class='category'><a href='/categories/erlang/'>erlang (2)</a></li>
+<li class='category'><a href='/categories/erlang/'>erlang (3)</a></li>
 <li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
 <li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
 <li class='category'><a href='/categories/lua/'>lua (5)</a></li>
@@ -330,7 +334,7 @@
 <li class='category'><a href='/categories/network/'>network (1)</a></li>
 <li class='category'><a href='/categories/other/'>other (5)</a></li>
 <li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
-<li class='category'><a href='/categories/tips/'>tips (20)</a></li>
+<li class='category'><a href='/categories/tips/'>tips (21)</a></li>
 <li class='category'><a href='/categories/web/'>web (3)</a></li>
 
   </ul>
@@ -339,6 +343,10 @@
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2013/06/03/erlang-code-snippets/">erlang编程技巧若干</a>
+      </li>
     
       <li class="post">
         <a href="/2013/05/19/crawl-dht/">P2P中DHT网络爬虫</a>
@@ -356,10 +364,6 @@
         <a href="/2013/03/21/rup/">浅析软件工程开发方法学RUP</a>
       </li>
     
-      <li class="post">
-        <a href="/2013/02/15/ice-overview/">分布式程序开发平台ICE概览</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -374,17 +378,17 @@
   <ul class="tag-cloud">
 <a style="font-size: 118%" href="/tags/blog/">blog</a>
 <a style="font-size: 90%" href="/tags/branck-predictor/">branck predictor</a>
-<a style="font-size: 180%" href="/tags/c-c-/">c/c++</a>
+<a style="font-size: 178%" href="/tags/c-c-/">c/c++</a>
 <a style="font-size: 90%" href="/tags/chat-server/">chat server</a>
 <a style="font-size: 90%" href="/tags/clang/">clang</a>
 <a style="font-size: 90%" href="/tags/destructor/">destructor</a>
-<a style="font-size: 118%" href="/tags/erlang/">erlang</a>
-<a style="font-size: 135%" href="/tags/game-develop/">game develop</a>
+<a style="font-size: 134%" href="/tags/erlang/">erlang</a>
+<a style="font-size: 134%" href="/tags/game-develop/">game develop</a>
 <a style="font-size: 118%" href="/tags/html/">html</a>
 <a style="font-size: 90%" href="/tags/ice/">ice</a>
 <a style="font-size: 90%" href="/tags/java/">java</a>
-<a style="font-size: 156%" href="/tags/lisp/">lisp</a>
-<a style="font-size: 156%" href="/tags/lua/">lua</a>
+<a style="font-size: 154%" href="/tags/lisp/">lisp</a>
+<a style="font-size: 154%" href="/tags/lua/">lua</a>
 <a style="font-size: 90%" href="/tags/mmo/">mmo</a>
 <a style="font-size: 146%" href="/tags/octopress/">octopress</a>
 <a style="font-size: 146%" href="/tags/ruby/">ruby</a>

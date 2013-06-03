@@ -4,7 +4,7 @@
   <title><![CDATA[Category: tips | loop in codes]]></title>
   <link href="http://codemacro.com/categories/tips/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2013-05-25T21:07:46+08:00</updated>
+  <updated>2013-06-03T22:33:39+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,130 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[erlang编程技巧若干]]></title>
+    <link href="http://codemacro.com/2013/06/03/erlang-code-snippets/"/>
+    <updated>2013-06-03T21:53:00+08:00</updated>
+    <id>http://codemacro.com/2013/06/03/erlang-code-snippets</id>
+    <content type="html"><![CDATA[<h2>guard</h2>
+
+<p>guard可以以逗号或者分号分隔，以逗号分隔表示最终的结果为各个guard的and结果，以分号则是只要任意一个guard为true则最终结果为true。</p>
+
+<p><div class="highlight"><pre><code class="erlang"><span class="nf">guard</span><span class="p">(</span><span class="nv">X</span><span class="p">,</span> <span class="nv">Y</span><span class="p">)</span> <span class="k">when</span> <span class="ow">not</span><span class="p">(</span><span class="nv">X</span><span class="o">&gt;</span><span class="nv">Y</span><span class="p">),</span> <span class="nb">is_atom</span><span class="p">(</span><span class="nv">X</span><span class="p">)</span> <span class="o">-&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="nv">X</span> <span class="o">+</span> <span class="nv">Y</span><span class="p">.</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+</code></pre>
+</div></p>
+
+<p>guard在list comprehension中可以筛选元素：</p>
+
+<p><div class="highlight"><pre><code class="erlang"><span class="nv">NewNodes</span>  <span class="o">=</span> <span class="p">[</span><span class="nv">Node</span> <span class="p">||</span> <span class="nv">Node</span> <span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">-</span> <span class="nv">AllNodes</span><span class="p">,</span> <span class="ow">not</span> <span class="nn">gb_sets</span><span class="p">:</span><span class="nf">is_member</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="nv">NewQueried</span><span class="p">)],</span>
+</code></pre>
+</div></p>
+
+<p>guard中不能使用自定义函数，因为guard应该保证没有副作用，但自定义函数无法保证这一点，所以erlang禁止在guard中使用自定义函数。</p>
+
+<!-- more -->
+
+
+<h2>list comprehension</h2>
+
+<p>list comprehension是一个非常有用的语法特性，它可以用于构造一个新的list，可以用于将一种list映射到另一种list，可以筛选list元素。只要是跟list相关的操作，优先考虑用list comprehension来实现，将大大减少代码量。记住list comprehension的语法：</p>
+
+<pre><code>[Expression || Generators, Guards, Generators, ...]
+</code></pre>
+
+<h2>timer</h2>
+
+<p>一定时间后向进程发送消息：</p>
+
+<p><div class="highlight"><pre><code class="erlang"><span class="nn">erlang</span><span class="p">:</span><span class="nb">send_after</span><span class="p">(</span><span class="n">token_lifetime</span><span class="p">(),</span> <span class="n">self</span><span class="p">(),</span> <span class="n">renew_token</span><span class="p">),</span>
+</code></pre>
+</div></p>
+
+<p>一段时间后执行某个函数：</p>
+
+<p><div class="highlight"><pre><code class="erlang"><span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">TRef</span><span class="p">}</span> <span class="o">=</span> <span class="nn">timer</span><span class="p">:</span><span class="nf">apply_interval</span><span class="p">(</span><span class="nv">Interval</span><span class="p">,</span> <span class="o">?</span><span class="nv">MODULE</span><span class="p">,</span> <span class="n">announce</span><span class="p">,</span> <span class="p">[</span><span class="n">self</span><span class="p">()]),</span>
+</code></pre>
+</div></p>
+
+<h2>gb_trees/gb_set</h2>
+
+<h2>pattern match</h2>
+
+<p>pattern match有太多作用了：</p>
+
+<h3>pattern match in case</h3>
+
+<p>case中判定多个值，比其使用逻辑运算符简洁多了：</p>
+
+<p><div class="highlight"><pre><code class="erlang"><span class="nv">A</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="nv">B</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+<span class="k">case</span> <span class="p">{</span><span class="nv">A</span><span class="p">,</span> <span class="nv">B</span><span class="p">}</span> <span class="k">of</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="p">{_</span><span class="nv">C</span><span class="p">,</span> <span class="p">_</span><span class="nv">C</span><span class="p">}</span> <span class="o">-</span><span class="err">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="n">true</span><span class="p">;</span>
+<span class="p">{_,</span> <span class="p">_}</span> <span class="o">-</span><span class="err">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="n">false</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span>
+</code></pre>
+</div></p>
+
+<h3>pattern match to check data type</h3>
+
+<p>pattern match可以用于检测变量的类型，可以用于检测函数的返回值，就像C/C++中的assert一样，可以用于尽早检测出异常状态：</p>
+
+<p><div class="highlight"><pre><code class="erlang"><span class="nf">ping</span><span class="p">({</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">}</span> <span class="o">=</span> <span class="nv">IP</span><span class="p">,</span> <span class="nv">Port</span><span class="p">)</span> <span class="o">-&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">ok</span><span class="p">.</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">Ret</span><span class="p">}</span> <span class="o">=</span> <span class="n">call</span><span class="p">().</span>
+</code></pre>
+</div></p>
+
+<h2>list操作</h2>
+
+<h3>添加元素</h3>
+
+<p>添加元素进list有很多方式：</p>
+
+<p><div class="highlight"><pre><code class="erlang"><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">++</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">].</span>
+<span class="p">[</span><span class="mi">2</span><span class="p">|[</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">]].</span>
+</code></pre>
+</div></p>
+
+<h3>foldl/foldr</h3>
+
+<p>用于遍历list计算出一个“累加值“。</p>
+
+<p><div class="highlight"><pre><code class="erlang"><span class="nn">lists</span><span class="p">:</span><span class="nf">foldl</span><span class="p">(</span><span class="k">fun</span><span class="p">(</span><span class="nv">X</span><span class="p">,</span> <span class="nv">Sum</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nv">X</span> <span class="o">+</span> <span class="nv">Sum</span> <span class="k">end</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">]).</span>
+</code></pre>
+</div></p>
+
+<p>也就是遍历一个list，将每个元素传递给fun，将fun的返回值继续传递给下一个元素。</p>
+
+<h3>zip</h3>
+
+<p>将两个list一一对应构造出一个tuple，作为新的list里的元素。</p>
+
+<p><div class="highlight"><pre><code class="erlang"><span class="nn">lists</span><span class="p">:</span><span class="nf">zip</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]).</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;=</span><span class="err">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="p">[{</span><span class="mi">1</span><span class="p">,</span><span class="mi">4</span><span class="p">},{</span><span class="mi">2</span><span class="p">,</span><span class="mi">5</span><span class="p">},{</span><span class="mi">3</span><span class="p">,</span><span class="mi">6</span><span class="p">}]</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+</code></pre>
+</div></p>
+
+<h3>数字进制</h3>
+
+<p>16##FF，表示16进制数字0xFF，通用格式为scale##num，即scale进制下的num。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Octopress中的SEO]]></title>
@@ -285,81 +409,6 @@
 </div></p>
 
 <p>参考<a href="http://en.wikipedia.org/wiki/Null_Object_pattern">http://en.wikipedia.org/wiki/Null_Object_pattern</a></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[C++11中lambda概览]]></title>
-    <link href="http://codemacro.com/2012/08/21/c-plus-plus-11-lambda-overview/"/>
-    <updated>2012-08-21T16:44:00+08:00</updated>
-    <id>http://codemacro.com/2012/08/21/c-plus-plus-11-lambda-overview</id>
-    <content type="html"><![CDATA[<p>虽然我对C++11没有什么兴趣，因为C++03就已经有很多复杂的技术了。我曾经试图把我学到的那些复杂的C++技术应用到项目中，但悲剧地发现这给团队其他成员带来了不小的负担。其实也给未来一段时间的自己带来了不小的负担。尤其是template的应用，template代码从外表上就一副唬人的样子，就像即使你会Lisp，并且对Lisp中的括号不以为然，但看到满屏幕的括号时依然内心不安。</p>
-
-<p>但是稍微对C++11的一些特性做了解后，单从理论上来说，还是挺让人有兴趣的。我感觉C++11加入了不少函数式语言的特性和思想，这是我感兴趣的最大理由。今天来看看C++11中的lambda。</p>
-
-<!-- more -->
-
-
-<p>C++03中，在使用STL容器时，或者我自己写的类中，常有遍历的需求，本来写个functor传进去就可以，但是这functor偏偏写的很恶心。因为你需要局部定义一个结构体，重载operator()，并且，如果这个operator()依赖这个functor构建时的上下文信息，你得往这个结构体里塞入若干成员，当然还得让构造函数的参数变得越来越长。最后，在包含你这个functor使用以及结构体定义的这个代码块中，在其代码格式上就变得非常奇怪。如果你像我一样常这样应用，一定深有感触。</p>
-
-<p>然后，C++11来了，C++11中的lambda，就我个人而言，其语法还是非常现代的。来看看其文法形式（截自<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2008/n2550.pdf">N2550</a>）：</p>
-
-<pre><code>lambda-expression:
-      lambda-introducer lambda-parameter-declaration compound-statement
-lambda-introducer:
-      [ lambda-capture ]
-lambda-capture:
-      capture-default
-      capture-list
-      capture-default , capture-list
-capture-default:
-      &amp;
-      =
-capture-list:
-      capture
-      capture-list , capture
-capture:
-      identifier
-      &amp; identifier
-      this
-lambda-parameter-declaration:
-      ( lambda-parameter-declaration-list ) exception-specification lambda-return-type-clause
-lambda-parameter-declaration-list:
-      lambda-parameter
-      lambda-parameter , lambda-parameter-declaration-list
-lambda-parameter:
-      decl-specifier-seq declarator
-lambda-return-type-clause:
-      -&gt; type-id
-</code></pre>
-
-<p>翻译过来大致就是这样的形式：</p>
-
-<pre><code>[capture] (parameter) spec -&gt;return-type { body }
-</code></pre>
-
-<p>capture就是这个lambda实现里可以访问的这个lambda定义时作用域里的变量列表，就像Lua里的upvalue。其实我觉得这个才是lambda最方便程序员的地方，一般的函数式语言其实不需要显示声明这个列表，直接引用这些变量即可。后面的部分都比较好理解，parameter就是这个lambda被调用时的形参列表，return-type就是这个lambda的返回值类型，body自然就是这个lambda的实现。至于spec，主要就是指定异常及body里对capture里的变量的使用权限。一个例子：</p>
-
-<p><div class="highlight"><pre><code class="c"><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">ints</span><span class="p">;</span>
-<span class="n">ints</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mi">99</span><span class="p">);</span>
-<span class="n">ints</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mi">100</span><span class="p">);</span>
-<span class="n">ints</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mi">101</span><span class="p">);</span>
-<span class="kt">int</span> <span class="n">threhold</span> <span class="o">=</span> <span class="mi">100</span><span class="p">;</span>
-<span class="kt">int</span> <span class="n">sum</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-<span class="n">for_each</span><span class="p">(</span><span class="n">ints</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">ints</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="p">[</span><span class="n">threhold</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">sum</span><span class="p">]</span> <span class="p">(</span><span class="kt">int</span> <span class="n">v</span><span class="p">)</span> <span class="p">{</span> 
-        <span class="k">if</span> <span class="p">(</span><span class="n">v</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">=</span> <span class="n">threhold</span><span class="p">)</span> <span class="o">++</span> <span class="n">sum</span><span class="p">;</span>
-        <span class="p">});</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">sum</span><span class="p">);</span>
-</code></pre>
-</div></p>
-
-<p>capture使用了threhold和sum，但是threhold仅使用其值，而sum则使用了其引用，通过结果可以看出lambda中改变了sum的值。</p>
-
-<p>C++11正在被越来越多的编译器支持，也慢慢地支持得更好。这里有个<a href="http://wiki.apache.org/stdcxx/C++0xCompilerSupport">表</a>，罗列了C++11的各个特性在各个编译器上的支持情况，仅供查阅（以上示例代码测试于vs2010，即MSVC10.0）。</p>
 ]]></content>
   </entry>
   

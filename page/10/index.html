@@ -5,7 +5,7 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Rails中获取客户端时区 - loop in codes</title>
+  <title>loop in codes</title>
   <meta name="author" content="Kevin Lynx">
 
   
@@ -20,7 +20,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://codemacro.com/2012/07/20/get-client-timezone-in-rails">
+  <link rel="canonical" href="http://codemacro.com/page/10">
   <link href="/favicon.ico" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <script src="/javascripts/modernizr-2.0.js"></script>
@@ -66,12 +66,15 @@
 </nav>
   <div id="main">
     <div id="content">
-      <div>
-<article class="hentry" role="article">
+      <div class="blog-index">
   
+  
+  
+    <article>
+      
   <header>
     
-      <h1 class="entry-title">Rails中获取客户端时区</h1>
+      <h1 class="entry-title"><a href="/2011/03/13/lisp-writer/">用lisp开发博客客户端</a></h1>
     
     
       <p class="meta">
@@ -87,125 +90,41 @@
   
 
 
-<time datetime="2012-07-20T16:42:00+08:00" pubdate data-updated="true">Jul 20<span>th</span>, 2012</time>
+<time datetime="2011-03-13T00:00:00+08:00" pubdate data-updated="true">Mar 13<span>th</span>, 2011</time>
         
       </p>
     
   </header>
 
 
-<div class="entry-content"><p>开发网站功能时，有时候需要获取客户端（浏览器）所在的时区，然后根据不同的时区做一些不同的逻辑功能。这里提供一种方法，其思路为客户端通过js获取时区，然后发送给服务器，服务器存储时区到session中。</p>
+  <div class="entry-content"><p>最近一直在学习Lisp这门语言。回头一看，基本上接近1个月了。刚开始接触Lisp是因为看
+了&lt;Lisp本质&gt;，然后我发现有很多人宗教般地忠诚这门语言，于是就来了兴趣。</p>
 
-<div class="highlight"><pre><code class="javascript"><span class="kd">function</span> <span class="nx">submit_timezone</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span> <span class="p">{</span>
-  <span class="nx">$</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="nx">url</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;offset_min&#39;</span> <span class="o">:</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="p">(</span><span class="k">new</span> <span class="nb">Date</span><span class="p">()).</span><span class="nx">getTimezoneOffset</span><span class="p">())});</span>
-<span class="p">}</span>
+<p><img src="/assets/res/lisp_writer/lisp_believer.png" alt="lisp_believer" /></p>
 
-<span class="nx">$</span><span class="p">(</span><span class="nb">document</span><span class="p">).</span><span class="nx">ready</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
-    <span class="nx">submit_timezone</span><span class="p">(</span><span class="s1">&#39;&lt;%= sys_timezone_path %&gt;&#39;</span><span class="p">);</span>
-<span class="p">});</span>
-</code></pre>
-</div>
-
-
-
-
-<!-- more -->
-
-
-<p>sys_timezone_path是一个特地用来处理时区的route。其实主要需要的是offset_min这个请求参数，你可以把这个参数附加到其他请求里。</p>
-
-<p>然后根据offset_min获取到时区名：</p>
-
-<div class="highlight"><pre><code class="ruby"><span class="k">def</span> <span class="nf">timezone</span>
-  <span class="n">offset_sec</span> <span class="o">=</span> <span class="n">params</span><span class="o">[</span><span class="ss">:offset_min</span><span class="o">].</span><span class="n">to_i</span> <span class="o">*</span> <span class="mi">60</span>
-  <span class="n">zone</span> <span class="o">=</span> <span class="ss">ActiveSupport</span><span class="p">:</span><span class="ss">:TimeZone</span><span class="o">[</span><span class="n">offset_sec</span><span class="o">]</span>
-  <span class="n">zone</span> <span class="o">=</span> <span class="ss">ActiveSupport</span><span class="p">:</span><span class="ss">:TimeZone</span><span class="o">[</span><span class="s2">&quot;UTC&quot;</span><span class="o">]</span> <span class="k">unless</span> <span class="n">zone</span>
-  <span class="n">session</span><span class="o">[</span><span class="ss">:zone_name</span><span class="o">]</span> <span class="o">=</span> <span class="n">zone</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="n">zone</span>
-  <span class="n">respond_to</span> <span class="k">do</span> <span class="o">|</span><span class="nb">format</span><span class="o">|</span>
-    <span class="nb">format</span><span class="o">.</span><span class="n">js</span>
-  <span class="k">end</span>
-<span class="k">end</span>
-</code></pre>
-</div>
-
-
-<p>以上，获取到时区名后存储到session[:zone_name]里。在之后处理这个客户端的请求时，就可以通过这个时区名取得对应的时区，例如：</p>
-
-<div class="highlight"><pre><code class="ruby"><span class="n">zone_name</span> <span class="o">=</span> <span class="n">session</span><span class="o">[</span><span class="ss">:zone_name</span><span class="o">]</span> 
-<span class="n">zone</span> <span class="o">=</span> <span class="ss">ActiveSupport</span><span class="p">:</span><span class="ss">:TimeZone</span><span class="o">[</span><span class="n">zone_name</span><span class="o">]</span> <span class="k">if</span> <span class="n">zone_name</span>
-</code></pre>
-</div>
-
-
-<p>但经过我实际测试，部署在heroku上的应用偶尔会发现session[:zone_name]取出来是nil，尽管我确认了timezone函数是被调用过的。这难道跟session的超时有关？后来我只好将timezone name写到客户端页面中，然后在其他请求中再把这个时区名发回来。</p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2012/07/20/get-client-timezone-in-rails/'>http://codemacro.com/2012/07/20/get-client-timezone-in-rails/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
+<p>当然并不是每次因为某篇写得很geek技术文章就去学习某个新的技术点。一个月时间对我来
+说还是很珍贵了。但是Lisp绝对是大部分程序员都值得一学的语言（就像Haskell一样）。
+我能给出的简单理由包括：</p>
 
 </div>
-
-
-  <footer>
-    <p class="meta">
-      
   
-
-<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
-
-      
-
-
-
-
-
-
-
-
+  
+    <footer>
+      <a rel="full-article" href="/2011/03/13/lisp-writer/">Read on &rarr;</a>
+    </footer>
   
 
 
-<time datetime="2012-07-20T16:42:00+08:00" pubdate data-updated="true">Jul 20<span>th</span>, 2012</time>
-      
-
-<span class="categories">
+    </article>
   
-    <a class='category' href='/categories/tips/'>tips</a>, <a class='category' href='/categories/web/'>web</a>
-  
-</span>
-
-
-    </p>
+  <div class="pagination">
     
-      <div class="sharing">
-  
-  
-  
-</div>
-
+    <a href="/blog/archives">Blog Archives</a>
     
-    <p class="meta">
-      
-        <a class="basic-alignment left" href="/2012/07/19/popup-window-in-html/" title="Previous Post: HTML中实现弹出窗口">&laquo; HTML中实现弹出窗口</a>
-      
-      
-        <a class="basic-alignment right" href="/2012/07/24/html-table-hover/" title="Next Post: HTML中table的高亮以及tooltip">HTML中table的高亮以及tooltip &raquo;</a>
-      
-    </p>
-  </footer>
-</article>
-
-  <section>
-    <h1>Comments</h1>
-    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+    <a class="next" href="/page/9/">Newer &rarr;</a>
+    
+  </div>
 </div>
-  </section>
-
-</div>
-
 <aside class="sidebar">
   
     <section>
@@ -291,7 +210,6 @@
   
 </aside>
 
-
     </div>
   </div>
   <footer role="contentinfo"><p>
@@ -306,10 +224,7 @@
       var disqus_shortname = 'loopincodes';
       
         
-        // var disqus_developer = 1;
-        var disqus_identifier = 'http://codemacro.com/2012/07/20/get-client-timezone-in-rails/';
-        var disqus_url = 'http://codemacro.com/2012/07/20/get-client-timezone-in-rails/';
-        var disqus_script = 'embed.js';
+        var disqus_script = 'count.js';
       
     (function () {
       var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
