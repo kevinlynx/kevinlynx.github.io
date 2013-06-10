@@ -74,6 +74,67 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2011/05/09/lua-function-arg/">传递Lua函数到C/C++中</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-05-09T00:00:00+08:00" pubdate data-updated="true">May 9<span>th</span>, 2011</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>问题</h2>
+
+<p>在Lua中，因为函数也是第一类值，所以会出现将函数作为另一个函数的参数，或者函数作
+为函数的返回值。这种机制在很多地方都能代码更灵活更简洁，例如:</p>
+
+<div class="highlight"><pre><code class="lua">    <span class="nb">table.sort</span><span class="p">(</span><span class="n">table</span> <span class="p">[,</span><span class="n">comp</span><span class="p">])</span>
+</code></pre>
+</div>
+
+
+<p>这里的comp就要求传入一个函数，我们在调用时，大概会有如下形式:</p>
+
+<div class="highlight"><pre><code class="lua">    <span class="nb">table.sort</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">comp</span><span class="p">)</span> <span class="c1">-- 直接写函数名</span>
+    <span class="nb">table.sort</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">local_comp</span><span class="p">)</span> <span class="c1">-- 某个局部函数</span>
+    <span class="nb">table.sort</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="k">function</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="n">xxx</span> <span class="k">end</span> <span class="p">)</span> <span class="c1">-- 临时构造一个匿名函数</span>
+</code></pre>
+</div>
+
+
+<p>其中最后一种方式最为灵活，任意时候在需要的时候构造一个匿名函数。这种在Lua自身的
+环境中使用，自然没有问题。但是，当我们在C/C++中注册一些函数到Lua环境中，而这些 函数也需要使用函数参数的时候，问题就出来了。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2011/05/09/lua-function-arg/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2011/05/02/entity-property/">MMO游戏对象属性设计</a></h1>
     
     
@@ -245,51 +306,6 @@ Stroustrup在&lt;D&amp;E>一书里也常为此表现出无奈。另一方面，�
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2011/03/21/lisp-symbol/">Lisp一瞥：增强型变量Symbol</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2011-03-21T00:00:00+08:00" pubdate data-updated="true">Mar 21<span>st</span>, 2011</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>变量，是所有编程语言里都有的语法概念。在C/C++中，变量用于标示一个内存地址，而变
-量名则在语法层面上代表这个地址。当链接器最终链接我们的程序时，就将这些名字替换
-为实际的地址。在其他语言中，变量虽然或多或少有其他不同的含义，但也大致如此。</p>
-
-<p>Lisp中的变量也差不多这样，但若将variable和Lisp中的 <strong>symbol</strong> 放在一起，则多少会 带来些困惑。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2011/03/21/lisp-symbol/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/10/">&larr; Older</a>
@@ -305,7 +321,7 @@ Stroustrup在&lt;D&amp;E>一书里也常为此表现出无奈。另一方面，�
     <section>
   <h1>Categories</h1>
   <ul id="categories">
-    <li class='category'><a href='/categories/ice/'>ICE (1)</a></li>
+    <li class='category'><a href='/categories/ice/'>ICE (2)</a></li>
 <li class='category'><a href='/categories/c-c-/'>c/c++ (12)</a></li>
 <li class='category'><a href='/categories/clang/'>clang (1)</a></li>
 <li class='category'><a href='/categories/erlang/'>erlang (3)</a></li>
@@ -317,7 +333,7 @@ Stroustrup在&lt;D&amp;E>一书里也常为此表现出无奈。另一方面，�
 <li class='category'><a href='/categories/other/'>other (5)</a></li>
 <li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
 <li class='category'><a href='/categories/tips/'>tips (21)</a></li>
-<li class='category'><a href='/categories/web/'>web (3)</a></li>
+<li class='category'><a href='/categories/web/'>web (4)</a></li>
 
   </ul>
 </section>
@@ -325,6 +341,10 @@ Stroustrup在&lt;D&amp;E>一书里也常为此表现出无奈。另一方面，�
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2013/06/09/ice-web-client/">使用ActionScript开发Ice Web客户端</a>
+      </li>
     
       <li class="post">
         <a href="/2013/06/03/erlang-code-snippets/">erlang编程技巧若干</a>
@@ -342,10 +362,6 @@ Stroustrup在&lt;D&amp;E>一书里也常为此表现出无奈。另一方面，�
         <a href="/2013/04/11/rabbitmq-erlang/">erlang和RabbitMQ学习总结</a>
       </li>
     
-      <li class="post">
-        <a href="/2013/03/21/rup/">浅析软件工程开发方法学RUP</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -358,6 +374,7 @@ Stroustrup在&lt;D&amp;E>一书里也常为此表现出无奈。另一方面，�
 <section>
   <h1>Tags</h1>
   <ul class="tag-cloud">
+<a style="font-size: 118%" href="/tags/ice/">ICE</a>
 <a style="font-size: 118%" href="/tags/blog/">blog</a>
 <a style="font-size: 90%" href="/tags/branck-predictor/">branck predictor</a>
 <a style="font-size: 178%" href="/tags/c-c-/">c/c++</a>
@@ -368,7 +385,6 @@ Stroustrup在&lt;D&amp;E>一书里也常为此表现出无奈。另一方面，�
 <a style="font-size: 134%" href="/tags/game-develop/">game develop</a>
 <a style="font-size: 118%" href="/tags/html/">html</a>
 <a style="font-size: 90%" href="/tags/ice/">ice</a>
-<a style="font-size: 90%" href="/tags/java/">java</a>
 <a style="font-size: 154%" href="/tags/lisp/">lisp</a>
 <a style="font-size: 154%" href="/tags/lua/">lua</a>
 <a style="font-size: 90%" href="/tags/mmo/">mmo</a>
@@ -377,7 +393,7 @@ Stroustrup在&lt;D&amp;E>一书里也常为此表现出无奈。另一方面，�
 <a style="font-size: 90%" href="/tags/rup/">rup</a>
 <a style="font-size: 210%" href="/tags/tips/">tips</a>
 <a style="font-size: 118%" href="/tags/virtual/">virtual</a>
-<a style="font-size: 118%" href="/tags/web/">web</a>
+<a style="font-size: 134%" href="/tags/web/">web</a>
 
   </ul>
 </section>
