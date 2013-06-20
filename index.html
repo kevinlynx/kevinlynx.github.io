@@ -74,6 +74,102 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2013/06/21/magnet-search-impl/">使用erlang实现P2P磁力搜索-实现</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-06-21T00:00:00+08:00" pubdate data-updated="true">Jun 21<span>st</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>接<a href="http://codemacro.com/2013/06/20/magnet-search/">上篇</a>，本篇谈谈一些实现细节。</p>
+
+<p>这个爬虫程序主要的问题在于如何获取P2P网络中分享的资源，获取到资源后索引到数据库中，搜索就是自然而然的事情。</p>
+
+<h2>DHT</h2>
+
+<p>DHT网络本质上是一个用于查询的网络，其用于查询一个资源有哪些计算机正在下载。每个资源都有一个20字节长度的ID用于标示，称为infohash。当一个程序作为DHT节点加入这个网络时，就会有其他节点来向你查询，当你做出回应后，对方就会记录下你。对方还会询问其他节点，当对方开始下载这个infohash对应的资源时，他就会告诉所有曾经询问过的节点，包括你。这个时候就可以确定，这个infohash对应的资源在这个网络中是有效的。</p>
+
+<p>关于这个网络的工作原理，参看：<a href="http://codemacro.com/2013/05/19/crawl-dht/">P2P中DHT网络爬虫</a>以及<a href="http://xiaoxia.org/2013/05/11/magnet-search-engine/">写了个磁力搜索的网页</a>。</p>
+
+<p>获取到infohash后能做什么？关键点在于，我们现在使用的磁力链接(magnet url)，是和infohash对应起来的。也就是拿到infohash，就等于拿到一个磁力链接。但是这个爬虫还需要建立资源的信息，这些信息来源于种子文件。种子文件其实也是对应到一个资源，种子文件包含资源名、描述、文件列表、文件大小等信息。获取到infohash时，其实也获取到了对应的计算机地址，我们可以在这些计算机上下载到对应的种子文件。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/06/21/magnet-search-impl/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2013/06/20/magnet-search/">使用erlang实现P2P磁力搜索(开源)</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-06-20T00:00:00+08:00" pubdate data-updated="true">Jun 20<span>th</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>接上回对<a href="http://codemacro.com/2013/05/19/crawl-dht/">DHT网络的研究</a>，我用erlang克隆了一个<a href="http://bt.shousibaocai.com/">磁力搜索引擎</a>。我这个实现包含了完整的功能，DHT网络的加入、infohash的接收、种子的获取、资源信息的索引、搜索。</p>
+
+<p>如下图：</p>
+
+<p><img src="https://raw.github.com/kevinlynx/dhtcrawler/master/screenshot.png" alt="screenshot" /></p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/06/20/magnet-search/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2013/06/09/ice-web-client/">使用ActionScript开发Ice Web客户端</a></h1>
     
     
@@ -247,141 +343,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2013/05/08/thought-about-erlang/">Erlang使用感受</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-05-08T00:00:00+08:00" pubdate data-updated="true">May 8<span>th</span>, 2013</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>用erlang也算写了些代码了，主要包括<a href="http://codemacro.com/2013/04/11/rabbitmq-erlang/">使用RabbitMQ的练习</a>，以及最近写的<a href="https://github.com/kevinlynx/erlang-tcpserver">kl_tserver</a>和<a href="https://github.com/kevinlynx/icerl">icerl</a>。其中icerl是一个实现了<a href="http://www.zeroc.com/">Ice</a>的erlang库。</p>
-
-<p>erlang的书较少，我主要读过&lt;Programming Erlang>和&lt;Erlang/OTP in Action>。其实erlang本身就语言来说的话比较简单，同ruby一样，类似这种本身目标是应用于实际软件项目的语言都比较简单，对应的语法书很快可以翻完。</p>
-
-<p>这里我仅谈谈自己在编写erlang代码过程中的一些感受。</p>
-
-<h2>语法</h2>
-
-<p>erlang语法很简单，接触过函数式语言的程序员上手会很快。它没有类似common lisp里宏这种较复杂的语言特性。其语法元素很紧凑，不存在一些用处不大的特性。在这之前，我学习过ruby和common lisp。ruby代码写的比common lisp多。但是在学习erlang的过程中我的脑海里却不断出现common lisp里的语法特性。这大概是因为common lisp的语法相对ruby来说，更接近erlang。</p>
-
-<h3>编程模式</h3>
-
-<p>erlang不是一个面向对象的语言，它也不同common lisp提供多种编程模式。它的代码就是靠一个个函数组织出来的。面向对象语言在语法上有一点让我很爽的是，其函数调用更自然。erlang的接口调用就像C语言里接口的调用一样：</p>
-
-<pre><code>func(Obj, args)
-Obj-&gt;func(args)
-</code></pre>
-
-<p>即需要在函数第一个参数传递操作对象。但是面向对象语言也会带来一些语法的复杂性。如果一门语言可以用很少的语法元素表达很多信息，那么我觉得这门语言就是门优秀的语言。</p>
-
-<h3>表达式/语句</h3>
-
-<p>erlang里没有语句，全部是表达式，意思是所有语法元素都是有返回值的。这实在太好了，全世界都有返回值可以让代码写起来简单多了：</p>
-
-<div class="highlight"><pre><code class="erlang">    <span class="nv">Flag</span> <span class="o">=</span> <span class="k">case</span> <span class="n">func</span><span class="p">()</span> <span class="k">of</span> <span class="mi">1</span> <span class="o">-&gt;</span> <span class="n">true</span><span class="p">;</span> <span class="mi">0</span> <span class="o">-&gt;</span> <span class="n">false</span> <span class="k">end</span><span class="p">,</span> 
-</code></pre>
-</div>
-
-
-
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2013/05/08/thought-about-erlang/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2013/04/11/rabbitmq-erlang/">erlang和RabbitMQ学习总结</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-04-11T00:00:00+08:00" pubdate data-updated="true">Apr 11<span>th</span>, 2013</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>AMQP和RabbitMQ概述</h2>
-
-<p><a href="http://www.amqp.org/">AMQP</a>(Advanced Message Queue Protocol)定义了一种消息系统规范。这个规范描述了在一个分布式的系统中各个子系统如何通过消息交互。而<a href="http://www.rabbitmq.com/">RabbitMQ</a>则是AMQP的一种基于erlang的实现。</p>
-
-<p>AMQP将分布式系统中各个子系统隔离开来，子系统之间不再有依赖。子系统仅依赖于消息。子系统不关心消息的发送者，也不关心消息的接受者。</p>
-
-<p>AMQP中有一些概念，用于定义与应用层的交互。这些概念包括：message、queue、exchange、channel, connection, broker、vhost。</p>
-
-<p><em>注：到目前为止我并没有打算使用AMQP，所以没有做更深入的学习，仅为了找个机会写写erlang代码，以下信息仅供参考。</em></p>
-
-<ul>
-<li>message，即消息，简单来说就是应用层需要发送的数据</li>
-<li>queue，即队列，用于存储消息</li>
-<li>exchange，有翻译为“路由”，它用于投递消息，<strong>应用程序在发送消息时并不是指定消息被发送到哪个队列，而是将消息投递给路由，由路由投递到队列</strong></li>
-<li>channel，几乎所有操作都在channel中进行，有点类似一个沟通通道</li>
-<li>connection，应用程序与broker的网络连接</li>
-<li>broker，可简单理解为实现AMQP的服务，例如RabbitMQ服务</li>
-</ul>
-
-
-<p>关于AMQP可以通过一篇很有名的文章了解更多：<a href="http://blog.ftofficer.com/2010/03/translation-rabbitmq-python-rabbits-and-warrens/">RabbitMQ+Python入门经典 兔子和兔子窝</a></p>
-
-<p>RabbitMQ的运行需要erlang的支持，erlang和RabbitMQ在windows下都可以直接使用安装程序，非常简单。RabbitMQ还支持网页端的管理，这需要开启一些RabbitMQ的插件，可以参考<a href="http://www.rabbitmq.com/management.html">官方文档</a>。</p>
-
-<p>RabbitMQ本质上其实是一个服务器，与这个服务器做交互则是通过AMQP定义的协议，应用可以使用一个实现了AMQP协议的库来与服务器交互。这里我使用erlang的一个客户端，对应着RabbitMQ的tutorial，使用erlang实现了一遍。基于这个过程我将一些关键实现罗列出来以供记忆：</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2013/04/11/rabbitmq-erlang/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/2/">&larr; Older</a>
@@ -398,12 +359,12 @@ Obj-&gt;func(args)
     <li class='category'><a href='/categories/ice/'>ICE (2)</a></li>
 <li class='category'><a href='/categories/c-c-/'>c/c++ (12)</a></li>
 <li class='category'><a href='/categories/clang/'>clang (1)</a></li>
-<li class='category'><a href='/categories/erlang/'>erlang (3)</a></li>
+<li class='category'><a href='/categories/erlang/'>erlang (5)</a></li>
 <li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
 <li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
 <li class='category'><a href='/categories/lua/'>lua (5)</a></li>
 <li class='category'><a href='/categories/module/'>module (2)</a></li>
-<li class='category'><a href='/categories/network/'>network (1)</a></li>
+<li class='category'><a href='/categories/network/'>network (3)</a></li>
 <li class='category'><a href='/categories/other/'>other (5)</a></li>
 <li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
 <li class='category'><a href='/categories/tips/'>tips (21)</a></li>
@@ -417,6 +378,14 @@ Obj-&gt;func(args)
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/2013/06/21/magnet-search-impl/">使用erlang实现P2P磁力搜索-实现</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2013/06/20/magnet-search/">使用erlang实现P2P磁力搜索(开源)</a>
+      </li>
+    
+      <li class="post">
         <a href="/2013/06/09/ice-web-client/">使用ActionScript开发Ice Web客户端</a>
       </li>
     
@@ -426,14 +395,6 @@ Obj-&gt;func(args)
     
       <li class="post">
         <a href="/2013/05/19/crawl-dht/">P2P中DHT网络爬虫</a>
-      </li>
-    
-      <li class="post">
-        <a href="/2013/05/08/thought-about-erlang/">erlang使用感受</a>
-      </li>
-    
-      <li class="post">
-        <a href="/2013/04/11/rabbitmq-erlang/">erlang和RabbitMQ学习总结</a>
       </li>
     
   </ul>
@@ -450,19 +411,19 @@ Obj-&gt;func(args)
   <ul class="tag-cloud">
 <a style="font-size: 118%" href="/tags/ice/">ICE</a>
 <a style="font-size: 118%" href="/tags/blog/">blog</a>
-<a style="font-size: 90%" href="/tags/branck-predictor/">branck predictor</a>
 <a style="font-size: 178%" href="/tags/c-c-/">c/c++</a>
-<a style="font-size: 90%" href="/tags/chat-server/">chat server</a>
 <a style="font-size: 90%" href="/tags/clang/">clang</a>
 <a style="font-size: 90%" href="/tags/destructor/">destructor</a>
-<a style="font-size: 134%" href="/tags/erlang/">erlang</a>
+<a style="font-size: 134%" href="/tags/dht/">dht</a>
+<a style="font-size: 154%" href="/tags/erlang/">erlang</a>
 <a style="font-size: 134%" href="/tags/game-develop/">game develop</a>
 <a style="font-size: 118%" href="/tags/html/">html</a>
 <a style="font-size: 90%" href="/tags/ice/">ice</a>
 <a style="font-size: 154%" href="/tags/lisp/">lisp</a>
 <a style="font-size: 154%" href="/tags/lua/">lua</a>
-<a style="font-size: 90%" href="/tags/mmo/">mmo</a>
+<a style="font-size: 118%" href="/tags/magnet/">magnet</a>
 <a style="font-size: 146%" href="/tags/octopress/">octopress</a>
+<a style="font-size: 134%" href="/tags/p2p/">p2p</a>
 <a style="font-size: 146%" href="/tags/ruby/">ruby</a>
 <a style="font-size: 90%" href="/tags/rup/">rup</a>
 <a style="font-size: 210%" href="/tags/tips/">tips</a>
