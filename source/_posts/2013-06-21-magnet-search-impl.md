@@ -6,7 +6,6 @@ tags: [erlang, dht, p2p, magnet]
 comments: true
 keywords: [erlang, dht, p2p, magnet]
 description: 
-published: false
 ---
 
 接[上篇](http://codemacro.com/2013/06/20/magnet-search/)，本篇谈谈一些实现细节。
