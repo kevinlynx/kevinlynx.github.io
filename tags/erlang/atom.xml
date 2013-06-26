@@ -4,7 +4,7 @@
   <title><![CDATA[Tag: erlang | loop in codes]]></title>
   <link href="http://codemacro.com/tags/erlang/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2013-06-20T20:22:55+08:00</updated>
+  <updated>2013-06-25T22:31:42+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -293,7 +293,7 @@ a中文
 <li>下载安装<a href="http://www.mongodb.org/downloads">mongodb</a></li>
 <li><p>进入mongodb bin目录启动mongodb，数据库目录保存在db下，需手动建立该目录</p>
 
-<pre><code>  mongodb --dbpath db --setParameter textSearchEnabled=true
+<pre><code>  mongod --dbpath db --setParameter textSearchEnabled=true
 </code></pre></li>
 <li><p>下载<a href="http://www.erlang.org/download.html">erlang</a>，我使用的是R16B版本</p></li>
 <li><p>下载dhtcrawler，不需要单独下载kdht，待会下载依赖项的时候会自动下载</p>
