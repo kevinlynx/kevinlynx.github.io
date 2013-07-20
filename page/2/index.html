@@ -74,6 +74,61 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2013/05/19/crawl-dht/">P2P中DHT网络爬虫</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-05-19T00:00:00+08:00" pubdate data-updated="true">May 19<span>th</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>DHT网络爬虫基于DHT网络构建了一个P2P资源搜索引擎。这个搜索引擎不但可以用于构建DHT网络中活跃的资源索引（活跃的资源意味着该网络中肯定有人至少持有该资源的部分数据），还可以分析出该网络中的热门分享资源。<a href="http://xiaoxia.org/">小虾</a>不久前发布了一个这样的搜索引擎：<a href="http://bt.shousibaocai.com/">磁力搜索</a>。他也写博客对此稍作了介绍：<a href="http://xiaoxia.org/2013/05/11/magnet-search-engine/">写了个磁力搜索的网页 － 收录最近热门分享的资源</a>。网络上其实也有其他人做了类似的应用：<a href="http://pacsec.jp/psj11/PacSec2011_Massive-Monitoring_en.pdf">DHT monitoring</a>，<a href="https://www.defcon.org/images/defcon-18/dc-18-presentations/Wolchok/DEFCON-18-Wolchok-Crawling-Bittorrent-DHTS.pdf">Crawling Bittorrent DHT</a></p>
+
+<p>但是他的这篇文章仅介绍了DHT网络的大致工作原理，并且这个爬虫的具体工作原理也没有提到。对此我查阅了些文章及代码，虽然从原理上梳理出了整个实现方案，但很多细节还是不甚清楚。所以本文仅作概要介绍。</p>
+
+<h2>DHT/Magnet/Torrent</h2>
+
+<p>在P2P网络中，要通过种子文件下载一个资源，需要知道整个P2P网络中有哪些计算机正在下载/上传该资源。这里将这些提供某个资源下载的计算机定义为<code>peer</code>。传统的P2P网络中，存在一些<code>tracker</code>服务器，这些服务器的作用主要用于跟踪某个资源有哪些关联的peer。下载这个资源当然得首先取得这些peer。</p>
+
+<p>DHT的出现用于解决当tracker服务器不可用时，P2P客户端依然可以取得某个资源的peer。DHT解决这个问题，是因为它将原来tracker上的资源peer信息分散到了整个网络中。这里将实现了DHT协议的计算机定义为节点(node)。通常一个P2P客户端程序既是peer也是节点。DHT网络有多种实现算法，例如Kademlia。</p>
+
+<p>当某个P2P客户端通过种子文件下载资源时，如果没有tracker服务器，它就会向DHT网络查询这个资源对应的peer列表。资源的标识在DHT网络中称为<code>infohash</code>，是一个20字节长的字符串，一般通过sha1算法获得，也就是一个类似UUID的东西。</p>
+
+<p>实际上，种子文件本身就对应着一个infohash，这个infohash是通过种子文件的文件描述信息动态计算得到。一个种子文件包含了对应资源的描述信息，例如文件名、文件大小等。Magnet，这里指的是磁力链接，它是一个类似URL的字符串地址。P2P软件通过磁力链接，会下载到一个种子文件，然后根据该种子文件继续真实资源的下载。</p>
+
+<p>磁力链接中包含的最重要的信息就是infohash。这个infohash一般为40字节或32字节，它其实只是资源infohash（20字节）的一种编码形式。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/05/19/crawl-dht/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2013/05/08/thought-about-erlang/">Erlang使用感受</a></h1>
     
     
@@ -314,55 +369,6 @@ Obj-&gt;func(args)
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2013/02/12/using-clang/">使用Clang实现C语言编程规范检查</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-02-12T00:00:00+08:00" pubdate data-updated="true">Feb 12<span>th</span>, 2013</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>概述</h2>
-
-<p>Clang是LLVM编译器工具集的前端部分，也就是涵盖词法分析、语法语义分析的部分。而LLVM是Apple在Mac OS上用于替代GCC工具集的编译器软件集合。Clang支持类C语言的语言，例如C、C++、Objective C。Clang的与众不同在于其模块化的设计，使其不仅实现编译器前端部分，并且包装成库的形式提供给上层应用。使用Clang可以做诸如语法高亮、语法检查、编程规范检查方面的工作，当然也可以作为你自己的编译器前端。</p>
-
-<p>编程规范一般包含编码格式和语义规范两部分。编码格式用于约定代码的排版、符号命名等；而语义规范则用于约定诸如类型匹配、表达式复杂度等，例如不允许对常数做逻辑运算、检查变量使用前是否被赋值等。本文描述的主要是基于语义方面的检查，其经验来自于最近做的一个检查工具，该工具实现了超过130条的规范。这份规范部分规则来自于<a href="http://en.wikipedia.org/wiki/MISRA_C">MISRA C</a></p>
-
-<h2>编程模式</h2>
-
-<p>编译器前端部分主要是输出代码对应的抽象语法树(AST)。Clang提供给上层的接口也主要是围绕语法树来做操作。通过google一些Clang的资料，你可能会如我当初一样对该如何正确地使用Clang心存疑惑。我最后使用的方式是基于RecursiveASTVisitor。这是一种类似回调的使用机制，通过提供特定语法树节点的接口，Clang在遍历语法树的时候，在遇到该节点时，就会调用到上层代码。不能说这是最好的方式，但起码它可以工作。基于RecursiveASTVisitor使用Clang，程序主体框架大致为：</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2013/02/12/using-clang/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/3/">&larr; Older</a>
@@ -381,12 +387,12 @@ Obj-&gt;func(args)
     <li class='category'><a href='/categories/ice/'>ICE (2)</a></li>
 <li class='category'><a href='/categories/c-c-/'>c/c++ (12)</a></li>
 <li class='category'><a href='/categories/clang/'>clang (1)</a></li>
-<li class='category'><a href='/categories/erlang/'>erlang (5)</a></li>
+<li class='category'><a href='/categories/erlang/'>erlang (6)</a></li>
 <li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
 <li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
 <li class='category'><a href='/categories/lua/'>lua (5)</a></li>
 <li class='category'><a href='/categories/module/'>module (2)</a></li>
-<li class='category'><a href='/categories/network/'>network (3)</a></li>
+<li class='category'><a href='/categories/network/'>network (4)</a></li>
 <li class='category'><a href='/categories/other/'>other (5)</a></li>
 <li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
 <li class='category'><a href='/categories/tips/'>tips (21)</a></li>
@@ -398,6 +404,10 @@ Obj-&gt;func(args)
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2013/07/02/dhtcrawler2/">磁力搜索第二版-dhtcrawler2</a>
+      </li>
     
       <li class="post">
         <a href="/2013/06/21/magnet-search-impl/">使用erlang实现P2P磁力搜索-实现</a>
@@ -413,10 +423,6 @@ Obj-&gt;func(args)
     
       <li class="post">
         <a href="/2013/06/03/erlang-code-snippets/">erlang编程技巧若干</a>
-      </li>
-    
-      <li class="post">
-        <a href="/2013/05/19/crawl-dht/">P2P中DHT网络爬虫</a>
       </li>
     
   </ul>
@@ -436,16 +442,16 @@ Obj-&gt;func(args)
 <a style="font-size: 178%" href="/tags/c-c-/">c/c++</a>
 <a style="font-size: 90%" href="/tags/clang/">clang</a>
 <a style="font-size: 90%" href="/tags/destructor/">destructor</a>
-<a style="font-size: 134%" href="/tags/dht/">dht</a>
-<a style="font-size: 154%" href="/tags/erlang/">erlang</a>
+<a style="font-size: 146%" href="/tags/dht/">dht</a>
+<a style="font-size: 162%" href="/tags/erlang/">erlang</a>
 <a style="font-size: 134%" href="/tags/game-develop/">game develop</a>
 <a style="font-size: 118%" href="/tags/html/">html</a>
 <a style="font-size: 90%" href="/tags/ice/">ice</a>
 <a style="font-size: 154%" href="/tags/lisp/">lisp</a>
 <a style="font-size: 154%" href="/tags/lua/">lua</a>
-<a style="font-size: 118%" href="/tags/magnet/">magnet</a>
+<a style="font-size: 134%" href="/tags/magnet/">magnet</a>
 <a style="font-size: 146%" href="/tags/octopress/">octopress</a>
-<a style="font-size: 134%" href="/tags/p2p/">p2p</a>
+<a style="font-size: 146%" href="/tags/p2p/">p2p</a>
 <a style="font-size: 146%" href="/tags/ruby/">ruby</a>
 <a style="font-size: 90%" href="/tags/rup/">rup</a>
 <a style="font-size: 210%" href="/tags/tips/">tips</a>
