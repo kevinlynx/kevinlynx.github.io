@@ -4,7 +4,7 @@
   <title><![CDATA[Category: lua | loop in codes]]></title>
   <link href="http://codemacro.com/categories/lua/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2013-07-20T16:25:46+08:00</updated>
+  <updated>2013-08-08T22:46:32+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -20,69 +20,69 @@
     <id>http://codemacro.com/2012/08/13/dynamic-method-in-lua</id>
     <content type="html"><![CDATA[<p>可以结合<a href="http://codemacro.com/2012/08/02/simple-oo-in-lua/">Lua里实现简单的类-对象</a>看。在我的应用中，存在类似以下代码：</p>
 
-<p><div class="highlight"><pre><code class="lua"><span class="k">function</span> <span class="nc">Item</span><span class="p">.</span><span class="nf">new</span><span class="p">()</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight lua %}
+function Item.new()</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kd">local</span> <span class="n">o</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="n">property</span> <span class="o">=</span> <span class="p">{}</span>
-<span class="p">}</span>
-<span class="k">return</span> <span class="n">newObject</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">Item</span><span class="p">)</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span>
+<pre><code>local o = {
+    property = {}
+}
+return newObject(o, Item)
 </code></pre>
-</div></p>
+
+<p>end
+{% endhighlight %}</p>
 
 <p><code>property</code>是一个key-value的表，里面的内容不是固定的。最开始我为Item类写了get/set函数，用于存取property表里的值。但这样写起来还是有点麻烦。Ruby里可以动态产生类成员函数，其实Lua里也可以。其思路就是通过metatable来做：</p>
 
 <!-- more -->
 
 
-<p><div class="highlight"><pre><code class="lua"><span class="c1">-- 为newObject增加一个可选参数，该参数是一个函数，当在表示类的table里无法找到成员时就调用该可选参数</span>
-<span class="k">function</span> <span class="nf">newObject</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">class</span><span class="p">,</span> <span class="n">after</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight lua %}
+-- 为newObject增加一个可选参数，该参数是一个函数，当在表示类的table里无法找到成员时就调用该可选参数
+function newObject(o, class, after)</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">class</span><span class="p">.</span><span class="n">__index</span> <span class="o">=</span> <span class="k">function</span> <span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span> <span class="k">return</span> <span class="n">class</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="ow">or</span> <span class="n">after</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span> <span class="k">end</span>
-<span class="k">return</span> <span class="nb">setmetatable</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">class</span><span class="p">)</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span>
+<pre><code>class.__index = function (self, key) return class[key] or after(self, key) end
+return setmetatable(o, class)
 </code></pre>
-</div></p>
+
+<p>end
+{% endhighlight %}</p>
 
 <p>然后就是编写这个after函数，我的理想方式是，例如property里有Name和Index的key-value，那么就可以通过这样的方式来存取：</p>
 
-<p><div class="highlight"><pre><code class="lua"><span class="n">item</span> <span class="o">=</span> <span class="n">Item</span><span class="p">.</span><span class="n">new</span><span class="p">()</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">item</span><span class="p">:</span><span class="n">Name</span><span class="p">())</span>
-<span class="n">item</span><span class="p">:</span><span class="n">SetName</span><span class="p">(</span><span class="s2">&quot;</span><span class="s">hello&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">item</span><span class="p">:</span><span class="n">Index</span><span class="p">()</span>
-<span class="n">item</span><span class="p">:</span><span class="n">SetIndex</span><span class="p">(</span><span class="mi">101</span><span class="p">)</span>
-</code></pre>
-</div></p>
+<p>{% highlight lua %}
+item = Item.new()
+print(item:Name())
+item:SetName("hello")
+print(item:Index()
+item:SetIndex(101)
+{% endhighlight %}</p>
 
 <p>after函数的实现：</p>
 
-<p><div class="highlight"><pre><code class="lua"><span class="k">function</span> <span class="nc">Item</span><span class="p">.</span><span class="nf">new</span><span class="p">()</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight lua %}
+function Item.new()</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kd">local</span> <span class="n">o</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="n">property</span> <span class="o">=</span> <span class="p">{}</span>
-<span class="p">}</span>
-<span class="kd">local</span> <span class="k">function</span> <span class="nf">after</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
-    <span class="kd">local</span> <span class="n">name</span> <span class="o">=</span> <span class="nb">string.match</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s">Set(%a+)&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">name</span> <span class="k">then</span> 
-        <span class="k">return</span> <span class="k">function</span> <span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-            <span class="n">self</span><span class="p">:</span><span class="n">set</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-        <span class="k">end</span>
-    <span class="k">else</span>
-        <span class="k">return</span> <span class="k">function</span> <span class="p">(</span><span class="n">self</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="n">property</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="ow">and</span> <span class="n">self</span><span class="p">.</span><span class="n">property</span><span class="p">[</span><span class="n">key</span><span class="p">].</span><span class="n">value</span>
-        <span class="k">end</span>
-    <span class="k">end</span>
-<span class="k">end</span>
-<span class="k">return</span> <span class="n">newObject</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">Item</span><span class="p">,</span> <span class="n">after</span><span class="p">)</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span>
+<pre><code>local o = {
+    property = {}
+}
+local function after(self, key)
+    local name = string.match(key, "Set(%a+)")
+    if name then 
+        return function (self, value)
+            self:set(name, value)
+        end
+    else
+        return function (self)
+            return self.property[key] and self.property[key].value
+        end
+    end
+end
+return newObject(o, Item, after)
 </code></pre>
-</div></p>
+
+<p>end
+{% endhighlight %}</p>
 
 <p>执行过程就为：</p>
 
@@ -106,138 +106,134 @@
 <!-- more -->
 
 
-<h2><div class="highlight"><pre><code class="lua"><span class="o">&lt;/</span><span class="n">h2</span><span class="o">&gt;</span>
+<h2>{% highlight lua %}</h2>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">-- file: wxListCtrlTextEdit.lua</span>
-<span class="c1">-- author: Kevin Lynx&lt;/p&gt;</span>
+<p>-- file: wxListCtrlTextEdit.lua
+-- author: Kevin Lynx</p>
 
-<span class="o">&lt;</span><span class="n">h2</span><span class="o">&gt;</span><span class="c1">-- date: 08.06.2012&lt;/h2&gt;</span>
+<h2>-- date: 08.06.2012</h2>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kd">local</span> <span class="n">EditList</span> <span class="o">=</span> <span class="p">{}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>local EditList = {}</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">-- get the column by an abs point</span>
-<span class="k">function</span> <span class="nf">EditList</span><span class="p">:</span><span class="n">getColumn</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>-- get the column by an abs point
+function EditList:getColumn(x)</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kd">local</span> <span class="n">cols</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">listctrl</span><span class="p">:</span><span class="n">GetColumnCount</span><span class="p">()</span>
-<span class="kd">local</span> <span class="n">cx</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">cols</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">do</span>
-    <span class="kd">local</span> <span class="n">w</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">listctrl</span><span class="p">:</span><span class="n">GetColumnWidth</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">x</span> <span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">=</span> <span class="n">cx</span> <span class="o">+</span> <span class="n">w</span> <span class="k">then</span> <span class="k">return</span> <span class="n">i</span> <span class="k">end</span>
-    <span class="n">cx</span> <span class="o">=</span> <span class="n">cx</span> <span class="o">+</span> <span class="n">w</span>
-<span class="k">end</span>
-<span class="k">return</span> <span class="o">-</span><span class="mi">1</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">-- when a mouse down, show a text edit control</span>
-<span class="k">function</span> <span class="nf">EditList</span><span class="p">:</span><span class="n">onLeftDown</span><span class="p">(</span><span class="n">evt</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">if</span> <span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">IsShown</span><span class="p">()</span> <span class="k">then</span>
-    <span class="n">self</span><span class="p">:</span><span class="n">closeEditor</span><span class="p">()</span>
-<span class="k">end</span>
-<span class="kd">local</span> <span class="n">p</span> <span class="o">=</span> <span class="n">evt</span><span class="p">:</span><span class="n">GetPoint</span><span class="p">()</span>
-<span class="kd">local</span> <span class="n">row</span> <span class="o">=</span> <span class="n">evt</span><span class="p">:</span><span class="n">GetIndex</span><span class="p">()</span>
-<span class="kd">local</span> <span class="n">col</span> <span class="o">=</span> <span class="n">self</span><span class="p">:</span><span class="n">getColumn</span><span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="n">x</span><span class="p">)</span>
-<span class="kd">local</span> <span class="n">rect</span> <span class="o">=</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxListCtrlEx</span><span class="p">.</span><span class="n">GetSubItemRect</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">listctrl</span><span class="p">,</span> <span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span>
-<span class="n">rect</span><span class="p">:</span><span class="n">SetHeight</span><span class="p">(</span><span class="n">rect</span><span class="p">:</span><span class="n">GetHeight</span><span class="p">()</span> <span class="o">+</span> <span class="mi">5</span><span class="p">)</span> <span class="c1">-- adjust</span>
-<span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">SetSize</span><span class="p">(</span><span class="n">rect</span><span class="p">)</span>
-<span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">Show</span><span class="p">()</span>
-<span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">SetValue</span><span class="p">(</span><span class="n">wx</span><span class="p">.</span><span class="n">wxListCtrlEx</span><span class="p">.</span><span class="n">GetItemText</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">listctrl</span><span class="p">,</span> <span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">))</span>
-<span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">SetFocus</span><span class="p">()</span>
-<span class="n">self</span><span class="p">.</span><span class="n">col</span> <span class="o">=</span> <span class="n">col</span>
-<span class="n">self</span><span class="p">.</span><span class="n">row</span> <span class="o">=</span> <span class="n">row</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">function</span> <span class="nf">EditList</span><span class="p">:</span><span class="n">closeEditor</span><span class="p">()</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">if</span> <span class="ow">not</span> <span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">IsShown</span><span class="p">()</span> <span class="k">then</span> <span class="k">return</span> <span class="k">end</span>
-<span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">Hide</span><span class="p">()</span>
-<span class="n">self</span><span class="p">.</span><span class="n">listctrl</span><span class="p">:</span><span class="n">SetItem</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">row</span><span class="p">,</span> <span class="n">self</span><span class="p">.</span><span class="n">col</span><span class="p">,</span> <span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">GetValue</span><span class="p">())</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">function</span> <span class="nf">EditList</span><span class="p">:</span><span class="n">initialize</span><span class="p">()</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">self</span><span class="p">.</span><span class="n">editor</span> <span class="o">=</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxTextCtrl</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">listctrl</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxID_ANY</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxDefaultPosition</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxDefaultSize</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxTE_PROCESS_ENTER</span> <span class="o">+</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxTE_RICH2</span><span class="p">)</span>
-<span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">Connect</span><span class="p">(</span><span class="n">wx</span><span class="p">.</span><span class="n">wxEVT_COMMAND_TEXT_ENTER</span><span class="p">,</span> <span class="k">function</span> <span class="p">()</span> <span class="n">self</span><span class="p">:</span><span class="n">closeEditor</span><span class="p">()</span> <span class="k">end</span><span class="p">)</span>
-<span class="c1">-- not work actually</span>
-<span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">Connect</span><span class="p">(</span><span class="n">wx</span><span class="p">.</span><span class="n">wxEVT_COMMAND_KILL_FOCUS</span><span class="p">,</span> <span class="k">function</span> <span class="p">()</span> <span class="n">self</span><span class="p">:</span><span class="n">closeEditor</span><span class="p">()</span> <span class="k">end</span><span class="p">)</span>
-<span class="n">self</span><span class="p">.</span><span class="n">editor</span><span class="p">:</span><span class="n">Hide</span><span class="p">()</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">function</span> <span class="nc">wx</span><span class="p">.</span><span class="nf">wxListCtrlTextEdit</span><span class="p">(</span><span class="n">listctrl</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kd">local</span> <span class="n">o</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="n">listctrl</span> <span class="o">=</span> <span class="n">listctrl</span><span class="p">,</span>
-    <span class="n">editor</span> <span class="o">=</span> <span class="kc">nil</span><span class="p">,</span>
-<span class="p">}</span>
-<span class="kd">local</span> <span class="n">editlist</span> <span class="o">=</span> <span class="n">newObject</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">EditList</span><span class="p">)</span>
-<span class="n">editlist</span><span class="p">:</span><span class="n">initialize</span><span class="p">()</span>
-<span class="n">listctrl</span><span class="p">:</span><span class="n">Connect</span><span class="p">(</span><span class="n">wx</span><span class="p">.</span><span class="n">wxEVT_COMMAND_LIST_ITEM_RIGHT_CLICK</span><span class="p">,</span> <span class="k">function</span> <span class="p">(</span><span class="n">evt</span><span class="p">)</span> <span class="n">editlist</span><span class="p">:</span><span class="n">onLeftDown</span><span class="p">(</span><span class="n">evt</span><span class="p">)</span> <span class="k">end</span><span class="p">)</span>
-<span class="n">listctrl</span><span class="p">:</span><span class="n">Connect</span><span class="p">(</span><span class="n">wx</span><span class="p">.</span><span class="n">wxEVT_COMMAND_LIST_ITEM_FOCUSED</span><span class="p">,</span> <span class="k">function</span> <span class="p">()</span> <span class="n">editlist</span><span class="p">:</span><span class="n">closeEditor</span><span class="p">()</span> <span class="k">end</span><span class="p">)</span>
-<span class="k">return</span> <span class="n">listctrl</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>local cols = self.listctrl:GetColumnCount()
+local cx = 0
+for i = 0, cols - 1 do
+    local w = self.listctrl:GetColumnWidth(i)
+    if x &lt;= cx + w then return i end
+    cx = cx + w
+end
+return -1
 </code></pre>
-</div></p>
+
+<p>end</p>
+
+<p>-- when a mouse down, show a text edit control
+function EditList:onLeftDown(evt)</p>
+
+<pre><code>if self.editor:IsShown() then
+    self:closeEditor()
+end
+local p = evt:GetPoint()
+local row = evt:GetIndex()
+local col = self:getColumn(p.x)
+local rect = wx.wxListCtrlEx.GetSubItemRect(self.listctrl, row, col)
+rect:SetHeight(rect:GetHeight() + 5) -- adjust
+self.editor:SetSize(rect)
+self.editor:Show()
+self.editor:SetValue(wx.wxListCtrlEx.GetItemText(self.listctrl, row, col))
+self.editor:SetFocus()
+self.col = col
+self.row = row
+</code></pre>
+
+<p>end</p>
+
+<p>function EditList:closeEditor()</p>
+
+<pre><code>if not self.editor:IsShown() then return end
+self.editor:Hide()
+self.listctrl:SetItem(self.row, self.col, self.editor:GetValue())
+</code></pre>
+
+<p>end</p>
+
+<p>function EditList:initialize()</p>
+
+<pre><code>self.editor = wx.wxTextCtrl(self.listctrl, wx.wxID_ANY, "", wx.wxDefaultPosition, wx.wxDefaultSize, wx.wxTE_PROCESS_ENTER + wx.wxTE_RICH2)
+self.editor:Connect(wx.wxEVT_COMMAND_TEXT_ENTER, function () self:closeEditor() end)
+-- not work actually
+self.editor:Connect(wx.wxEVT_COMMAND_KILL_FOCUS, function () self:closeEditor() end)
+self.editor:Hide()
+</code></pre>
+
+<p>end</p>
+
+<p>function wx.wxListCtrlTextEdit(listctrl)</p>
+
+<pre><code>local o = {
+    listctrl = listctrl,
+    editor = nil,
+}
+local editlist = newObject(o, EditList)
+editlist:initialize()
+listctrl:Connect(wx.wxEVT_COMMAND_LIST_ITEM_RIGHT_CLICK, function (evt) editlist:onLeftDown(evt) end)
+listctrl:Connect(wx.wxEVT_COMMAND_LIST_ITEM_FOCUSED, function () editlist:closeEditor() end)
+return listctrl
+</code></pre>
+
+<p>end</p>
+
+<p>{% endhighlight %}</p>
 
 <p>其原理就是获取到当前鼠标点击所在的子item位置，然后在此位置显示一个wxEditCtrl即可。以上代码需要依赖我之前写的<a href="http://codemacro.com/2012/08/02/simple-oo-in-lua/">Lua里实现简单的类-对象</a>中的代码，同时依赖以下针对wxListCtrl的扩展接口：</p>
 
-<h2><div class="highlight"><pre><code class="lua"><span class="o">&lt;/</span><span class="n">h2</span><span class="o">&gt;</span>
+<h2>{% highlight lua %}</h2>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">-- file: wxListCtrlExtend.lua</span>
-<span class="c1">-- author: Kevin Lynx</span>
-<span class="c1">-- date: 08.07.2012&lt;/p&gt;</span>
+<p>-- file: wxListCtrlExtend.lua
+-- author: Kevin Lynx
+-- date: 08.07.2012</p>
 
-<span class="o">&lt;</span><span class="n">h2</span><span class="o">&gt;</span><span class="c1">-- brief: extend some util functions to wx.wxListCtrl&lt;/h2&gt;</span>
+<h2>-- brief: extend some util functions to wx.wxListCtrl</h2>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">wx</span><span class="p">.</span><span class="n">wxListCtrlEx</span> <span class="o">=</span> <span class="p">{}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>wx.wxListCtrlEx = {}</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">function</span> <span class="nc">wx</span><span class="p">.</span><span class="nf">wxListCtrlEx</span><span class="p">.</span><span class="n">GetSubItemRect</span><span class="p">(</span><span class="n">listctrl</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>function wx.wxListCtrlEx.GetSubItemRect(listctrl, item, col)</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kd">local</span> <span class="n">rect</span> <span class="o">=</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxRect</span><span class="p">()</span>
-<span class="n">listctrl</span><span class="p">:</span><span class="n">GetItemRect</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">rect</span><span class="p">)</span>
-<span class="kd">local</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="kd">local</span> <span class="n">w</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">col</span> <span class="k">do</span>
-    <span class="n">w</span> <span class="o">=</span> <span class="n">listctrl</span><span class="p">:</span><span class="n">GetColumnWidth</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
-    <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">w</span>
-<span class="k">end</span>
-<span class="k">return</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxRect</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">w</span><span class="p">,</span> <span class="n">rect</span><span class="p">:</span><span class="n">GetY</span><span class="p">(),</span> <span class="n">w</span><span class="p">,</span> <span class="n">rect</span><span class="p">:</span><span class="n">GetHeight</span><span class="p">())</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">function</span> <span class="nc">wx</span><span class="p">.</span><span class="nf">wxListCtrlEx</span><span class="p">.</span><span class="n">GetItemText</span><span class="p">(</span><span class="n">listctrl</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kd">local</span> <span class="n">info</span> <span class="o">=</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxListItem</span><span class="p">()</span>
-<span class="n">info</span><span class="p">:</span><span class="n">SetId</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
-<span class="n">info</span><span class="p">:</span><span class="n">SetColumn</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
-<span class="n">info</span><span class="p">:</span><span class="n">SetMask</span><span class="p">(</span><span class="n">wx</span><span class="p">.</span><span class="n">wxLIST_MASK_TEXT</span><span class="p">)</span>
-<span class="n">listctrl</span><span class="p">:</span><span class="n">GetItem</span><span class="p">(</span><span class="n">info</span><span class="p">)</span>
-<span class="k">return</span> <span class="n">info</span><span class="p">:</span><span class="n">GetText</span><span class="p">()</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>local rect = wx.wxRect()
+listctrl:GetItemRect(item, rect)
+local x = 0
+local w = 0
+for i = 0, col do
+    w = listctrl:GetColumnWidth(i)
+    x = x + w
+end
+return wx.wxRect(x - w, rect:GetY(), w, rect:GetHeight())
 </code></pre>
-</div></p>
+
+<p>end</p>
+
+<p>function wx.wxListCtrlEx.GetItemText(listctrl, item, col)</p>
+
+<pre><code>local info = wx.wxListItem()
+info:SetId(item)
+info:SetColumn(col)
+info:SetMask(wx.wxLIST_MASK_TEXT)
+listctrl:GetItem(info)
+return info:GetText()
+</code></pre>
+
+<p>end</p>
+
+<p>{% endhighlight %}</p>
 
 <p>在我看到的wxWidgets官方文档里，其实wxListCtrl已经有<code>GetSubItemRect</code>接口，并且在另一些示例代码里，也看到了<code>GetItemText</code>接口，但是，我使用的版本里没有，所以只好自己写。基于以上，要使用这个可以支持编辑子item的wxListCtrl，可以：</p>
 
-<p><div class="highlight"><pre><code class="lua"><span class="n">list</span> <span class="o">=</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxListCtrlTextEdit</span><span class="p">(</span><span class="n">wx</span><span class="p">.</span><span class="n">wxListCtrl</span><span class="p">(</span><span class="n">dialog</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxID_ANY</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxDefaultPosition</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxDefaultSize</span><span class="p">,</span> <span class="n">wx</span><span class="p">.</span><span class="n">wxLC_REPORT</span><span class="p">))</span>
-</code></pre>
-</div></p>
+<p>{% highlight lua %}
+list = wx.wxListCtrlTextEdit(wx.wxListCtrl(dialog, wx.wxID_ANY, wx.wxDefaultPosition, wx.wxDefaultSize, wx.wxLC_REPORT))
+{% endhighlight %}</p>
 
 <p>也就是通过wx.wxListCtrlTextEdit这个函数做下处理，这个函数返回的是本身的wxListCtrl。当然更好的方式是使用继承之类的方式，开发一种新的控件，但在Lua中，针对usedata类型的扩展貌似只能这样了。</p>
 
@@ -257,77 +253,77 @@
 <!-- more -->
 
 
-<p><div class="highlight"><pre><code class="lua"><span class="kd">local</span> <span class="k">function</span> <span class="nf">newindex</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight lua %}
+local function newindex(self, key, value)</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="nb">getmetatable</span><span class="p">(</span><span class="n">self</span><span class="p">).</span><span class="n">__object</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kd">local</span> <span class="k">function</span> <span class="nf">index</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">return</span> <span class="nb">getmetatable</span><span class="p">(</span><span class="n">self</span><span class="p">).</span><span class="n">__object</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">function</span> <span class="nf">newObject</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">class</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">class</span><span class="p">.</span><span class="n">__index</span> <span class="o">=</span> <span class="n">class</span>
-<span class="nb">setmetatable</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">class</span><span class="p">)</span>
-<span class="k">return</span> <span class="nb">setmetatable</span><span class="p">({},</span> <span class="p">{</span> <span class="n">__newindex</span> <span class="o">=</span> <span class="n">newindex</span><span class="p">,</span> <span class="n">__index</span> <span class="o">=</span> <span class="n">index</span><span class="p">,</span> <span class="n">__object</span> <span class="o">=</span> <span class="n">o</span> <span class="p">})</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span>
+<pre><code>getmetatable(self).__object[key] = value
 </code></pre>
-</div></p>
+
+<p>end</p>
+
+<p>local function index(self, key)</p>
+
+<pre><code>return getmetatable(self).__object[key]
+</code></pre>
+
+<p>end</p>
+
+<p>function newObject(o, class)</p>
+
+<pre><code>class.__index = class
+setmetatable(o, class)
+return setmetatable({}, { __newindex = newindex, __index = index, __object = o })
+</code></pre>
+
+<p>end
+{% endhighlight %}</p>
 
 <p>基于newObject函数，可以这样定义类：</p>
 
-<p><div class="highlight"><pre><code class="lua"><span class="n">Button</span> <span class="o">=</span> <span class="p">{}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight lua %}
+Button = {}</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">function</span> <span class="nc">Button</span><span class="p">.</span><span class="nf">new</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">onclick</span><span class="p">,</span> <span class="n">parent</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>function Button.new(text, x, y, onclick, parent)</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="c1">-- 定义这个类的数据成员</span>
-<span class="kd">local</span> <span class="n">obj</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="n">text</span> <span class="o">=</span> <span class="n">text</span><span class="p">,</span>
-    <span class="n">onclick</span> <span class="o">=</span> <span class="n">onclick</span><span class="p">,</span>
-    <span class="n">normal_img</span> <span class="o">=</span> <span class="kc">nil</span><span class="p">,</span>
-    <span class="n">text_inst</span> <span class="o">=</span> <span class="kc">nil</span><span class="p">,</span>
-    <span class="n">hover_img</span> <span class="o">=</span> <span class="kc">nil</span><span class="p">,</span>
-<span class="p">}</span>
-<span class="n">obj</span> <span class="o">=</span> <span class="n">newObject</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Button</span><span class="p">)</span>
-<span class="o">...</span>
-<span class="k">return</span> <span class="n">obj</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">function</span> <span class="nf">Button</span><span class="p">:</span><span class="n">onTouchDown</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;...</span>
-<span class="c1">-- 可以访问成员，即使看起来normal_img不属于Button这个table</span>
-<span class="n">self</span><span class="p">.</span><span class="n">normal_img</span><span class="p">.</span><span class="n">visible</span> <span class="o">=</span> <span class="kc">true</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">function</span> <span class="nf">Button</span><span class="p">:</span><span class="n">onTouchUp</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;...</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span>
+<pre><code>-- 定义这个类的数据成员
+local obj = {
+    text = text,
+    onclick = onclick,
+    normal_img = nil,
+    text_inst = nil,
+    hover_img = nil,
+}
+obj = newObject(obj, Button)
+...
+return obj
 </code></pre>
-</div></p>
+
+<p>end</p>
+
+<p>function Button:onTouchDown(x, y)</p>
+
+<pre><code>...
+-- 可以访问成员，即使看起来normal_img不属于Button这个table
+self.normal_img.visible = true
+</code></pre>
+
+<p>end</p>
+
+<p>function Button:onTouchUp(x, y)</p>
+
+<pre><code>...
+</code></pre>
+
+<p>end
+{% endhighlight %}</p>
 
 <p>通过以上定义后，就可以以面向对象的方式来使用Button类了：</p>
 
-<p><div class="highlight"><pre><code class="lua"><span class="kd">local</span> <span class="n">btn</span> <span class="o">=</span> <span class="n">Button</span><span class="p">.</span><span class="n">new</span><span class="p">()</span>
-<span class="n">btn</span><span class="p">:</span><span class="n">OnTouchDown</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
-<span class="n">btn</span><span class="p">:</span><span class="n">OnTouchUp</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
-</code></pre>
-</div></p>
+<p>{% highlight lua %}
+local btn = Button.new()
+btn:OnTouchDown(100, 100)
+btn:OnTouchUp(100, 100)
+{% endhighlight %}</p>
 
 <p>其实现原理，主要就是将类的函数集通过<code>__index</code>开放给对象，在这些函数中，其<code>self</code>就像c++ 中的<code>this</code>一样拥有多态性，即其是创建出来的对象，而不是作为类角色的那个<code>table</code>（例如Button）。</p>
 
@@ -338,15 +334,15 @@
 
 <p>其实根本没必要这么复杂，<code>newObject</code>函数多引入了一个空表，实在看不出有什么作用，修改后的版本简单直接：</p>
 
-<p><div class="highlight"><pre><code class="lua"><span class="k">function</span> <span class="nf">newObject</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">class</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight lua %}
+function newObject(o, class)</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">class</span><span class="p">.</span><span class="n">__index</span> <span class="o">=</span> <span class="n">class</span>
-<span class="k">return</span> <span class="nb">setmetatable</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">class</span><span class="p">)</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span>
+<pre><code>class.__index = class
+return setmetatable(o, class)
 </code></pre>
-</div></p>
+
+<p>end
+{% endhighlight %}</p>
 
 <p>因为只需要将类定义的函数引入到实际对象里，使用方法相同。另外上文中提到的一句话：</p>
 
@@ -363,10 +359,10 @@
     <id>http://codemacro.com/2012/05/10/tolua-api</id>
     <content type="html"><![CDATA[<p>我们使用tolua++手工绑定c/c++接口到lua中，在绑定的接口实现里，就需要取出传入的参数。tolua++中提供了一系列tolua_toxxx函数，例如：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="n">lua_Number</span> <span class="n">tolua_tonumber</span><span class="p">(</span><span class="n">lua_State</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">narg</span><span class="p">,</span> <span class="n">lua_Number</span> <span class="n">def</span><span class="p">)</span>
-<span class="k">const</span> <span class="kt">char</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tolua_tostring</span><span class="p">(</span><span class="n">lua_State</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">narg</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">def</span><span class="p">)</span>
-</code></pre>
-</div></p>
+<p>{% highlight c %}
+lua_Number tolua_tonumber(lua_State <em>L, int narg, lua_Number def)
+const char </em>tolua_tostring(lua_State <em>L, int narg, const char </em>def)
+{% endhighlight %}</p>
 
 <p>这些函数都有一个def参数。乍一看，这些函数使用起来很简单。传入lua_State，传入参数在栈中的位置，然后再传一个<strong>失败</strong>后返回的默认值。</p>
 
@@ -379,67 +375,67 @@
 
 <p>然后有一天，服务器宕机了，空指针:</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="err">失败返回</span><span class="s">&quot;&quot;</span><span class="err">，还能省空指针的判断</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
-<span class="k">const</span> <span class="kt">char</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">name</span> <span class="o">=</span> <span class="n">tolua_tostring</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">);</span>
-<span class="k">if</span> <span class="p">(</span><span class="n">name</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="sc">&#39;\0&#39;</span><span class="p">)</span> <span class="p">{</span> <span class="o">/&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="err">空串总得判断吧</span> <span class="err">*/</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c %}
+/<em> 失败返回""，还能省空指针的判断 </em>/
+const char <em>name = tolua_tostring(L, 1, "");
+if (name[0] == '\0') { /</em> 空串总得判断吧 */</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="p">...</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span>
+<pre><code>...
 </code></pre>
-</div></p>
+
+<p>}
+{% endhighlight %}</p>
 
 <p>跟踪后发现，脚本里传入的是nil，这里的name取出来是NULL，而不是""（的地址）。然后吐槽了一下这个API，辛苦地修改了所有类似代码，增加对空指针的判断。我没有多想。</p>
 
 <p>故事继续，有一天服务器虽然没宕机，但功能不正常了:</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="kt">float</span> <span class="n">angle</span> <span class="o">=</span> <span class="p">(</span><span class="kt">float</span><span class="p">)</span> <span class="n">tolua_tonumber</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">PI</span><span class="p">);</span>
-<span class="p">...</span>
-</code></pre>
-</div></p>
+<p>{% highlight c %}
+float angle = (float) tolua_tonumber(L, 1, 2 * PI);
+...
+{% endhighlight %}</p>
 
 <p>这个意思是，这个函数的参数1默认是2*PI，什么是默认？lua里某函数参数不传，或传nil就是使用默认。因为不传的话，这个实参本身就是nil。但，tolua_tonumber的行为不是这样的，它的实现真是偷懒:</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="n">TOLUA_API</span> <span class="n">lua_Number</span> <span class="nf">tolua_tonumber</span> <span class="p">(</span><span class="n">lua_State</span><span class="o">*</span> <span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">narg</span><span class="p">,</span> <span class="n">lua_Number</span> <span class="n">def</span><span class="p">)</span>
-<span class="p">{</span>
- <span class="k">return</span> <span class="n">lua_gettop</span><span class="p">(</span><span class="n">L</span><span class="p">)</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">abs</span><span class="p">(</span><span class="n">narg</span><span class="p">)</span> <span class="o">?</span> <span class="n">def</span> <span class="o">:</span> <span class="n">lua_tonumber</span><span class="p">(</span><span class="n">L</span><span class="p">,</span><span class="n">narg</span><span class="p">);</span>
-<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c %}
+TOLUA_API lua_Number tolua_tonumber (lua_State* L, int narg, lua_Number def)
+{
+ return lua_gettop(L)&lt;abs(narg) ? def : lua_tonumber(L,narg);
+}</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">TOLUA_API</span> <span class="k">const</span> <span class="kt">char</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">tolua_tostring</span> <span class="p">(</span><span class="n">lua_State</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">narg</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">def</span><span class="p">)</span>
-<span class="p">{</span>
- <span class="k">return</span> <span class="n">lua_gettop</span><span class="p">(</span><span class="n">L</span><span class="p">)</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">abs</span><span class="p">(</span><span class="n">narg</span><span class="p">)</span> <span class="o">?</span> <span class="n">def</span> <span class="o">:</span> <span class="n">lua_tostring</span><span class="p">(</span><span class="n">L</span><span class="p">,</span><span class="n">narg</span><span class="p">);</span>
-<span class="p">}</span>
-</code></pre>
-</div></p>
+<p>TOLUA_API const char<em> tolua_tostring (lua_State</em> L, int narg, const char* def)
+{
+ return lua_gettop(L)&lt;abs(narg) ? def : lua_tostring(L,narg);
+}
+{% endhighlight %}</p>
 
 <p>意思是，只有当你不传的时候，它才返回默认值，否则就交给lua的API来管，而lua这些API是不支持应用层的默认参数的，对于lua_tonumber错误时就返回0，lua_tostring错误时就返回NULL。</p>
 
 <p>这种其行为和其带来的common sense不一致的API设计，实在让人蛋疼。什么是common sense呢？就像一个UI库里的按钮，我们都知道有click事件，hover事件，UI库的文档甚至都不需要解释什么是click什么是hover，因为大家看到这个东西，就有了共识，无需废话，这就是common sense。就像tolua的这些API，非常普通，大家一看都期待在意外情况下你能返回def值。但它竟然不是。实在不行，你可以模仿lua的check系列函数的实现嘛:</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="n">LUALIB_API</span> <span class="n">lua_Number</span> <span class="nf">luaL_checknumber</span> <span class="p">(</span><span class="n">lua_State</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">narg</span><span class="p">)</span> <span class="p">{</span>
-  <span class="n">lua_Number</span> <span class="n">d</span> <span class="o">=</span> <span class="n">lua_tonumber</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">narg</span><span class="p">);</span>
-  <span class="k">if</span> <span class="p">(</span><span class="n">d</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="o">!</span><span class="n">lua_isnumber</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">narg</span><span class="p">))</span>  <span class="o">/&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">avoid</span> <span class="n">extra</span> <span class="n">test</span> <span class="n">when</span> <span class="n">d</span> <span class="n">is</span> <span class="n">not</span> <span class="mi">0</span> <span class="err">*/</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c %}
+LUALIB_API lua_Number luaL_checknumber (lua_State <em>L, int narg) {
+  lua_Number d = lua_tonumber(L, narg);
+  if (d == 0 &amp;&amp; !lua_isnumber(L, narg))  /</em> avoid extra test when d is not 0 */</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">tag_error</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">narg</span><span class="p">,</span> <span class="n">LUA_TNUMBER</span><span class="p">);</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="k">return</span> <span class="n">d</span><span class="p">;</span>
-<span class="p">}</span>
+<pre><code>tag_error(L, narg, LUA_TNUMBER);
 </code></pre>
-</div></p>
+
+<p>  return d;
+}
+{% endhighlight %}</p>
 
 <p>即，根本不用去检查栈问题，直接在lua_tonumber之后再做包装检查。何况，lua需要你去检查栈吗？当你访问了栈外的元素时，lua会自动返回一个全局常量luaO_nilobject:</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="k">static</span> <span class="n">TValue</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">index2adr</span><span class="p">(</span><span class="n">lua_State</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">idx</span><span class="p">)</span> <span class="p">{</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c %}
+static TValue <em>index2adr(lua_State </em>L, int idx) {</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="p">...</span>
-<span class="k">if</span> <span class="p">(</span><span class="n">o</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">=</span> <span class="n">L</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">top</span><span class="p">)</span> <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="n">TValue</span><span class="o">*</span><span class="p">,</span> <span class="n">luaO_nilobject</span><span class="p">);</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span>
+<pre><code>...
+if (o &gt;= L-&gt;top) return cast(TValue*, luaO_nilobject);
 </code></pre>
-</div></p>
+
+<p>}
+{% endhighlight %}</p>
 
 <p>另，程序悲剧也来源于臆想。</p>
 ]]></content>
@@ -455,27 +451,23 @@
 <p>在Lua中，因为函数也是第一类值，所以会出现将函数作为另一个函数的参数，或者函数作
 为函数的返回值。这种机制在很多地方都能代码更灵活更简洁，例如:</p>
 
-<p><div class="highlight"><pre><code class="lua"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight lua %}</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="nb">table.sort</span><span class="p">(</span><span class="n">table</span> <span class="p">[,</span><span class="n">comp</span><span class="p">])</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>table.sort(table [,comp])
 </code></pre>
-</div></p>
+
+<p>{% endhighlight %}</p>
 
 <p>这里的comp就要求传入一个函数，我们在调用时，大概会有如下形式:</p>
 
-<p><div class="highlight"><pre><code class="lua"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight lua %}</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="nb">table.sort</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">comp</span><span class="p">)</span> <span class="c1">-- 直接写函数名</span>
-<span class="nb">table.sort</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">local_comp</span><span class="p">)</span> <span class="c1">-- 某个局部函数</span>
-<span class="nb">table.sort</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="k">function</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="n">xxx</span> <span class="k">end</span> <span class="p">)</span> <span class="c1">-- 临时构造一个匿名函数</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>table.sort(t, comp) -- 直接写函数名
+table.sort(t, local_comp) -- 某个局部函数
+table.sort(t, function (a, b) xxx end ) -- 临时构造一个匿名函数
 </code></pre>
-</div></p>
+
+<p>{% endhighlight %}</p>
 
 <p>其中最后一种方式最为灵活，任意时候在需要的时候构造一个匿名函数。这种在Lua自身的
 环境中使用，自然没有问题。但是，当我们在C/C++中注册一些函数到Lua环境中，而这些 函数也需要使用函数参数的时候，问题就出来了。</p>
@@ -488,16 +480,14 @@
 不是传入一个函数，而是一个全局函数名。C/C++保存这个函数名，在需要回调Lua的时候，
 就在Lua全局表中找到这个函数（根据函数名），然后再调用之。情况大致如下:</p>
 
-<p><div class="highlight"><pre><code class="lua"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight lua %}</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">function</span> <span class="nf">lua_func</span> <span class="p">()</span> <span class="n">xxx</span> <span class="k">end</span>
-<span class="n">cfunc</span><span class="p">(</span><span class="n">lua_func</span><span class="p">)</span> <span class="c1">-- wrong</span>
-<span class="n">cfunc</span><span class="p">(</span><span class="s2">&quot;</span><span class="s">lua_func&quot;</span><span class="p">)</span> <span class="c1">-- right</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>function lua_func () xxx end
+cfunc(lua_func) -- wrong
+cfunc("lua_func") -- right
 </code></pre>
-</div></p>
+
+<p>{% endhighlight %}</p>
 
 <p>我们这回的脚本模块，策划会大量使用需要回调函数的C/C++函数。显然，创建大量的全局 函数，先是从写代码的角度看，就是很伤神的。</p>
 
@@ -505,47 +495,41 @@
 
 <p>我们最终需要的方式，大概如下:</p>
 
-<p><div class="highlight"><pre><code class="lua"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight lua %}</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">cfunc</span><span class="p">(</span><span class="n">lua_func</span><span class="p">)</span> <span class="c1">-- ok</span>
-<span class="n">cfunc</span><span class="p">(</span><span class="k">function</span> <span class="p">()</span> <span class="n">xxx</span> <span class="k">end</span><span class="p">)</span> <span class="c1">-- ok</span>
-<span class="kd">local</span> <span class="n">xxx</span> <span class="o">=</span> <span class="k">function</span> <span class="p">()</span> <span class="n">xxx</span> <span class="k">end</span>
-<span class="n">cfunc</span><span class="p">(</span><span class="n">xxx</span><span class="p">)</span> <span class="c1">-- ok</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>cfunc(lua_func) -- ok
+cfunc(function () xxx end) -- ok
+local xxx = function () xxx end
+cfunc(xxx) -- ok
 </code></pre>
-</div></p>
+
+<p>{% endhighlight %}</p>
 
 <p>要解决这个问题，我的思路是直接在Lua层做一些包装。因为C/C++那边仅支持传入一个全局
 函数名（当然不一定得全局的，根据实际情况，可能在其他自己构造的表里也行），也就是
 一个字符串，所以我的思路就是将Lua函数和一个唯一的字符串做映射。:</p>
 
-<p><div class="highlight"><pre><code class="lua"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight lua %}</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">function</span> <span class="nf">wrap</span> <span class="p">(</span><span class="n">fn</span><span class="p">)</span>
-    <span class="kd">local</span> <span class="n">id</span> <span class="o">=</span> <span class="n">generate_id</span><span class="p">()</span>
-    <span class="kd">local</span> <span class="n">fn_s</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="s">__callback_fn&quot;</span><span class="o">..</span><span class="n">id</span>
-    <span class="nb">_G</span><span class="p">[</span><span class="n">fn_s</span><span class="p">]</span> <span class="o">=</span> <span class="n">fn</span>
-    <span class="k">return</span> <span class="n">fn_s</span>
-<span class="k">end</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>function wrap (fn)
+    local id = generate_id()
+    local fn_s = "__callback_fn"..id
+    _G[fn_s] = fn
+    return fn_s
+end
 </code></pre>
-</div></p>
+
+<p>{% endhighlight %}</p>
 
 <p>这个wrap函数，就是将一个函数在全局表里映射到一个字符串上，那么在使用时:</p>
 
-<p><div class="highlight"><pre><code class="lua"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight lua %}</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">cfunc</span><span class="p">(</span><span class="n">wrap</span><span class="p">(</span><span class="k">function</span> <span class="p">()</span> <span class="n">xxx</span> <span class="k">end</span><span class="p">))</span>
-<span class="n">cfunc</span><span class="p">(</span><span class="n">const</span> <span class="n">char</span> <span class="o">*</span><span class="n">fn_name</span><span class="p">,</span> <span class="n">xxx</span><span class="p">);</span> <span class="c1">-- cfunc的原型</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>cfunc(wrap(function () xxx end))
+cfunc(const char *fn_name, xxx); -- cfunc的原型
 </code></pre>
-</div></p>
+
+<p>{% endhighlight %}</p>
 
 <p>cfunc是C/C++方注册进Lua的函数，它的原型很中规中矩，即：只接收一个函数名，一个字
 符串，如之前所说，C/C++要调用这个回调函数时，就根据这个字符串去查找对应的函数。
@@ -568,30 +552,28 @@
 <p>这里这个函数调用形式，Lua就会去找ab是否有__call metamethod，如果有，则调用它。这
 个事实暗示我们，一个table也可以被调用。一个改进的wrap函数如下:</p>
 
-<p><div class="highlight"><pre><code class="lua"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight lua %}</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kd">local</span> <span class="k">function</span> <span class="nf">create_callback_table</span> <span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
-    <span class="kd">local</span> <span class="n">t</span> <span class="o">=</span> <span class="p">{}</span>
-    <span class="n">t</span><span class="p">.</span><span class="n">callback</span> <span class="o">=</span> <span class="n">fn</span>
-    <span class="nb">setmetatable</span> <span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="p">{</span><span class="n">__call</span> <span class="o">=</span>  <span class="c1">-- 关注__call</span>
-        <span class="k">function</span> <span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span> <span class="c1">-- 在t(xx)时，将调用到这个函数</span>
-            <span class="n">func</span><span class="p">.</span><span class="n">callback</span> <span class="p">(</span><span class="o">...</span><span class="p">)</span> <span class="c1">-- 真正的回调</span>
-            <span class="n">del_callback</span> <span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="c1">-- 回调完毕，清除wrap建立的数据</span>
-        <span class="k">end</span> <span class="p">})</span>
-    <span class="k">return</span> <span class="n">t</span>
-<span class="k">end</span>
+<pre><code>local function create_callback_table (fn, name)
+    local t = {}
+    t.callback = fn
+    setmetatable (t, {__call =  -- 关注__call
+        function (func, ...) -- 在t(xx)时，将调用到这个函数
+            func.callback (...) -- 真正的回调
+            del_callback (name) -- 回调完毕，清除wrap建立的数据
+        end })
+    return t
+end
 
-<span class="k">function</span> <span class="nf">wrap</span> <span class="p">(</span><span class="n">fn</span><span class="p">)</span>
-    <span class="kd">local</span> <span class="n">id</span> <span class="o">=</span> <span class="n">generate_func_id</span><span class="p">()</span> <span class="c1">-- 产生唯一的id</span>
-    <span class="kd">local</span> <span class="n">fn_s</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="s">_callback_fn&quot;</span><span class="o">..</span><span class="n">id</span>
-    <span class="nb">_G</span><span class="p">[</span><span class="n">fn_s</span><span class="p">]</span> <span class="o">=</span> <span class="n">create_callback_table</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">fn_s</span><span class="p">)</span> <span class="c1">-- _G[fn_s]对应的是一个表</span>
-    <span class="k">return</span> <span class="n">fn_s</span>
-<span class="k">end</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+function wrap (fn)
+    local id = generate_func_id() -- 产生唯一的id
+    local fn_s = "_callback_fn"..id
+    _G[fn_s] = create_callback_table(fn, fn_s) -- _G[fn_s]对应的是一个表
+    return fn_s
+end
 </code></pre>
-</div></p>
+
+<p>{% endhighlight %}</p>
 
 <p>在我们的C/C++程序中，依然如往常一样，先是从_G里取出函数名对应的对象。虽然这个对
 象现在已经是一个table。然后lua_call。</p>

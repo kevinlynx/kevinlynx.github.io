@@ -74,6 +74,59 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2013/08/08/sphinx-dhtcrawler/">Dhtcrawler2换用sphinx搜索</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-08-08T00:00:00+08:00" pubdate data-updated="true">Aug 8<span>th</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>dhtcrawler2最开始使用mongodb自带的全文搜索引擎搜索资源。搜索一些短关键字时很容易导致erlang进程call timeout，也就是查询时间太长。对于像<code>avi</code>这种关键字，搜索时间长达十几秒。搜索的资源数量200万左右。这其中大部分资源只是对root文件名进行了索引，即对于多文件资源而言没有索引单个文件名。索引方式有部分资源是按照字符串子串的形式，没有拆词，非常占用存储空间；有部分是使用了rmmseg（我编译了rmmseg-cpp作为erlang nif库调用 <a href="https://github.com/kevinlynx/erl-rmmseg">erl-rmmseg</a>）进行了拆词，占用空间小了很多，但由于词库问题很多片里的词汇没拆出来。</p>
+
+<p>很早以前我以为搜索耗时的原因是因为数据库太忙，想部署个mongodb集群出来。后来发现数据库没有任何读写的状态下，查询依然慢。终于只好放弃mongodb自带的文本搜索。于是我改用sphinx。简单起见，我直接下载了<a href="http://www.coreseek.cn/">coreseek4.1</a>（sphinx的一个支持中文拆词的包装）。</p>
+
+<p>现在，已经导入了200多万的资源进sphinx，并且索引了所有文件名，索引文件达800M。对于<code>avi</code>关键字的搜索大概消耗0.2秒的时间。<a href="http://bt.cm/e/http_handler:search?q=avi">搜索试试</a>。</p>
+
+<p>以下记录下sphinx在dhtcrawler的应用</p>
+
+<h3>sphinx简介</h3>
+
+<p>sphinx包含两个主要的程序：indexer和searchd。indexer用于建立文本内容的索引，然后searchd基于这些索引提供文本搜索功能，而要使用该功能，可以遵循searchd的网络协议连接searchd这个服务来使用。</p>
+
+<p>indexer可以通过多种方式来获取这些文本内容，文本内容的来源称为数据源。sphinx内置mysql这种数据源，意思是可以直接从mysql数据库中取得数据。sphinx还支持xmlpipe2这种数据源，其数据以xml格式提供给indexer。要导入mongodb数据库里的内容，可以选择使用xmlpipe2这种方式。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/08/08/sphinx-dhtcrawler/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2013/07/02/dhtcrawler2/">磁力搜索第二版-dhtcrawler2</a></h1>
     
     
@@ -307,64 +360,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2013/06/03/erlang-code-snippets/">Erlang编程技巧若干</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-06-03T21:53:00+08:00" pubdate data-updated="true">Jun 3<span>rd</span>, 2013</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>guard</h2>
-
-<p>guard可以以逗号或者分号分隔，以逗号分隔表示最终的结果为各个guard的and结果，以分号则是只要任意一个guard为true则最终结果为true。</p>
-
-<div class="highlight"><pre><code class="erlang"><span class="nf">guard</span><span class="p">(</span><span class="nv">X</span><span class="p">,</span> <span class="nv">Y</span><span class="p">)</span> <span class="k">when</span> <span class="ow">not</span><span class="p">(</span><span class="nv">X</span><span class="o">&gt;</span><span class="nv">Y</span><span class="p">),</span> <span class="nb">is_atom</span><span class="p">(</span><span class="nv">X</span><span class="p">)</span> <span class="o">-&gt;</span>
-    <span class="nv">X</span> <span class="o">+</span> <span class="nv">Y</span><span class="p">.</span>
-</code></pre>
-</div>
-
-
-<p>guard在list comprehension中可以筛选元素：</p>
-
-<div class="highlight"><pre><code class="erlang"><span class="nv">NewNodes</span>  <span class="o">=</span> <span class="p">[</span><span class="nv">Node</span> <span class="p">||</span> <span class="nv">Node</span> <span class="o">&lt;-</span> <span class="nv">AllNodes</span><span class="p">,</span> <span class="ow">not</span> <span class="nn">gb_sets</span><span class="p">:</span><span class="nf">is_member</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="nv">NewQueried</span><span class="p">)],</span>
-</code></pre>
-</div>
-
-
-<p>guard中不能使用自定义函数，因为guard应该保证没有副作用，但自定义函数无法保证这一点，所以erlang禁止在guard中使用自定义函数。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2013/06/03/erlang-code-snippets/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/2/">&larr; Older</a>
@@ -381,12 +376,12 @@
     <li class='category'><a href='/categories/ice/'>ICE (2)</a></li>
 <li class='category'><a href='/categories/c-c-/'>c/c++ (12)</a></li>
 <li class='category'><a href='/categories/clang/'>clang (1)</a></li>
-<li class='category'><a href='/categories/erlang/'>erlang (6)</a></li>
+<li class='category'><a href='/categories/erlang/'>erlang (7)</a></li>
 <li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
 <li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
 <li class='category'><a href='/categories/lua/'>lua (5)</a></li>
 <li class='category'><a href='/categories/module/'>module (2)</a></li>
-<li class='category'><a href='/categories/network/'>network (4)</a></li>
+<li class='category'><a href='/categories/network/'>network (5)</a></li>
 <li class='category'><a href='/categories/other/'>other (5)</a></li>
 <li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
 <li class='category'><a href='/categories/tips/'>tips (21)</a></li>
@@ -398,6 +393,10 @@
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2013/08/08/sphinx-dhtcrawler/">dhtcrawler2换用sphinx搜索</a>
+      </li>
     
       <li class="post">
         <a href="/2013/07/02/dhtcrawler2/">磁力搜索第二版-dhtcrawler2</a>
@@ -413,10 +412,6 @@
     
       <li class="post">
         <a href="/2013/06/09/ice-web-client/">使用ActionScript开发Ice Web客户端</a>
-      </li>
-    
-      <li class="post">
-        <a href="/2013/06/03/erlang-code-snippets/">erlang编程技巧若干</a>
       </li>
     
   </ul>
@@ -435,9 +430,9 @@
 <a style="font-size: 118%" href="/tags/blog/">blog</a>
 <a style="font-size: 178%" href="/tags/c-c-/">c/c++</a>
 <a style="font-size: 90%" href="/tags/clang/">clang</a>
-<a style="font-size: 90%" href="/tags/destructor/">destructor</a>
-<a style="font-size: 146%" href="/tags/dht/">dht</a>
-<a style="font-size: 162%" href="/tags/erlang/">erlang</a>
+<a style="font-size: 154%" href="/tags/dht/">dht</a>
+<a style="font-size: 118%" href="/tags/dhtcrawler/">dhtcrawler</a>
+<a style="font-size: 168%" href="/tags/erlang/">erlang</a>
 <a style="font-size: 134%" href="/tags/game-develop/">game develop</a>
 <a style="font-size: 118%" href="/tags/html/">html</a>
 <a style="font-size: 90%" href="/tags/ice/">ice</a>

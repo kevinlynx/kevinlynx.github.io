@@ -4,7 +4,7 @@
   <title><![CDATA[Category: network | loop in codes]]></title>
   <link href="http://codemacro.com/categories/network/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2013-07-20T16:25:46+08:00</updated>
+  <updated>2013-08-08T22:46:32+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,116 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[dhtcrawler2换用sphinx搜索]]></title>
+    <link href="http://codemacro.com/2013/08/08/sphinx-dhtcrawler/"/>
+    <updated>2013-08-08T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2013/08/08/sphinx-dhtcrawler</id>
+    <content type="html"><![CDATA[<p>dhtcrawler2最开始使用mongodb自带的全文搜索引擎搜索资源。搜索一些短关键字时很容易导致erlang进程call timeout，也就是查询时间太长。对于像<code>avi</code>这种关键字，搜索时间长达十几秒。搜索的资源数量200万左右。这其中大部分资源只是对root文件名进行了索引，即对于多文件资源而言没有索引单个文件名。索引方式有部分资源是按照字符串子串的形式，没有拆词，非常占用存储空间；有部分是使用了rmmseg（我编译了rmmseg-cpp作为erlang nif库调用 <a href="https://github.com/kevinlynx/erl-rmmseg">erl-rmmseg</a>）进行了拆词，占用空间小了很多，但由于词库问题很多片里的词汇没拆出来。</p>
+
+<p>很早以前我以为搜索耗时的原因是因为数据库太忙，想部署个mongodb集群出来。后来发现数据库没有任何读写的状态下，查询依然慢。终于只好放弃mongodb自带的文本搜索。于是我改用sphinx。简单起见，我直接下载了<a href="http://www.coreseek.cn/">coreseek4.1</a>（sphinx的一个支持中文拆词的包装）。</p>
+
+<p>现在，已经导入了200多万的资源进sphinx，并且索引了所有文件名，索引文件达800M。对于<code>avi</code>关键字的搜索大概消耗0.2秒的时间。<a href="http://bt.cm/e/http_handler:search?q=avi">搜索试试</a>。</p>
+
+<p>以下记录下sphinx在dhtcrawler的应用</p>
+
+<h3>sphinx简介</h3>
+
+<p>sphinx包含两个主要的程序：indexer和searchd。indexer用于建立文本内容的索引，然后searchd基于这些索引提供文本搜索功能，而要使用该功能，可以遵循searchd的网络协议连接searchd这个服务来使用。</p>
+
+<p>indexer可以通过多种方式来获取这些文本内容，文本内容的来源称为数据源。sphinx内置mysql这种数据源，意思是可以直接从mysql数据库中取得数据。sphinx还支持xmlpipe2这种数据源，其数据以xml格式提供给indexer。要导入mongodb数据库里的内容，可以选择使用xmlpipe2这种方式。</p>
+
+<!-- more -->
+
+
+<h3>sphinx document</h3>
+
+<p>xmlpipe2数据源需要按照以下格式提交：</p>
+
+<pre><code>&lt;sphinx:docset&gt;
+    &lt;sphinx:schema&gt;
+        &lt;sphinx:field name="subject"/&gt;
+        &lt;sphinx:field name="files"/&gt;
+        &lt;sphinx:attr name="hash1" type="int" bits="32"/&gt;
+        &lt;sphinx:attr name="hash2" type="int" bits="32"/&gt;
+    &lt;/sphinx:schema&gt;
+    &lt;sphinx:document id="1"&gt;
+        &lt;subject&gt;this is the subject&lt;/subject&gt;
+        &lt;files&gt;file content&lt;/files&gt;
+        &lt;hash1&gt;111&lt;/hash1&gt;
+    &lt;/sphinx:document&gt;
+&lt;/sphinx:docset&gt;
+</code></pre>
+
+<p>该文件包含两大部分：<code>schema</code>和<code>documents</code>，其中<code>schema</code>又包含两部分：<code>field</code>和<code>attr</code>，其中由<code>field</code>标识的字段就会被indexer读取并全部作为输入文本建立索引，而<code>attr</code>则标识查询结果需要附带的信息；<code>documents</code>则是由一个个<code>sphinx:document</code>组成，即indexer真正要处理的数据。注意其中被<code>schema</code>引用的属性名。</p>
+
+<p>document一个很重要的属性就是它的id。这个id对应于sphinx需要唯一，查询结果也会包含此id。一般情况下，此id可以直接是数据库主键，可用于查询到详细信息。searchd搜索关键字，其实可以看作为搜索这些document，搜索出来的结果也是这些document，搜索结果中主要包含schema中指定的attr。</p>
+
+<h3>增量索引</h3>
+
+<p>数据源的数据一般是变化的，新增的数据要加入到sphinx索引文件中，才能使得searchd搜索到新录入的数据。要不断地加入新数据，可以使用增量索引机制。增量索引机制中，需要一个主索引和一个次索引(delta index)。每次新增的数据都建立为次索引，然后一段时间后再合并进主索引。这个过程主要还是使用indexer和searchd程序。实际上，searchd是一个需要一直运行的服务，而indexer则是一个建立完索引就退出的工具程序。所以，这里的增量索引机制，其中涉及到的“每隔一定时间就合并”这种工作，需要自己写程序来协调（或通过其他工具）</p>
+
+<h3>sphinx与mongodb</h3>
+
+<p>上面提到，一般sphinx document的id都是使用的数据库主键，以方便查询。但mongodb中默认情况不使用数字作为主键。dhtcrawler的资源数据库使用的是资源info-hash作为主键，这无法作为sphinx document的id。一种解决办法是，将该hash按位拆分，拆分成若干个sphinx document attr支持位数的整数。例如，info-hash是一个160位的id，如果使用32位的attr（高版本的sphinx支持64位的整数），那么可以把该info-hash按位拆分成5个attr。而sphinx document id则可以使用任意数字，只要保证不冲突就行。当获得查询结果时，取得对应的attr，组合为info-hash即可。</p>
+
+<p>mongodb默认的Object id也可以按这种方式拆分。</p>
+
+<h3>dhtcrawler2与sphinx</h3>
+
+<p>dhtcrawler2中我自己写了一个导入程序。该程序从mongodb中读出数据，数据到一定量时，就输出为xmlpipe2格式的xml文件，然后建立为次索引，最后合并进主索引。过程很简单，包含两次启动外部进程的工作，这个可以通过erlang中os:cmd完成。</p>
+
+<p>值得注意的是，在从mongodb中读数据时，使用skip基本是不靠谱的，skip 100万个数据需要好几分钟，为了不增加额外的索引字段，我只好在<code>created_at</code>字段上加索引，然后按时间段来读取资源，这一切都是为了支持程序关闭重启后，可以继续上次工作，而不是重头再来。200万的数据，已经处理了好几天了。</p>
+
+<p>后头数据建立好了，需要在前台展示出来。erlang中似乎只有一个sphinx客户端库：<a href="https://github.com/kevsmith/giza">giza</a>。这个库有点老，写成的时候貌似还在使用sphinx0.9版本。其中查询代码包含了版本判定，已经无法在我使用的sphinx2.x版本中使用。无奈之下我只好修改了这个库的源码，幸运的是查询功能居然是正常的，意味着sphinx若干个版本了也没改动通信协议？后来，我为了取得查询的统计信息，例如消耗时间以及总结果，我再一次修改了giza的源码。新的版本可以在我的github上找到：<a href="https://github.com/kevinlynx/giza">my giza</a>，看起来我没侵犯版本协议吧？</p>
+
+<p>目前dhtcrawler的搜索，先是基于sphinx搜索出hash列表，然后再去mongodb中搜索hash对应的资源。事实上，可以为sphinx的document直接附加这些资源的描述信息，就可以避免去数据库查询。但我想，这样会增加sphinx索引文件的大小，担心会影响搜索速度。实际测试时，发现数据库查询有时候还真的很消耗时间，尽管我做了分页，以使得单页仅对数据库进行少量查询。</p>
+
+<h3>xml unicode</h3>
+
+<p>在导入xml到sphinx的索引过程中，本身我输出的内容都是unicode的，但有很多资源会导致indexer解析xml出错。出错后indexer直接停止对当前xml的处理。后来查阅资料发现是因为这些无法被indexer处理的xml内容包含unicode里的控制字符，例如 ä (U+00E4)。我的解决办法是直接过滤掉这些控制字符。unicode的控制字符参看<a href="http://www.utf8-chartable.de/">UTF-8 encoding table and Unicode characters</a>。在erlang中干这个事居然不复杂：</p>
+
+<p>{% highlight erlang %}
+strip_invalid_unicode(&lt;&lt;>>) -></p>
+
+<pre><code>&lt;&lt;&gt;&gt;;
+</code></pre>
+
+<p>strip_invalid_unicode(&lt;&lt;C/utf8, R/binary>>) -></p>
+
+<pre><code>case is_valid_unicode(C) of
+    true -&gt;
+        RR = strip_invalid_unicode(R),
+        &lt;&lt;C/utf8, RR/binary&gt;&gt;;
+    false -&gt;
+        strip_invalid_unicode(R)
+end;
+</code></pre>
+
+<p>strip_invalid_unicode(&lt;&lt;_, R/binary>>) -></p>
+
+<pre><code>strip_invalid_unicode(R).
+</code></pre>
+
+<p>is_valid_unicode(C) when C &lt; 16#20 -></p>
+
+<pre><code>false;
+</code></pre>
+
+<p>is_valid_unicode(C) when C >= 16#7f, C =&lt; 16#ff -></p>
+
+<pre><code>false;
+</code></pre>
+
+<p>is_valid_unicode(_) -></p>
+
+<pre><code>true.
+</code></pre>
+
+<p>{% endhighlight %}</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[磁力搜索第二版-dhtcrawler2]]></title>
@@ -205,66 +315,62 @@ http://bt.box.n0808.com
 
 <p>使用这些网站时，需提供磁力哈希（infohash可直接转换），构建特定的URL，发出HTTP请求即可。</p>
 
-<p><div class="highlight"><pre><code class="erlang"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight erlang %}</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="nv">U1</span> <span class="o">=</span> <span class="s">&quot;http://torrage.com/torrent/&quot;</span> <span class="o">++</span> <span class="nv">MagHash</span> <span class="o">++</span> <span class="s">&quot;.torrent&quot;</span><span class="p">,</span>
-<span class="nv">U2</span> <span class="o">=</span> <span class="s">&quot;https://zoink.it/torrent/&quot;</span> <span class="o">++</span> <span class="nv">MagHash</span> <span class="o">++</span> <span class="s">&quot;.torrent&quot;</span><span class="p">,</span>
-<span class="nv">U3</span> <span class="o">=</span> <span class="n">format_btbox_url</span><span class="p">(</span><span class="nv">MagHash</span><span class="p">),</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">format_btbox_url</span><span class="p">(</span><span class="nv">MagHash</span><span class="p">)</span> <span class="o">-&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="nv">H</span> <span class="o">=</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">sublist</span><span class="p">(</span><span class="nv">MagHash</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
-<span class="nv">T</span> <span class="o">=</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">nthtail</span><span class="p">(</span><span class="mi">38</span><span class="p">,</span> <span class="nv">MagHash</span><span class="p">),</span>
-<span class="s">&quot;http://bt.box.n0808.com/&quot;</span> <span class="o">++</span> <span class="nv">H</span> <span class="o">++</span> <span class="s">&quot;/&quot;</span> <span class="o">++</span> <span class="nv">T</span> <span class="o">++</span> <span class="s">&quot;/&quot;</span> <span class="o">++</span> <span class="nv">MagHash</span> <span class="o">++</span> <span class="s">&quot;.torrent&quot;</span><span class="p">.</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>U1 = "http://torrage.com/torrent/" ++ MagHash ++ ".torrent",
+U2 = "https://zoink.it/torrent/" ++ MagHash ++ ".torrent",
+U3 = format_btbox_url(MagHash),
 </code></pre>
-</div></p>
+
+<p>format_btbox_url(MagHash) -></p>
+
+<pre><code>H = lists:sublist(MagHash, 2),
+T = lists:nthtail(38, MagHash),
+"http://bt.box.n0808.com/" ++ H ++ "/" ++ T ++ "/" ++ MagHash ++ ".torrent".
+</code></pre>
+
+<p>{% endhighlight %}</p>
 
 <p>但是，以一个节点的身份加入DHT网络，是无法获取大量查询的。在DHT网络中，每个节点都有一个ID。每个节点在查询信息时，仅询问离信息较近的节点。这里的信息除了infohash外还包含节点，即节点询问一个节点，这个节点在哪里。DHT的典型实现中（Kademlia），使用两个ID的xor操作来确定距离。既然距离的计算是基于ID的，为了尽可能获取整个DHT网络交换的信息，爬虫程序就可以建立尽可能多的DHT节点，让这些节点的ID均匀地分布在ID取值区间内，以这样的方式加入网络。</p>
 
 <p>在dhtcrawler中，我使用以下方式产生了N个大致均匀分布的ID：</p>
 
-<p><div class="highlight"><pre><code class="erlang"><span class="nf">create_discrete_ids</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight erlang %}
+create_discrete_ids(1) -></p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="p">[</span><span class="nn">dht_id</span><span class="p">:</span><span class="nf">random</span><span class="p">()];</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">create_discrete_ids</span><span class="p">(</span><span class="nv">Count</span><span class="p">)</span> <span class="o">-&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="nv">Max</span> <span class="o">=</span> <span class="nn">dht_id</span><span class="p">:</span><span class="nf">max</span><span class="p">(),</span>
-<span class="nv">Piece</span> <span class="o">=</span> <span class="nv">Max</span> <span class="ow">div</span> <span class="nv">Count</span><span class="p">,</span>
-<span class="p">[</span><span class="nn">random</span><span class="p">:</span><span class="nf">uniform</span><span class="p">(</span><span class="nv">Piece</span><span class="p">)</span> <span class="o">+</span> <span class="nv">Index</span> <span class="o">*</span> <span class="nv">Piece</span> <span class="p">||</span> <span class="nv">Index</span> <span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">-</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">seq</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nv">Count</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)].</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>[dht_id:random()];
 </code></pre>
-</div></p>
+
+<p>create_discrete_ids(Count) -></p>
+
+<pre><code>Max = dht_id:max(),
+Piece = Max div Count,
+[random:uniform(Piece) + Index * Piece || Index &lt;- lists:seq(0, Count - 1)].
+</code></pre>
+
+<p>{% endhighlight %}</p>
 
 <p>除了尽可能多地往DHT网络里部署节点之外，对单个节点而言，也有些注意事项。例如应尽可能快地将自己告诉尽可能多的节点，这可以在启动时进行大量的随机infohash的查询。随着查询过程的深入，该节点会与更多的节点打交道。因为DHT网络里的节点实际上是不稳定的，它今天在线，明天后天可能不在线，所以计算你的ID固定，哪些节点与你较近，本身就是个相对概念。节点在程序退出时，也最好将自己的路由信息（与自己交互的节点列表）保存起来，这样下次启动时就可以更快地加入网络。</p>
 
 <p>在dhtcrawler的实现中，每个节点每个一定时间，都会向网络中随机查询一个infohash，这个infohash是随机产生的。其查询目的不在于infohash，而在于告诉更多的节点，以及在其他节点上保持自己的活跃。</p>
 
-<p><div class="highlight"><pre><code class="erlang"><span class="nf">handle_event</span><span class="p">(</span><span class="n">startup</span><span class="p">,</span> <span class="p">{</span><span class="nv">MyID</span><span class="p">})</span> <span class="o">-&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight erlang %}
+handle_event(startup, {MyID}) -></p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="nn">timer</span><span class="p">:</span><span class="nf">apply_interval</span><span class="p">(</span><span class="o">?</span><span class="nv">QUERY_INTERVAL</span><span class="p">,</span> <span class="o">?</span><span class="nv">MODULE</span><span class="p">,</span> <span class="n">start_tell_more_nodes</span><span class="p">,</span> <span class="p">[</span><span class="nv">MyID</span><span class="p">]).</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">start_tell_more_nodes</span><span class="p">(</span><span class="nv">MyID</span><span class="p">)</span> <span class="o">-&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="nb">spawn</span><span class="p">(</span><span class="o">?</span><span class="nv">MODULE</span><span class="p">,</span> <span class="n">tell_more_nodes</span><span class="p">,</span> <span class="p">[</span><span class="nv">MyID</span><span class="p">]).</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">tell_more_nodes</span><span class="p">(</span><span class="nv">MyID</span><span class="p">)</span> <span class="o">-&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="p">[</span><span class="nn">search</span><span class="p">:</span><span class="nf">get_peers</span><span class="p">(</span><span class="nv">MyID</span><span class="p">,</span> <span class="nn">dht_id</span><span class="p">:</span><span class="nf">random</span><span class="p">())</span> <span class="p">||</span> <span class="p">_</span> <span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">-</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">seq</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)].</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>timer:apply_interval(?QUERY_INTERVAL, ?MODULE, start_tell_more_nodes, [MyID]).
 </code></pre>
-</div></p>
+
+<p>start_tell_more_nodes(MyID) -></p>
+
+<pre><code>spawn(?MODULE, tell_more_nodes, [MyID]).
+</code></pre>
+
+<p>tell_more_nodes(MyID) -></p>
+
+<pre><code>[search:get_peers(MyID, dht_id:random()) || _ &lt;- lists:seq(1, 3)].
+</code></pre>
+
+<p>{% endhighlight %}</p>
 
 <p>DHT节点的完整实现是比较繁琐的，涉及到查询以及繁杂的各种对象的超时（节点、桶、infohash），而超时的处理并不是粗暴地做删除操作。因为本身是基于UDP协议，你得对这些超时对象做进一步的查询才能正确地进一步做其他事情。而搜索也是个繁杂的事情，递归地查询节点，感觉上，你不一定离目标越来越近，由于被查询节点的不确定性（无法确定对方是否在玩弄你，或者本身对方就是个傻逼），你很可能接下来要查询的节点反而离目标变远了。</p>
 
@@ -280,33 +386,31 @@ http://bt.box.n0808.com
 
 <p>文件的信息无非就是文件名、大小。文件名可能包含utf8编码的名字，为了后面处理的方便，dhtcrawler都会优先使用utf8编码。</p>
 
-<p><div class="highlight"><pre><code class="erlang"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight erlang %}</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="p">{</span><span class="n">dict</span><span class="p">,</span> <span class="nv">Info</span><span class="p">}}</span> <span class="o">=</span> <span class="nn">dict</span><span class="p">:</span><span class="nf">find</span><span class="p">(</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="s">&quot;info&quot;</span><span class="err">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="err">&amp;</span><span class="n">gt</span><span class="p">;,</span> <span class="nv">TD</span><span class="p">),</span>
-<span class="k">case</span> <span class="n">type</span><span class="p">(</span><span class="nv">Info</span><span class="p">)</span> <span class="k">of</span>
-    <span class="n">single</span> <span class="o">-</span><span class="err">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="p">{</span><span class="n">single</span><span class="p">,</span> <span class="n">parse_single</span><span class="p">(</span><span class="nv">Info</span><span class="p">)};</span>
-    <span class="n">multi</span> <span class="o">-</span><span class="err">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="p">{</span><span class="n">multi</span><span class="p">,</span> <span class="n">parse_multi</span><span class="p">(</span><span class="nv">Info</span><span class="p">)}</span>
-<span class="k">end</span><span class="p">.</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">parse_single</span><span class="p">(</span><span class="nv">Info</span><span class="p">)</span> <span class="o">-&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="nv">Name</span> <span class="o">=</span> <span class="n">read_string</span><span class="p">(</span><span class="s">&quot;name&quot;</span><span class="p">,</span> <span class="nv">Info</span><span class="p">),</span>
-<span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">Length</span><span class="p">}</span> <span class="o">=</span> <span class="nn">dict</span><span class="p">:</span><span class="nf">find</span><span class="p">(</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="s">&quot;length&quot;</span><span class="err">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="err">&amp;</span><span class="n">gt</span><span class="p">;,</span> <span class="nv">Info</span><span class="p">),</span>
-<span class="p">{</span><span class="nv">Name</span><span class="p">,</span> <span class="nv">Length</span><span class="p">}.</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">parse_multi</span><span class="p">(</span><span class="nv">Info</span><span class="p">)</span> <span class="o">-&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="nv">Root</span> <span class="o">=</span> <span class="n">read_string</span><span class="p">(</span><span class="s">&quot;name&quot;</span><span class="p">,</span> <span class="nv">Info</span><span class="p">),</span>
-<span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="p">{</span><span class="n">list</span><span class="p">,</span> <span class="nv">Files</span><span class="p">}}</span> <span class="o">=</span> <span class="nn">dict</span><span class="p">:</span><span class="nf">find</span><span class="p">(</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="s">&quot;files&quot;</span><span class="err">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="err">&amp;</span><span class="n">gt</span><span class="p">;,</span> <span class="nv">Info</span><span class="p">),</span>
-<span class="nv">FileInfo</span> <span class="o">=</span> <span class="p">[</span><span class="n">parse_file_item</span><span class="p">(</span><span class="nv">Item</span><span class="p">)</span> <span class="p">||</span> <span class="p">{</span><span class="n">dict</span><span class="p">,</span> <span class="nv">Item</span><span class="p">}</span> <span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">-</span> <span class="nv">Files</span><span class="p">],</span>
-<span class="p">{</span><span class="nv">Root</span><span class="p">,</span> <span class="nv">FileInfo</span><span class="p">}.</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>{ok, {dict, Info}} = dict:find(&lt;&lt;"info"&gt;&gt;, TD),
+case type(Info) of
+    single -&gt; {single, parse_single(Info)};
+    multi -&gt; {multi, parse_multi(Info)}
+end.
 </code></pre>
-</div></p>
+
+<p>parse_single(Info) -></p>
+
+<pre><code>Name = read_string("name", Info),
+{ok, Length} = dict:find(&lt;&lt;"length"&gt;&gt;, Info),
+{Name, Length}.
+</code></pre>
+
+<p>parse_multi(Info) -></p>
+
+<pre><code>Root = read_string("name", Info),
+{ok, {list, Files}} = dict:find(&lt;&lt;"files"&gt;&gt;, Info),
+FileInfo = [parse_file_item(Item) || {dict, Item} &lt;- Files],
+{Root, FileInfo}.
+</code></pre>
+
+<p>{% endhighlight %}</p>
 
 <h2>数据库</h2>
 
@@ -328,35 +432,33 @@ http://bt.box.n0808.com
 
 <p>使用mongodb时唯一让我很不爽的是mongodb-erlang这个客户端库的文档太欠缺。这还不算大问题，因为看看源码参数还是可以大概猜到用法。真正悲剧的是mongodb的有些查询功能它是不支持的。例如通过cursor来排序来限制数量。在cursor模块并没有对应的mongodb接口。最终我只好通过以下方式查询，我不明白batchsize，但它可以工作：</p>
 
-<p><div class="highlight"><pre><code class="erlang"><span class="nf">search_announce_top</span><span class="p">(</span><span class="nv">Conn</span><span class="p">,</span> <span class="nv">Count</span><span class="p">)</span> <span class="o">-&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight erlang %}
+search_announce_top(Conn, Count) -></p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="nv">Sel</span> <span class="o">=</span> <span class="p">{</span><span class="n">&#39;$query&#39;</span><span class="p">,</span> <span class="p">{},</span> <span class="n">&#39;$orderby&#39;</span><span class="p">,</span> <span class="p">{</span><span class="n">announce</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">}},</span>
-<span class="nv">List</span> <span class="o">=</span> <span class="n">mongo_do</span><span class="p">(</span><span class="nv">Conn</span><span class="p">,</span> <span class="k">fun</span><span class="p">()</span> <span class="o">-</span><span class="err">&amp;</span><span class="n">gt</span><span class="p">;</span>
-    <span class="nv">Cursor</span> <span class="o">=</span> <span class="nn">mongo</span><span class="p">:</span><span class="nf">find</span><span class="p">(</span><span class="o">?</span><span class="nv">COLLNAME</span><span class="p">,</span> <span class="nv">Sel</span><span class="p">,</span> <span class="p">[],</span> <span class="mi">0</span><span class="p">,</span> <span class="nv">Count</span><span class="p">),</span> 
-    <span class="nn">mongo_cursor</span><span class="p">:</span><span class="nf">rest</span><span class="p">(</span><span class="nv">Cursor</span><span class="p">)</span>
-<span class="k">end</span><span class="p">),</span>
-<span class="p">[</span><span class="n">decode_torrent_item</span><span class="p">(</span><span class="nv">Item</span><span class="p">)</span> <span class="p">||</span> <span class="nv">Item</span> <span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">-</span> <span class="nv">List</span><span class="p">].</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>Sel = {'$query', {}, '$orderby', {announce, -1}},
+List = mongo_do(Conn, fun() -&gt;
+    Cursor = mongo:find(?COLLNAME, Sel, [], 0, Count), 
+    mongo_cursor:rest(Cursor)
+end),
+[decode_torrent_item(Item) || Item &lt;- List].
 </code></pre>
-</div></p>
+
+<p>{% endhighlight %}</p>
 
 <p>另一个悲剧的是，mongodb-erlang还不支持文档的局部更新，它的update接口直接要求传入整个文档。几经折腾，我可以通过runCommand来完成：</p>
 
-<p><div class="highlight"><pre><code class="erlang"><span class="nf">inc_announce</span><span class="p">(</span><span class="nv">Conn</span><span class="p">,</span> <span class="nv">Hash</span><span class="p">)</span> <span class="k">when</span> <span class="nb">is_list</span><span class="p">(</span><span class="nv">Hash</span><span class="p">)</span> <span class="o">-&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight erlang %}
+inc_announce(Conn, Hash) when is_list(Hash) -></p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="nv">Cmd</span> <span class="o">=</span> <span class="p">{</span><span class="n">findAndModify</span><span class="p">,</span> <span class="o">?</span><span class="nv">COLLNAME</span><span class="p">,</span> <span class="k">query</span><span class="p">,</span> <span class="p">{</span><span class="n">&#39;_id&#39;</span><span class="p">,</span> <span class="nb">list_to_binary</span><span class="p">(</span><span class="nv">Hash</span><span class="p">)},</span> 
-    <span class="n">update</span><span class="p">,</span> <span class="p">{</span><span class="n">&#39;$inc&#39;</span><span class="p">,</span> <span class="p">{</span><span class="n">announce</span><span class="p">,</span> <span class="mi">1</span><span class="p">}},</span>
-    <span class="n">new</span><span class="p">,</span> <span class="n">true</span><span class="p">},</span>
-<span class="nv">Ret</span> <span class="o">=</span> <span class="n">mongo_do</span><span class="p">(</span><span class="nv">Conn</span><span class="p">,</span> <span class="k">fun</span><span class="p">()</span> <span class="o">-</span><span class="err">&amp;</span><span class="n">gt</span><span class="p">;</span>
-    <span class="nn">mongo</span><span class="p">:</span><span class="nf">command</span><span class="p">(</span><span class="nv">Cmd</span><span class="p">)</span>
-<span class="k">end</span><span class="p">).</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>Cmd = {findAndModify, ?COLLNAME, query, {'_id', list_to_binary(Hash)}, 
+    update, {'$inc', {announce, 1}},
+    new, true},
+Ret = mongo_do(Conn, fun() -&gt;
+    mongo:command(Cmd)
+end).
 </code></pre>
-</div></p>
+
+<p>{% endhighlight %}</p>
 
 <h2>Unicode</h2>
 
@@ -374,35 +476,34 @@ a中文
 
 <p>那么，在erlang中当我获取到一个字符串list时，我就需要知道哪几个整数合起来实际上对应着一个汉字。erlang里unicode模块里有几个函数可以将unicode字符串list对应的整数合起来，例如：<code>[111, 222, 333]</code>可能表示的是一个汉字，将其转换以下可得到<code>[111222333]</code>这样的形式。</p>
 
-<p><div class="highlight"><pre><code class="erlang"><span class="nf">split</span><span class="p">(</span><span class="nv">Str</span><span class="p">)</span> <span class="k">when</span> <span class="nb">is_list</span><span class="p">(</span><span class="nv">Str</span><span class="p">)</span> <span class="o">-&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight erlang %}
+split(Str) when is_list(Str) -></p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="nv">B</span> <span class="o">=</span> <span class="nb">list_to_binary</span><span class="p">(</span><span class="nv">Str</span><span class="p">),</span> <span class="c">% 必须转换为binary</span>
-<span class="k">case</span> <span class="nn">unicode</span><span class="p">:</span><span class="nf">characters_to_list</span><span class="p">(</span><span class="nv">B</span><span class="p">)</span> <span class="k">of</span>
-    <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="nv">L</span><span class="p">,</span> <span class="nv">D</span><span class="p">}</span> <span class="o">-</span><span class="err">&amp;</span><span class="n">gt</span><span class="p">;</span>
-        <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="nv">L</span><span class="p">,</span> <span class="nv">D</span><span class="p">};</span>
-    <span class="p">{</span><span class="n">incomplete</span><span class="p">,</span> <span class="nv">L</span><span class="p">,</span> <span class="nv">D</span><span class="p">}</span> <span class="o">-</span><span class="err">&amp;</span><span class="n">gt</span><span class="p">;</span>
-        <span class="p">{</span><span class="n">incomplete</span><span class="p">,</span> <span class="nv">L</span><span class="p">,</span> <span class="nv">D</span><span class="p">};</span>
-    <span class="nv">UL</span> <span class="o">-</span><span class="err">&amp;</span><span class="n">gt</span><span class="p">;</span>
-    <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="n">subsplit</span><span class="p">(</span><span class="nv">UL</span><span class="p">)}</span>
-<span class="k">end</span><span class="p">.</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">subsplit</span><span class="p">([])</span> <span class="o">-&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="p">[];</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">subsplit</span><span class="p">(</span><span class="nv">L</span><span class="p">)</span> <span class="o">-&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="p">[_|</span><span class="nv">R</span><span class="p">]</span> <span class="o">=</span> <span class="nv">L</span><span class="p">,</span>
-<span class="p">{</span><span class="nv">PreL</span><span class="p">,</span> <span class="p">_}</span> <span class="o">=</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">splitwith</span><span class="p">(</span><span class="k">fun</span><span class="p">(</span><span class="nv">Ch</span><span class="p">)</span> <span class="o">-</span><span class="err">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="ow">not</span> <span class="n">is_spliter</span><span class="p">(</span><span class="nv">Ch</span><span class="p">)</span> <span class="k">end</span><span class="p">,</span> <span class="nv">L</span><span class="p">),</span>
-<span class="p">[</span><span class="nn">unicode</span><span class="p">:</span><span class="nf">characters_to_binary</span><span class="p">(</span><span class="nn">lists</span><span class="p">:</span><span class="nf">sublist</span><span class="p">(</span><span class="nv">PreL</span><span class="p">,</span> <span class="nv">Len</span><span class="p">))</span> 
-    <span class="p">||</span> <span class="nv">Len</span> <span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">-</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">seq</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">length</span><span class="p">(</span><span class="nv">PreL</span><span class="p">))]</span> <span class="o">++</span> <span class="n">subsplit</span><span class="p">(</span><span class="nv">R</span><span class="p">).</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>B = list_to_binary(Str), % 必须转换为binary
+case unicode:characters_to_list(B) of
+    {error, L, D} -&gt;
+        {error, L, D};
+    {incomplete, L, D} -&gt;
+        {incomplete, L, D};
+    UL -&gt;
+    {ok, subsplit(UL)}
+end.
 </code></pre>
-</div></p>
+
+<p>subsplit([]) -></p>
+
+<pre><code>[];
+</code></pre>
+
+<p>subsplit(L) -></p>
+
+<pre><code>[_|R] = L,
+{PreL, _} = lists:splitwith(fun(Ch) -&gt; not is_spliter(Ch) end, L),
+[unicode:characters_to_binary(lists:sublist(PreL, Len)) 
+    || Len &lt;- lists:seq(1, length(PreL))] ++ subsplit(R).
+</code></pre>
+
+<p>{% endhighlight %}</p>
 
 <p>除了这里的拆字之外，URL的编码、数据库的存储都还好，没遇到问题。</p>
 
@@ -591,33 +692,33 @@ a中文
 
 <p>从infohash构建出磁力链接非常简单，只需要将infohash编码成磁力链接的xt字段即可，构建实现可以从transmission源码里找到：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="err">这个算法其实和</span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%02x&quot;</span><span class="p">,</span> <span class="n">sha1</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="err">一样</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
-<span class="kt">void</span> <span class="n">tr_sha1_to_hex</span> <span class="p">(</span><span class="kt">char</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">out</span><span class="p">,</span> <span class="k">const</span> <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">sha1</span><span class="p">)</span>
-<span class="p">{</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c %}
+/<em> 这个算法其实和printf("%02x", sha1[i])一样 </em>/
+void tr_sha1_to_hex (char <em>out, const unsigned char </em>sha1)
+{</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">i</span><span class="p">;</span>
-<span class="k">static</span> <span class="k">const</span> <span class="kt">char</span> <span class="n">hex</span><span class="p">[]</span> <span class="o">=</span> <span class="s">&quot;0123456789abcdef&quot;</span><span class="p">;</span>
+<pre><code>int i;
+static const char hex[] = "0123456789abcdef";
 
-<span class="k">for</span> <span class="p">(</span><span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">i</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="mi">20</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">const</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">val</span> <span class="o">=</span> <span class="o">*</span><span class="n">sha1</span><span class="o">++</span><span class="p">;</span>
-    <span class="o">*</span><span class="n">out</span><span class="o">++</span> <span class="o">=</span> <span class="n">hex</span><span class="p">[</span><span class="n">val</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="mi">4</span><span class="p">];</span>
-    <span class="o">*</span><span class="n">out</span><span class="o">++</span> <span class="o">=</span> <span class="n">hex</span><span class="p">[</span><span class="n">val</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="mh">0xf</span><span class="p">];</span>
-<span class="p">}</span>
-<span class="o">*</span><span class="n">out</span> <span class="o">=</span> <span class="sc">&#39;\0&#39;</span><span class="p">;</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">appendMagnet</span><span class="p">(</span><span class="kt">FILE</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">fp</span><span class="p">,</span> <span class="k">const</span> <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">info_hash</span><span class="p">)</span> <span class="p">{</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">char</span> <span class="n">out</span><span class="p">[</span><span class="mi">48</span><span class="p">];</span>
-<span class="n">tr_sha1_to_hex</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">info_hash</span><span class="p">);</span>
-<span class="n">fprintf</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="s">&quot;magnet:?xt=urn:btih:%s&quot;</span><span class="p">,</span> <span class="n">out</span><span class="p">);</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span>
+for (i=0; i&lt;20; ++i) {
+    const unsigned int val = *sha1++;
+    *out++ = hex[val &gt;&gt; 4];
+    *out++ = hex[val &amp; 0xf];
+}
+*out = '\0';
 </code></pre>
-</div></p>
+
+<p>}</p>
+
+<p>void appendMagnet(FILE <em>fp, const unsigned char </em>info_hash) {</p>
+
+<pre><code>char out[48];
+tr_sha1_to_hex(out, info_hash);
+fprintf(fp, "magnet:?xt=urn:btih:%s", out);
+</code></pre>
+
+<p>}
+{% endhighlight %}</p>
 
 <p>现在你就可以做一个实验，在transmission的DHT实现中，在announce_peer消息的处理代码中，将收到的infohash通过上面的<code>appendMagnet</code>转换为磁力链接输出到日志文件里。然后，可以通过支持磁力链接的程序（例如QQ旋风）直接下载。有趣的是，当QQ旋风开始下载该磁力链接对应的种子文件时，你自己的测试程序能收到QQ旋风程序发出的announce_peer消息。当然，你得想办法让这个测试程序尽可能地让其他节点知道你，这可以通过很多方式实现。</p>
 

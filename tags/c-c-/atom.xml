@@ -4,7 +4,7 @@
   <title><![CDATA[Tag: c/c++ | loop in codes]]></title>
   <link href="http://codemacro.com/tags/c-c-/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2013-07-20T16:25:46+08:00</updated>
+  <updated>2013-08-08T22:46:32+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -25,64 +25,65 @@
 <!-- more -->
 
 
-<p><div class="highlight"><pre><code class="c"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+{% raw %}</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>include &lt;stdio.h></h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">class</span> <span class="n">Base</span> <span class="p">{</span>
-<span class="nl">public:</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>class Base {
+public:</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">Base</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">Init</span><span class="p">();</span>
-<span class="p">}</span>
+<pre><code>Base() {
+    Init();
+}
 
-<span class="n">virtual</span> <span class="o">~</span><span class="n">Base</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">Release</span><span class="p">();</span>
-<span class="p">}</span>
+virtual ~Base() {
+    Release();
+}
 
-<span class="n">virtual</span> <span class="kt">void</span> <span class="n">Init</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Base::Init</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-<span class="p">}</span>
+virtual void Init() {
+    printf("Base::Init\n");
+}
 
-<span class="n">virtual</span> <span class="kt">void</span> <span class="n">Release</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Base::Release</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-<span class="p">}</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">class</span> <span class="n">Derived</span> <span class="o">:</span> <span class="n">public</span> <span class="n">Base</span> <span class="p">{</span>
-<span class="nl">public:</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">virtual</span> <span class="kt">void</span> <span class="n">Init</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Derived::Init</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-<span class="p">}</span>
-
-<span class="n">virtual</span> <span class="kt">void</span> <span class="n">Release</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Derived:Release</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-<span class="p">}</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">()</span>
-<span class="p">{</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">Base</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="n">new</span> <span class="n">Derived</span><span class="p">();</span>
-<span class="n">delete</span> <span class="n">obj</span><span class="p">;</span>
-<span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span>
+virtual void Release() {
+    printf("Base::Release\n");
+}
 </code></pre>
-</div></p>
+
+<p>};</p>
+
+<p>class Derived : public Base {
+public:</p>
+
+<pre><code>virtual void Init() {
+    printf("Derived::Init\n");
+}
+
+virtual void Release() {
+    printf("Derived:Release\n");
+}
+</code></pre>
+
+<p>};</p>
+
+<p>int main()
+{</p>
+
+<pre><code>Base *obj = new Derived();
+delete obj;
+return 0;
+</code></pre>
+
+<p>}
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>当在构造函数，包括析构函数中调用<code>virtual</code>函数时，预想中的多态是无法完成的，以上代码输出结果为：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="n">Base</span><span class="o">::</span><span class="n">Init</span>
-<span class="n">Base</span><span class="o">::</span><span class="n">Release</span>
-</code></pre>
-</div></p>
+<p>{% highlight c++ %}
+Base::Init
+Base::Release
+{% endhighlight %}</p>
 
 <p>从语言设计角度来看，我个人是不接受这种行为的。我觉得对一门语言而言，几乎所有特性都应该是一致的，不应该或尽量少地出现这种“例外“。如果我构造一个对象，让它以不同的方式被构造，这和改变它的某个行为有什么区别？（从这句话来看，似乎还真有区别）</p>
 
@@ -97,26 +98,26 @@
     <id>http://codemacro.com/2012/09/13/c-plus-plus-virtual-destructor</id>
     <content type="html"><![CDATA[<p>有一天有个同事在通过vld调试一个内存泄漏问题，折腾了很久然后找到我。我瞥了一眼他的代码，发现问题和我曾经遇到的一模一样：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">Base</span> <span class="p">{</span>
-<span class="nl">public:</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+class Base {
+public:</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;~</span><span class="n">Base</span><span class="p">();</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">class</span> <span class="n">Derived</span> <span class="o">:</span> <span class="n">public</span> <span class="n">Base</span> <span class="p">{</span>
-<span class="nl">privated:</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="kt">int</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="n">m_data</span><span class="p">;</span>    
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">Base</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="n">new</span> <span class="n">Derived</span><span class="p">();</span>
-<span class="n">delete</span> <span class="n">obj</span><span class="p">;</span>
+<pre><code>~Base();
 </code></pre>
-</div></p>
+
+<p>};</p>
+
+<p>class Derived : public Base {
+privated:</p>
+
+<pre><code>std::vector&lt;int&gt; m_data;    
+</code></pre>
+
+<p>};</p>
+
+<p>Base *obj = new Derived();
+delete obj;
+{% endhighlight %}</p>
 
 <!-- more -->
 
@@ -145,9 +146,9 @@
 </ul>
 
 
-<p><div class="highlight"><pre><code class="c"><span class="n">number</span> <span class="o">|=</span> <span class="mi">1</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">x</span><span class="p">;</span> <span class="c1">// 设置第x位为1</span>
-</code></pre>
-</div></p>
+<p>{% highlight c++ %}
+number |= 1 &lt;&lt; x; // 设置第x位为1
+{% endhighlight %}</p>
 
 <!-- more -->
 
@@ -157,85 +158,83 @@
 </ul>
 
 
-<p><div class="highlight"><pre><code class="c"><span class="n">number</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">=</span> <span class="o">~</span><span class="p">(</span><span class="mi">1</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">x</span><span class="p">);</span> <span class="c1">// 置第x位为0</span>
-</code></pre>
-</div></p>
+<p>{% highlight c++ %}
+number &amp;= ~(1 &lt;&lt; x); // 置第x位为0
+{% endhighlight %}</p>
 
 <ul>
 <li>开关某位</li>
 </ul>
 
 
-<p><div class="highlight"><pre><code class="c"><span class="n">number</span> <span class="o">^=</span> <span class="mi">1</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">x</span><span class="p">;</span>
-</code></pre>
-</div></p>
+<p>{% highlight c++ %}
+number ^= 1 &lt;&lt; x;
+{% endhighlight %}</p>
 
 <ul>
 <li>检查某位</li>
 </ul>
 
 
-<p><div class="highlight"><pre><code class="c"><span class="k">if</span> <span class="p">(</span><span class="n">number</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">x</span><span class="p">))</span>
-</code></pre>
-</div></p>
+<p>{% highlight c++ %}
+if (number &amp; (1 &lt;&lt; x))
+{% endhighlight %}</p>
 
 <p>相应地我们可以将其封装起来，简便的方法是使用宏来封装：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">define</span> <span class="n">BIT_SET</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)</span> <span class="p">((</span><span class="n">a</span><span class="p">)</span> <span class="o">|=</span> <span class="p">(</span><span class="mi">1</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;(</span><span class="n">b</span><span class="p">)))</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>define BIT_SET(a,b) ((a) |= (1&lt;&lt;(b)))</h1>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">define</span> <span class="n">BIT_CLEAR</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)</span> <span class="p">((</span><span class="n">a</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">=</span> <span class="o">~</span><span class="p">(</span><span class="mi">1</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;(</span><span class="n">b</span><span class="p">)))</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>define BIT_CLEAR(a,b) ((a) &amp;= ~(1&lt;&lt;(b)))</h1>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">define</span> <span class="n">BIT_FLIP</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)</span> <span class="p">((</span><span class="n">a</span><span class="p">)</span> <span class="o">^=</span> <span class="p">(</span><span class="mi">1</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;(</span><span class="n">b</span><span class="p">)))</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>define BIT_FLIP(a,b) ((a) ^= (1&lt;&lt;(b)))</h1>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">define</span> <span class="n">BIT_CHECK</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)</span> <span class="p">((</span><span class="n">a</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="p">(</span><span class="mi">1</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;(</span><span class="n">b</span><span class="p">)))</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>define BIT_CHECK(a,b) ((a) &amp; (1&lt;&lt;(b)))</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
-</code></pre>
-</div></p>
+<p>{% endhighlight %}</p>
 
 <h2>使用位结构操作</h2>
 
 <p>这个使用起来简单很多：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="k">struct</span> <span class="n">bits</span> <span class="p">{</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+struct bits {</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">a</span><span class="o">:</span><span class="mi">1</span><span class="p">;</span>
-<span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">b</span><span class="o">:</span><span class="mi">1</span><span class="p">;</span>
-<span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">c</span><span class="o">:</span><span class="mi">1</span><span class="p">;</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">struct</span> <span class="n">bits</span> <span class="n">mybits</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// set/clear a bit</span>
-<span class="n">mybits</span><span class="p">.</span><span class="n">b</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
-<span class="n">mybits</span><span class="p">.</span><span class="n">c</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// toggle a bit</span>
-<span class="n">mybits</span><span class="p">.</span><span class="n">a</span> <span class="o">=</span> <span class="o">!</span><span class="n">mybits</span><span class="p">.</span><span class="n">a</span><span class="p">;</span>
-<span class="n">mybits</span><span class="p">.</span><span class="n">b</span> <span class="o">=</span> <span class="o">~</span><span class="n">mybits</span><span class="p">.</span><span class="n">b</span><span class="p">;</span>
-<span class="n">mybits</span><span class="p">.</span><span class="n">c</span> <span class="o">^=</span> <span class="mi">1</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// check a bit</span>
-<span class="k">if</span> <span class="p">(</span><span class="n">mybits</span><span class="p">.</span><span class="n">c</span><span class="p">)</span>
+<pre><code>unsigned int a:1;
+unsigned int b:1;
+unsigned int c:1;
 </code></pre>
-</div></p>
+
+<p>};</p>
+
+<p>struct bits mybits;</p>
+
+<p>// set/clear a bit
+mybits.b = 1;
+mybits.c = 0;</p>
+
+<p>// toggle a bit
+mybits.a = !mybits.a;
+mybits.b = ~mybits.b;
+mybits.c ^= 1;</p>
+
+<p>// check a bit
+if (mybits.c)
+{% endhighlight %}</p>
 
 <h2>使用STL的std::bitset<N></h2>
 
 <p>这个方法其实类似于使用位结构，只不过STL包装了这个结构定义，当然还提供了很多便捷的接口：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="n">std</span><span class="o">::</span><span class="n">bitset</span><span class="o">&lt;</span><span class="mi">5</span><span class="o">&gt;</span> <span class="n">bits</span><span class="p">;</span>
-<span class="n">bits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
-<span class="n">bits</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
-<span class="n">bits</span><span class="p">.</span><span class="n">set</span><span class="p">(</span><span class="mi">2</span><span class="p">);</span>
-<span class="n">bits</span><span class="p">.</span><span class="n">flip</span><span class="p">(</span><span class="mi">3</span><span class="p">);</span>
-<span class="n">bits</span><span class="p">.</span><span class="n">reset</span><span class="p">(</span><span class="mi">2</span><span class="p">);</span>
-</code></pre>
-</div></p>
+<p>{% highlight c++ %}
+std::bitset<5> bits;
+bits[0] = true;
+bits[1] = false;
+bits.set(2);
+bits.flip(3);
+bits.reset(2);
+{% endhighlight %}</p>
 ]]></content>
   </entry>
   
@@ -250,54 +249,52 @@
 
 <p>看以下代码：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&lt;</span><span class="n">algorithm</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>include <algorithm></h1>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&lt;</span><span class="n">ctime</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>include <ctime></h1>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&lt;</span><span class="n">iostream</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>include <iostream></h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">()</span>
-<span class="p">{</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>int main()
+{</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="c1">// generate data</span>
-<span class="k">const</span> <span class="kt">unsigned</span> <span class="n">arraySize</span> <span class="o">=</span> <span class="mi">32768</span><span class="p">;</span>
-<span class="kt">int</span> <span class="n">data</span><span class="p">[</span><span class="n">arraySize</span><span class="p">];</span>
+<pre><code>// generate data
+const unsigned arraySize = 32768;
+int data[arraySize];
 
-<span class="k">for</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="n">c</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">c</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">arraySize</span><span class="p">;</span> <span class="o">++</span><span class="n">c</span><span class="p">)</span>
-    <span class="n">data</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">rand</span><span class="p">()</span> <span class="o">%</span> <span class="mi">256</span><span class="p">;</span>
-
-
-<span class="c1">// !!! with this, the next loop runs faster</span>
-<span class="n">std</span><span class="o">::</span><span class="n">sort</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">data</span> <span class="o">+</span> <span class="n">arraySize</span><span class="p">);</span>
+for (unsigned c = 0; c &lt; arraySize; ++c)
+    data[c] = std::rand() % 256;
 
 
-<span class="c1">// test</span>
-<span class="kt">clock_t</span> <span class="n">start</span> <span class="o">=</span> <span class="n">clock</span><span class="p">();</span>
-<span class="kt">long</span> <span class="kt">long</span> <span class="n">sum</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+// !!! with this, the next loop runs faster
+std::sort(data, data + arraySize);
 
-<span class="k">for</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="mi">100000</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span>
-<span class="p">{</span>
-    <span class="c1">// primary loop</span>
-    <span class="k">for</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="n">c</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">c</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">arraySize</span><span class="p">;</span> <span class="o">++</span><span class="n">c</span><span class="p">)</span>
-    <span class="p">{</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">=</span> <span class="mi">128</span><span class="p">)</span>
-            <span class="n">sum</span> <span class="o">+=</span> <span class="n">data</span><span class="p">[</span><span class="n">c</span><span class="p">];</span>
-    <span class="p">}</span>
-<span class="p">}</span>
 
-<span class="kt">double</span> <span class="n">elapsedTime</span> <span class="o">=</span> <span class="n">static_cast</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="kt">double</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;(</span><span class="n">clock</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span> <span class="o">/</span> <span class="n">CLOCKS_PER_SEC</span><span class="p">;</span>
+// test
+clock_t start = clock();
+long long sum = 0;
 
-<span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">elapsedTime</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
-<span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="s">&quot;sum = &quot;</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">sum</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+for (unsigned i = 0; i &lt; 100000; ++i)
+{
+    // primary loop
+    for (unsigned c = 0; c &lt; arraySize; ++c)
+    {
+        if (data[c] &gt;= 128)
+            sum += data[c];
+    }
+}
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+double elapsedTime = static_cast&lt;double&gt;(clock() - start) / CLOCKS_PER_SEC;
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+std::cout &lt;&lt; elapsedTime &lt;&lt; std::endl;
+std::cout &lt;&lt; "sum = " &lt;&lt; sum &lt;&lt; std::endl;
 </code></pre>
-</div></p>
+
+<p>}</p>
+
+<p>{% endhighlight %}</p>
 
 <p>问题就在于，去掉<code>std::sort</code>那一行，以上代码将运行更长的时间。在我的机器上未去掉<code>std::sort</code>耗时8.99s，去掉后耗时24.78s。编译器使用的是gcc4.4.3。事实上，以上代码跟编译器没有关系，甚至跟语言没有关系。那这是为什么呢？</p>
 
@@ -306,7 +303,9 @@
 
 <p>这跟处理这个数组的逻辑有非常大的关系。如以上代码所示，这个循环里有个条件判断。条件判断被编译成二进制代码后，就是一个跳转指令，类似：</p>
 
-<p></p>
+<p>{% highlight asm %}
+jl SHORT $LN3@main
+{% endhighlight %}</p>
 
 <p>具体为什么会不同，这涉及到计算机CPU执行指令时的行为。</p>
 
@@ -352,37 +351,36 @@
     <id>http://codemacro.com/2012/08/29/null-object-pattern</id>
     <content type="html"><![CDATA[<p>Null Object模式用于代替空指针（C++中），以避免上层模块对返回值做空值判定。Null Object模式返回的不是一个空指针，而是一个空对象，上层模块对返回值做操作时，不需要做空判定，而是按正常逻辑调用这个对象的某个接口，只不过对于空对象而言，这个接口什么事也没做，例如：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">animal</span> <span class="p">{</span>
-<span class="nl">public:</span>
-  <span class="n">virtual</span> <span class="kt">void</span> <span class="n">make_sound</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+class animal {
+public:
+  virtual void make_sound() = 0;
+};</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">class</span> <span class="n">dog</span> <span class="o">:</span> <span class="n">public</span> <span class="n">animal</span> <span class="p">{</span>
-  <span class="kt">void</span> <span class="n">make_sound</span><span class="p">()</span> <span class="p">{</span> <span class="n">cout</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="s">&quot;woof!&quot;</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">endl</span><span class="p">;</span> <span class="p">}</span>
-<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>class dog : public animal {
+  void make_sound() { cout &lt;&lt; "woof!" &lt;&lt; endl; }
+};</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">class</span> <span class="n">null_animal</span> <span class="o">:</span> <span class="n">public</span> <span class="n">animal</span> <span class="p">{</span>
-  <span class="kt">void</span> <span class="n">make_sound</span><span class="p">()</span> <span class="p">{</span> <span class="p">}</span>
-<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>class null_animal : public animal {
+  void make_sound() { }
+};</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
-</code></pre>
-</div></p>
+<p>{% endhighlight %}</p>
 
 <p>在我看来这个模式在C++中其实挺扯淡的，因为去判断一个指针是否为NULL，远比创建一个空类，并且添加若干个空函数代价小更多。更何况，我们还不知道<code>null_animal</code>的生命周期如何管理。</p>
 
 <p>但是在我以往写的代码中，我也写过一些避免空指针判定的代码，例如我会使用引用。注意，引用肯定不能保证所对应的对象是合法的，这就像无法确定一个指针是不是野指针一样：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="k">const</span> <span class="n">Item</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">Container</span><span class="o">::</span><span class="n">FindItem</span><span class="p">(</span><span class="kt">int</span> <span class="n">id</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+const Item &amp;Container::FindItem(int id) const {</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">static</span> <span class="n">Item</span> <span class="n">null_item</span><span class="p">;</span>
-<span class="n">Table</span><span class="o">::</span><span class="n">const_iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">m_items</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">id</span><span class="p">);</span>
-<span class="k">return</span> <span class="n">it</span> <span class="o">==</span> <span class="n">m_items</span><span class="p">.</span><span class="n">end</span><span class="p">()</span> <span class="o">?</span> <span class="n">null_item</span> <span class="o">:</span> <span class="n">it</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">second</span><span class="p">;</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span>
+<pre><code>static Item null_item;
+Table::const_iterator it = m_items.find(id);
+return it == m_items.end() ? null_item : it-&gt;second;
 </code></pre>
-</div></p>
+
+<p>}
+{% endhighlight %}</p>
 
 <p>参考<a href="http://en.wikipedia.org/wiki/Null_Object_pattern">http://en.wikipedia.org/wiki/Null_Object_pattern</a></p>
 ]]></content>

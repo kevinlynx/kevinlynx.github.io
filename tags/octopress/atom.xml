@@ -4,7 +4,7 @@
   <title><![CDATA[Tag: octopress | loop in codes]]></title>
   <link href="http://codemacro.com/tags/octopress/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2013-07-20T16:25:46+08:00</updated>
+  <updated>2013-08-08T22:46:32+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -29,49 +29,54 @@
 
 <p>就像我的这篇博客，这下文章头得填很多数据了，有点麻烦：</p>
 
-<p><div class="highlight"><pre><code class="yaml"><span class="l-Scalar-Plain">&lt;/p&gt;</span>
+<p>{% highlight yaml %}</p>
 
-<span class="l-Scalar-Plain">&lt;h2&gt;&lt;/h2&gt;</span>
+<h2>{% raw %}</h2>
 
-<span class="l-Scalar-Plain">&lt;p&gt;layout</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">post</span>
-<span class="l-Scalar-Plain">title</span><span class="p-Indicator">:</span> <span class="s">&quot;Octopress中的SEO&quot;</span>
-<span class="l-Scalar-Plain">date</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">2012-09-06 19:02</span>
-<span class="l-Scalar-Plain">comments</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">true</span>
-<span class="l-Scalar-Plain">categories</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">tips</span>
-<span class="l-Scalar-Plain">tags</span><span class="p-Indicator">:</span> <span class="p-Indicator">[</span><span class="nv">tips</span><span class="p-Indicator">,</span> <span class="nv">octopress</span><span class="p-Indicator">]</span>
-<span class="l-Scalar-Plain">keywords</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">seo, octopress&lt;/p&gt;</span>
+<p>layout: post
+title: "Octopress中的SEO"
+date: 2012-09-06 19:02
+comments: true
+categories: tips
+tags: [tips, octopress]
+keywords: seo, octopress</p>
 
-<span class="l-Scalar-Plain">&lt;h2&gt;description</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">Octopress默认为每个页面添加&lt;code&gt;meta description&lt;/code&gt;，其内容为当前文章的前150个字符，如果是首页就会是第一篇文章的前150个字符。这里主要通过增加&lt;code&gt;meta keywords&lt;/code&gt;来提高SEO。&lt;/h2&gt;</span>
+<h2>description: Octopress默认为每个页面添加<code>meta description</code>，其内容为当前文章的前150个字符，如果是首页就会是第一篇文章的前150个字符。这里主要通过增加<code>meta keywords</code>来提高SEO。</h2>
 
-<span class="l-Scalar-Plain">&lt;p&gt;</span>
-</code></pre>
-</div></p>
+<p>{% endraw %}
+{% endhighlight %}</p>
 
 <p>这样，每篇文章页面头就会自动增加<code>meta keywords</code>项，<code>description</code>也会使用这里填的，而不是自动为文章前若干个字符。这个功能的实现在<code>_includes/head.html</code>中。</p>
 
-<p><div class="highlight"><pre><code class="html"><span class="nt">&lt;meta</span> <span class="na">name=</span><span class="s">&quot;author&quot;</span> <span class="na">content=</span><span class="s">&quot;Kevin Lynx&quot;</span><span class="nt">&gt;</span>
-<span class="nt">&lt;meta</span> <span class="na">name=</span><span class="s">&quot;description&quot;</span> <span class="na">content=</span><span class="s">&quot; Octopress默认为每个页面添加`meta description`，其内容为当前文章的前150个字符，如果是首页就会是第一篇文章的前150个字符。这里主要通过增加`meta keywords`来提高SEO。 &quot;</span><span class="nt">&gt;</span>
-<span class="nt">&lt;meta</span> <span class="na">name=</span><span class="s">&quot;keywords&quot;</span> <span class="na">content=</span><span class="s">&quot;seo, octopress&quot;</span><span class="nt">&gt;</span>
-</code></pre>
-</div></p>
+<p>{% highlight html %}
+{% raw %}
+<meta name="author" content="Kevin Lynx">
+<meta name="description" content=" Octopress默认为每个页面添加`meta description`，其内容为当前文章的前150个字符，如果是首页就会是第一篇文章的前150个字符。这里主要通过增加`meta keywords`来提高SEO。 ">
+<meta name="keywords" content="seo, octopress">
+{% endraw %}
+{% endhighlight %}</p>
 
 <h2>为页面(Page)增加keywords</h2>
 
 <p>上面只是修正了每篇博客页面的<code>meta</code>信息，octopress中还有几个页面需要修正，例如首页，这个可以通过修改<code>_includes/head.html</code>来完成。替换相关内容为以下：</p>
 
-<p><div class="highlight"><pre><code class="html"><span class="nt">&lt;meta</span> <span class="na">name=</span><span class="s">&quot;author&quot;</span> <span class="na">content=</span><span class="s">&quot;{{ site.author }}&quot;</span><span class="nt">&gt;</span>
+<p>{% highlight html %}
+{% raw %}
+<meta name="author" content="{{ site.author }}">
 {% capture description %}{% if page.description %}{{ page.description }}{% elsif site.description %}{{ site.description }}{%else%}{{ content | raw_content }}{% endif %}{% endcapture %}
-<span class="nt">&lt;meta</span> <span class="na">name=</span><span class="s">&quot;description&quot;</span> <span class="na">content=</span><span class="s">&quot;{{ description | strip_html | condense_spaces | truncate:150 }}&quot;</span><span class="nt">&gt;</span>
-{% if page.keywords %}<span class="nt">&lt;meta</span> <span class="na">name=</span><span class="s">&quot;keywords&quot;</span> <span class="na">content=</span><span class="s">&quot;{{ page.keywords }}&quot;</span><span class="nt">&gt;</span>{%else%}<span class="nt">&lt;meta</span> <span class="na">name=</span><span class="s">&quot;keywords&quot;</span> <span class="na">content=</span><span class="s">&quot;{{ site.keywords }}&quot;</span><span class="nt">&gt;</span>{% endif %}
-</code></pre>
-</div></p>
+<meta name="description" content="{{ description | strip_html | condense_spaces | truncate:150 }}">
+{% if page.keywords %}<meta name="keywords" content="{{ page.keywords }}">{%else%}<meta name="keywords" content="{{ site.keywords }}">{% endif %}
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>如果页面没有提供<code>keywords</code>或者<code>description</code>的话，就使用<code>site</code>里的设置，也就需要修改<code>_config.yml</code>：</p>
 
-<p><div class="highlight"><pre><code class="yaml"><span class="l-Scalar-Plain">description</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">loop in codes, Kevin Lynx blog</span>
-<span class="l-Scalar-Plain">keywords</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">c/c++, mmo, game develop, lisp, ruby, lua, web development</span>
-</code></pre>
-</div></p>
+<p>{% highlight yaml %}
+{% raw %}
+description: loop in codes, Kevin Lynx blog
+keywords: c/c++, mmo, game develop, lisp, ruby, lua, web development
+{% endraw %}
+{% endhighlight %}</p>
 ]]></content>
   </entry>
   
@@ -89,51 +94,53 @@
 
 <p>后来发现了一篇文章<a href="http://xoyo.name/2012/04/auto-spacing-for-octopress/">&lt;给中英文间加个空格></a>，这人写的插件从流程上大致是我需要的，模仿如下：</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="c1">#&lt;/p&gt;</span>
+<p>{% highlight ruby %}
+{% raw %}
+#</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">post_footer_filter</span><span class="o">.</span><span class="n">rb</span><span class="o">&lt;</span><span class="sr">/h1&gt;</span>
+<h1>post_footer_filter.rb</h1>
 
-<span class="sr">&lt;h1&gt;Append every post some footer infomation like original url&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>Append every post some footer infomation like original url</h1>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="no">Kevin</span> <span class="no">Lynx</span><span class="o">&lt;</span><span class="sr">/h1&gt;</span>
+<h1>Kevin Lynx</h1>
 
-<span class="sr">&lt;h1&gt;7.26.2012&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>7.26.2012</h1>
 
-<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span><span class="c1">#</span>
-<span class="nb">require</span> <span class="s1">&#39;./plugins/post_filters&#39;</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
+<p>#
+require './plugins/post_filters'</p>
 
-<span class="sr">&lt;p&gt;module AppendFooterFilter</span>
-<span class="sr">  def append(post)&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
+<p>module AppendFooterFilter
+  def append(post)</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span> <span class="n">author</span> <span class="o">=</span> <span class="n">post</span><span class="o">.</span><span class="n">site</span><span class="o">.</span><span class="n">config</span><span class="o">[</span><span class="s1">&#39;author&#39;</span><span class="o">]</span>
- <span class="n">url</span> <span class="o">=</span> <span class="n">post</span><span class="o">.</span><span class="n">site</span><span class="o">.</span><span class="n">config</span><span class="o">[</span><span class="s1">&#39;url&#39;</span><span class="o">]</span>
- <span class="n">pre</span> <span class="o">=</span> <span class="n">post</span><span class="o">.</span><span class="n">site</span><span class="o">.</span><span class="n">config</span><span class="o">[</span><span class="s1">&#39;original_url_pre&#39;</span><span class="o">]</span>
- <span class="n">post</span><span class="o">.</span><span class="n">content</span> <span class="o">+</span> <span class="sx">%Q[&amp;lt;p class=&#39;post-footer&#39;&amp;gt;</span>
-<span class="sx">        </span><span class="si">#{</span><span class="n">pre</span> <span class="ow">or</span> <span class="s2">&quot;original link:&quot;</span><span class="si">}</span><span class="sx"></span>
-<span class="sx">        &amp;lt;a href=&#39;</span><span class="si">#{</span><span class="n">post</span><span class="o">.</span><span class="n">full_url</span><span class="si">}</span><span class="sx">&#39;&amp;gt;</span><span class="si">#{</span><span class="n">post</span><span class="o">.</span><span class="n">full_url</span><span class="si">}</span><span class="sx">&amp;lt;/a&amp;gt;&amp;lt;br/&amp;gt;</span>
-<span class="sx">        &amp;amp;nbsp;written by &amp;lt;a href=&#39;</span><span class="si">#{</span><span class="n">url</span><span class="si">}</span><span class="sx">&#39;&amp;gt;</span><span class="si">#{</span><span class="n">author</span><span class="si">}</span><span class="sx">&amp;lt;/a&amp;gt;</span>
-<span class="sx">        &amp;amp;nbsp;posted at &amp;lt;a href=&#39;</span><span class="si">#{</span><span class="n">url</span><span class="si">}</span><span class="sx">&#39;&amp;gt;</span><span class="si">#{</span><span class="n">url</span><span class="si">}</span><span class="sx">&amp;lt;/a&amp;gt;</span>
-<span class="sx">        &amp;lt;/p&amp;gt;]</span>
-<span class="o">&lt;</span><span class="sr">/code&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span>  <span class="k">end</span>
-<span class="k">end</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
-
-<span class="sr">&lt;p&gt;module Jekyll</span>
-<span class="sr">  class AppendFooter &amp;lt; PostFilter&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kp">include</span> <span class="no">AppendFooterFilter</span>
-<span class="k">def</span> <span class="nf">pre_render</span><span class="p">(</span><span class="n">post</span><span class="p">)</span>
-  <span class="n">post</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="n">append</span><span class="p">(</span><span class="n">post</span><span class="p">)</span> <span class="k">if</span> <span class="n">post</span><span class="o">.</span><span class="n">is_post?</span>
-<span class="k">end</span>
-<span class="o">&lt;</span><span class="sr">/code&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span>  <span class="k">end</span>
-<span class="k">end</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
-
-<span class="sr">&lt;p&gt;Liquid::Template.register_filter AppendFooterFilter</span>
+<pre><code> author = post.site.config['author']
+ url = post.site.config['url']
+ pre = post.site.config['original_url_pre']
+ post.content + %Q[&lt;p class='post-footer'&gt;
+        #{pre or "original link:"}
+        &lt;a href='#{post.full_url}'&gt;#{post.full_url}&lt;/a&gt;&lt;br/&gt;
+        &amp;nbsp;written by &lt;a href='#{url}'&gt;#{author}&lt;/a&gt;
+        &amp;nbsp;posted at &lt;a href='#{url}'&gt;#{url}&lt;/a&gt;
+        &lt;/p&gt;]
 </code></pre>
-</div></p>
+
+<p>  end
+end</p>
+
+<p>module Jekyll
+  class AppendFooter &lt; PostFilter</p>
+
+<pre><code>include AppendFooterFilter
+def pre_render(post)
+  post.content = append(post) if post.is_post?
+end
+</code></pre>
+
+<p>  end
+end</p>
+
+<p>Liquid::Template.register_filter AppendFooterFilter
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>大概就是当传入的页面是post时，就添加页脚信息，我这里主要添加了原始地址和作者信息，并且留了个post-footer作为这个段落的样式定制。附加的信息对于RSS输出同样有效。</p>
 
@@ -161,25 +168,27 @@
 
 <p>复制以下代码到/source/_includes/custom/asides/tags.html。</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="o">&lt;</span><span class="n">section</span><span class="o">&gt;</span>
-  <span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="no">Tags</span><span class="o">&lt;</span><span class="sr">/h1&gt;</span>
-<span class="sr">  &lt;ul class=&quot;tag-cloud&quot;&gt;&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
+<p>{% highlight ruby %}
+{% raw %}
+<section>
+  <h1>Tags</h1>
+  <ul class="tag-cloud"></p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="p">{</span><span class="o">%</span> <span class="n">tag_cloud</span> <span class="n">font</span><span class="o">-</span><span class="ss">size</span><span class="p">:</span> <span class="mi">90</span><span class="o">-</span><span class="mi">210</span><span class="sx">%, limit: 10,</span> <span class="ss">style</span><span class="p">:</span> <span class="n">para</span> <span class="o">%</span><span class="p">}</span>
-<span class="o">&lt;</span><span class="sr">/code&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span>  <span class="o">&lt;</span><span class="sr">/ul&gt;</span>
-<span class="sr">&lt;/se</span><span class="n">ction</span><span class="o">&gt;</span>
+<pre><code>{% tag_cloud font-size: 90-210%, limit: 10, style: para %}
 </code></pre>
-</div></p>
+
+<p>  </ul>
+</section>
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>tag_cloud的参数中，style :para指定不使用li来分割，limit限定10个tag，font-size指定tag的大小范围，具体参数参看官方文档。</p>
 
 <p>最后，当然是在_config.xml的default_asides 中添加这个tag cloud到导航栏，例如：</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="n">default_asides</span><span class="p">:</span> <span class="o">[</span><span class="n">asides</span><span class="o">/</span><span class="n">category_list</span><span class="o">.</span><span class="n">html</span><span class="p">,</span> <span class="n">asides</span><span class="o">/</span><span class="n">recent_posts</span><span class="o">.</span><span class="n">html</span><span class="p">,</span> <span class="n">custom</span><span class="o">/</span><span class="n">asides</span><span class="o">/</span><span class="n">tags</span><span class="o">.</span><span class="n">html</span><span class="o">]</span>
-</code></pre>
-</div></p>
+<p>{% highlight ruby %}
+default_asides: [asides/category_list.html, asides/recent_posts.html, custom/asides/tags.html]
+{% endhighlight %}</p>
 ]]></content>
   </entry>
   
@@ -194,28 +203,28 @@
 
 <p>保存以下代码到plugins/category_list_tag.rb：</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="k">module</span> <span class="nn">Jekyll</span>
-  <span class="k">class</span> <span class="nc">CategoryListTag</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="ss">Liquid</span><span class="p">:</span><span class="ss">:Tag</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
+<p>{% highlight ruby %}
+module Jekyll
+  class CategoryListTag &lt; Liquid::Tag</p>
 
-<span class="sr">&lt;pre&gt;&lt;code&gt;def render(context)</span>
-<span class="sr">  html = &quot;&quot;</span>
-<span class="sr">  categories = context.registers[:site].categories.keys</span>
-<span class="sr">  categories.sort.each do |category|</span>
-<span class="sr">    posts_in_category = context.registers[:site].categories[category].size</span>
-<span class="sr">    category_dir = context.registers[:site].config[&#39;category_dir&#39;]</span>
-<span class="sr">    category_url = File.join(category_dir, category.gsub(/</span><span class="n">_</span><span class="o">|</span><span class="p">\</span><span class="n">P</span><span class="p">{</span><span class="no">Word</span><span class="p">}</span><span class="o">/</span><span class="p">,</span> <span class="s1">&#39;-&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">gsub</span><span class="p">(</span><span class="sr">/-{2,}/</span><span class="p">,</span> <span class="s1">&#39;-&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">downcase</span><span class="p">)</span>
-    <span class="n">html</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="s2">&quot;&amp;lt;li class=&#39;category&#39;&amp;gt;&amp;lt;a href=&#39;http://codemacro.com/</span><span class="si">#{</span><span class="n">category_url</span><span class="si">}</span><span class="s2">/&#39;&amp;gt;</span><span class="si">#{</span><span class="n">category</span><span class="si">}</span><span class="s2"> (</span><span class="si">#{</span><span class="n">posts_in_category</span><span class="si">}</span><span class="s2">)&amp;lt;/a&amp;gt;&amp;lt;/li&amp;gt;</span><span class="se">\n</span><span class="s2">&quot;</span>
-  <span class="k">end</span>
-  <span class="n">html</span>
-<span class="k">end</span>
-<span class="o">&lt;</span><span class="sr">/code&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span>  <span class="k">end</span>
-<span class="k">end</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
-
-<span class="sr">&lt;p&gt;Liquid::Template.register_tag(&#39;category_list&#39;, Jekyll::CategoryListTag)</span>
+<pre><code>def render(context)
+  html = ""
+  categories = context.registers[:site].categories.keys
+  categories.sort.each do |category|
+    posts_in_category = context.registers[:site].categories[category].size
+    category_dir = context.registers[:site].config['category_dir']
+    category_url = File.join(category_dir, category.gsub(/_|\P{Word}/, '-').gsub(/-{2,}/, '-').downcase)
+    html &lt;&lt; "&lt;li class='category'&gt;&lt;a href='http://codemacro.com/#{category_url}/'&gt;#{category} (#{posts_in_category})&lt;/a&gt;&lt;/li&gt;\n"
+  end
+  html
+end
 </code></pre>
-</div></p>
+
+<p>  end
+end</p>
+
+<p>Liquid::Template.register_tag('category_list', Jekyll::CategoryListTag)
+{% endhighlight %}</p>
 
 <p>这个插件会向liquid注册一个名为category_list的tag，该tag就是以li的形式将站点所有的category组织起来。如果要将category加入到侧边导航栏，需要增加一个aside。</p>
 
@@ -226,23 +235,25 @@
 
 <p>复制以下代码到source/_includes/asides/category_list.html。</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="o">&lt;</span><span class="n">section</span><span class="o">&gt;</span>
-  <span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="no">Categories</span><span class="o">&lt;</span><span class="sr">/h1&gt;</span>
-<span class="sr">  &lt;ul id=&quot;categories&quot;&gt;&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
+<p>{% highlight ruby %}
+{% raw %}
+<section>
+  <h1>Categories</h1>
+  <ul id="categories"></p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="p">{</span><span class="o">%</span> <span class="n">category_list</span> <span class="o">%</span><span class="p">}</span>
-<span class="o">&lt;</span><span class="sr">/code&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span>  <span class="o">&lt;</span><span class="sr">/ul&gt;</span>
-<span class="sr">&lt;/se</span><span class="n">ction</span><span class="o">&gt;</span>
+<pre><code>{% category_list %}
 </code></pre>
-</div></p>
+
+<p>  </ul>
+</section>
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>配置侧边栏需要修改_config.yml文件，修改其default_asides项：</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="n">default_asides</span><span class="p">:</span> <span class="o">[</span><span class="n">asides</span><span class="o">/</span><span class="n">category_list</span><span class="o">.</span><span class="n">html</span><span class="p">,</span> <span class="n">asides</span><span class="o">/</span><span class="n">recent_posts</span><span class="o">.</span><span class="n">html</span><span class="o">]</span>
-</code></pre>
-</div></p>
+<p>{% highlight ruby %}
+default_asides: [asides/category_list.html, asides/recent_posts.html]
+{% endhighlight %}</p>
 
 <p>以上asides根据自己的需求调整。</p>
 ]]></content>

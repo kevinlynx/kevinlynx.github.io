@@ -4,7 +4,7 @@
   <title><![CDATA[Category: clang | loop in codes]]></title>
   <link href="http://codemacro.com/categories/clang/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2013-07-20T16:25:46+08:00</updated>
+  <updated>2013-08-08T22:46:32+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -31,59 +31,61 @@
 <!-- more -->
 
 
-<p><div class="highlight"><pre><code class="c"><span class="c1">// 编写你感兴趣的语法树节点访问接口，例如该例子中提供了函数调用语句和goto语句的节点访问接口</span>
-<span class="n">class</span> <span class="n">MyASTVisitor</span> <span class="o">:</span> <span class="n">public</span> <span class="n">RecursiveASTVisitor</span><span class="o">&lt;</span><span class="n">MyASTVisitor</span><span class="o">&gt;</span> <span class="p">{</span>
-<span class="nl">public:</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+{% raw %}
+// 编写你感兴趣的语法树节点访问接口，例如该例子中提供了函数调用语句和goto语句的节点访问接口
+class MyASTVisitor : public RecursiveASTVisitor<MyASTVisitor> {
+public:</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">bool</span> <span class="n">VisitCallExpr</span><span class="p">(</span><span class="n">CallExpr</span> <span class="o">*</span><span class="n">expr</span><span class="p">);</span>
+<pre><code>bool VisitCallExpr(CallExpr *expr);
 
-<span class="kt">bool</span> <span class="nf">VisitGotoStmt</span><span class="p">(</span><span class="n">GotoStmt</span> <span class="o">*</span><span class="n">stmt</span><span class="p">);</span>
-<span class="p">...</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">class</span> <span class="n">MyASTConsumer</span> <span class="o">:</span> <span class="n">public</span> <span class="n">ASTConsumer</span> <span class="p">{</span>
-<span class="nl">public:</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">virtual</span> <span class="kt">bool</span> <span class="n">HandleTopLevelDecl</span><span class="p">(</span><span class="n">DeclGroupRef</span> <span class="n">DR</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">for</span> <span class="p">(</span><span class="n">DeclGroupRef</span><span class="o">::</span><span class="n">iterator</span> <span class="n">b</span> <span class="o">=</span> <span class="n">DR</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">e</span> <span class="o">=</span> <span class="n">DR</span><span class="p">.</span><span class="n">end</span><span class="p">();</span> <span class="n">b</span> <span class="o">!=</span> <span class="n">e</span><span class="p">;</span> <span class="o">++</span><span class="n">b</span><span class="p">)</span> <span class="p">{</span>
-        <span class="n">Visitor</span><span class="p">.</span><span class="n">TraverseDecl</span><span class="p">(</span><span class="o">*</span><span class="n">b</span><span class="p">);</span>
-    <span class="p">}</span>
-    <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
-<span class="p">}</span> 
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">private</span><span class="o">:&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">MyASTVisitor</span> <span class="n">Visitor</span><span class="p">;</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">CompilerInstance</span> <span class="n">inst</span><span class="p">;</span>
-<span class="n">Rewriter</span> <span class="n">writer</span><span class="p">;</span>
-<span class="n">inst</span><span class="p">.</span><span class="n">createFileManager</span><span class="p">();</span>
-<span class="n">inst</span><span class="p">.</span><span class="n">createSourceManager</span><span class="p">(</span><span class="n">inst</span><span class="p">.</span><span class="n">getFileManager</span><span class="p">());</span>
-<span class="n">inst</span><span class="p">.</span><span class="n">createPreprocessor</span><span class="p">();</span>
-<span class="n">inst</span><span class="p">.</span><span class="n">createASTContext</span><span class="p">();</span>
-<span class="n">writer</span><span class="p">.</span><span class="n">setSourceMgr</span><span class="p">(</span><span class="n">inst</span><span class="p">.</span><span class="n">getSourceManager</span><span class="p">(),</span> <span class="n">inst</span><span class="p">.</span><span class="n">getLangOpts</span><span class="p">());</span>
-<span class="p">...</span> <span class="c1">// 其他初始化CompilerInstance的代码</span>
-
-<span class="k">const</span> <span class="n">FileEntry</span> <span class="o">*</span><span class="n">fileIn</span> <span class="o">=</span> <span class="n">fileMgr</span><span class="p">.</span><span class="n">getFile</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
-<span class="n">sourceMgr</span><span class="p">.</span><span class="n">createMainFileID</span><span class="p">(</span><span class="n">fileIn</span><span class="p">);</span>
-<span class="n">inst</span><span class="p">.</span><span class="n">getDiagnosticClient</span><span class="p">().</span><span class="n">BeginSourceFile</span><span class="p">(</span><span class="n">inst</span><span class="p">.</span><span class="n">getLangOpts</span><span class="p">(),</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">inst</span><span class="p">.</span><span class="n">getPreprocessor</span><span class="p">());</span>
-<span class="n">MyASTConsumer</span> <span class="nf">consumer</span><span class="p">(</span><span class="n">writer</span><span class="p">);</span>
-<span class="n">ParseAST</span><span class="p">(</span><span class="n">inst</span><span class="p">.</span><span class="n">getPreprocessor</span><span class="p">(),</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">consumer</span><span class="p">,</span> <span class="n">inst</span><span class="p">.</span><span class="n">getASTContext</span><span class="p">());</span>
-<span class="n">inst</span><span class="p">.</span><span class="n">getDiagnosticClient</span><span class="p">().</span><span class="n">EndSourceFile</span><span class="p">();</span>
-<span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span>
+bool VisitGotoStmt(GotoStmt *stmt);
+...
 </code></pre>
-</div></p>
+
+<p>};</p>
+
+<p>class MyASTConsumer : public ASTConsumer {
+public:</p>
+
+<pre><code>virtual bool HandleTopLevelDecl(DeclGroupRef DR) {
+    for (DeclGroupRef::iterator b = DR.begin(), e = DR.end(); b != e; ++b) {
+        Visitor.TraverseDecl(*b);
+    }
+    return true;
+} 
+</code></pre>
+
+<p>private:</p>
+
+<pre><code>MyASTVisitor Visitor;
+</code></pre>
+
+<p>};</p>
+
+<p>int main(int argc, char **argv) {</p>
+
+<pre><code>CompilerInstance inst;
+Rewriter writer;
+inst.createFileManager();
+inst.createSourceManager(inst.getFileManager());
+inst.createPreprocessor();
+inst.createASTContext();
+writer.setSourceMgr(inst.getSourceManager(), inst.getLangOpts());
+... // 其他初始化CompilerInstance的代码
+
+const FileEntry *fileIn = fileMgr.getFile(argv[1]);
+sourceMgr.createMainFileID(fileIn);
+inst.getDiagnosticClient().BeginSourceFile(inst.getLangOpts(), &amp;inst.getPreprocessor());
+MyASTConsumer consumer(writer);
+ParseAST(inst.getPreprocessor(), &amp;consumer, inst.getASTContext());
+inst.getDiagnosticClient().EndSourceFile();
+return 0;
+</code></pre>
+
+<p>}
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>以上代码中，ParseAST为Clang开始分析代码的主入口，其中提供了一个ASTConsumer。每次分析到一个顶层定义时(Top level decl)就会回调MyASTConsumer::HandleTopLevelDecl，该函数的实现里调用MyASTVisitor开始递归访问该节点。这里的<code>decl</code>实际上包含定义。</p>
 
@@ -95,14 +97,16 @@
 
 <p>每个语法树节点都会有一个子节点列表，在Clang中一般可以使用如下语句遍历一个节点的子节点：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="k">for</span> <span class="p">(</span><span class="n">Stmt</span><span class="o">::</span><span class="n">child_iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">stmt</span><span class="o">-&gt;</span><span class="n">child_begin</span><span class="p">();</span> <span class="n">it</span> <span class="o">!=</span> <span class="n">stmt</span><span class="o">-&gt;</span><span class="n">child_end</span><span class="p">();</span> <span class="o">++</span><span class="n">it</span><span class="p">)</span> <span class="p">{</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+{% raw %}
+for (Stmt::child_iterator it = stmt->child_begin(); it != stmt->child_end(); ++it) {</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">Stmt</span> <span class="o">*</span><span class="n">child</span> <span class="o">=</span> <span class="o">*</span><span class="n">it</span><span class="p">;</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span>
+<pre><code>Stmt *child = *it;
 </code></pre>
-</div></p>
+
+<p>}
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>但遗憾的是，无法从一个语法树节点获取其父节点，这将给我们的规范检测工具的实现带来一些麻烦。</p>
 
@@ -110,39 +114,45 @@
 
 <p>在自己实现的Visitor中（例如MyASTVisitor），除了可以提供VisitXXXStmt系列接口去访问某类型的语法树节点外，还可以提供TraverseXXXStmt系列接口。Traverse系列的接口包装对应的Visit接口，即他们的关系大致为：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="kt">bool</span> <span class="nf">TraverseGotoStmt</span><span class="p">(</span><span class="n">GotoStmt</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+{% raw %}
+bool TraverseGotoStmt(GotoStmt *s) {</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">VisitGotoStmt</span><span class="p">(</span><span class="n">s</span><span class="p">);</span>
-<span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span>
+<pre><code>VisitGotoStmt(s);
+return true;
 </code></pre>
-</div></p>
+
+<p>}
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>例如对于GotoStmt节点而言，Clang会先调用TraverseGotoStmt，在TraverseGotoStmt的实现中才会调用VisitGotoStmt。利用Traverse和Visit之间的调用关系，我们可以解决一些因为不能访问某节点父节点而出现的问题。例如，我们需要限制逗号表达式的使用，在任何地方一旦检测到逗号表达式的出现，都给予警告，除非这个逗号表达式出现在for语句中，例如：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="n">a</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">2</span><span class="p">);</span> <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="err">违反规范，非法</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
-<span class="k">for</span> <span class="p">(</span><span class="n">a</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span> <span class="n">a</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="mi">2</span><span class="p">;</span> <span class="o">++</span><span class="n">a</span><span class="p">)</span> <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="err">合法</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
-</code></pre>
-</div></p>
+<p>{% highlight c++ %}
+{% raw %}
+a = (a = 1, b = 2); /<em> 违反规范，非法 </em>/
+for (a = 1, b = 2; a &lt; 2; ++a) /<em> 合法 </em>/
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>逗号表达式对应的访问接口为VisitBinComma，所以我们只需要提供该接口的实现即可：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">MyASTVisitor</span> <span class="o">:</span> <span class="n">public</span> <span class="n">RecursiveASTVisitor</span><span class="o">&lt;</span><span class="n">MyASTVisitor</span><span class="o">&gt;</span> <span class="p">{</span>
-<span class="nl">public:</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+{% raw %}
+class MyASTVisitor : public RecursiveASTVisitor<MyASTVisitor> {
+public:</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="p">...</span>
-<span class="kt">bool</span> <span class="n">VisitBinComma</span><span class="p">(</span><span class="n">BinaryOperator</span> <span class="o">*</span><span class="n">stmt</span><span class="p">)</span> <span class="p">{</span>
-    <span class="cm">/* 报告错误 */</span>
-    <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
-<span class="p">}</span>
-<span class="p">...</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span>
+<pre><code>...
+bool VisitBinComma(BinaryOperator *stmt) {
+    /* 报告错误 */
+    return true;
+}
+...
 </code></pre>
-</div></p>
+
+<p>};
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>（注：BinaryOperator用于表示二目运算表达式，例如a + b，逗号表达式也是二目表达式）</p>
 
@@ -150,35 +160,37 @@
 
 <p>这里的解决办法是通过提供TraverseForStmt，以在进入for语句前得到一个标识：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">MyASTVisitor</span> <span class="o">:</span> <span class="n">public</span> <span class="n">RecursiveASTVisitor</span><span class="o">&lt;</span><span class="n">MyASTVisitor</span><span class="o">&gt;</span> <span class="p">{</span>
-<span class="nl">public:</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+{% raw %}
+class MyASTVisitor : public RecursiveASTVisitor<MyASTVisitor> {
+public:</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="p">...</span>
-<span class="c1">// 这个函数的实现可以参考RecursiveASTVisitor的默认实现，我们唯一要做的就是在for语句的头那设定一个标志m_inForLine</span>
-<span class="kt">bool</span> <span class="n">TraverseForStmt</span><span class="p">(</span><span class="n">ForStmt</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">WalkUpFromForStmt</span><span class="p">(</span><span class="n">s</span><span class="p">))</span>
-        <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
-    <span class="n">m_inForLine</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
-    <span class="k">for</span> <span class="p">(</span><span class="n">Stmt</span><span class="o">::</span><span class="n">child_range</span> <span class="n">range</span> <span class="o">=</span> <span class="n">s</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">children</span><span class="p">();</span> <span class="n">range</span><span class="p">;</span> <span class="o">++</span><span class="n">range</span><span class="p">)</span> <span class="p">{</span>
-        <span class="k">if</span> <span class="p">(</span><span class="o">*</span><span class="n">range</span> <span class="o">==</span> <span class="n">s</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">getBody</span><span class="p">())</span>
-            <span class="n">m_inForLine</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
-        <span class="n">TraverseStmt</span><span class="p">(</span><span class="o">*</span><span class="n">range</span><span class="p">);</span>
-    <span class="p">}</span>
-    <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
-<span class="p">}</span>
+<pre><code>...
+// 这个函数的实现可以参考RecursiveASTVisitor的默认实现，我们唯一要做的就是在for语句的头那设定一个标志m_inForLine
+bool TraverseForStmt(ForStmt *s) {
+    if (!WalkUpFromForStmt(s))
+        return false;
+    m_inForLine = true;
+    for (Stmt::child_range range = s-&gt;children(); range; ++range) {
+        if (*range == s-&gt;getBody())
+            m_inForLine = false;
+        TraverseStmt(*range);
+    }
+    return true;
+}
 
-<span class="kt">bool</span> <span class="n">VisitBinComma</span><span class="p">(</span><span class="n">BinaryOperator</span> <span class="o">*</span><span class="n">stmt</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">m_inForLine</span><span class="p">)</span> <span class="p">{</span>
-        <span class="cm">/* 报告错误 */</span>
-    <span class="p">}</span>
-    <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
-<span class="p">}</span>
-<span class="p">...</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span>
+bool VisitBinComma(BinaryOperator *stmt) {
+    if (!m_inForLine) {
+        /* 报告错误 */
+    }
+    return true;
+}
+...
 </code></pre>
-</div></p>
+
+<p>};
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>（注：严格来说，我们必须检查逗号表达式是出现在for语句的头中，而不包括for语句循环体）</p>
 
@@ -186,49 +198,55 @@
 
 <p>对于表达式(<code>Expr</code>)而言，都有一个类型信息。Clang直接用于表示类型的类是<code>QualType</code>，实际上这个类只是一个接口包装。这些类型信息可以用于很多类型相关的编程规范检查。例如不允许定义超过2级的指针(例如int ***p)：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="kt">bool</span> <span class="n">MyASTVisitor</span><span class="o">::</span><span class="n">VisitVarDecl</span><span class="p">(</span><span class="n">VarDecl</span> <span class="o">*</span><span class="n">decl</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// 当发现变量定义时该接口被调用&lt;/p&gt;</span>
+<p>{% highlight c++ %}
+{% raw %}
+bool MyASTVisitor::VisitVarDecl(VarDecl *decl) { // 当发现变量定义时该接口被调用</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">QualType</span> <span class="n">t</span> <span class="o">=</span> <span class="n">decl</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">getType</span><span class="p">();</span> <span class="c1">// 取得该变量的类型</span>
-<span class="kt">int</span> <span class="n">pdepth</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-<span class="c1">// check pointer level</span>
-<span class="k">for</span> <span class="p">(</span> <span class="p">;</span> <span class="n">t</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">isPointerType</span><span class="p">();</span> <span class="n">t</span> <span class="o">=</span> <span class="n">t</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">getPointeeType</span><span class="p">())</span> <span class="p">{</span> <span class="c1">// 如果是指针类型就获取其指向类型(PointeeType)</span>
-    <span class="o">++</span><span class="n">pdepth</span><span class="p">;</span>
-<span class="p">}</span>
-<span class="k">if</span> <span class="p">(</span><span class="n">pdepth</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">=</span> <span class="mi">3</span><span class="p">)</span>
-    <span class="cm">/* 报告错误 */</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span>
+<pre><code>QualType t = decl-&gt;getType(); // 取得该变量的类型
+int pdepth = 0;
+// check pointer level
+for ( ; t-&gt;isPointerType(); t = t-&gt;getPointeeType()) { // 如果是指针类型就获取其指向类型(PointeeType)
+    ++pdepth;
+}
+if (pdepth &gt;= 3)
+    /* 报告错误 */
 </code></pre>
-</div></p>
+
+<p>}
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>可以直接调用<code>Expr::getType</code>接口，用于获取指定表达式最终的类型，基于此我们可以检查复杂表达式中的类型转换，例如：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="kt">float</span> <span class="n">f</span> <span class="o">=</span> <span class="mf">2.0f</span><span class="p">;</span>
-<span class="kt">double</span> <span class="n">d</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">;</span>
-<span class="n">f</span> <span class="o">=</span> <span class="n">d</span> <span class="o">*</span> <span class="n">f</span><span class="p">;</span> <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="err">检查此表达式</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
-</code></pre>
-</div></p>
+<p>{% highlight c++ %}
+{% raw %}
+float f = 2.0f;
+double d = 1.0;
+f = d * f; /<em> 检查此表达式 </em>/
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>对以上表达式的检查有很多方法，你可以实现MyASTVisitor::VisitBinaryOperator（只要是二目运算符都会调用），或者MyASTVisitor::VisitBinAssign（赋值运算=调用）。无论哪种方式，我们都可以提供一个递归检查两个表达式类型是否相同的接口：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="kt">bool</span> <span class="nf">HasDiffType</span><span class="p">(</span><span class="n">BinaryOperator</span> <span class="o">*</span><span class="n">stmt</span><span class="p">)</span> <span class="p">{</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+{% raw %}
+bool HasDiffType(BinaryOperator *stmt) {</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">Expr</span> <span class="o">*</span><span class="n">lhs</span> <span class="o">=</span> <span class="n">stmt</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">getLHS</span><span class="p">()</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">IgnoreImpCasts</span><span class="p">();</span> <span class="c1">// 忽略隐式转换</span>
-<span class="n">Expr</span> <span class="o">*</span><span class="n">rhs</span> <span class="o">=</span> <span class="n">stmt</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">getRHS</span><span class="p">()</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">IgnoreImpCasts</span><span class="p">();</span>
-<span class="k">if</span> <span class="p">(</span><span class="n">lhs</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">getType</span><span class="p">()</span> <span class="o">==</span> <span class="n">rhs</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">getType</span><span class="p">()))</span> <span class="p">{</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">isa</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">BinaryOperator</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;(</span><span class="n">lhs</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">HasDiffType</span><span class="p">(</span><span class="n">cast</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">BinaryOperator</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;(</span><span class="n">lhs</span><span class="p">)))</span>
-        <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">isa</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">BinaryOperator</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;(</span><span class="n">rhs</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">HasDiffType</span><span class="p">(</span><span class="n">cast</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">BinaryOperator</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;(</span><span class="n">rhs</span><span class="p">)))</span>
-        <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
-    <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
-<span class="p">}</span>
-<span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span>
+<pre><code>Expr *lhs = stmt-&gt;getLHS()-&gt;IgnoreImpCasts(); // 忽略隐式转换
+Expr *rhs = stmt-&gt;getRHS()-&gt;IgnoreImpCasts();
+if (lhs-&gt;getType() == rhs-&gt;getType())) {
+    if (isa&lt;BinaryOperator&gt;(lhs) &amp;&amp; HasDiffType(cast&lt;BinaryOperator&gt;(lhs)))
+        return true;
+    if (isa&lt;BinaryOperator&gt;(rhs) &amp;&amp; HasDiffType(cast&lt;BinaryOperator&gt;(rhs)))
+        return true;
+    return false;
+}
+return true;
 </code></pre>
-</div></p>
+
+<p>}
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>（注：此函数只是简单实现，未考虑类型修饰符之类的问题）</p>
 
@@ -236,100 +254,111 @@
 
 <p><code>Expr</code>类提供了更多方便的类型相关的接口，例如判定该表达式是否为常数，是否是布尔表达式，甚至在某些情况下可以直接计算得到值。例如我们可以检查明显的死循环:</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span> <span class="p">}</span>
-</code></pre>
-</div></p>
+<p>{% highlight c++ %}
+{% raw %}
+while (1) { }
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>可以使用：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="n">ASTContext</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">context</span> <span class="o">=</span> <span class="n">inst</span><span class="p">.</span><span class="n">GetASTContext</span><span class="p">();</span>
-<span class="kt">bool</span> <span class="n">result</span><span class="p">;</span>
-<span class="c1">// 假设stmt为WhileStmt</span>
-<span class="k">if</span> <span class="p">(</span><span class="n">stmt</span><span class="o">-&gt;</span><span class="n">getCond</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">EvaluateAsBooleanCondition</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">context</span><span class="p">))</span> <span class="p">{</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+{% raw %}
+ASTContext &amp;context = inst.GetASTContext();
+bool result;
+// 假设stmt为WhileStmt
+if (stmt->getCond()->EvaluateAsBooleanCondition(result, context)) {</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">if</span> <span class="p">(</span><span class="n">result</span><span class="p">)</span> 
-    <span class="cm">/* 死循环 */</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+<pre><code>if (result) 
+    /* 死循环 */
 </code></pre>
-</div></p>
+
+<p>{% endraw %}
+{% endhighlight %}</p>
 
 <h2>符号表</h2>
 
 <p>符号表这个概念比较广义，这里我仅指的是用于保存类型和变量信息的表。Clang中没有显示的符号表数据结构，但每一个定义都有一个<code>DeclContext</code>，<code>DeclContext</code>用于描述一个定义的上下文环境。有一个特殊的<code>DeclContext</code>被称为<code>translation unit decl</code>，其实也就是全局环境。利用这个translation unit decl，我们可以获取一些全局符号，例如全局变量、全局类型：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="c1">// 获取全局作用域里指定名字的符号列表</span>
-<span class="n">DeclContext</span><span class="o">::</span><span class="n">lookup_result</span> <span class="n">GetGlobalDecl</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">name</span><span class="p">)</span> <span class="p">{</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+{% raw %}
+// 获取全局作用域里指定名字的符号列表
+DeclContext::lookup_result GetGlobalDecl(const std::string &amp;name) {</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">ASTContext</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">context</span> <span class="o">=</span> <span class="n">CompilerInst</span><span class="o">::</span><span class="n">getSingleton</span><span class="p">().</span><span class="n">GetASTContext</span><span class="p">();</span>
-<span class="n">DeclContext</span> <span class="o">*</span><span class="n">tcxt</span> <span class="o">=</span> <span class="n">context</span><span class="p">.</span><span class="n">getTranslationUnitDecl</span><span class="p">();</span>
-<span class="n">IdentifierInfo</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">id</span> <span class="o">=</span> <span class="n">context</span><span class="p">.</span><span class="n">Idents</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">);</span>
-<span class="k">return</span> <span class="n">tcxt</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">lookup</span><span class="p">(</span><span class="n">DeclarationName</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">id</span><span class="p">));</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// 可以根据GetGlobalDecl的返回结果，检查该列表里是否有特定的定义，例如函数定义、类型定义等</span>
-<span class="kt">bool</span> <span class="n">HasSpecDecl</span><span class="p">(</span><span class="n">DeclContext</span><span class="o">::</span><span class="n">lookup_result</span> <span class="n">ret</span><span class="p">,</span> <span class="n">Decl</span><span class="o">::</span><span class="n">Kind</span> <span class="n">kind</span><span class="p">)</span> <span class="p">{</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">ret</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">NamedDecl</span> <span class="o">*</span><span class="n">decl</span> <span class="o">=</span> <span class="n">ret</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">decl</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">getKind</span><span class="p">()</span> <span class="o">==</span> <span class="n">kind</span><span class="p">)</span> <span class="p">{</span>
-        <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
-    <span class="p">}</span>
-<span class="p">}</span>
-<span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span>
+<pre><code>ASTContext &amp;context = CompilerInst::getSingleton().GetASTContext();
+DeclContext *tcxt = context.getTranslationUnitDecl();
+IdentifierInfo &amp;id = context.Idents.get(name);
+return tcxt-&gt;lookup(DeclarationName(&amp;id));
 </code></pre>
-</div></p>
+
+<p>}</p>
+
+<p>// 可以根据GetGlobalDecl的返回结果，检查该列表里是否有特定的定义，例如函数定义、类型定义等
+bool HasSpecDecl(DeclContext::lookup_result ret, Decl::Kind kind) {</p>
+
+<pre><code>for (size_t i = 0; i &lt; ret.size(); ++i) {
+    NamedDecl *decl = ret[i];
+    if (decl-&gt;getKind() == kind) {
+        return true;
+    }
+}
+return false;
+</code></pre>
+
+<p>}
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>有了以上两个函数，我们要检测全局作用域里是否有名为"var"的变量定义，就可以：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="n">HasSpecDecl</span><span class="p">(</span><span class="n">GetGlobalDecl</span><span class="p">(</span><span class="s">&quot;var&quot;</span><span class="p">),</span> <span class="n">Decl</span><span class="o">::</span><span class="n">Var</span><span class="p">);</span>
-</code></pre>
-</div></p>
+<p>{% highlight c++ %}
+{% raw %}
+HasSpecDecl(GetGlobalDecl("var"), Decl::Var);
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>每一个<code>Decl</code>都有对应的<code>DeclContext</code>，要检查相同作用域是否包含相同名字的符号，其处理方式和全局的方式有点不一样：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="c1">// 检查在ctx中是否有与decl同名的符号定义</span>
-<span class="kt">bool</span> <span class="nf">HasSymbolInContext</span><span class="p">(</span><span class="k">const</span> <span class="n">NamedDecl</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">decl</span><span class="p">,</span> <span class="k">const</span> <span class="n">DeclContext</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">ctx</span><span class="p">)</span> <span class="p">{</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+{% raw %}
+// 检查在ctx中是否有与decl同名的符号定义
+bool HasSymbolInContext(const NamedDecl <em>decl, const DeclContext </em>ctx) {</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">for</span> <span class="p">(</span><span class="n">DeclContext</span><span class="o">::</span><span class="n">decl_iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">decls_begin</span><span class="p">();</span> <span class="n">it</span> <span class="o">!=</span> <span class="n">ctx</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">decls_end</span><span class="p">();</span> <span class="o">++</span><span class="n">it</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">Decl</span> <span class="o">*</span><span class="n">d</span> <span class="o">=</span> <span class="o">*</span><span class="n">it</span><span class="p">;</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">d</span> <span class="o">!=</span> <span class="n">decl</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">isa</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">NamedDecl</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;(</span><span class="n">d</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> 
-        <span class="n">cast</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">NamedDecl</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;(</span><span class="n">d</span><span class="p">)</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">getNameAsString</span><span class="p">()</span> <span class="o">==</span> <span class="n">decl</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">getNameAsString</span><span class="p">())</span>
-        <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
-<span class="p">}</span>
-<span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">bool</span> <span class="n">HasSymbolInContext</span><span class="p">(</span><span class="k">const</span> <span class="n">NamedDecl</span> <span class="o">*</span><span class="n">decl</span><span class="p">)</span> <span class="p">{</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">return</span> <span class="n">HasSymbolInContext</span><span class="p">(</span><span class="n">decl</span><span class="p">,</span> <span class="n">decl</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">getDeclContext</span><span class="p">());</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span>
+<pre><code>for (DeclContext::decl_iterator it = ctx-&gt;decls_begin(); it != ctx-&gt;decls_end(); ++it) {
+    Decl *d = *it;
+    if (d != decl &amp;&amp; isa&lt;NamedDecl&gt;(d) &amp;&amp; 
+        cast&lt;NamedDecl&gt;(d)-&gt;getNameAsString() == decl-&gt;getNameAsString())
+        return true;
+}
+return false;
 </code></pre>
-</div></p>
+
+<p>}</p>
+
+<p>bool HasSymbolInContext(const NamedDecl *decl) {</p>
+
+<pre><code>return HasSymbolInContext(decl, decl-&gt;getDeclContext());
+</code></pre>
+
+<p>}
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>可以看出，这里检查相同作用域的方式是遍历上下文环境中的所有符号，但对于全局作用域却是直接查找。对于<code>DeclContext</code>的详细信息我也不甚明了，只能算凑合使用。实际上，这里使用“作用域”一词并不准确，在C语言中的作用域概念，和这里的<code>context</code>概念在Clang中并非等同。</p>
 
 <p>如果要检查嵌套作用域里不能定义相同名字的变量，例如：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="kt">int</span> <span class="n">var</span><span class="p">;</span>
-<span class="p">{</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+{% raw %}
+int var;
+{</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">var</span><span class="p">;</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span>
+<pre><code>int var;
 </code></pre>
-</div></p>
+
+<p>}
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>通过Clang现有的API是无法实现的。因为Clang给上层的语法树结构中，并不包含作用域信息（在Clang的实现中，用于语义分析的类Sema实际上有作用域的处理）。当然，为了实现这个检测，我们可以手动构建作用域信息（通过TraverseCompoundStmt）。</p>
 
@@ -337,45 +366,49 @@
 
 <p>宏的处理属于预处理阶段，并不涵盖在语法分析阶段，所以通过Clang的语法树相关接口是无法处理的。跟宏相关的接口，都是通过Clang的<code>Preprocessor</code>相关接口。Clang为此提供了相应的处理机制，上层需要往<code>Preprocessor</code>对象中添加回调对象，例如：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">MyPPCallback</span> <span class="o">:</span> <span class="n">public</span> <span class="n">PPCallbacks</span> <span class="p">{</span>
-<span class="nl">public:</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+{% raw %}
+class MyPPCallback : public PPCallbacks {
+public:</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="c1">// 处理#include</span>
-<span class="n">virtual</span> <span class="kt">void</span> <span class="n">InclusionDirective</span><span class="p">(</span><span class="n">SourceLocation</span> <span class="n">HashLoc</span><span class="p">,</span> <span class="k">const</span> <span class="n">Token</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">IncludeTok</span><span class="p">,</span>
-    <span class="n">StringRef</span> <span class="n">FileName</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">IsAngled</span><span class="p">,</span> <span class="n">CharSourceRange</span> <span class="n">FilenameRange</span><span class="p">,</span>
-    <span class="k">const</span> <span class="n">FileEntry</span> <span class="o">*</span><span class="n">File</span><span class="p">,</span> <span class="n">StringRef</span> <span class="n">SearchPath</span><span class="p">,</span> <span class="n">StringRef</span> <span class="n">RelativePath</span><span class="p">,</span> <span class="k">const</span> <span class="n">Module</span> <span class="o">*</span><span class="n">Imported</span><span class="p">)</span> <span class="p">{</span>
-<span class="p">}</span>
+<pre><code>// 处理#include
+virtual void InclusionDirective(SourceLocation HashLoc, const Token &amp;IncludeTok,
+    StringRef FileName, bool IsAngled, CharSourceRange FilenameRange,
+    const FileEntry *File, StringRef SearchPath, StringRef RelativePath, const Module *Imported) {
+}
 
-<span class="c1">// 处理#define</span>
-<span class="n">virtual</span> <span class="kt">void</span> <span class="n">MacroDefined</span><span class="p">(</span><span class="k">const</span> <span class="n">Token</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">MacroNameTok</span><span class="p">,</span> <span class="k">const</span> <span class="n">MacroInfo</span> <span class="o">*</span><span class="n">MI</span><span class="p">)</span> <span class="p">{</span>
-<span class="p">}</span>
+// 处理#define
+virtual void MacroDefined(const Token &amp;MacroNameTok, const MacroInfo *MI) {
+}
 
-<span class="n">virtual</span> <span class="kt">void</span> <span class="n">MacroUndefined</span><span class="p">(</span><span class="k">const</span> <span class="n">Token</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">MacroNameTok</span><span class="p">,</span> <span class="k">const</span> <span class="n">MacroInfo</span> <span class="o">*</span><span class="n">MI</span><span class="p">)</span> <span class="p">{</span>
-<span class="p">}</span> 
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">inst</span><span class="p">.</span><span class="n">getPreprocessor</span><span class="p">().</span><span class="n">addPPCallbacks</span><span class="p">(</span><span class="n">new</span> <span class="n">MyPPCallback</span><span class="p">());</span>
+virtual void MacroUndefined(const Token &amp;MacroNameTok, const MacroInfo *MI) {
+} 
 </code></pre>
-</div></p>
+
+<p>}</p>
+
+<p>inst.getPreprocessor().addPPCallbacks(new MyPPCallback());
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>即，通过实现<code>PPCallbacks</code>中对应的接口，就可以获得处理宏的通知。</p>
 
 <p>Clang使用MacroInfo去表示一个宏。MacroInfo将宏体以一堆token来保存，例如我们要检测宏体中使用<code>##</code>和<code>#</code>的情况，则只能遍历这些tokens:</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="c1">// 分别记录#和##在宏体中使用的数量</span>
-<span class="kt">int</span> <span class="n">hash</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">hashhash</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-<span class="k">for</span> <span class="p">(</span><span class="n">MacroInfo</span><span class="o">::</span><span class="n">tokens_iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">MI</span><span class="o">-&gt;</span><span class="n">tokens_begin</span><span class="p">();</span> <span class="n">it</span> <span class="o">!=</span> <span class="n">MI</span><span class="o">-&gt;</span><span class="n">tokens_end</span><span class="p">();</span> <span class="o">++</span><span class="n">it</span><span class="p">)</span> <span class="p">{</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+{% raw %}
+// 分别记录#和##在宏体中使用的数量
+int hash = 0, hashhash = 0;
+for (MacroInfo::tokens_iterator it = MI->tokens_begin(); it != MI->tokens_end(); ++it) {</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">const</span> <span class="n">Token</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">token</span> <span class="o">=</span> <span class="o">*</span><span class="n">it</span><span class="p">;</span>
-<span class="n">hash</span> <span class="o">+=</span> <span class="p">(</span><span class="n">token</span><span class="p">.</span><span class="n">getKind</span><span class="p">()</span> <span class="o">==</span> <span class="n">tok</span><span class="o">::</span><span class="n">hash</span> <span class="o">?</span> <span class="mi">1</span> <span class="o">:</span> <span class="mi">0</span><span class="p">);</span>
-<span class="n">hashhash</span> <span class="o">+=</span> <span class="p">(</span><span class="n">token</span><span class="p">.</span><span class="n">getKind</span><span class="p">()</span> <span class="o">==</span> <span class="n">tok</span><span class="o">::</span><span class="n">hashhash</span> <span class="o">?</span> <span class="mi">1</span> <span class="o">:</span> <span class="mi">0</span><span class="p">);</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span>
+<pre><code>const Token &amp;token = *it;
+hash += (token.getKind() == tok::hash ? 1 : 0);
+hashhash += (token.getKind() == tok::hashhash ? 1 : 0);
 </code></pre>
-</div></p>
+
+<p>}
+{% endraw %}
+{% endhighlight %}</p>
 
 <h2>其他</h2>
 
@@ -385,10 +418,12 @@
 
 <p>在针对函数的参数定义方面，我们支持的规范要求不能定义参数为空的函数，如果该函数没有参数，则必须以<code>void</code>显示标识，例如：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="kt">int</span> <span class="nf">func</span><span class="p">();</span> <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="err">非法</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
-<span class="kt">int</span> <span class="n">func</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span> <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="err">合法</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
-</code></pre>
-</div></p>
+<p>{% highlight c++ %}
+{% raw %}
+int func(); /<em> 非法 </em>/
+int func(void); /<em> 合法 </em>/
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>对于Clang而言，函数定义（或声明）使用的是<code>FunctionDecl</code>，而Clang记录的信息仅包括该函数是否有参数，参数个数是多少，并不记录当其参数个数为0时是否使用<code>void</code>来声明（记录下来没多大意义）。解决这个问题的办法，可以通过<code>SourceLocation</code>获取到对应源代码中的文本内容，然后对此文本内容做手工分析即可。</p>
 
@@ -396,26 +431,30 @@
 
 <p>通过<code>SourceLocation</code>获取对应源码的内容：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">FileID</span><span class="p">,</span> <span class="kt">unsigned</span><span class="o">&gt;</span> <span class="n">locInfo</span> <span class="o">=</span> <span class="n">SM</span><span class="p">.</span><span class="n">getDecomposedLoc</span><span class="p">(</span><span class="n">loc</span><span class="p">);</span>
-<span class="kt">bool</span> <span class="n">invalidTemp</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
-<span class="n">llvm</span><span class="o">::</span><span class="n">StringRef</span> <span class="n">file</span> <span class="o">=</span> <span class="n">SM</span><span class="p">.</span><span class="n">getBufferData</span><span class="p">(</span><span class="n">locInfo</span><span class="p">.</span><span class="n">first</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">invalidTemp</span><span class="p">);</span>
-<span class="k">if</span> <span class="p">(</span><span class="n">invalidTemp</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+{% raw %}
+std::pair&lt;FileID, unsigned> locInfo = SM.getDecomposedLoc(loc);
+bool invalidTemp = false;
+llvm::StringRef file = SM.getBufferData(locInfo.first, &amp;invalidTemp);
+if (invalidTemp)</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// tokenBegin即为loc对应源码内容的起始点</span>
-<span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">tokenBegin</span> <span class="o">=</span> <span class="n">file</span><span class="p">.</span><span class="n">data</span><span class="p">()</span> <span class="o">+</span> <span class="n">locInfo</span><span class="p">.</span><span class="n">second</span><span class="p">;</span>
+<pre><code>return false;
 </code></pre>
-</div></p>
+
+<p>// tokenBegin即为loc对应源码内容的起始点
+const char *tokenBegin = file.data() + locInfo.second;
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>要手工分析这些内容实际上还是有点繁杂，为此我们可以直接使用Clang中词法分析相关的组件来完成这件事：</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="n">Lexer</span> <span class="o">*</span><span class="n">lexer</span> <span class="o">=</span> <span class="n">new</span> <span class="n">Lexer</span><span class="p">(</span><span class="n">SM</span><span class="p">.</span><span class="n">getLocForStartOfFile</span><span class="p">(</span><span class="n">locInfo</span><span class="p">.</span><span class="n">first</span><span class="p">),</span> <span class="n">opts</span><span class="p">,</span> <span class="n">file</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">tokenBegin</span><span class="p">,</span> <span class="n">file</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
-<span class="n">Token</span> <span class="n">tok</span><span class="p">;</span>
-<span class="n">lexer</span><span class="o">-&gt;</span><span class="n">Lex</span><span class="p">(</span><span class="n">tok</span><span class="p">);</span> <span class="c1">// 取得第一个tok，反复调用可以获取一段token流</span>
-</code></pre>
-</div></p>
+<p>{% highlight c++ %}
+{% raw %}
+Lexer *lexer = new Lexer(SM.getLocForStartOfFile(locInfo.first), opts, file.begin(), tokenBegin, file.end());
+Token tok;
+lexer->Lex(tok); // 取得第一个tok，反复调用可以获取一段token流
+{% endraw %}
+{% endhighlight %}</p>
 
 <h3>Diagnostic</h3>
 
@@ -423,26 +462,28 @@
 
 <p>在我们的规范中，有些规范检测的代码在Clang中会直接编译出错，例如函数调用传递的参数个数不等于函数定义时的形参个数。当Clang编译出错时，其语法树实际上是不完善的。解决此问题的最简单办法，就是通过diagnostic实现。也就是说，我是通过将我们的特定规范映射到特定的diagnostic，当发生这个特定的编译错误时，就可以认定该规范实际上被检测到。对于简单的情况而言，这样的手段还算奏效。</p>
 
-<p><div class="highlight"><pre><code class="c"><span class="c1">// &lt;code&gt;TextDiagnosticPrinter&lt;/code&gt;可以将错误信息打印在控制台上，为了调试方便我从它派生而来</span>
-<span class="n">class</span> <span class="n">MyDiagnosticConsumer</span> <span class="o">:</span> <span class="n">public</span> <span class="n">TextDiagnosticPrinter</span> <span class="p">{</span>
-<span class="nl">public:</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+{% raw %}
+// <code>TextDiagnosticPrinter</code>可以将错误信息打印在控制台上，为了调试方便我从它派生而来
+class MyDiagnosticConsumer : public TextDiagnosticPrinter {
+public:</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="c1">// 当一个错误发生时，会调用此函数，我会在这个函数里通过Info.getID()取得Diagnostic ID，然后对应地取出规范ID</span>
-<span class="n">virtual</span> <span class="kt">void</span> <span class="n">HandleDiagnostic</span><span class="p">(</span><span class="n">DiagnosticsEngine</span><span class="o">::</span><span class="n">Level</span> <span class="n">DiagLevel</span><span class="p">,</span>
-    <span class="k">const</span> <span class="n">Diagnostic</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">Info</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">TextDiagnosticPrinter</span><span class="o">::</span><span class="n">HandleDiagnostic</span><span class="p">(</span><span class="n">DiagLevel</span><span class="p">,</span> <span class="n">Info</span><span class="p">);</span>
-    <span class="c1">// 例如检查三字母词(trigraph)的使用</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">Info</span><span class="p">.</span><span class="n">getID</span><span class="p">()</span> <span class="o">==</span> <span class="mi">816</span><span class="p">)</span>
-        <span class="cm">/* 报告使用了三字母词 */</span>
-<span class="p">}</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// 初始化时需传入自己定义的diagnostic</span>
-<span class="n">inst</span><span class="p">.</span><span class="n">createDiagnostics</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">new</span> <span class="n">MyDiagnosticConsumer</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">inst</span><span class="p">.</span><span class="n">getDiagnosticOpts</span><span class="p">()));</span>
+<pre><code>// 当一个错误发生时，会调用此函数，我会在这个函数里通过Info.getID()取得Diagnostic ID，然后对应地取出规范ID
+virtual void HandleDiagnostic(DiagnosticsEngine::Level DiagLevel,
+    const Diagnostic &amp;Info) {
+    TextDiagnosticPrinter::HandleDiagnostic(DiagLevel, Info);
+    // 例如检查三字母词(trigraph)的使用
+    if (Info.getID() == 816)
+        /* 报告使用了三字母词 */
+}
 </code></pre>
-</div></p>
+
+<p>};</p>
+
+<p>// 初始化时需传入自己定义的diagnostic
+inst.createDiagnostics(0, NULL, new MyDiagnosticConsumer(&amp;inst.getDiagnosticOpts()));
+{% endraw %}
+{% endhighlight %}</p>
 
 <p>该例子代码演示了对三字母词(<a href="http://en.wikipedia.org/wiki/Digraphs_and_trigraphs">wiki trigraph</a>)使用限制的规范检测。</p>
 
