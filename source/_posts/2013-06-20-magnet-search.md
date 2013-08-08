@@ -30,7 +30,7 @@ description:
 * 下载安装[mongodb](http://www.mongodb.org/downloads)
 * 进入mongodb bin目录启动mongodb，数据库目录保存在db下，需手动建立该目录
 
-        mongodb --dbpath db --setParameter textSearchEnabled=true
+        mongod --dbpath db --setParameter textSearchEnabled=true
 
 * 下载[erlang](http://www.erlang.org/download.html)，我使用的是R16B版本
 * 下载dhtcrawler，不需要单独下载kdht，待会下载依赖项的时候会自动下载
