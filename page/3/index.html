@@ -74,6 +74,61 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2013/03/21/rup/">浅析软件工程开发方法学RUP</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-03-21T00:00:00+08:00" pubdate data-updated="true">Mar 21<span>st</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>前言</h2>
+
+<p>因为之前一直处在游戏开发行业，由于种种原因一直对软件工程中的项目管理、项目开发方法缺乏体验。虽然项目中也曾倡导编写更多的文档，无论是模块说明文档还是设计文档，但效果一直不好。不甚理想的地方主要体现在文档的规范性欠缺、不统一、浮于表面没有实质内容。文档的编写缺乏详尽的方法指导，那么所谓的设计文档要么是用来敷衍上级要么就是随着开发人员的水平不一而千差万别。</p>
+
+<p>当我开始目前这个非游戏项目时，我也曾想，前期做好结构设计，制定好关键问题的解决方案，那么要完成这个项目就不在话下了。但是我很快就面临了一个问题：需求不定。回想身处游戏公司的那些日子，程序员总是抱怨策划需求变更过快过多，在每一次策划提出一个需求变更时，谨慎的程序员都会再三让策划保证：放心，不会变了。而我面临的问题则更为严峻。我意识到，项目的需求，就连用户也无法一一罗列出来。我们需要的是需求调研。但就算你将客户的所有需求全部挖掘出来后（这几乎不可能，因为他们自己也不太清楚自己想要什么），当你交付了第一个软件版本，几乎可以肯定客户会提出一大堆的需求变更：我要的不是这个，我要的那个怎么没有，哦，我当初以为你说的是另一个意思。</p>
+
+<p>当然，需求调研这种工作不是让程序员去做的（那会更悲剧，无论是对客户还是对程序员而言，他们都是在对牛弹琴）。但需求的不确定性也总是存在的。</p>
+
+<p>事实上，需求变化本身就是一个很正常的现象。我一向愿意更悲观地处理软件开发方面的问题，所谓小心使得万年船。基于此，我决定摆好心态学学软件开发的方法学。</p>
+
+<h2>概要</h2>
+
+<p>本文简要描述、总结了RUP开发方法学的主要内容，结合我自己的感受阐述了一些RUP的核心原则。我相信我所理解的内容是肤浅的，对于非代码的表达我更相信其是存在歧义的。所以本文仅当是一种经验参考，不必当真。</p>
+
+<p>RUP据传是用于指导大型甚至超大型项目开发的，我们做的不是这样规模的项目。但是我们需要记录下整个项目的开发过程，通过这个过程中产出的<strong>工件</strong>任何一个人可以看出这个项目是如何实现出来的，其目的在于规避唯有从海量代码中才能熟悉项目实现这种问题。这里出现了一个概念：工件，其指的是软件项目开发过程中任何留下记录的事物，例如文档、图、代码等。<strong>RUP的一个重要思想，在于其整个软件开发过程都是可推导的</strong>。例如我们通常说的软件架构，或小一点的模块结构，都是通过开发过程中前面阶段产出的工件推导得出，而<strong>不是凭借程序员的经验拍脑袋想出来的</strong>（经验不太可靠，并且千差万别，而<strong>推导</strong>意味着将每个环节变得可靠）。我们借助RUP的这个特性，创建这些工件，用以建立起软件实现的可靠知识库。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/03/21/rup/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2013/02/15/ice-overview/">分布式程序开发平台ICE概览</a></h1>
     
     
@@ -275,49 +330,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/09/06/octopress-seo/">Octopress中的SEO</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-06T19:02:00+08:00" pubdate data-updated="true">Sep 6<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>来自<a href="http://www.yatishmehta.in/seo-for-octopress">SEO for Octopress</a></p>
-
-<p>Octopress默认为每个页面添加<code>meta description</code>，其内容为当前文章的前150个字符，如果是首页就会是第一篇文章的前150个字符。这里主要通过增加<code>meta keywords</code>来提高SEO。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/09/06/octopress-seo/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/4/">&larr; Older</a>
@@ -334,7 +346,7 @@
   <h1>Categories</h1>
   <ul id="categories">
     <li class='category'><a href='/categories/ice/'>ICE (2)</a></li>
-<li class='category'><a href='/categories/c-c-/'>c/c++ (12)</a></li>
+<li class='category'><a href='/categories/c-c-/'>c/c++ (13)</a></li>
 <li class='category'><a href='/categories/clang/'>clang (1)</a></li>
 <li class='category'><a href='/categories/erlang/'>erlang (7)</a></li>
 <li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
@@ -355,6 +367,10 @@
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/2013/08/15/debug-esp-bug/">记一次堆栈平衡错误</a>
+      </li>
+    
+      <li class="post">
         <a href="/2013/08/08/sphinx-dhtcrawler/">dhtcrawler2换用sphinx搜索</a>
       </li>
     
@@ -368,10 +384,6 @@
     
       <li class="post">
         <a href="/2013/06/20/magnet-search/">使用erlang实现P2P磁力搜索(开源)</a>
-      </li>
-    
-      <li class="post">
-        <a href="/2013/06/09/ice-web-client/">使用ActionScript开发Ice Web客户端</a>
       </li>
     
   </ul>

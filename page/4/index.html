@@ -74,6 +74,49 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2012/09/06/octopress-seo/">Octopress中的SEO</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-06T19:02:00+08:00" pubdate data-updated="true">Sep 6<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>来自<a href="http://www.yatishmehta.in/seo-for-octopress">SEO for Octopress</a></p>
+
+<p>Octopress默认为每个页面添加<code>meta description</code>，其内容为当前文章的前150个字符，如果是首页就会是第一篇文章的前150个字符。这里主要通过增加<code>meta keywords</code>来提高SEO。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2012/09/06/octopress-seo/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2012/09/04/bit-operation-in-c-slash-c-plus-plus/">C/c++中几种操作位的方法</a></h1>
     
     
@@ -347,53 +390,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/08/29/mmo-chat-server/">MMO聊天服务器设计</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-08-29T09:54:00+08:00" pubdate data-updated="true">Aug 29<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>MMO中的聊天服务主要功能就是做客户端之间的聊天内容转发。但是聊天的形式有很多，例如私聊、同场景聊、队伍内聊、工会内聊、全服务器聊、甚至临时组建房间聊。这些逻辑功能其实都是可以做在逻辑服务器上的，最多改改世界服务器，但是这样完成功能的话，不免将聊天本身的逻辑与游戏逻辑关联起来。我们希望做得更上一层，将聊天服务本身脱离开来。但是独立聊天服务还不够，因为就算独立出来了，也有可能在实现上与具体的游戏逻辑相关联。所以，我们做了进一步的抽象，想实现一个更为通用的聊天服务器。</p>
-
-<h2>设计实现</h2>
-
-<h3>实体设计</h3>
-
-<p>聊天这个过程，我们将其抽象为实体(entity)与实体间的对话。这个实体概念其实很宽泛。任何可接收聊天消息的都算做实体，例如单个玩家、一个场景、一个队伍、一个房间、一个工会、甚至整个服务器。这个思想其实就是支持整个聊天服务器设计的最根本思想。最开始，我将聊天服务器分为个体和组两个概念，其实这个抽象程度都太低，并且会导致实现上的复杂。相反，将整个系统完全使用实体这个概念来组装，就简单很多。当然，实体是有很多种类的，在处理接收聊天消息这个动作时，其处理方式就不同。例如单个玩家实体仅做消息的发送，场景实体则是将消息发给场景内的所有玩家，队伍实体就是将消息发给队伍内的所有玩家。从这一点来看，我们的实体种类其实并不多，因为场景、队伍这些，都是组实体(group entity)。用C++来描述：</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/08/29/mmo-chat-server/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/5/">&larr; Older</a>
@@ -410,7 +406,7 @@
   <h1>Categories</h1>
   <ul id="categories">
     <li class='category'><a href='/categories/ice/'>ICE (2)</a></li>
-<li class='category'><a href='/categories/c-c-/'>c/c++ (12)</a></li>
+<li class='category'><a href='/categories/c-c-/'>c/c++ (13)</a></li>
 <li class='category'><a href='/categories/clang/'>clang (1)</a></li>
 <li class='category'><a href='/categories/erlang/'>erlang (7)</a></li>
 <li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
@@ -431,6 +427,10 @@
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/2013/08/15/debug-esp-bug/">记一次堆栈平衡错误</a>
+      </li>
+    
+      <li class="post">
         <a href="/2013/08/08/sphinx-dhtcrawler/">dhtcrawler2换用sphinx搜索</a>
       </li>
     
@@ -444,10 +444,6 @@
     
       <li class="post">
         <a href="/2013/06/20/magnet-search/">使用erlang实现P2P磁力搜索(开源)</a>
-      </li>
-    
-      <li class="post">
-        <a href="/2013/06/09/ice-web-client/">使用ActionScript开发Ice Web客户端</a>
       </li>
     
   </ul>

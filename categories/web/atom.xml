@@ -4,7 +4,7 @@
   <title><![CDATA[Category: web | loop in codes]]></title>
   <link href="http://codemacro.com/categories/web/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2013-08-08T22:46:32+08:00</updated>
+  <updated>2013-08-15T21:59:09+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -61,56 +61,56 @@
 </ul>
 
 
-<p>{% highlight html %}
-{% raw %}</p>
+<p><div class="highlight"><pre><code class="html"><span class="nt">&lt;/p&gt;</span>
 
-<pre><code>&lt;script type="text/javascript" src="swfobject.js"&gt;&lt;/script&gt;
-&lt;script type="text/javascript"&gt;
+<span class="nt">&lt;pre&gt;&lt;code&gt;</span><span class="ni">&amp;lt;</span>script type=&quot;text/javascript&quot; src=&quot;swfobject.js&quot;<span class="ni">&amp;gt;&amp;lt;</span>/script<span class="ni">&amp;gt;</span>
+<span class="ni">&amp;lt;</span>script type=&quot;text/javascript&quot;<span class="ni">&amp;gt;</span>
     var flashvars = {};
     var params = {};
-  params.play = "true";
-    params.quality = "high";
-    params.bgcolor = "white";
-    params.allowscriptaccess = "always";
-    params.allowfullscreen = "true";
+  params.play = &quot;true&quot;;
+    params.quality = &quot;high&quot;;
+    params.bgcolor = &quot;white&quot;;
+    params.allowscriptaccess = &quot;always&quot;;
+    params.allowfullscreen = &quot;true&quot;;
     var attributes = {};
-    attributes.id = "asclient";
-    attributes.name = "asclient";
-    attributes.align = "middle";
-    swfobject.embedSWF("asclient.swf", "flashContent", "1", "1",
-        "0", "", 
+    attributes.id = &quot;asclient&quot;;
+    attributes.name = &quot;asclient&quot;;
+    attributes.align = &quot;middle&quot;;
+    swfobject.embedSWF(&quot;asclient.swf&quot;, &quot;flashContent&quot;, &quot;1&quot;, &quot;1&quot;,
+        &quot;0&quot;, &quot;&quot;, 
         flashvars, params, attributes);
-    swfobject.createCSS("#flashContent", "display:none;");
-&lt;/script&gt;
-</code></pre>
+    swfobject.createCSS(&quot;#flashContent&quot;, &quot;display:none;&quot;);
+<span class="ni">&amp;lt;</span>/script<span class="ni">&amp;gt;</span>
+<span class="nt">&lt;/code&gt;&lt;/pre&gt;</span>
 
-<p>{% endraw %}
-{% endhighlight %}</p>
+<span class="nt">&lt;p&gt;</span>
+</code></pre>
+</div></p>
 
 <p>自然，页面中需加入flashContent这个div：</p>
 
-<p>{% highlight html %}</p>
+<p><div class="highlight"><pre><code class="html"><span class="nt">&lt;/p&gt;</span>
 
-<pre><code>&lt;div id="flashContent"&gt;
-    &lt;p&gt;no flash&lt;/p&gt;
-&lt;/div&gt;
+<span class="nt">&lt;pre&gt;&lt;code&gt;</span><span class="ni">&amp;lt;</span>div id=&quot;flashContent&quot;<span class="ni">&amp;gt;</span>
+    <span class="ni">&amp;lt;</span>p<span class="ni">&amp;gt;</span>no flash<span class="ni">&amp;lt;</span>/p<span class="ni">&amp;gt;</span>
+<span class="ni">&amp;lt;</span>/div<span class="ni">&amp;gt;</span>
+<span class="nt">&lt;/code&gt;&lt;/pre&gt;</span>
+
+<span class="nt">&lt;p&gt;</span>
 </code></pre>
-
-<p>{% endhighlight %}</p>
+</div></p>
 
 <p>我的mxml文件也很简单：</p>
 
-<p>{% highlight xml %}
-{% raw %}
-&lt;?xml version="1.0" encoding="utf-8"?>
-&lt;s:Application</p>
+<p><div class="highlight"><pre><code class="xml"><span class="ni">&amp;lt;</span>?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+<span class="ni">&amp;lt;</span>s:Application<span class="nt">&lt;/p&gt;</span>
 
-<pre><code>xmlns:fx="http://ns.adobe.com/mxml/2009" 
-xmlns:s="library://ns.adobe.com/flex/spark" 
-xmlns:mx="library://ns.adobe.com/flex/mx"
-applicationComplete="doApplicationComplete()" &gt;
-&lt;fx:Script&gt;
-&lt;![CDATA[
+<span class="nt">&lt;pre&gt;&lt;code&gt;</span>xmlns:fx=&quot;http://ns.adobe.com/mxml/2009&quot; 
+xmlns:s=&quot;library://ns.adobe.com/flex/spark&quot; 
+xmlns:mx=&quot;library://ns.adobe.com/flex/mx&quot;
+applicationComplete=&quot;doApplicationComplete()&quot; <span class="ni">&amp;gt;</span>
+<span class="ni">&amp;lt;</span>fx:Script<span class="ni">&amp;gt;</span>
+<span class="ni">&amp;lt;</span>![CDATA[
    import ASClient.Coordinator;
    import flash.external.ExternalInterface;
 
@@ -118,18 +118,18 @@ applicationComplete="doApplicationComplete()" &gt;
 
    public function doApplicationComplete():void
    {
-        trace("doApplicationComplete");
+        trace(&quot;doApplicationComplete&quot;);
         _coordinator = new Coordinator();
         _coordinator.reg_methods();
-        ExternalInterface.call("as_ready"); 
+        ExternalInterface.call(&quot;as_ready&quot;); 
    } 
- ]]&gt;
-&lt;/fx:Script&gt;
-</code></pre>
+ ]]<span class="ni">&amp;gt;</span>
+<span class="ni">&amp;lt;</span>/fx:Script<span class="ni">&amp;gt;</span>
+<span class="nt">&lt;/code&gt;&lt;/pre&gt;</span>
 
-<p>&lt;/s:Application>
-{% endraw %}
-{% endhighlight %}</p>
+<span class="nt">&lt;p&gt;</span><span class="ni">&amp;lt;</span>/s:Application&gt;
+</code></pre>
+</div></p>
 
 <h2>ActionScript日志</h2>
 
@@ -184,19 +184,19 @@ applicationComplete="doApplicationComplete()" &gt;
 
 <p>然后在JavaScript中调用：</p>
 
-<p>{% highlight javascript %}
-{% raw %}</p>
+<p><div class="highlight"><pre><code class="javascript"><span class="o">&lt;</span><span class="err">/p&gt;</span>
 
-<pre><code>function asObject() {
-    // asclient是嵌入Flash时填入的name和(或?)id
-    return window.document.asclient;
-}
-var as = asObject();
-as.service_loadall();
+<span class="o">&lt;</span><span class="nx">pre</span><span class="o">&gt;&lt;</span><span class="nx">code</span><span class="o">&gt;</span><span class="kd">function</span> <span class="nx">asObject</span><span class="p">()</span> <span class="p">{</span>
+    <span class="c1">// asclient是嵌入Flash时填入的name和(或?)id</span>
+    <span class="k">return</span> <span class="nb">window</span><span class="p">.</span><span class="nb">document</span><span class="p">.</span><span class="nx">asclient</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="kd">var</span> <span class="nx">as</span> <span class="o">=</span> <span class="nx">asObject</span><span class="p">();</span>
+<span class="nx">as</span><span class="p">.</span><span class="nx">service_loadall</span><span class="p">();</span>
+<span class="o">&lt;</span><span class="err">/code&gt;&lt;/pre&gt;</span>
+
+<span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span>
 </code></pre>
-
-<p>{% endraw %}
-{% endhighlight %}</p>
+</div></p>
 
 <p>在ActionScript中调用JavaScript中调用则更简单，一句话：</p>
 
@@ -222,100 +222,92 @@ as.service_loadall();
     <id>http://codemacro.com/2012/07/24/html-table-hover</id>
     <content type="html"><![CDATA[<p>在一个需要显示很多数据的表格(table)中，为了更友好地查看一行数据，常常需要在鼠标指针移到某一行时，高亮此行。要实现这个效果有很多方法，这里列举一个方法：</p>
 
-<p>{% highlight javascript %}
-{% raw %}
-function setTableHover(t) {
-  $(t + " tbody tr")</p>
+<p><div class="highlight"><pre><code class="javascript"><span class="kd">function</span> <span class="nx">setTableHover</span><span class="p">(</span><span class="nx">t</span><span class="p">)</span> <span class="p">{</span>
+  <span class="nx">$</span><span class="p">(</span><span class="nx">t</span> <span class="o">+</span> <span class="s2">&quot; tbody tr&quot;</span><span class="p">)</span><span class="o">&lt;</span><span class="err">/p&gt;</span>
 
-<pre><code>  .mouseover(function() { $(this).addClass("hover");})
-  .mouseout(function() { $(this).removeClass("hover"); })
+<span class="o">&lt;</span><span class="nx">pre</span><span class="o">&gt;&lt;</span><span class="nx">code</span><span class="o">&gt;</span>  <span class="p">.</span><span class="nx">mouseover</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span> <span class="nx">$</span><span class="p">(</span><span class="k">this</span><span class="p">).</span><span class="nx">addClass</span><span class="p">(</span><span class="s2">&quot;hover&quot;</span><span class="p">);})</span>
+  <span class="p">.</span><span class="nx">mouseout</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span> <span class="nx">$</span><span class="p">(</span><span class="k">this</span><span class="p">).</span><span class="nx">removeClass</span><span class="p">(</span><span class="s2">&quot;hover&quot;</span><span class="p">);</span> <span class="p">})</span>
+<span class="o">&lt;</span><span class="err">/code&gt;&lt;/pre&gt;</span>
+
+<span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span><span class="p">}</span>
 </code></pre>
-
-<p>}
-{% endraw %}
-{% endhighlight %}</p>
+</div></p>
 
 <p>主要就是在鼠标移到某一行时，为该行添加一个高亮的css class，鼠标离开时移除该class即可。可以为一个特定的table设定：</p>
 
 <!-- more -->
 
 
-<p>{% highlight html %}
-{% raw %}</p>
+<p><div class="highlight"><pre><code class="html"><span class="nt">&lt;/p&gt;</span>
 
-<table id="test">
-</table>
-
-
-<script>
-    setTableHover('#test')
-</script>
+<span class="nt">&lt;table</span> <span class="na">id=</span><span class="s">&quot;test&quot;</span><span class="nt">&gt;</span>
+<span class="nt">&lt;/table&gt;</span>
 
 
-<p>{% endraw %}
-{% endhighlight %}</p>
+<span class="nt">&lt;script&gt;</span>
+    <span class="nx">setTableHover</span><span class="p">(</span><span class="s1">&#39;#test&#39;</span><span class="p">)</span>
+<span class="nt">&lt;/script&gt;</span>
+
+
+<span class="nt">&lt;p&gt;</span>
+</code></pre>
+</div></p>
 
 <p>甚至可以为将某个页面的所有table设为高亮：</p>
 
-<p>{% highlight html %}
-{% raw %}</p>
+<p><div class="highlight"><pre><code class="html"><span class="nt">&lt;/p&gt;</span>
 
-<script>
-    setTableHover('table')
-</script>
+<span class="nt">&lt;script&gt;</span>
+    <span class="nx">setTableHover</span><span class="p">(</span><span class="s1">&#39;table&#39;</span><span class="p">)</span>
+<span class="nt">&lt;/script&gt;</span>
 
 
-<p>{% endraw %}
-{% endhighlight %}</p>
+<span class="nt">&lt;p&gt;</span>
+</code></pre>
+</div></p>
 
 <p>css里需要编写这个hover：</p>
 
-<p>{% highlight css %}
-{% raw %}
-.hover {
-  background: #e9cffa;
-}
-{% endraw %}
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="css"><span class="nc">.hover</span> <span class="p">{</span>
+  <span class="k">background</span><span class="o">:</span> <span class="m">#e9cffa</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre>
+</div></p>
 
 <hr/>
 
 
 <p>除了高亮显示某一行外，可能还需要在鼠标移动到某个单元格时，弹出一个tooltip。这里的tooltip可以是<a href="http://codemacro.com/2012/07/19/popup-window-in-html/">弹出窗口</a>，也就是一个div元素。</p>
 
-<p>{% highlight html %}
-{% raw %}
-<tr>
-  <td class="tip"></p>
+<p><div class="highlight"><pre><code class="html"><span class="nt">&lt;tr&gt;</span>
+  <span class="nt">&lt;td</span> <span class="na">class=</span><span class="s">&quot;tip&quot;</span><span class="nt">&gt;&lt;/p&gt;</span>
 
-<pre><code>hello
-&lt;div class='popup' style='display:none;'&gt;this is the tip&lt;/div&gt;
+<span class="nt">&lt;pre&gt;&lt;code&gt;</span>hello
+<span class="ni">&amp;lt;</span>div class=&#39;popup&#39; style=&#39;display:none;&#39;<span class="ni">&amp;gt;</span>this is the tip<span class="ni">&amp;lt;</span>/div<span class="ni">&amp;gt;</span>
+<span class="nt">&lt;/code&gt;&lt;/pre&gt;</span>
+
+<span class="nt">&lt;p&gt;</span>  <span class="nt">&lt;/td&gt;</span>
+<span class="nt">&lt;/tr&gt;</span>
 </code></pre>
-
-<p>  </td>
-</tr>
-{% endraw %}
-{% endhighlight %}</p>
+</div></p>
 
 <p>要实现此效果，可以通过修改包含tip class的鼠标事件响应：</p>
 
-<p>{% highlight javascript %}
-{% raw %}
-$(function () {</p>
+<p><div class="highlight"><pre><code class="javascript"><span class="nx">$</span><span class="p">(</span><span class="kd">function</span> <span class="p">()</span> <span class="p">{</span><span class="o">&lt;</span><span class="err">/p&gt;</span>
 
-<pre><code>$('.tip').hover(
-    function () {
-        show_popupex($(this).find("div"), $(this));
-    },
-    function () {
-        $(this).find("div").hide();
-    }
-    );
+<span class="o">&lt;</span><span class="nx">pre</span><span class="o">&gt;&lt;</span><span class="nx">code</span><span class="o">&gt;</span><span class="nx">$</span><span class="p">(</span><span class="s1">&#39;.tip&#39;</span><span class="p">).</span><span class="nx">hover</span><span class="p">(</span>
+    <span class="kd">function</span> <span class="p">()</span> <span class="p">{</span>
+        <span class="nx">show_popupex</span><span class="p">(</span><span class="nx">$</span><span class="p">(</span><span class="k">this</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s2">&quot;div&quot;</span><span class="p">),</span> <span class="nx">$</span><span class="p">(</span><span class="k">this</span><span class="p">));</span>
+    <span class="p">},</span>
+    <span class="kd">function</span> <span class="p">()</span> <span class="p">{</span>
+        <span class="nx">$</span><span class="p">(</span><span class="k">this</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s2">&quot;div&quot;</span><span class="p">).</span><span class="nx">hide</span><span class="p">();</span>
+    <span class="p">}</span>
+    <span class="p">);</span>
+<span class="o">&lt;</span><span class="err">/code&gt;&lt;/pre&gt;</span>
+
+<span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span><span class="p">});</span>
 </code></pre>
-
-<p>});
-{% endraw %}
-{% endhighlight %}</p>
+</div></p>
 
 <p>hover的第一个参数表示鼠标进入的响应，第二个参数表示鼠标离开的响应。show_popupex用于将一个元素以绝对位置显示在指定元素（这里是单元格）附近，可以参看<a href="http://codemacro.com/2012/07/19/popup-window-in-html/">弹出窗口</a>那篇文章。</p>
 ]]></content>
@@ -328,20 +320,18 @@ $(function () {</p>
     <id>http://codemacro.com/2012/07/20/get-client-timezone-in-rails</id>
     <content type="html"><![CDATA[<p>开发网站功能时，有时候需要获取客户端（浏览器）所在的时区，然后根据不同的时区做一些不同的逻辑功能。这里提供一种方法，其思路为客户端通过js获取时区，然后发送给服务器，服务器存储时区到session中。</p>
 
-<p>{% highlight javascript %}
-{% raw %}
-function submit_timezone(url) {
-  $.get(url, {'offset_min' : (-1 * (new Date()).getTimezoneOffset())});
-}</p>
+<p><div class="highlight"><pre><code class="javascript"><span class="kd">function</span> <span class="nx">submit_timezone</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span> <span class="p">{</span>
+  <span class="nx">$</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="nx">url</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;offset_min&#39;</span> <span class="o">:</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="p">(</span><span class="k">new</span> <span class="nb">Date</span><span class="p">()).</span><span class="nx">getTimezoneOffset</span><span class="p">())});</span>
+<span class="p">}</span><span class="o">&lt;</span><span class="err">/p&gt;</span>
 
-<p>$(document).ready(function() {</p>
+<span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span><span class="nx">$</span><span class="p">(</span><span class="nb">document</span><span class="p">).</span><span class="nx">ready</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span><span class="o">&lt;</span><span class="err">/p&gt;</span>
 
-<pre><code>submit_timezone('&lt;%= sys_timezone_path %&gt;');
+<span class="o">&lt;</span><span class="nx">pre</span><span class="o">&gt;&lt;</span><span class="nx">code</span><span class="o">&gt;</span><span class="nx">submit_timezone</span><span class="p">(</span><span class="s1">&#39;&amp;lt;%= sys_timezone_path %&amp;gt;&#39;</span><span class="p">);</span>
+<span class="o">&lt;</span><span class="err">/code&gt;&lt;/pre&gt;</span>
+
+<span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span><span class="p">});</span>
 </code></pre>
-
-<p>});
-{% endraw %}
-{% endhighlight %}</p>
+</div></p>
 
 <!-- more -->
 
@@ -350,27 +340,27 @@ function submit_timezone(url) {
 
 <p>然后根据offset_min获取到时区名：</p>
 
-<p>{% highlight ruby %}
-def timezone
-  offset_sec = params[:offset_min].to_i * 60
-  zone = ActiveSupport::TimeZone[offset_sec]
-  zone = ActiveSupport::TimeZone["UTC"] unless zone
-  session[:zone_name] = zone.name if zone
-  respond_to do |format|</p>
+<p><div class="highlight"><pre><code class="ruby"><span class="k">def</span> <span class="nf">timezone</span>
+  <span class="n">offset_sec</span> <span class="o">=</span> <span class="n">params</span><span class="o">[</span><span class="ss">:offset_min</span><span class="o">].</span><span class="n">to_i</span> <span class="o">*</span> <span class="mi">60</span>
+  <span class="n">zone</span> <span class="o">=</span> <span class="ss">ActiveSupport</span><span class="p">:</span><span class="ss">:TimeZone</span><span class="o">[</span><span class="n">offset_sec</span><span class="o">]</span>
+  <span class="n">zone</span> <span class="o">=</span> <span class="ss">ActiveSupport</span><span class="p">:</span><span class="ss">:TimeZone</span><span class="o">[</span><span class="s2">&quot;UTC&quot;</span><span class="o">]</span> <span class="k">unless</span> <span class="n">zone</span>
+  <span class="n">session</span><span class="o">[</span><span class="ss">:zone_name</span><span class="o">]</span> <span class="o">=</span> <span class="n">zone</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="n">zone</span>
+  <span class="n">respond_to</span> <span class="k">do</span> <span class="o">|</span><span class="nb">format</span><span class="o">|&lt;</span><span class="sr">/p&gt;</span>
 
-<pre><code>format.js
+<span class="sr">&lt;pre&gt;&lt;code&gt;format.js</span>
+<span class="sr">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;</span><span class="sr">/pre&gt;</span>
+
+<span class="sr">&lt;p&gt;  end</span>
+<span class="sr">end</span>
 </code></pre>
-
-<p>  end
-end
-{% endhighlight %}</p>
+</div></p>
 
 <p>以上，获取到时区名后存储到session[:zone_name]里。在之后处理这个客户端的请求时，就可以通过这个时区名取得对应的时区，例如：</p>
 
-<p>{% highlight ruby %}
-zone_name = session[:zone_name]
-zone = ActiveSupport::TimeZone[zone_name] if zone_name
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="ruby"><span class="n">zone_name</span> <span class="o">=</span> <span class="n">session</span><span class="o">[</span><span class="ss">:zone_name</span><span class="o">]</span>
+<span class="n">zone</span> <span class="o">=</span> <span class="ss">ActiveSupport</span><span class="p">:</span><span class="ss">:TimeZone</span><span class="o">[</span><span class="n">zone_name</span><span class="o">]</span> <span class="k">if</span> <span class="n">zone_name</span>
+</code></pre>
+</div></p>
 
 <p>但经过我实际测试，部署在heroku上的应用偶尔会发现session[:zone_name]取出来是nil，尽管我确认了timezone函数是被调用过的。这难道跟session的超时有关？后来我只好将timezone name写到客户端页面中，然后在其他请求中再把这个时区名发回来。</p>
 ]]></content>
@@ -381,7 +371,7 @@ zone = ActiveSupport::TimeZone[zone_name] if zone_name
     <link href="http://codemacro.com/2012/07/19/popup-window-in-html/"/>
     <updated>2012-07-19T14:56:00+08:00</updated>
     <id>http://codemacro.com/2012/07/19/popup-window-in-html</id>
-    <content type="html"><![CDATA[<p>{% img right /assets/res/popup-window-tip.png %}</p>
+    <content type="html"><![CDATA[<p><img class="right" src="/assets/res/popup-window-tip.png"></p>
 
 <p>做网页时弹出一个窗口显示一些内容是一种很常见的交互方式，如图中用户点击“个人资料“时并不是转到一个新页面，而是在当前页面弹出修改密码的窗口。弹出窗口的实现方式有很多，这里罗列一种。</p>
 
@@ -390,69 +380,67 @@ zone = ActiveSupport::TimeZone[zone_name] if zone_name
 <!-- more -->
 
 
-<p>{% highlight html %}</p>
+<p><div class="highlight"><pre><code class="html"><span class="nt">&lt;/p&gt;</span>
 
-<div id='userprofile' class='popup' style="display:none;"></div>
+<span class="nt">&lt;div</span> <span class="na">id=</span><span class="s">&#39;userprofile&#39;</span> <span class="na">class=</span><span class="s">&#39;popup&#39;</span> <span class="na">style=</span><span class="s">&quot;display:none;&quot;</span><span class="nt">&gt;&lt;/div&gt;</span>
 
 
-<p>{% endhighlight %}</p>
+<span class="nt">&lt;p&gt;</span>
+</code></pre>
+</div></p>
 
-<p>{% highlight css %}
-{% raw %}
-.popup {
-  position: absolute;
-  z-index: 200;
-  left: 0px;
-  top: 0px;
-  border: 1px solid #666;
-  background: white;
-  padding: 8px 5px 5px;
-  margin: 10px 5px;
-}
-{% endraw %}
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="css"><span class="nc">.popup</span> <span class="p">{</span>
+  <span class="k">position</span><span class="o">:</span> <span class="k">absolute</span><span class="p">;</span>
+  <span class="k">z-index</span><span class="o">:</span> <span class="m">200</span><span class="p">;</span>
+  <span class="k">left</span><span class="o">:</span> <span class="m">0px</span><span class="p">;</span>
+  <span class="k">top</span><span class="o">:</span> <span class="m">0px</span><span class="p">;</span>
+  <span class="k">border</span><span class="o">:</span> <span class="m">1px</span> <span class="k">solid</span> <span class="m">#666</span><span class="p">;</span>
+  <span class="k">background</span><span class="o">:</span> <span class="nb">white</span><span class="p">;</span>
+  <span class="k">padding</span><span class="o">:</span> <span class="m">8px</span> <span class="m">5px</span> <span class="m">5px</span><span class="p">;</span>
+  <span class="k">margin</span><span class="o">:</span> <span class="m">10px</span> <span class="m">5px</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre>
+</div></p>
 
 <p>我这里div里的内容是后面填入的，预先填入也可以。当要显示时，就通过js将这个div显示即可。为此我封装了几个js函数。</p>
 
-<p>{% highlight javascript %}
-{% raw %}
-function show_popupex(pannel, target, manual) {</p>
+<p><div class="highlight"><pre><code class="javascript"><span class="kd">function</span> <span class="nx">show_popupex</span><span class="p">(</span><span class="nx">pannel</span><span class="p">,</span> <span class="nx">target</span><span class="p">,</span> <span class="nx">manual</span><span class="p">)</span> <span class="p">{</span><span class="o">&lt;</span><span class="err">/p&gt;</span>
 
-<pre><code>var pos = target.position();
-var height = target.outerHeight();
-pannel.css('left', pos.left + 'px');
-pannel.css('top', pos.top + height + 'px');
-pannel.show();
-if (!manual) {
-    pannel.mouseleave(function() { pannel.hide(); });
-}
+<span class="o">&lt;</span><span class="nx">pre</span><span class="o">&gt;&lt;</span><span class="nx">code</span><span class="o">&gt;</span><span class="kd">var</span> <span class="nx">pos</span> <span class="o">=</span> <span class="nx">target</span><span class="p">.</span><span class="nx">position</span><span class="p">();</span>
+<span class="kd">var</span> <span class="nx">height</span> <span class="o">=</span> <span class="nx">target</span><span class="p">.</span><span class="nx">outerHeight</span><span class="p">();</span>
+<span class="nx">pannel</span><span class="p">.</span><span class="nx">css</span><span class="p">(</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="nx">pos</span><span class="p">.</span><span class="nx">left</span> <span class="o">+</span> <span class="s1">&#39;px&#39;</span><span class="p">);</span>
+<span class="nx">pannel</span><span class="p">.</span><span class="nx">css</span><span class="p">(</span><span class="s1">&#39;top&#39;</span><span class="p">,</span> <span class="nx">pos</span><span class="p">.</span><span class="nx">top</span> <span class="o">+</span> <span class="nx">height</span> <span class="o">+</span> <span class="s1">&#39;px&#39;</span><span class="p">);</span>
+<span class="nx">pannel</span><span class="p">.</span><span class="nx">show</span><span class="p">();</span>
+<span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">manual</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">pannel</span><span class="p">.</span><span class="nx">mouseleave</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span> <span class="nx">pannel</span><span class="p">.</span><span class="nx">hide</span><span class="p">();</span> <span class="p">});</span>
+<span class="p">}</span>
+<span class="o">&lt;</span><span class="err">/code&gt;&lt;/pre&gt;</span>
+
+<span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span><span class="p">}</span><span class="o">&lt;</span><span class="err">/p&gt;</span>
+
+<span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span><span class="kd">function</span> <span class="nx">show_popup</span><span class="p">(</span><span class="nx">pannel_id</span><span class="p">,</span> <span class="nx">target_id</span><span class="p">,</span> <span class="nx">manual</span><span class="p">)</span> <span class="p">{</span><span class="o">&lt;</span><span class="err">/p&gt;</span>
+
+<span class="o">&lt;</span><span class="nx">pre</span><span class="o">&gt;&lt;</span><span class="nx">code</span><span class="o">&gt;</span><span class="kd">var</span> <span class="nx">target</span> <span class="o">=</span> <span class="nx">$</span><span class="p">(</span><span class="nx">target_id</span><span class="p">);</span>
+<span class="kd">var</span> <span class="nx">pannel</span> <span class="o">=</span> <span class="nx">$</span><span class="p">(</span><span class="nx">pannel_id</span><span class="p">);</span>
+<span class="nx">show_popupex</span><span class="p">(</span><span class="nx">pannel</span><span class="p">,</span> <span class="nx">target</span><span class="p">,</span> <span class="nx">manual</span><span class="p">);</span>
+<span class="o">&lt;</span><span class="err">/code&gt;&lt;/pre&gt;</span>
+
+<span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span><span class="p">}</span><span class="o">&lt;</span><span class="err">/p&gt;</span>
+
+<span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span><span class="kd">function</span> <span class="nx">hide_popup</span><span class="p">(</span><span class="nx">pannel_id</span><span class="p">)</span> <span class="p">{</span><span class="o">&lt;</span><span class="err">/p&gt;</span>
+
+<span class="o">&lt;</span><span class="nx">pre</span><span class="o">&gt;&lt;</span><span class="nx">code</span><span class="o">&gt;</span><span class="nx">$</span><span class="p">(</span><span class="nx">pannel_id</span><span class="p">).</span><span class="nx">hide</span><span class="p">();</span>
+<span class="o">&lt;</span><span class="err">/code&gt;&lt;/pre&gt;</span>
+
+<span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span><span class="p">}</span>
 </code></pre>
-
-<p>}</p>
-
-<p>function show_popup(pannel_id, target_id, manual) {</p>
-
-<pre><code>var target = $(target_id);
-var pannel = $(pannel_id);
-show_popupex(pannel, target, manual);
-</code></pre>
-
-<p>}</p>
-
-<p>function hide_popup(pannel_id) {</p>
-
-<pre><code>$(pannel_id).hide();
-</code></pre>
-
-<p>}
-{% endraw %}
-{% endhighlight %}</p>
+</div></p>
 
 <p>show_popup函数主要就是将目标元素的位置做调整，然后显示。通常情况下我只需传入元素的id，manual属性指定弹出窗口是否手动关闭。对于tooltip的实现，则需要让其自动关闭。针对以上例子，使用方式为：</p>
 
-<p>{% highlight js %}
-show_popup('#userprofile', '#profile-link', true);
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="js"><span class="nx">show_popup</span><span class="p">(</span><span class="s1">&#39;#userprofile&#39;</span><span class="p">,</span> <span class="s1">&#39;#profile-link&#39;</span><span class="p">,</span> <span class="kc">true</span><span class="p">);</span>
+</code></pre>
+</div></p>
 
 <p>其中profile-link就是那个“个人资料“链接。</p>
 ]]></content>

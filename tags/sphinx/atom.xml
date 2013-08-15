@@ -4,7 +4,7 @@
   <title><![CDATA[Tag: sphinx | loop in codes]]></title>
   <link href="http://codemacro.com/tags/sphinx/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2013-08-08T22:46:32+08:00</updated>
+  <updated>2013-08-15T21:59:09+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -82,44 +82,45 @@
 
 <p>在导入xml到sphinx的索引过程中，本身我输出的内容都是unicode的，但有很多资源会导致indexer解析xml出错。出错后indexer直接停止对当前xml的处理。后来查阅资料发现是因为这些无法被indexer处理的xml内容包含unicode里的控制字符，例如 ä (U+00E4)。我的解决办法是直接过滤掉这些控制字符。unicode的控制字符参看<a href="http://www.utf8-chartable.de/">UTF-8 encoding table and Unicode characters</a>。在erlang中干这个事居然不复杂：</p>
 
-<p>{% highlight erlang %}
-strip_invalid_unicode(&lt;&lt;>>) -></p>
+<p><div class="highlight"><pre><code class="erlang"><span class="nf">strip_invalid_unicode</span><span class="p">(</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&gt;&gt;</span><span class="p">)</span> <span class="o">-&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>&lt;&lt;&gt;&gt;;
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="err">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="err">&amp;</span><span class="n">gt</span><span class="p">;;</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">strip_invalid_unicode</span><span class="p">(</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="nv">C</span><span class="o">/</span><span class="n">utf8</span><span class="p">,</span> <span class="nv">R</span><span class="o">/</span><span class="n">binary</span><span class="o">&gt;&gt;</span><span class="p">)</span> <span class="o">-&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">case</span> <span class="n">is_valid_unicode</span><span class="p">(</span><span class="nv">C</span><span class="p">)</span> <span class="k">of</span>
+    <span class="n">true</span> <span class="o">-</span><span class="err">&amp;</span><span class="n">gt</span><span class="p">;</span>
+        <span class="nv">RR</span> <span class="o">=</span> <span class="n">strip_invalid_unicode</span><span class="p">(</span><span class="nv">R</span><span class="p">),</span>
+        <span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="nv">C</span><span class="o">/</span><span class="n">utf8</span><span class="p">,</span> <span class="nv">RR</span><span class="o">/</span><span class="n">binary</span><span class="err">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="err">&amp;</span><span class="n">gt</span><span class="p">;;</span>
+    <span class="n">false</span> <span class="o">-</span><span class="err">&amp;</span><span class="n">gt</span><span class="p">;</span>
+        <span class="n">strip_invalid_unicode</span><span class="p">(</span><span class="nv">R</span><span class="p">)</span>
+<span class="k">end</span><span class="p">;</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">strip_invalid_unicode</span><span class="p">(</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;_,</span> <span class="nv">R</span><span class="o">/</span><span class="n">binary</span><span class="o">&gt;&gt;</span><span class="p">)</span> <span class="o">-&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">strip_invalid_unicode</span><span class="p">(</span><span class="nv">R</span><span class="p">).</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">is_valid_unicode</span><span class="p">(</span><span class="nv">C</span><span class="p">)</span> <span class="k">when</span> <span class="nv">C</span> <span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="mi">16#20</span> <span class="o">-&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">false</span><span class="p">;</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">is_valid_unicode</span><span class="p">(</span><span class="nv">C</span><span class="p">)</span> <span class="k">when</span> <span class="nv">C</span> <span class="o">&gt;=</span> <span class="mi">16#7f</span><span class="p">,</span> <span class="nv">C</span> <span class="o">=</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="mi">16#ff</span> <span class="o">-&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">false</span><span class="p">;</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">is_valid_unicode</span><span class="p">(_)</span> <span class="o">-&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">true</span><span class="p">.</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
 </code></pre>
-
-<p>strip_invalid_unicode(&lt;&lt;C/utf8, R/binary>>) -></p>
-
-<pre><code>case is_valid_unicode(C) of
-    true -&gt;
-        RR = strip_invalid_unicode(R),
-        &lt;&lt;C/utf8, RR/binary&gt;&gt;;
-    false -&gt;
-        strip_invalid_unicode(R)
-end;
-</code></pre>
-
-<p>strip_invalid_unicode(&lt;&lt;_, R/binary>>) -></p>
-
-<pre><code>strip_invalid_unicode(R).
-</code></pre>
-
-<p>is_valid_unicode(C) when C &lt; 16#20 -></p>
-
-<pre><code>false;
-</code></pre>
-
-<p>is_valid_unicode(C) when C >= 16#7f, C =&lt; 16#ff -></p>
-
-<pre><code>false;
-</code></pre>
-
-<p>is_valid_unicode(_) -></p>
-
-<pre><code>true.
-</code></pre>
-
-<p>{% endhighlight %}</p>
+</div></p>
 ]]></content>
   </entry>
   

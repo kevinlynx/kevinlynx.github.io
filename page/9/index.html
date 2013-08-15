@@ -74,6 +74,53 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2012/04/25/game-server-info-2/">谈谈我们的游戏逻辑服务器实现（二）</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-04-25T00:00:00+08:00" pubdate data-updated="true">Apr 25<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>上一篇谈了一些关键技术的实现方案。本篇描述一些遇到的问题。</p>
+
+<h2>一</h2>
+
+<p>在策划制作完了几个职业后（主要是技能制作），大概去年年底公司内部进行了一次混战测试。30个角色在一个场景进行混战，测试结果从技术上来说非常不理想。首先是客户端和服务器都巨卡无比。服务器CPU一直是满负载状态。而客户端又频繁宕机。</p>
+
+<p>我们关注的主要问题，是服务器CPU满负载问题。最开始，我通过日志初步定位为网络模块问题，因为逻辑线程表现不是那么差。然后考虑到技能过程中的特效、动作都是通过服务器消息驱动，并且本身特效和动作就比一般网游复杂，通过逐一屏蔽这一部分功能，最终确认确为网络模块导致。然后团队决定从两方面努力：重写网络模块，改善性能；改善技能实现机制，将表现类逻辑移到客户端。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2012/04/25/game-server-info-2/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2012/04/23/game-server-info-1/">谈谈我们的游戏逻辑服务器实现（一）</a></h1>
     
     
@@ -247,67 +294,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2011/05/09/lua-function-arg/">传递Lua函数到C/C++中</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2011-05-09T00:00:00+08:00" pubdate data-updated="true">May 9<span>th</span>, 2011</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>问题</h2>
-
-<p>在Lua中，因为函数也是第一类值，所以会出现将函数作为另一个函数的参数，或者函数作
-为函数的返回值。这种机制在很多地方都能代码更灵活更简洁，例如:</p>
-
-<div class="highlight"><pre><code class="lua">    <span class="nb">table.sort</span><span class="p">(</span><span class="n">table</span> <span class="p">[,</span><span class="n">comp</span><span class="p">])</span>
-</code></pre>
-</div>
-
-
-<p>这里的comp就要求传入一个函数，我们在调用时，大概会有如下形式:</p>
-
-<div class="highlight"><pre><code class="lua">    <span class="nb">table.sort</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">comp</span><span class="p">)</span> <span class="c1">-- 直接写函数名</span>
-    <span class="nb">table.sort</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">local_comp</span><span class="p">)</span> <span class="c1">-- 某个局部函数</span>
-    <span class="nb">table.sort</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="k">function</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="n">xxx</span> <span class="k">end</span> <span class="p">)</span> <span class="c1">-- 临时构造一个匿名函数</span>
-</code></pre>
-</div>
-
-
-<p>其中最后一种方式最为灵活，任意时候在需要的时候构造一个匿名函数。这种在Lua自身的
-环境中使用，自然没有问题。但是，当我们在C/C++中注册一些函数到Lua环境中，而这些 函数也需要使用函数参数的时候，问题就出来了。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2011/05/09/lua-function-arg/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/10/">&larr; Older</a>
@@ -324,7 +310,7 @@
   <h1>Categories</h1>
   <ul id="categories">
     <li class='category'><a href='/categories/ice/'>ICE (2)</a></li>
-<li class='category'><a href='/categories/c-c-/'>c/c++ (12)</a></li>
+<li class='category'><a href='/categories/c-c-/'>c/c++ (13)</a></li>
 <li class='category'><a href='/categories/clang/'>clang (1)</a></li>
 <li class='category'><a href='/categories/erlang/'>erlang (7)</a></li>
 <li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
@@ -345,6 +331,10 @@
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/2013/08/15/debug-esp-bug/">记一次堆栈平衡错误</a>
+      </li>
+    
+      <li class="post">
         <a href="/2013/08/08/sphinx-dhtcrawler/">dhtcrawler2换用sphinx搜索</a>
       </li>
     
@@ -358,10 +348,6 @@
     
       <li class="post">
         <a href="/2013/06/20/magnet-search/">使用erlang实现P2P磁力搜索(开源)</a>
-      </li>
-    
-      <li class="post">
-        <a href="/2013/06/09/ice-web-client/">使用ActionScript开发Ice Web客户端</a>
       </li>
     
   </ul>

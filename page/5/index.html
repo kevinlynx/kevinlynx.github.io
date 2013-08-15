@@ -74,6 +74,53 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2012/08/29/mmo-chat-server/">MMO聊天服务器设计</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-08-29T09:54:00+08:00" pubdate data-updated="true">Aug 29<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>MMO中的聊天服务主要功能就是做客户端之间的聊天内容转发。但是聊天的形式有很多，例如私聊、同场景聊、队伍内聊、工会内聊、全服务器聊、甚至临时组建房间聊。这些逻辑功能其实都是可以做在逻辑服务器上的，最多改改世界服务器，但是这样完成功能的话，不免将聊天本身的逻辑与游戏逻辑关联起来。我们希望做得更上一层，将聊天服务本身脱离开来。但是独立聊天服务还不够，因为就算独立出来了，也有可能在实现上与具体的游戏逻辑相关联。所以，我们做了进一步的抽象，想实现一个更为通用的聊天服务器。</p>
+
+<h2>设计实现</h2>
+
+<h3>实体设计</h3>
+
+<p>聊天这个过程，我们将其抽象为实体(entity)与实体间的对话。这个实体概念其实很宽泛。任何可接收聊天消息的都算做实体，例如单个玩家、一个场景、一个队伍、一个房间、一个工会、甚至整个服务器。这个思想其实就是支持整个聊天服务器设计的最根本思想。最开始，我将聊天服务器分为个体和组两个概念，其实这个抽象程度都太低，并且会导致实现上的复杂。相反，将整个系统完全使用实体这个概念来组装，就简单很多。当然，实体是有很多种类的，在处理接收聊天消息这个动作时，其处理方式就不同。例如单个玩家实体仅做消息的发送，场景实体则是将消息发给场景内的所有玩家，队伍实体就是将消息发给队伍内的所有玩家。从这一点来看，我们的实体种类其实并不多，因为场景、队伍这些，都是组实体(group entity)。用C++来描述：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2012/08/29/mmo-chat-server/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2012/08/21/c-plus-plus-11-lambda-overview/">C++11中lambda概览</a></h1>
     
     
@@ -271,63 +318,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/08/09/ruby-usage-example/">Ruby应用几则（解析HTML、XMLRPC）</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-08-09T14:26:00+08:00" pubdate data-updated="true">Aug 9<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h3>Ruby解析HTML</h3>
-
-<p>Ruby解析HTML（或XML）可以使用<a href="http://nokogiri.org/">nokogiri</a>。我的应用里需要查找HTML页面里的某个元素，结果发现实现方式非常简单，就像使用jquery一样。例如我要获取到octopress博客文章里的文章内容、文章标题、文章分类，就像这篇博客：</p>
-
-<div class="highlight"><pre><code class="ruby"><span class="c1"># get post title and content for an octopress post</span>
-<span class="k">def</span> <span class="nf">post_info</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
-  <span class="n">doc</span> <span class="o">=</span> <span class="ss">Nokogiri</span><span class="p">:</span><span class="ss">:HTML</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">url</span><span class="p">))</span>
-  <span class="n">content</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">css</span><span class="p">(</span><span class="s1">&#39;div.entry-content&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">to_s</span>
-  <span class="n">title</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">css</span><span class="p">(</span><span class="s1">&#39;header h1.entry-title&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">inner_html</span>
-  <span class="n">categories</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">css</span><span class="p">(</span><span class="s1">&#39;a.category&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">collect</span> <span class="k">do</span> <span class="o">|</span><span class="n">link</span><span class="o">|</span> <span class="n">link</span><span class="o">.</span><span class="n">content</span> <span class="k">end</span>
-  <span class="k">return</span> <span class="n">title</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">categories</span>
-<span class="k">end</span>
-</code></pre>
-</div>
-
-
-
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/08/09/ruby-usage-example/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/6/">&larr; Older</a>
@@ -344,7 +334,7 @@
   <h1>Categories</h1>
   <ul id="categories">
     <li class='category'><a href='/categories/ice/'>ICE (2)</a></li>
-<li class='category'><a href='/categories/c-c-/'>c/c++ (12)</a></li>
+<li class='category'><a href='/categories/c-c-/'>c/c++ (13)</a></li>
 <li class='category'><a href='/categories/clang/'>clang (1)</a></li>
 <li class='category'><a href='/categories/erlang/'>erlang (7)</a></li>
 <li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
@@ -365,6 +355,10 @@
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/2013/08/15/debug-esp-bug/">记一次堆栈平衡错误</a>
+      </li>
+    
+      <li class="post">
         <a href="/2013/08/08/sphinx-dhtcrawler/">dhtcrawler2换用sphinx搜索</a>
       </li>
     
@@ -378,10 +372,6 @@
     
       <li class="post">
         <a href="/2013/06/20/magnet-search/">使用erlang实现P2P磁力搜索(开源)</a>
-      </li>
-    
-      <li class="post">
-        <a href="/2013/06/09/ice-web-client/">使用ActionScript开发Ice Web客户端</a>
       </li>
     
   </ul>

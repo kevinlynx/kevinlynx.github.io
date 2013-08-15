@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2013-08-08T22:35:26+08:00</updated>
+  <updated>2013-08-15T21:59:09+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,101 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[记一次堆栈平衡错误]]></title>
+    <link href="http://codemacro.com/2013/08/15/debug-esp-bug/"/>
+    <updated>2013-08-15T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2013/08/15/debug-esp-bug</id>
+    <content type="html"><![CDATA[<p>最近在一个使用Visual Studio开发的C++程序中，出现了如下错误：</p>
+
+<blockquote><p>Run-Time Check Failure #0 - The value of ESP was not properly saved across a function call.  This is usually a result of calling a function declared with one calling convention with a function pointer declared with a different calling convention.</p></blockquote>
+
+<p>这个错误主要指的就是函数调用堆栈不平衡。在C/C++程序中，调用一个函数前会保存当前堆栈信息，目标函数返回后会把堆栈恢复到调用前的状态。函数的参数、局部变量会影响堆栈。而函数堆栈不平衡，一般是因为函数调用方式和目标函数定义方式不一致导致，例如：</p>
+
+<div class="highlight"><pre><code class="c"><span class="kt">void</span> <span class="kr">__stdcall</span> <span class="nf">func</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">)</span> <span class="p">{</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span> <span class="p">{</span>
+    <span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">funcptr</span><span class="p">)(</span><span class="kt">int</span><span class="p">);</span>
+    <span class="n">funcptr</span> <span class="n">ptr</span> <span class="o">=</span> <span class="p">(</span><span class="n">funcptr</span><span class="p">)</span> <span class="n">func</span><span class="p">;</span>
+    <span class="n">ptr</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span> <span class="c1">// 返回后导致堆栈不平衡</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+<p><code>__stdcall</code>修饰的函数，其函数参数的出栈由被调用者自己完成，而<code>__cdecl</code>，也就是C/C++函数的默认调用约定，则是调用者完成参数出栈。</p>
+
+<!-- more -->
+
+
+<p>Visual Studio在debug模式下会在我们的代码中加入不少检查代码，例如以上代码对应的汇编中，就会增加一个检查堆栈是否平衡的函数调用，当出现问题时，就会出现提示<code>Run-Time Check Failure...</code>这样的错误对话框：</p>
+
+<p>但是我们的程序不是这种低级错误。我们调用的函数是放在dll中的，调用约定显示定义为<code>__stdcall</code>，函数声明和实现一致。大致的结构如下：</p>
+
+<div class="highlight"><pre><code class="c"><span class="n">IParser</span> <span class="o">*</span><span class="n">parser</span> <span class="o">=</span> <span class="n">CreateParser</span><span class="p">();</span>
+<span class="n">parser</span><span class="o">-&gt;</span><span class="n">Begin</span><span class="p">();</span>
+<span class="p">...</span>
+<span class="p">...</span>
+<span class="n">parser</span><span class="o">-&gt;</span><span class="n">End</span><span class="p">();</span>
+<span class="n">parser</span><span class="o">-&gt;</span><span class="n">Release</span><span class="p">();</span> <span class="c1">// 返回后导致堆栈不平衡</span>
+</code></pre>
+</div>
+
+
+<p>IParser的实现在一个dll里，这反而是一个误导人的信息。<code>parser-&gt;Release</code>返回后，堆栈不平衡，<strong>并且仅仅少了一个字节</strong>。一个字节怎么来的？</p>
+
+<p>解决这个问题主要的手段就是跟反汇编，在关键位置查看寄存器和堆栈的内容。编译器生成的代码是正确的，而我们自己的代码乍看上去也没问题。最后甚至使用最傻逼的调试手段&#8211;逐行语句注释查错。</p>
+
+<p>具体查错过程就不细说了。解决问题往往需要更多的冷静，和清晰的思路。最终我使用的方法是，在进入<code>Release</code>之前记录堆栈指针的值，堆栈指针的值会被压入堆栈，以在函数返回后从堆栈弹出，恢复堆栈指针。<code>Release</code>的实现很简单，就是删除一个<code>Parser</code>这个对象，但这个对象的析构会导致很多其他对象被析构。我就逐层地检查，是在哪个函数里改变了堆栈里的内容。</p>
+
+<p>理论上，函数本身是操作不到调用者的堆栈的。而现在看来，确实是被调用函数，也就是<code>Release</code>改写了调用者的堆栈内容。要改变堆栈的内容，只有通过局部变量的地址才能做到。</p>
+
+<p>最终，我发现在调用完以下函数后，我跟踪的堆栈地址内容发生了改变：</p>
+
+<pre><code>call        llvm::RefCountedBase&lt;clang::TargetOptions&gt;::Release (10331117h)
+</code></pre>
+
+<p>因为注意到<code>TargetOptions</code>这个字眼，想起了在<code>parser-&gt;Begin</code>里有涉及到这个类的使用，类似于：</p>
+
+<div class="highlight"><pre><code class="c"><span class="n">TargetOptions</span> <span class="n">TO</span><span class="p">;</span>
+<span class="p">...</span>
+<span class="n">TargetInfo</span> <span class="o">*</span><span class="n">TI</span> <span class="o">=</span> <span class="n">TargetInfo</span><span class="o">::</span><span class="n">CreateTargetInfo</span><span class="p">(</span><span class="n">m_inst</span><span class="p">.</span><span class="n">getDiagnostics</span><span class="p">(),</span> <span class="n">TO</span><span class="p">);</span>
+</code></pre>
+</div>
+
+
+<p>这部分初始化代码，是直接从网上复制的，因为并不影响主要逻辑，所以从来没对这块代码深究。查看<code>CreateTargetInfo</code>的源码，<strong>发现这个函数将<code>TO</code>这个局部变量的地址保存了下来</strong>。</p>
+
+<p>而在<code>Release</code>中，则会对这个保存的临时变量进行删除操作，形如：</p>
+
+<div class="highlight"><pre><code class="c"><span class="kt">void</span> <span class="nf">Delete</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span>
+  <span class="n">assert</span> <span class="p">(</span><span class="n">ref_cnt</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="s">&quot;Reference count is already zero.&quot;</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="o">--</span><span class="n">ref_cnt</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="n">delete</span> <span class="n">static_cast</span><span class="o">&lt;</span><span class="k">const</span> <span class="n">Derived</span><span class="o">*&gt;</span><span class="p">(</span><span class="n">this</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+<p>但是，<strong>问题并不在于对一个局部变量地址进行delete</strong>，<code>delete</code>在调试模式下是做了内存检测的，那会导致一种断言。</p>
+
+<p><code>TargetOptions</code>包含了<code>ref_cnt</code>这个成员。当出了<code>Begin</code>作用域后，parser保存的<code>TargetOptions</code>的地址，指向的内容（堆栈）发生了改变，也就是<code>ref_cnt</code>这个成员变量的值不再正常。由于一些巧合，主要是代码中各个局部变量、函数调用顺序、函数参数个数（曾尝试去除<code>Begin</code>的参数，可以避免错误提示），导致在调用<code>Release</code>前堆栈指针恰好等于之前保存的<code>TargetOptions</code>的地址。注意，之前保存的<code>TargetOptions</code>的地址，和调用<code>Release</code>前的堆栈指针值相同了。</p>
+
+<p>而在<code>TargetOptions</code>的<code>Delete</code>函数中，进行了<code>--ref_cnt</code>，这个变量是<code>TargetOptions</code>的第一个成员，它的减1，也就导致了堆栈内容的改变。</p>
+
+<p>至此，整个来龙去脉算是摸清。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2013/08/15/debug-esp-bug/'>http://codemacro.com/2013/08/15/debug-esp-bug/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[dhtcrawler2换用sphinx搜索]]></title>
@@ -2883,122 +2978,6 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
 <p class='post-footer'>
             原文地址：
             <a href='http://codemacro.com/2012/08/29/null-object-pattern/'>http://codemacro.com/2012/08/29/null-object-pattern/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[MMO聊天服务器设计]]></title>
-    <link href="http://codemacro.com/2012/08/29/mmo-chat-server/"/>
-    <updated>2012-08-29T09:54:00+08:00</updated>
-    <id>http://codemacro.com/2012/08/29/mmo-chat-server</id>
-    <content type="html"><![CDATA[<p>MMO中的聊天服务主要功能就是做客户端之间的聊天内容转发。但是聊天的形式有很多，例如私聊、同场景聊、队伍内聊、工会内聊、全服务器聊、甚至临时组建房间聊。这些逻辑功能其实都是可以做在逻辑服务器上的，最多改改世界服务器，但是这样完成功能的话，不免将聊天本身的逻辑与游戏逻辑关联起来。我们希望做得更上一层，将聊天服务本身脱离开来。但是独立聊天服务还不够，因为就算独立出来了，也有可能在实现上与具体的游戏逻辑相关联。所以，我们做了进一步的抽象，想实现一个更为通用的聊天服务器。</p>
-
-<h2>设计实现</h2>
-
-<h3>实体设计</h3>
-
-<p>聊天这个过程，我们将其抽象为实体(entity)与实体间的对话。这个实体概念其实很宽泛。任何可接收聊天消息的都算做实体，例如单个玩家、一个场景、一个队伍、一个房间、一个工会、甚至整个服务器。这个思想其实就是支持整个聊天服务器设计的最根本思想。最开始，我将聊天服务器分为个体和组两个概念，其实这个抽象程度都太低，并且会导致实现上的复杂。相反，将整个系统完全使用实体这个概念来组装，就简单很多。当然，实体是有很多种类的，在处理接收聊天消息这个动作时，其处理方式就不同。例如单个玩家实体仅做消息的发送，场景实体则是将消息发给场景内的所有玩家，队伍实体就是将消息发给队伍内的所有玩家。从这一点来看，我们的实体种类其实并不多，因为场景、队伍这些，都是组实体(group entity)。用C++来描述：</p>
-
-<!-- more -->
-
-
-
-
-<div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">Entity</span> <span class="p">{</span>
-<span class="nl">public:</span>
-    <span class="c1">// send text to this entity</span>
-    <span class="n">virtual</span> <span class="kt">bool</span> <span class="n">Send</span><span class="p">(</span><span class="n">Entity</span> <span class="o">*</span><span class="n">sender</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">text</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-
-<span class="nl">protected:</span>
-    <span class="n">GUID</span> <span class="n">m_id</span><span class="p">;</span>
-    <span class="kt">int</span> <span class="n">m_type</span><span class="p">;</span>
-<span class="p">};</span>
-
-<span class="n">class</span> <span class="n">SockEntity</span> <span class="o">:</span> <span class="n">pubilc</span> <span class="n">Entity</span> <span class="p">{</span>
-<span class="nl">public:</span>
-    <span class="n">virtual</span> <span class="kt">bool</span> <span class="n">Send</span><span class="p">(</span><span class="n">Entity</span> <span class="o">*</span><span class="n">sender</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">text</span><span class="p">)</span> <span class="p">{</span>
-        <span class="c1">// find the map socket and send text to the socket</span>
-        <span class="kt">long</span> <span class="n">socket</span> <span class="o">=</span> <span class="n">FindSocket</span><span class="p">(</span><span class="n">this</span><span class="p">);</span>
-        <span class="n">Message</span> <span class="nf">msg</span><span class="p">(</span><span class="n">MSG_CS2E_SENDTEXT</span><span class="p">);</span>
-        <span class="n">msg</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="n">sender</span><span class="o">-&gt;</span><span class="n">ID</span><span class="p">());</span>
-        <span class="n">msg</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="n">text</span><span class="p">);</span>
-        <span class="n">msg</span><span class="p">.</span><span class="n">SendToSocket</span><span class="p">(</span><span class="n">socket</span><span class="p">);</span>
-        <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
-    <span class="p">}</span>
-<span class="p">};</span>
-
-<span class="n">class</span> <span class="n">GroupEntity</span> <span class="o">:</span> <span class="n">public</span> <span class="n">Entity</span> <span class="p">{</span>
-<span class="nl">public:</span>
-    <span class="n">virtual</span> <span class="kt">bool</span> <span class="n">Send</span><span class="p">(</span><span class="n">Entity</span> <span class="o">*</span><span class="n">sender</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">text</span><span class="p">)</span> <span class="p">{</span>
-        <span class="k">for</span> <span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">list</span><span class="o">&lt;</span><span class="n">Entity</span><span class="o">*&gt;::</span><span class="n">const_iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">m_mems</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span> <span class="n">it</span> <span class="o">!=</span> <span class="n">m_mems</span><span class="p">.</span><span class="n">end</span><span class="p">();</span> <span class="o">++</span><span class="n">it</span><span class="p">)</span> <span class="p">{</span>
-            <span class="p">(</span><span class="o">*</span><span class="n">it</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">Send</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">text</span><span class="p">);</span>
-        <span class="p">}</span>
-        <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
-    <span class="p">}</span>
-<span class="nl">private:</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">list</span><span class="o">&lt;</span><span class="n">Entity</span><span class="o">*&gt;</span> <span class="n">m_mems</span><span class="p">;</span>
-<span class="p">};</span>
-</code></pre>
-</div>
-
-
-<p><code>SockEntity</code>用于表示物理上聊天服务器的客户端，例如游戏客户端。</p>
-
-<h3>网络拓扑</h3>
-
-<p>实际上，除了转发聊天内容外(Entity::Send)，实体还有很多其他行为，例如最起码的，创建组实体，往组实体里添加成员等。在设计上，组实体的创建由逻辑服务器或者其他服务器来完成，目前游戏客户端是没有创建组实体的权限的（实现上我们还为实体添加了权限验证机制）。在网络拓扑上，聊天服务器始终是作为服务器角色，而它的客户端则包括游戏客户端、逻辑服务器、甚至其他服务器，这样聊天服务器在提供了固定的协议后，它就是完全独立的，不依赖任何其他组件：</p>
-
-<pre><code>        CS
-      /  |  \
-     /   |   \
-    /    |    \
-   GC    GC   GS
-</code></pre>
-
-<p>(CS: Chat Server, GC: Game Client, GS: Game Server)</p>
-
-<p>基于此，我们扩充了Entity的类体系：</p>
-
-<div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">ClientEntity</span> <span class="o">:</span> <span class="n">public</span> <span class="n">SockEntity</span> <span class="p">{</span>
-
-<span class="nl">private:</span>
-    <span class="n">GUID</span> <span class="n">m_gsEntity</span><span class="p">;</span> <span class="c1">// 标示该客户端实体位于哪个逻辑服务器实体上</span>
-<span class="p">};</span>
-
-<span class="n">class</span> <span class="n">GSEntity</span> <span class="o">:</span> <span class="n">public</span> <span class="n">SockEntity</span> <span class="p">{</span>
-<span class="p">};</span>
-</code></pre>
-</div>
-
-
-<h3>消息协议</h3>
-
-<p>聊天服务器的核心实现，其实就是针对以上实体做操作。因此，聊天服务器的消息协议方面，也主要是针对这些实体的操作，包括：</p>
-
-<ul>
-<li><p>创建</p>
-
-<p>  实体的创建很简单，不同的实体其创建所需的参数都不一样。例如客户端实体创建时需要传入一个逻辑服务器实体的ID，组实体的创建可以携带组成员实体列表。为了处理权限和安全问题，在具体实现上，逻辑服务器实体的创建是由聊天服务器本地的配置决定，即聊天服务器启动则根据配置创建好逻辑服务器实体；客户端实体是当角色进入逻辑服务器后，由服务器创建，客户端无法创建实体。</p></li>
-<li><p>删除</p>
-
-<p>  实体的删除为了处理方便，约定删除请求必须由实体的创建者发起。因为从逻辑上将，某个模块如果可以创建一个实体，那么其必然知道什么时候该删除这个实体。</p></li>
-<li><p>修改</p>
-
-<p>  修改指的是修改实体内部实现的一些属性，例如组实体修改其组成员。这个操作是非常重要的。对于<code>SockEntity</code>而言，修改意味着修改其连接状态，例如当逻辑服务器在聊天服务器上创建了客户端实体后，实际上此时客户端并没有在网络方面连接聊天服务器，此时这个<code>Entity</code>实际上是不可用的，因为它无法用于发送消息。这个时候我们标志该实体的状态为非连接状态。当客户端主动连接上聊天服务器后，客户端就主动发起修改自己对应的客户端实体请求，该请求将自己的状态修改为连接状态。当客户端关闭时，聊天服务器网络层接收到连接断开通知，该通知肯定是早于逻辑服务器发来的删除实体通知的，此时将该客户端实体状态修改为断开状态，并在接收到逻辑服务器删除实体通知时将其真正删除。这里展示的这种状态修改策略，实际上在整个系统中是非常重要的。它用于指导网络连接和上层逻辑之间的关系，因为整个聊天系统中，各个进程的状态是不可预料的（随时可能宕掉），当某个进程尤其是逻辑服务器宕掉后，聊天服务器是得不到任何正常逻辑通知的，它只能得到网络连接的通知。</p></li>
-</ul>
-
-
-<h2>总结</h2>
-
-<p>整个系统实现下来，实际上是非常简单的，代码量也很少。当然还有很多细节问题，例如聊天信息中携带物品信息，这涉及到异步预处理聊天内容，这里就不方便细说了。</p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2012/08/29/mmo-chat-server/'>http://codemacro.com/2012/08/29/mmo-chat-server/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
