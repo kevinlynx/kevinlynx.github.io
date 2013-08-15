@@ -4,7 +4,7 @@
   <title><![CDATA[Category: c/c++ | loop in codes]]></title>
   <link href="http://codemacro.com/categories/c-c-/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2013-08-15T21:59:09+08:00</updated>
+  <updated>2013-08-15T22:44:32+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -46,7 +46,11 @@
 
 <p>Visual Studio在debug模式下会在我们的代码中加入不少检查代码，例如以上代码对应的汇编中，就会增加一个检查堆栈是否平衡的函数调用，当出现问题时，就会出现提示<code>Run-Time Check Failure...</code>这样的错误对话框：</p>
 
-<p></p>
+<pre><code>call dword ptr [ptr]  ; ptr(1)
+add  esp,4  ; cdecl方式，调用者清除参数
+cmp  esi,esp  
+call @ILT+1345(__RTC_CheckEsp) (0B01546h) ; 检查堆栈是否平衡
+</code></pre>
 
 <p>但是我们的程序不是这种低级错误。我们调用的函数是放在dll中的，调用约定显示定义为<code>__stdcall</code>，函数声明和实现一致。大致的结构如下：</p>
 
@@ -69,7 +73,7 @@
 
 <p>最终，我发现在调用完以下函数后，我跟踪的堆栈地址内容发生了改变：</p>
 
-<pre><code>call        llvm::RefCountedBase&lt;clang::TargetOptions&gt;::Release (10331117h)
+<pre><code>call llvm::RefCountedBase&lt;clang::TargetOptions&gt;::Release (10331117h)
 </code></pre>
 
 <p>因为注意到<code>TargetOptions</code>这个字眼，想起了在<code>parser-&gt;Begin</code>里有涉及到这个类的使用，类似于：</p>
