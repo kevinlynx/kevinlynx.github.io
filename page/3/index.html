@@ -74,6 +74,71 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2013/04/11/rabbitmq-erlang/">erlang和RabbitMQ学习总结</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-04-11T00:00:00+08:00" pubdate data-updated="true">Apr 11<span>th</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>AMQP和RabbitMQ概述</h2>
+
+<p><a href="http://www.amqp.org/">AMQP</a>(Advanced Message Queue Protocol)定义了一种消息系统规范。这个规范描述了在一个分布式的系统中各个子系统如何通过消息交互。而<a href="http://www.rabbitmq.com/">RabbitMQ</a>则是AMQP的一种基于erlang的实现。</p>
+
+<p>AMQP将分布式系统中各个子系统隔离开来，子系统之间不再有依赖。子系统仅依赖于消息。子系统不关心消息的发送者，也不关心消息的接受者。</p>
+
+<p>AMQP中有一些概念，用于定义与应用层的交互。这些概念包括：message、queue、exchange、channel, connection, broker、vhost。</p>
+
+<p><em>注：到目前为止我并没有打算使用AMQP，所以没有做更深入的学习，仅为了找个机会写写erlang代码，以下信息仅供参考。</em></p>
+
+<ul>
+<li>message，即消息，简单来说就是应用层需要发送的数据</li>
+<li>queue，即队列，用于存储消息</li>
+<li>exchange，有翻译为“路由”，它用于投递消息，<strong>应用程序在发送消息时并不是指定消息被发送到哪个队列，而是将消息投递给路由，由路由投递到队列</strong></li>
+<li>channel，几乎所有操作都在channel中进行，有点类似一个沟通通道</li>
+<li>connection，应用程序与broker的网络连接</li>
+<li>broker，可简单理解为实现AMQP的服务，例如RabbitMQ服务</li>
+</ul>
+
+
+<p>关于AMQP可以通过一篇很有名的文章了解更多：<a href="http://blog.ftofficer.com/2010/03/translation-rabbitmq-python-rabbits-and-warrens/">RabbitMQ+Python入门经典 兔子和兔子窝</a></p>
+
+<p>RabbitMQ的运行需要erlang的支持，erlang和RabbitMQ在windows下都可以直接使用安装程序，非常简单。RabbitMQ还支持网页端的管理，这需要开启一些RabbitMQ的插件，可以参考<a href="http://www.rabbitmq.com/management.html">官方文档</a>。</p>
+
+<p>RabbitMQ本质上其实是一个服务器，与这个服务器做交互则是通过AMQP定义的协议，应用可以使用一个实现了AMQP协议的库来与服务器交互。这里我使用erlang的一个客户端，对应着RabbitMQ的tutorial，使用erlang实现了一遍。基于这个过程我将一些关键实现罗列出来以供记忆：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/04/11/rabbitmq-erlang/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2013/03/21/rup/">浅析软件工程开发方法学RUP</a></h1>
     
     
@@ -271,65 +336,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/09/13/c-plus-plus-virtual-destructor/">C++陷阱：virtual析构函数</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-13T17:03:00+08:00" pubdate data-updated="true">Sep 13<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>有一天有个同事在通过vld调试一个内存泄漏问题，折腾了很久然后找到我。我瞥了一眼他的代码，发现问题和我曾经遇到的一模一样：</p>
-
-<div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">Base</span> <span class="p">{</span>
-<span class="nl">public:</span>
-    <span class="o">~</span><span class="n">Base</span><span class="p">();</span>
-<span class="p">};</span>
-
-<span class="n">class</span> <span class="n">Derived</span> <span class="o">:</span> <span class="n">public</span> <span class="n">Base</span> <span class="p">{</span>
-<span class="nl">privated:</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">m_data</span><span class="p">;</span>    
-<span class="p">};</span>
-
-<span class="n">Base</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="n">new</span> <span class="n">Derived</span><span class="p">();</span>
-<span class="n">delete</span> <span class="n">obj</span><span class="p">;</span>
-</code></pre>
-</div>
-
-
-
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/09/13/c-plus-plus-virtual-destructor/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/4/">&larr; Older</a>
@@ -346,6 +352,7 @@
   <h1>Categories</h1>
   <ul id="categories">
     <li class='category'><a href='/categories/ice/'>ICE (2)</a></li>
+<li class='category'><a href='/categories/javascript/'>Javascript (1)</a></li>
 <li class='category'><a href='/categories/c-c-/'>c/c++ (13)</a></li>
 <li class='category'><a href='/categories/clang/'>clang (1)</a></li>
 <li class='category'><a href='/categories/erlang/'>erlang (7)</a></li>
@@ -367,6 +374,10 @@
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/2013/08/21/javascript-overview/">Javascript Overview</a>
+      </li>
+    
+      <li class="post">
         <a href="/2013/08/15/debug-esp-bug/">记一次堆栈平衡错误</a>
       </li>
     
@@ -380,10 +391,6 @@
     
       <li class="post">
         <a href="/2013/06/21/magnet-search-impl/">使用erlang实现P2P磁力搜索-实现</a>
-      </li>
-    
-      <li class="post">
-        <a href="/2013/06/20/magnet-search/">使用erlang实现P2P磁力搜索(开源)</a>
       </li>
     
   </ul>

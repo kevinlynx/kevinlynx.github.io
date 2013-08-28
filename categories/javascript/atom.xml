@@ -1,0 +1,370 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Javascript | loop in codes]]></title>
+  <link href="http://codemacro.com/categories/javascript/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2013-08-28T20:49:07+08:00</updated>
+  <id>http://codemacro.com/</id>
+  <author>
+    <name><![CDATA[Kevin Lynx]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Javascript Overview]]></title>
+    <link href="http://codemacro.com/2013/08/21/javascript-overview/"/>
+    <updated>2013-08-21T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2013/08/21/javascript-overview</id>
+    <content type="html"><![CDATA[<h2>Lexical Structure</h2>
+
+<p>In JavaScript, identifiers are used to name variables and functions and to provide labels for certain loops in JavaScript code. A JavaScript identifier must begin with a letter, an underscore (_), or a dollar sign ($). Subsequent characters can be letters, digits, underscores, or dollar signs</p>
+
+<pre><code>i
+abc
+v1
+$str
+</code></pre>
+
+<p>JavaScript allows identifiers to contain letters and digits from the entire Unicode character set.</p>
+
+<p>Like many programming languages, JavaScript uses the semicolon (;) to separate statements from each other. In JavaScript, you can usually omit the semicolon between two statements if those statements are written on separate lines.</p>
+
+<h2>Types/Values/Variables</h2>
+
+<h3>Numbers</h3>
+
+<p>Unlike many languages, JavaScript does not make a distinction between integer values and floating-point values. All numbers in JavaScript are represented as floating-point values.</p>
+
+<pre><code>0
+3
+0xff
+3.14
+</code></pre>
+
+<h3>Strings</h3>
+
+<pre><code>"hello world"
+'hello world'
+"Wouldn't you prefer O'Reilly's book?"  
+</code></pre>
+
+<!-- more -->
+
+
+<h3>Boolean</h3>
+
+<pre><code>true
+false
+</code></pre>
+
+<p>Any JavaScript value can be converted to a boolean value. The following values convert to, and therefore work like, <code>false</code>:</p>
+
+<pre><code>undefined
+null
+0
+-0
+NaN
+"" // the empty string
+</code></pre>
+
+<h3>null/undefined</h3>
+
+<p><code>null</code> is a language keyword that evaluates to a special value that is usually used to indicate the absence of a value. Using the typeof operator on null returns the string "object", indicating that null can be thought of as a special object value that indicates "no object".</p>
+
+<h3>Objects</h3>
+
+<p>JavaScript objects are composite values: they are a collection of properties or named values.</p>
+
+<pre><code>var s = "hello world!"; // A string
+var word = s.substring(s.indexOf(" ")+1, s.length);
+var obj = {
+    propName1: 123,
+    propName2: "abc"
+};
+obj.propName1 = 456;
+obj["propName1"] = 456; // same as previous statement
+</code></pre>
+
+<h3>Arrays</h3>
+
+<p>Arrays are a specialized kind of object. JavaScript arrays are untyped: an array element may be of any type, and different elements of the same array may be of different types.</p>
+
+<pre><code>var empty = []; // An array with no elements
+var primes = [2, 3, 5, 7, 11]; // An array with 5 numeric elements
+var misc = [ 1.1, true, "a", ]; // 3 elements of various types + trailing comma
+</code></pre>
+
+<p>Another way to create an array is with the Array() constructor:</p>
+
+<pre><code>var a = new Array();
+var a = new Array(10);
+var a = new Array(5, 4, 3, 2, 1, "testing, testing");
+</code></pre>
+
+<h3>Functions</h3>
+
+<p>Functions designed to initialize a newly created object are called <strong>constructors</strong>. In JavaScript, <strong>functions are objects</strong>. JavaScript can assign functions to variables and pass them to other functions. JavaScript function definitions can be nested within other functions.</p>
+
+<pre><code>function printprops(o) {
+    for(var p in o)
+    console.log(p + ": " + o[p] + "\n");
+}
+var square = function(x) { return x*x; }
+
+function hypotenuse(a, b) {
+    function square(x) { return x*x; }
+    return Math.sqrt(square(a) + square(b));
+}
+</code></pre>
+
+<h2>Expressions/Operators</h2>
+
+<h3>Object and Array initializers</h3>
+
+<pre><code>var p = { x:2.3, y:-1.2 }; // An object with 2 properties
+var q = {}; // An empty object with no properties
+q.x = 2.3; q.y = -1.2; // Now q has the same properties as p
+var matrix = [[1,2,3], [4,5,6], [7,8,9]];
+</code></pre>
+
+<h3>Object creation expression</h3>
+
+<p>An object creation expression creates a new object and invokes a function (called a constructor) to initialize the properties of that object.</p>
+
+<pre><code>new Object()
+new Point(2,3)
+</code></pre>
+
+<h3>Operators</h3>
+
+<ul>
+<li>Arithmetic operator</li>
+<li>Relational operator</li>
+<li>Logical operator</li>
+<li>Assignment operator</li>
+<li>Conditional operator</li>
+<li><code>typeof</code> operator</li>
+<li><code>delete</code> operator</li>
+</ul>
+
+
+<h3><code>eval</code> expression</h3>
+
+<p>JavaScript has the ability to interpret strings of JavaScript source code, evaluating them to produce a value. JavaScript does this with the global function <code>eval()</code>:</p>
+
+<pre><code>eval("3+2") // =&gt; 5
+</code></pre>
+
+<h2>Statements</h2>
+
+<h3>Declaration Statements</h3>
+
+<p>The var statement declares a variable or variables. Here’s the syntax:</p>
+
+<pre><code>var name_1 [ = value_1] [ ,..., name_n [= value_n]] 
+</code></pre>
+
+<h3>Conditionals</h3>
+
+<pre><code>if (expression)
+    statement   
+else if (expression)
+    statement
+
+switch(expression) {
+    statements
+}
+</code></pre>
+
+<h3>Loops</h3>
+
+<pre><code>while (expression)
+    statement
+
+do
+    statement
+while (expression);
+
+for(initialize ; test ; increment)
+    statement
+
+for (variable in object)
+    statement
+
+var o = {a:1, b:2};
+for(var p in o) // Assign property names of o to variable p
+    console.log(o[p]); // Print the value of each property
+</code></pre>
+
+<h3>Other</h3>
+
+<ul>
+<li>break/break label</li>
+<li>continue/continue label</li>
+<li>return</li>
+<li>throw</li>
+<li>try/catch/finally</li>
+<li>with</li>
+<li>use strict</li>
+</ul>
+
+
+<h2>Objects</h2>
+
+<p>An object is more than a simple stringtovalue map, however. In addition to maintaining its own set of properties, a JavaScript object also inherits the properties of another object, known as its "prototype". The methods of an object are typically inherited properties, and this "prototypal inheritance" is a key feature of JavaScript.</p>
+
+<p>JavaScript objects are dynamic—properties can usually be added and deleted—but they can be used to simulate the static objects and “structs” of statically typed languages.</p>
+
+<p><strong>Objects are mutable and are manipulated by reference rather than by value.</strong></p>
+
+<p>Every JavaScript object has a second JavaScript object (or null, but this is rare) associated with it. This second object is known as a <strong>prototype</strong>.</p>
+
+<p>Objects created using the new keyword and a constructor invocation use the value of the prototype property of the constructor function as their prototype.</p>
+
+<p><code>Object.create()</code> creates a new object, using its first argument as the prototype of that object.</p>
+
+<pre><code>var o1 = Object.create({x:1, y:2}); // o1 inherits properties x and y.
+</code></pre>
+
+<p>If you want to create an ordinary empty object (like the object returned by {} or new Object()), pass Object.prototype:</p>
+
+<pre><code>var o3 = Object.create(Object.prototype); // o3 is like {} or new Object().
+</code></pre>
+
+<p>The <code>delete</code> operator removes a property from an object:</p>
+
+<pre><code>delete book.author; // The book object now has no author property.
+delete book["main title"]; // Now it doesn't have "main title", either.
+</code></pre>
+
+<h3>property getters and setters</h3>
+
+<p>Properties defined by getters and setters are sometimes known as accessor properties to distinguish them from data properties that have a simple value.</p>
+
+<pre><code>var p = {
+    // x and y are regular read-write data properties.
+    x: 1.0,
+    y: 1.0,
+    // r is a read-write accessor property with getter and setter.
+    // Don't forget to put a comma after accessor methods.
+    get r() { return Math.sqrt(this.x*this.x + this.y*this.y); },
+    set r(newvalue) {
+        var oldvalue = Math.sqrt(this.x*this.x + this.y*this.y);
+        var ratio = newvalue/oldvalue;
+        this.x *= ratio;
+        this.y *= ratio;
+    },
+    // theta is a read-only accessor property with getter only.
+    get theta() { return Math.atan2(this.y, this.x); }
+};
+</code></pre>
+
+<h2>Functions</h2>
+
+<p>In JavaScript, functions may be nested within other functions. For example:</p>
+
+<pre><code>function hypotenuse(a, b) {
+    function square(x) { return x*x; }
+    return Math.sqrt(square(a) + square(b));
+}   
+</code></pre>
+
+<h3>Invoking functions</h3>
+
+<p>JavaScript functions can be invoked in four ways:</p>
+
+<ul>
+<li>as functions</li>
+<li>as methods</li>
+<li>as constructors</li>
+<li>indirectly through their call() and apply() methods</li>
+</ul>
+
+
+<h3>Optional parameters</h3>
+
+<pre><code>// Append the names of the enumerable properties of object o to the
+// array a, and return a. If a is omitted, create and return a new array.
+function getPropertyNames(o, /* optional */ a) {
+    if (a === undefined) a = []; // If undefined, use a new array
+    for(var property in o) a.push(property);
+    return a;
+}
+// This function can be invoked with 1 or 2 arguments:
+var a = getPropertyNames(o); // Get o's properties into a new array
+getPropertyNames(p,a); // append p's properties to that array
+</code></pre>
+
+<h3>Variable-Length Argument Lists: The Arguments Object</h3>
+
+<pre><code>function max(/* ... */) {
+    var max = Number.NEGATIVE_INFINITY;
+    // Loop through the arguments, looking for, and remembering, the biggest.
+    for(var i = 0; i &lt; arguments.length; i++)
+    if (arguments[i] &gt; max) max = arguments[i];
+    // Return the biggest
+    return max;
+}
+var largest = max(1, 10, 100, 2, 3, 1000, 4, 5, 10000, 6); // =&gt; 10000
+</code></pre>
+
+<p>In addition to its array elements, the Arguments object defines callee and caller properties.</p>
+
+<pre><code>var factorial = function(x) {
+    if (x &lt;= 1) return 1;
+    return x * arguments.callee(x-1);
+};
+</code></pre>
+
+<h3>Function as values</h3>
+
+<p>Functions are not primitive values in JavaScript, but a specialized kind of object, which means that functions can have properties.</p>
+
+<pre><code>// Initialize the counter property of the function object.
+// Function declarations are hoisted so we really can
+// do this assignment before the function declaration.
+uniqueInteger.counter = 0;
+// This function returns a different integer each time it is called.
+// It uses a property of itself to remember the next value to be returned.
+function uniqueInteger() {
+    return uniqueInteger.counter++; // Increment and return counter property
+}
+</code></pre>
+
+<h3>Closures</h3>
+
+<p>Like most modern programming languages, JavaScript uses lexical scoping.</p>
+
+<h3>Function bind method</h3>
+
+<p>When you invoke the bind() method on a function f and pass an object o, the method returns a new function. Invoking the new function (as a function) invokes the original function f as a method of o. Any arguments you pass to the new function are passed to the original function.</p>
+
+<pre><code>function f(y) { return this.x + y; } // This function needs to be bound
+var o = { x : 1 }; // An object we'll bind to
+var g = f.bind(o); // Calling g(x) invokes o.f(x)
+g(2) // =&gt; 3    
+</code></pre>
+
+<h3>The Function() Constructor</h3>
+
+<p>Functions are usually defined using the function keyword, either in the form of a function definition statement or a function literal expression. But functions can also be defined with the Function() constructor. For example:</p>
+
+<pre><code>var f = new Function("x", "y", "return x*y;");
+</code></pre>
+
+<h2>Reference</h2>
+
+<ul>
+<li>&lt;Javascript The Definitive Guid 6th></li>
+<li><a href="http://javascript.crockford.com/survey.html">A Survey of the JavaScript Programming Language</a></li>
+<li><a href="http://www.2ality.com/2011/10/javascript-overview.html">A quick overview of JavaScript</a></li>
+<li><a href="http://www.csse.monash.edu.au/~lloyd/tildeProgLang/JavaScript/summary.html">JavaScript Summary</a></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+</feed>
