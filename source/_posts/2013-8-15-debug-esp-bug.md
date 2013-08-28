@@ -56,7 +56,7 @@ IParser的实现在一个dll里，这反而是一个误导人的信息。`parser
 理论上，函数本身是操作不到调用者的堆栈的。而现在看来，确实是被调用函数，也就是`Release`改写了调用者的堆栈内容。要改变堆栈的内容，只有通过局部变量的地址才能做到。
 
 最终，我发现在调用完以下函数后，我跟踪的堆栈地址内容发生了改变：
-
+ 
     call llvm::RefCountedBase<clang::TargetOptions>::Release (10331117h)
 
 因为注意到`TargetOptions`这个字眼，想起了在`parser->Begin`里有涉及到这个类的使用，类似于：
