@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2013-08-28T20:49:07+08:00</updated>
+  <updated>2013-09-25T23:27:39+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,403 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[scala主要特性一览]]></title>
+    <link href="http://codemacro.com/2013/09/23/scala-feature-overview/"/>
+    <updated>2013-09-23T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2013/09/23/scala-feature-overview</id>
+    <content type="html"><![CDATA[<h2>概述</h2>
+
+<p>scala语言包含了函数式语言和面向对象语言的语法特性，从我目前的感受来看，这不是一门简单的语言。同Ruby/Erlang相比，其语法集大多了。scala基于JVM或.NET平台，其可以几乎无缝地使用Java库（不但使用上没有负担，其运行效率上也不会增加负担），配合其强大的语言表达能力，还是很有吸引力。</p>
+
+<h2>类型</h2>
+
+<h3>类/对象</h3>
+
+<p>scala中一切都是对象，虽然Java也是这样说的（其实ruby也是这样说的）。在Java中一个数字仅仅是个值，但在scala中却真的是对象：</p>
+
+<div class="highlight"><pre><code class="scala">    
+<span class="n">println</span><span class="o">(</span><span class="s">&quot;2 type: &quot;</span> <span class="o">+</span> <span class="mf">2.</span><span class="n">getClass</span><span class="o">())</span>
+</code></pre>
+</div>
+
+
+<p>scala同Java一样将所有类型都设定了一个基类：<code>Any</code>。不同的是，<code>Any</code>下还区分了<code>AnyVal</code>和<code>AnyRef</code>。</p>
+
+<h3>类型推断</h3>
+
+<p>scala是一门静态类型语言，但是其强大的类型推断可以避免很多冗余信息的代码。例如：</p>
+
+<div class="highlight"><pre><code class="scala">    
+<span class="k">val</span> <span class="n">map</span><span class="k">:</span><span class="kt">Map</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">HashMap</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]</span>
+<span class="c1">// 可简写为</span>
+<span class="k">val</span> <span class="n">map</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">HashMap</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]</span>
+
+<span class="k">def</span> <span class="n">func</span><span class="o">()</span><span class="k">:</span><span class="kt">String</span> <span class="o">=</span> <span class="o">{</span>
+    <span class="s">&quot;hello&quot;</span>
+<span class="o">}</span>
+<span class="c1">// 可简写为</span>
+<span class="k">def</span> <span class="n">func</span><span class="o">()</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="s">&quot;hello&quot;</span>
+<span class="o">}</span>
+</code></pre>
+</div>
+
+
+<p>类型推断可以根据表达式的类型决定这个变量/函数的类型，这就如同C++11中的<code>auto</code>关键字。</p>
+
+<h3>函数</h3>
+
+<p>scala既然包含了函数式语言的特性，那么函数作为first citizen就是自然而言的事情。而function literal的语法形式也就必须更自然（想想common lisp里lambda那蛋疼的关键字）：</p>
+
+<div class="highlight"><pre><code class="scala">    
+<span class="k">val</span> <span class="n">factor</span> <span class="k">=</span> <span class="mi">3</span>
+<span class="k">val</span> <span class="n">multiplier</span> <span class="k">=</span> <span class="o">(</span><span class="n">i</span><span class="k">:</span><span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">i</span> <span class="o">*</span> <span class="n">factor</span> <span class="c1">// function literal, lexical bind to factor</span>
+<span class="k">val</span> <span class="n">l1</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">,</span> <span class="mi">5</span><span class="o">)</span> <span class="n">map</span> <span class="n">multiplier</span> <span class="c1">// map `multiplier` to every element in List l1</span>
+
+<span class="k">def</span> <span class="n">add</span><span class="o">(</span><span class="n">a</span><span class="k">:</span><span class="kt">Int</span><span class="o">,</span> <span class="n">b</span><span class="k">:</span><span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+<span class="o">}</span>
+
+<span class="k">val</span> <span class="n">f</span><span class="k">:</span><span class="o">(</span><span class="kt">Int</span><span class="o">,</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">Int</span> <span class="k">=</span> <span class="n">add</span> <span class="c1">// f is a function type: (Int, Int) =&gt; Int</span>
+<span class="n">println</span><span class="o">(</span><span class="s">&quot;f:&quot;</span> <span class="o">+</span> <span class="n">f</span><span class="o">(</span><span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">))</span>
+</code></pre>
+</div>
+
+
+
+
+<!-- more -->
+
+
+<h3>Symbol</h3>
+
+<p>在Ruby中有Symbol，在Erlang中也有Symbol(Erlang中叫Atom)。Symbol在Erlang中使用非常自然，因为其思维模式；但在scala中基于目前我还在把它当命令式语言使用，Symbol成了一个可有可无的特性。</p>
+
+<h2>语句/表达式</h2>
+
+<p>scala中其实没有语句。对于if/while之类都算是表达式，其处理方式同函数式语言中一样，将最后一个表达式的值作为返回值：</p>
+
+<div class="highlight"><pre><code class="scala">    
+<span class="k">val</span> <span class="n">i</span> <span class="k">=</span> <span class="k">if</span> <span class="o">(</span><span class="mi">2</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="o">)</span> <span class="-Symbol">&#39;true</span> <span class="k">else</span> <span class="-Symbol">&#39;false</span>
+</code></pre>
+</div>
+
+
+<h3>控制语句</h3>
+
+<p>if/while什么的同C-like language一致。</p>
+
+<h3>for comprehension</h3>
+
+<p>这个语法特性对应着函数式语言中的List Comprehension，可以用于处理一个集合，以产出另一个集合。</p>
+
+<div class="highlight"><pre><code class="scala">    
+<span class="k">val</span> <span class="n">r</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
+  <span class="n">n</span> <span class="k">&lt;-</span> <span class="nc">Array</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">,</span> <span class="mi">5</span><span class="o">)</span>
+  <span class="k">if</span> <span class="n">n</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span>
+<span class="o">}</span> <span class="k">yield</span> <span class="n">n</span>
+<span class="n">r</span> <span class="n">map</span> <span class="n">println</span>
+</code></pre>
+</div>
+
+
+<p>这个例子同Erlang中的：</p>
+
+<div class="highlight"><pre><code class="erlang"><span class="p">[</span><span class="nv">N</span> <span class="p">||</span> <span class="nv">N</span> <span class="o">&lt;-</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="nv">N</span> <span class="ow">rem</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">].</span>
+</code></pre>
+</div>
+
+
+<p>for中的generator在实践中也比较有用，相当于foreach：</p>
+
+<div class="highlight"><pre><code class="scala">    
+<span class="k">for</span> <span class="o">(</span><span class="n">i</span> <span class="k">&lt;-</span> <span class="nc">Array</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">))</span> <span class="n">println</span><span class="o">(</span><span class="n">i</span><span class="o">)</span>
+</code></pre>
+</div>
+
+
+<h3>pattern match</h3>
+
+<p>pattern match同Erlang中一样，可以简单地当switch&#8230;case来用，但用途远不止于对整数值的匹配。pattern match同样有返回值，其返回值为匹配成功块的值。</p>
+
+<p>最简单的匹配：</p>
+
+<div class="highlight"><pre><code class="scala">    
+<span class="n">println</span><span class="o">(</span><span class="mi">1</span> <span class="k">match</span> <span class="o">{</span> 
+  <span class="k">case</span> <span class="mi">1</span> <span class="k">=&gt;</span> <span class="s">&quot;one&quot;</span> 
+  <span class="k">case</span> <span class="mi">2</span> <span class="k">=&gt;</span> <span class="s">&quot;two&quot;</span> 
+  <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="s">&quot;unknown&quot;</span> <span class="o">})</span>
+</code></pre>
+</div>
+
+
+<p>对类型进行匹配：</p>
+
+<div class="highlight"><pre><code class="scala">    
+<span class="k">val</span> <span class="n">obj</span><span class="k">:</span><span class="kt">Any</span> <span class="o">=</span> <span class="kc">null</span>
+<span class="n">println</span><span class="o">(</span><span class="n">obj</span> <span class="k">match</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="n">t</span><span class="k">:</span><span class="kt">Int</span> <span class="o">=&gt;</span> <span class="s">&quot;int&quot;</span>
+  <span class="k">case</span> <span class="n">t</span><span class="k">:</span><span class="kt">String</span> <span class="o">=&gt;</span> <span class="s">&quot;string&quot;</span>
+  <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="s">&quot;unknown&quot;</span>
+<span class="o">})</span>
+</code></pre>
+</div>
+
+
+<p>更有用的是提取list/tuple之类集合里的元素。通过一个match&#8230;case才能匹配出list/tuple里的元素（当然也可以通过一些函数来提取），多少有点累赘：</p>
+
+<div class="highlight"><pre><code class="scala">    
+<span class="o">(</span><span class="s">&quot;hello&quot;</span><span class="o">,</span> <span class="mi">110</span><span class="o">)</span> <span class="k">match</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="o">(</span><span class="n">str</span><span class="o">,</span> <span class="k">_</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="n">str</span><span class="o">)</span>
+  <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="s">&quot;unknown&quot;</span><span class="o">)</span>
+<span class="o">}</span>
+
+<span class="nc">List</span><span class="o">(</span><span class="s">&quot;hello&quot;</span><span class="o">,</span> <span class="mi">110</span><span class="o">,</span> <span class="-Symbol">&#39;sym</span><span class="o">)</span> <span class="k">match</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="nc">List</span><span class="o">(</span><span class="k">_</span><span class="o">,</span> <span class="k">_</span><span class="o">,</span> <span class="n">s</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="n">s</span><span class="o">)</span>
+  <span class="k">case</span> <span class="k">_</span><span class="o">::</span><span class="n">n</span><span class="o">::</span><span class="k">_</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="n">n</span><span class="o">)</span> <span class="c1">// head::tail</span>
+<span class="o">}</span>
+</code></pre>
+</div>
+
+
+<p>例子中还体现了scala对于list的处理能力，果然包含了函数式语言的特性。</p>
+
+<h3>Guard</h3>
+
+<p>函数式语言里为了支持if，一般都会有Guard的概念。其用于进行条件限定，在scala中的for comprehension和pattern match中四处可见：</p>
+
+<div class="highlight"><pre><code class="scala">    
+<span class="k">val</span> <span class="n">obj</span><span class="k">:</span><span class="kt">Any</span> <span class="o">=</span> <span class="s">&quot;hello&quot;</span>
+<span class="n">println</span><span class="o">(</span><span class="n">obj</span> <span class="k">match</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="n">t</span><span class="k">:</span><span class="kt">Int</span> <span class="o">=&gt;</span> <span class="s">&quot;int&quot;</span>
+  <span class="k">case</span> <span class="n">t</span><span class="k">:</span><span class="kt">String</span> <span class="kt">if</span> <span class="kt">t</span> <span class="o">=</span><span class="k">=</span> <span class="s">&quot;hello&quot;</span> <span class="k">=&gt;</span> <span class="s">&quot;world&quot;</span> <span class="c1">// guard</span>
+  <span class="k">case</span> <span class="n">t</span><span class="k">:</span><span class="kt">String</span> <span class="o">=&gt;</span> <span class="s">&quot;hello&quot;</span>
+  <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="s">&quot;unknown&quot;</span>
+<span class="o">})</span>
+</code></pre>
+</div>
+
+
+<h2>trait/abstract type</h2>
+
+<p>trait可以用于实现mix-in，虽然可以简单地将它视为interface，但它的功能远不止于此：</p>
+
+<p>简单的应用：</p>
+
+<div class="highlight"><pre><code class="scala">    
+<span class="k">trait</span> <span class="nc">Show</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">show</span><span class="o">(</span><span class="n">s</span><span class="k">:</span><span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="n">println</span><span class="o">(</span><span class="n">s</span><span class="o">)</span>
+<span class="o">}</span>
+
+<span class="k">abstract</span> <span class="k">class</span> <span class="nc">Widget</span>
+<span class="k">class</span> <span class="nc">MyClass</span> <span class="k">extends</span> <span class="nc">Widget</span> <span class="k">with</span> <span class="nc">Show</span> <span class="o">{</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">show</span><span class="o">(</span><span class="n">s</span><span class="k">:</span><span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="n">println</span><span class="o">(</span><span class="s">&quot;MyClass &quot;</span> <span class="o">+</span> <span class="n">s</span><span class="o">)</span>
+<span class="o">}</span>
+
+<span class="k">val</span> <span class="n">t</span><span class="k">:</span><span class="kt">Show</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">MyClass</span>
+<span class="n">t</span> <span class="n">show</span> <span class="s">&quot;hello&quot;</span> <span class="c1">// 等同于t.show(&quot;hello&quot;)，scala中支持这种函数调用，可应用于构建DSL</span>
+</code></pre>
+</div>
+
+
+<p>以上例子显现不出trait的作用。trait为了支持“混入(mixin)“，<strong>语法上允许在创建一个对象时，混入一个trait</strong>，而不用在类定义时混入：</p>
+
+<div class="highlight"><pre><code class="scala">    
+<span class="k">trait</span> <span class="nc">Show</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">show</span><span class="o">(</span><span class="n">s</span><span class="k">:</span><span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="n">println</span><span class="o">(</span><span class="n">s</span><span class="o">)</span>
+<span class="o">}</span>
+
+<span class="k">class</span> <span class="nc">Person</span><span class="o">(</span><span class="k">val</span> <span class="n">name</span><span class="k">:</span><span class="kt">String</span><span class="o">)</span> <span class="o">{</span>
+<span class="o">}</span>
+
+<span class="k">val</span> <span class="n">person</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Person</span><span class="o">(</span><span class="s">&quot;kevin&quot;</span><span class="o">)</span> <span class="k">with</span> <span class="nc">Show</span> <span class="c1">// 混入Show到person中</span>
+<span class="n">person</span><span class="o">.</span><span class="n">show</span><span class="o">(</span><span class="n">person</span><span class="o">.</span><span class="n">name</span><span class="o">)</span> <span class="c1">// person拥有show接口</span>
+</code></pre>
+</div>
+
+
+<h2>class</h2>
+
+<p>class方面的语法可以简单关注些常用的语法，trait一节中的例子已经显示了class定义方面的一些语法：</p>
+
+<div class="highlight"><pre><code class="scala">    
+
+<span class="k">class</span> <span class="nc">Person</span><span class="o">(</span><span class="k">val</span> <span class="n">name</span><span class="k">:</span><span class="kt">String</span><span class="o">)</span> <span class="o">{</span> <span class="c1">// primary constructor，参数作为类成员</span>
+  <span class="k">val</span> <span class="n">address</span> <span class="k">=</span> <span class="s">&quot;earth&quot;</span> <span class="c1">// 另一个成员，默认的可见属性</span>
+  <span class="k">var</span> <span class="n">id</span><span class="k">:</span><span class="kt">Int</span> <span class="o">=</span> <span class="mi">0</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">email</span> <span class="k">=</span> <span class="s">&quot;kevinlynx at gmail dot com&quot;</span> <span class="c1">// private成员</span>
+
+  <span class="n">id</span> <span class="k">=</span> <span class="n">randid</span> <span class="c1">// 类体一定程度上作为primary constructor函数体 </span>
+
+  <span class="k">def</span> <span class="n">fullname</span> <span class="k">=</span> <span class="n">println</span><span class="o">(</span><span class="n">name</span> <span class="o">+</span> <span class="s">&quot; lynx&quot;</span><span class="o">)</span> <span class="c1">// 接口</span>
+  
+  <span class="k">def</span> <span class="k">this</span><span class="o">()</span> <span class="k">=</span> <span class="k">this</span><span class="o">(</span><span class="s">&quot;ah&quot;</span><span class="o">)</span> <span class="c1">// 0个或多个auxiliary constructor，可以调用primary constructor</span>
+  
+  <span class="k">def</span> <span class="n">randid</span><span class="k">:</span><span class="kt">Int</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="o">}</span>
+
+<span class="k">val</span> <span class="n">p</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Person</span>
+<span class="n">println</span><span class="o">(</span><span class="n">p</span><span class="o">.</span><span class="n">fullname</span><span class="o">)</span>
+<span class="n">println</span><span class="o">(</span><span class="n">p</span><span class="o">.</span><span class="n">id</span><span class="o">)</span>
+</code></pre>
+</div>
+
+
+<p>面向对象语法在scala中占有很大的比例，除了基本类语法外，还有很多类相关的语法，例如<code>companion classes</code>、<code>case classes</code>等。</p>
+
+<h2>object</h2>
+
+<p>object类似于类，类可以有很多实例化出很多对象，但object则只有一个实例，其更像一个语言内置的单件模式。scala中任意object，只要包含了main接口，即可作为一个程序的入口：</p>
+
+<div class="highlight"><pre><code class="scala">    
+<span class="k">object</span> <span class="nc">Test</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">i</span> <span class="k">=</span> <span class="mi">100</span>
+  <span class="k">val</span> <span class="n">str</span> <span class="k">=</span> <span class="s">&quot;hello&quot;</span>   
+
+  <span class="k">def</span> <span class="n">main</span><span class="o">(</span><span class="n">args</span><span class="k">:</span><span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">])</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="n">println</span><span class="o">(</span><span class="n">i</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+<span class="n">println</span><span class="o">(</span><span class="nc">Test</span><span class="o">.</span><span class="n">str</span><span class="o">)</span>
+</code></pre>
+</div>
+
+
+<h2>functions</h2>
+
+<p>首先，函数定义是可以嵌套的。</p>
+
+<p>函数相关的语法里这里只关注几个重要的函数式风格的语法，包括：偏函数(partial function)、柯里化(currying)等。</p>
+
+<h3>partial functions</h3>
+
+<p>简单来说就是将多参数的函数转换为某个参数为固定值的函数：</p>
+
+<div class="highlight"><pre><code class="scala">    
+<span class="k">def</span> <span class="n">concatUpper</span><span class="o">(</span><span class="n">s1</span><span class="k">:</span><span class="kt">String</span><span class="o">,</span> <span class="n">s2</span><span class="k">:</span><span class="kt">String</span><span class="o">)</span><span class="k">:</span><span class="kt">String</span> <span class="o">=</span> <span class="o">(</span><span class="n">s1</span> <span class="o">+</span> <span class="s">&quot; &quot;</span> <span class="o">+</span> <span class="n">s2</span><span class="o">).</span><span class="n">toUpperCase</span>
+
+<span class="k">val</span> <span class="n">c1</span> <span class="k">=</span> <span class="n">concatUpper</span> <span class="k">_</span> <span class="c1">// now c1 is a function value, type: (String, String) =&gt; String</span>
+<span class="n">println</span><span class="o">(</span><span class="n">c1</span><span class="o">(</span><span class="s">&quot;short&quot;</span><span class="o">,</span> <span class="s">&quot;pants&quot;</span><span class="o">))</span>
+<span class="k">val</span> <span class="n">c2</span> <span class="k">=</span> <span class="n">concatUpper</span><span class="o">(</span><span class="s">&quot;short&quot;</span><span class="o">,</span> <span class="k">_:</span><span class="kt">String</span><span class="o">)</span>
+<span class="n">println</span><span class="o">(</span><span class="n">c2</span><span class="o">(</span><span class="s">&quot;pants&quot;</span><span class="o">))</span> 
+</code></pre>
+</div>
+
+
+<h3>currying</h3>
+
+<p>函数柯里化同偏函数一定程度上具有相同的作用。scala里柯里化函数的语法不同：</p>
+
+<div class="highlight"><pre><code class="scala">    
+<span class="k">def</span> <span class="n">multiplier</span><span class="o">(</span><span class="n">i</span><span class="k">:</span><span class="kt">Int</span><span class="o">)(</span><span class="n">factor</span><span class="k">:</span><span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="n">i</span> <span class="o">*</span> <span class="n">factor</span>
+
+<span class="c1">// 当然也可以将一个普通函数转换为柯里化版本</span>
+<span class="k">val</span> <span class="n">catVal</span> <span class="k">=</span> <span class="n">concatUpper</span> <span class="k">_</span>
+<span class="k">val</span> <span class="n">curryCat</span> <span class="k">=</span> <span class="n">catVal</span><span class="o">.</span><span class="n">curried</span> <span class="c1">// 2.10中curry，以前是用Function.curried</span>
+<span class="k">val</span> <span class="n">catLeft</span> <span class="k">=</span> <span class="n">curryCat</span><span class="o">(</span><span class="s">&quot;hello&quot;</span><span class="o">)</span>
+<span class="n">println</span><span class="o">(</span><span class="n">catLeft</span><span class="o">(</span><span class="s">&quot;world&quot;</span><span class="o">))</span>
+</code></pre>
+</div>
+
+
+<h3>call by name</h3>
+
+<p>函数参数传递中的call by name特性，有点类似于惰性计算，即在使用到参数的时候才计算该参数，而不是在调用函数之前就把参数值计算好。</p>
+
+<div class="highlight"><pre><code class="scala">    
+<span class="k">def</span> <span class="n">show</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="o">=&gt;</span> <span class="nc">String</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span> <span class="c1">// 指定s call by name</span>
+  <span class="n">println</span><span class="o">(</span><span class="s">&quot;show get called&quot;</span><span class="o">)</span>
+  <span class="n">println</span><span class="o">(</span><span class="s">&quot;argument:&quot;</span> <span class="o">+</span> <span class="n">s</span><span class="o">)</span>
+<span class="o">}</span>
+<span class="k">def</span> <span class="n">getStr</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="n">println</span><span class="o">(</span><span class="s">&quot;getStr get called&quot;</span><span class="o">)</span> 
+  <span class="s">&quot;hello&quot;</span>
+<span class="o">}</span>
+<span class="n">show</span><span class="o">(</span><span class="n">getStr</span><span class="o">)</span>
+</code></pre>
+</div>
+
+
+<p>给我印象较深的是，通过call by name语法，<strong>可以实现一个如同while的函数</strong>：</p>
+
+<div class="highlight"><pre><code class="scala">    
+<span class="k">def</span> <span class="n">myWhile</span><span class="o">(</span><span class="n">cond</span><span class="k">:</span> <span class="o">=&gt;</span> <span class="nc">Boolean</span><span class="o">)(</span><span class="n">f</span><span class="k">:</span> <span class="o">=&gt;</span> <span class="nc">Unit</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">cond</span><span class="o">)</span> <span class="o">{</span> 
+    <span class="n">f</span>
+    <span class="n">myWhile</span><span class="o">(</span><span class="n">cond</span><span class="o">)(</span><span class="n">f</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="k">var</span> <span class="n">count</span> <span class="k">=</span> <span class="mi">0</span>
+<span class="c1">// WTF ?</span>
+<span class="n">myWhile</span><span class="o">(</span><span class="n">count</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">println</span><span class="o">(</span><span class="s">&quot;in while&quot;</span><span class="o">)</span>
+  <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+<span class="o">}</span>
+</code></pre>
+</div>
+
+
+<h2>other</h2>
+
+<p>scala中有那么一些语法，虽然不是什么很大的特性，但很会给人留下深刻的印象。structural types和parameterized types有点像C++里的模板，前者约定拥有相同接口的类型，后者则只表示一种类型。</p>
+
+<h3>structural types</h3>
+
+<p>用来表示所有拥有某个相同原型接口的类型：</p>
+
+<div class="highlight"><pre><code class="scala">    
+<span class="c1">// 相当于C中的typedef，定义一个structural types类型，需要包含名为show的接口</span>
+<span class="k">type</span> <span class="kt">MyType</span> <span class="o">=</span> <span class="o">{</span> <span class="k">def</span> <span class="n">show</span><span class="o">()</span><span class="k">:</span><span class="kt">Unit</span> <span class="o">}</span> 
+<span class="k">class</span> <span class="nc">ClassA</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">show</span><span class="o">()</span><span class="k">:</span><span class="kt">Unit</span> <span class="o">=</span> <span class="o">{</span>
+    <span class="n">println</span><span class="o">(</span><span class="s">&quot;ClassA&quot;</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+<span class="k">class</span> <span class="nc">ClassB</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">show</span><span class="o">()</span><span class="k">:</span><span class="kt">Unit</span> <span class="o">=</span> <span class="o">{</span>
+    <span class="n">println</span><span class="o">(</span><span class="s">&quot;ClassB&quot;</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+<span class="k">var</span> <span class="n">obj</span><span class="k">:</span><span class="kt">MyType</span> <span class="o">=</span> <span class="kc">null</span>
+<span class="n">obj</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ClassA</span>
+<span class="n">obj</span><span class="o">.</span><span class="n">show</span>
+<span class="n">obj</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ClassB</span>
+<span class="n">obj</span><span class="o">.</span><span class="n">show</span>
+</code></pre>
+</div>
+
+
+<p>虽然ClassA/ClassB没有任何关系，但因为都包含了一个<code>show</code>接口，则可以通过一个统一的类型将其统一起来。</p>
+
+<h3>parameterized types</h3>
+
+<p>基本类似于C++模板，但仅限于类型信息，适合定义类似C++ STL的容器：</p>
+
+<div class="highlight"><pre><code class="scala">    
+<span class="k">class</span> <span class="nc">Vector</span><span class="o">[</span><span class="kt">T</span><span class="o">](</span><span class="k">var</span> <span class="n">a</span><span class="k">:</span><span class="kt">T</span><span class="o">,</span> <span class="k">var</span> <span class="n">b</span><span class="k">:</span><span class="kt">T</span><span class="o">)</span> <span class="o">{</span>
+<span class="o">}</span>
+<span class="k">val</span> <span class="n">v</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Vector</span><span class="o">[</span><span class="kt">Int</span><span class="o">](</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">)</span>
+<span class="n">println</span><span class="o">(</span><span class="n">v</span><span class="o">.</span><span class="n">a</span> <span class="o">+</span> <span class="s">&quot;:&quot;</span> <span class="o">+</span> <span class="n">v</span><span class="o">.</span><span class="n">b</span><span class="o">)</span>
+</code></pre>
+</div>
+
+
+<h2>小结</h2>
+
+<p>目前基于JVM的语言有很多，基于JVM的好处是可以使用Java社区丰富的库、框架。scala的语法还算优美，值得一试。希望能有机会投入到更大的项目中使用。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2013/09/23/scala-feature-overview/'>http://codemacro.com/2013/09/23/scala-feature-overview/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Javascript Overview]]></title>
@@ -3194,110 +3591,6 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
 <p class='post-footer'>
             原文地址：
             <a href='http://codemacro.com/2012/09/03/goes-to-operator/'>http://codemacro.com/2012/09/03/goes-to-operator/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[为什么处理排序的数组要比非排序的快？]]></title>
-    <link href="http://codemacro.com/2012/08/29/branch-predictor/"/>
-    <updated>2012-08-29T19:55:00+08:00</updated>
-    <id>http://codemacro.com/2012/08/29/branch-predictor</id>
-    <content type="html"><![CDATA[<p>参考<a href="http://stackoverflow.com/questions/11227809/why-is-processing-a-sorted-array-faster-than-an-unsorted-array">Why is processing a sorted array faster than an unsorted array?</a></p>
-
-<h2>问题</h2>
-
-<p>看以下代码：</p>
-
-<div class="highlight"><pre><code class="c"><span class="cp">#include &lt;algorithm&gt;</span>
-<span class="cp">#include &lt;ctime&gt;</span>
-<span class="cp">#include &lt;iostream&gt;</span>
-
-<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
-<span class="p">{</span>
-    <span class="c1">// generate data</span>
-    <span class="k">const</span> <span class="kt">unsigned</span> <span class="n">arraySize</span> <span class="o">=</span> <span class="mi">32768</span><span class="p">;</span>
-    <span class="kt">int</span> <span class="n">data</span><span class="p">[</span><span class="n">arraySize</span><span class="p">];</span>
-
-    <span class="k">for</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="n">c</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">c</span> <span class="o">&lt;</span> <span class="n">arraySize</span><span class="p">;</span> <span class="o">++</span><span class="n">c</span><span class="p">)</span>
-        <span class="n">data</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">rand</span><span class="p">()</span> <span class="o">%</span> <span class="mi">256</span><span class="p">;</span>
-
-
-    <span class="c1">// !!! with this, the next loop runs faster</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">sort</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">data</span> <span class="o">+</span> <span class="n">arraySize</span><span class="p">);</span>
-
-
-    <span class="c1">// test</span>
-    <span class="kt">clock_t</span> <span class="n">start</span> <span class="o">=</span> <span class="n">clock</span><span class="p">();</span>
-    <span class="kt">long</span> <span class="kt">long</span> <span class="n">sum</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-
-    <span class="k">for</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">100000</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span>
-    <span class="p">{</span>
-        <span class="c1">// primary loop</span>
-        <span class="k">for</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="n">c</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">c</span> <span class="o">&lt;</span> <span class="n">arraySize</span><span class="p">;</span> <span class="o">++</span><span class="n">c</span><span class="p">)</span>
-        <span class="p">{</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">128</span><span class="p">)</span>
-                <span class="n">sum</span> <span class="o">+=</span> <span class="n">data</span><span class="p">[</span><span class="n">c</span><span class="p">];</span>
-        <span class="p">}</span>
-    <span class="p">}</span>
-
-    <span class="kt">double</span> <span class="n">elapsedTime</span> <span class="o">=</span> <span class="n">static_cast</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="p">(</span><span class="n">clock</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span> <span class="o">/</span> <span class="n">CLOCKS_PER_SEC</span><span class="p">;</span>
-
-    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">elapsedTime</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;sum = &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">sum</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
-<span class="p">}</span>
-</code></pre>
-</div>
-
-
-<p>问题就在于，去掉<code>std::sort</code>那一行，以上代码将运行更长的时间。在我的机器上未去掉<code>std::sort</code>耗时8.99s，去掉后耗时24.78s。编译器使用的是gcc4.4.3。事实上，以上代码跟编译器没有关系，甚至跟语言没有关系。那这是为什么呢？</p>
-
-<!-- more -->
-
-
-<p>这跟处理这个数组的逻辑有非常大的关系。如以上代码所示，这个循环里有个条件判断。条件判断被编译成二进制代码后，就是一个跳转指令，类似：</p>
-
-<p>具体为什么会不同，这涉及到计算机CPU执行指令时的行为。</p>
-
-<h2>CPU的流水线指令执行</h2>
-
-<p>想象现在有一堆指令等待CPU去执行，那么CPU是如何执行的呢？具体的细节可以找一本计算机组成原理的书来看。CPU执行一堆指令时，并不是单纯地一条一条取出来执行，而是按照一种流水线的方式，在CPU真正执行一条指令前，这条指令就像工厂里流水线生产的产品一样，已经被经过一些处理。简单来说，一条指令可能经过这些过程：取指(Fetch)、解码(Decode)、执行(Execute)、放回(Write-back)。</p>
-
-<p>假设现在有指令序列ABCDEFG。当CPU正在执行(execute)指令A时，CPU的其他处理单元（CPU是由若干部件构成的）其实已经预先处理到了指令A后面的指令，例如B可能已经被解码，C已经被取指。这就是流水线执行，这可以保证CPU高效地执行指令。</p>
-
-<h2>Branch Prediction</h2>
-
-<p>如上所说，CPU在执行一堆顺序执行的指令时，因为对于执行指令的部件来说，其基本不需要等待，因为诸如取指、解码这些过程早就被做了。但是，当CPU面临非顺序执行的指令序列时，例如之前提到的跳转指令，情况会怎样呢？</p>
-
-<p>取指、解码这些CPU单元并不知道程序流程会跳转，只有当CPU执行到跳转指令本身时，才知道该不该跳转。所以，取指解码这些单元就会继续取跳转指令之后的指令。当CPU执行到跳转指令时，如果真的发生了跳转，那么之前的预处理（取指、解码）就白做了。这个时候，CPU得从跳转目标处临时取指、解码，然后才开始执行，这意味着：CPU停了若干个时钟周期！</p>
-
-<p>这其实是个问题，如果CPU的设计放任这个问题，那么其速度就很难提升起来。为此，人们发明了一种技术，称为branch prediction，也就是分支预测。分支预测的作用，就是预测某个跳转指令是否会跳转。而CPU就根据自己的预测到目标地址取指令。这样，即可从一定程度提高运行速度。当然，分支预测在实现上有很多方法。</p>
-
-<p>简单的预测可以直接使用之前的实际执行结果。例如某个跳转指令某一次产生了跳转，那么下一次执行该指令时，CPU就直接从跳转目标地址处取指，而不是该跳转指令的下一条指令。</p>
-
-<h2>答案</h2>
-
-<p>了解了以上信息后，文章开头提出的问题就可以解释了。这个代码中有一个循环，这个循环里有一个条件判断。每一次CPU执行这个条件判断时，CPU都可能跳转到循环开始处的指令，即不执行if后的指令。使用分支预测技术，当处理已经排序的数组时，在若干次<code>data[c]&gt;=128</code>都不成立时（或第一次不成立时，取决于分支预测的实现），CPU预测这个分支是始终会跳转到循环开始的指令时，这个时候CPU将保持有效的执行，不需要重新等待到新的地址取指；同样，当<code>data[c]&gt;=128</code>条件成立若干次后，CPU也可以预测这个分支是不必跳转的，那么这个时候CPU也可以保持高效执行。</p>
-
-<p>相反，如果是无序的数组，CPU的分支预测在很大程度上都无法预测成功，基本就是50%的预测成功概率，这将消耗大量的时间，因为CPU很多时间都会等待取指单元重新取指。</p>
-
-<p>本文完。最后感叹下stackoverflow上这个帖子里那个老外回答问题的专业性，我要是楼主早就感动得涕泪横飞了。感谢每一个传播知识的人。</p>
-
-<h2>参考资料</h2>
-
-<ol>
-<li><a href="http://blog.sina.com.cn/s/blog_6c673e570100zfmo.html">http://blog.sina.com.cn/s/blog_6c673e570100zfmo.html</a></li>
-<li><a href="http://www.cnblogs.com/dongliqian/archive/2012/04/05/2433847.html">http://www.cnblogs.com/dongliqian/archive/2012/04/05/2433847.html</a></li>
-<li><a href="http://en.wikipedia.org/wiki/Branch_predictor">http://en.wikipedia.org/wiki/Branch_predictor</a></li>
-</ol>
-
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2012/08/29/branch-predictor/'>http://codemacro.com/2012/08/29/branch-predictor/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>

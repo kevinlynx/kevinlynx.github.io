@@ -74,6 +74,76 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2013/05/08/thought-about-erlang/">Erlang使用感受</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-05-08T00:00:00+08:00" pubdate data-updated="true">May 8<span>th</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>用erlang也算写了些代码了，主要包括<a href="http://codemacro.com/2013/04/11/rabbitmq-erlang/">使用RabbitMQ的练习</a>，以及最近写的<a href="https://github.com/kevinlynx/erlang-tcpserver">kl_tserver</a>和<a href="https://github.com/kevinlynx/icerl">icerl</a>。其中icerl是一个实现了<a href="http://www.zeroc.com/">Ice</a>的erlang库。</p>
+
+<p>erlang的书较少，我主要读过&lt;Programming Erlang>和&lt;Erlang/OTP in Action>。其实erlang本身就语言来说的话比较简单，同ruby一样，类似这种本身目标是应用于实际软件项目的语言都比较简单，对应的语法书很快可以翻完。</p>
+
+<p>这里我仅谈谈自己在编写erlang代码过程中的一些感受。</p>
+
+<h2>语法</h2>
+
+<p>erlang语法很简单，接触过函数式语言的程序员上手会很快。它没有类似common lisp里宏这种较复杂的语言特性。其语法元素很紧凑，不存在一些用处不大的特性。在这之前，我学习过ruby和common lisp。ruby代码写的比common lisp多。但是在学习erlang的过程中我的脑海里却不断出现common lisp里的语法特性。这大概是因为common lisp的语法相对ruby来说，更接近erlang。</p>
+
+<h3>编程模式</h3>
+
+<p>erlang不是一个面向对象的语言，它也不同common lisp提供多种编程模式。它的代码就是靠一个个函数组织出来的。面向对象语言在语法上有一点让我很爽的是，其函数调用更自然。erlang的接口调用就像C语言里接口的调用一样：</p>
+
+<pre><code>func(Obj, args)
+Obj-&gt;func(args)
+</code></pre>
+
+<p>即需要在函数第一个参数传递操作对象。但是面向对象语言也会带来一些语法的复杂性。如果一门语言可以用很少的语法元素表达很多信息，那么我觉得这门语言就是门优秀的语言。</p>
+
+<h3>表达式/语句</h3>
+
+<p>erlang里没有语句，全部是表达式，意思是所有语法元素都是有返回值的。这实在太好了，全世界都有返回值可以让代码写起来简单多了：</p>
+
+<div class="highlight"><pre><code class="erlang">    <span class="nv">Flag</span> <span class="o">=</span> <span class="k">case</span> <span class="n">func</span><span class="p">()</span> <span class="k">of</span> <span class="mi">1</span> <span class="o">-&gt;</span> <span class="n">true</span><span class="p">;</span> <span class="mi">0</span> <span class="o">-&gt;</span> <span class="n">false</span> <span class="k">end</span><span class="p">,</span> 
+</code></pre>
+</div>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/05/08/thought-about-erlang/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2013/04/11/rabbitmq-erlang/">erlang和RabbitMQ学习总结</a></h1>
     
     
@@ -293,49 +363,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/09/17/c-plus-plus-ctor-virtual/">C++陷阱：构造函数中的多态</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-17T16:01:00+08:00" pubdate data-updated="true">Sep 17<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>C++中主要是通过给函数加上<code>virtual</code>关键字来实现多态。多态可用于改变一个接口的实现，也算是一种嵌入应用层代码到底层的实现手段。就算你用不到C++那些复杂的技术，多态肯定会被用到。</p>
-
-<p>但加上<code>virtual</code>不一定能保证多态成功：</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/09/17/c-plus-plus-ctor-virtual/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/4/">&larr; Older</a>
@@ -353,6 +380,7 @@
   <ul id="categories">
     <li class='category'><a href='/categories/ice/'>ICE (2)</a></li>
 <li class='category'><a href='/categories/javascript/'>Javascript (1)</a></li>
+<li class='category'><a href='/categories/scala/'>Scala (1)</a></li>
 <li class='category'><a href='/categories/c-c-/'>c/c++ (13)</a></li>
 <li class='category'><a href='/categories/clang/'>clang (1)</a></li>
 <li class='category'><a href='/categories/erlang/'>erlang (7)</a></li>
@@ -374,6 +402,10 @@
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/2013/09/23/scala-feature-overview/">scala主要特性一览</a>
+      </li>
+    
+      <li class="post">
         <a href="/2013/08/21/javascript-overview/">Javascript Overview</a>
       </li>
     
@@ -389,10 +421,6 @@
         <a href="/2013/07/02/dhtcrawler2/">磁力搜索第二版-dhtcrawler2</a>
       </li>
     
-      <li class="post">
-        <a href="/2013/06/21/magnet-search-impl/">使用erlang实现P2P磁力搜索-实现</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -405,10 +433,10 @@
 <section>
   <h1>Tags</h1>
   <ul class="tag-cloud">
+<a style="font-size: 90%" href="/tags/flash/">Flash</a>
 <a style="font-size: 118%" href="/tags/ice/">ICE</a>
 <a style="font-size: 118%" href="/tags/blog/">blog</a>
 <a style="font-size: 178%" href="/tags/c-c-/">c/c++</a>
-<a style="font-size: 90%" href="/tags/clang/">clang</a>
 <a style="font-size: 154%" href="/tags/dht/">dht</a>
 <a style="font-size: 118%" href="/tags/dhtcrawler/">dhtcrawler</a>
 <a style="font-size: 168%" href="/tags/erlang/">erlang</a>
