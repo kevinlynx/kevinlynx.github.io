@@ -74,6 +74,51 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2012/07/18/add-tag-to-octopress/">为octopress添加tag Cloud</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-07-18T16:37:00+08:00" pubdate data-updated="true">Jul 18<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>同添加category list一样，网络上有很多方法，这里列举一种。首先到<a href="https://github.com/robbyedwards/octopress-tag-pages">https://github.com/robbyedwards/octopress-tag-pages</a>和<a href="https://github.com/robbyedwards/octopress-tag-cloud">https://github.com/robbyedwards/octopress-tag-cloud</a>clone这两个项目的代码。这两个项目分别用于产生tag page和tag cloud。 针对这两个插件，需要手工复制一些文件到你的octopress目录。</p>
+
+<p><strong>octopress-tag-pages</strong></p>
+
+<p>复制tag_generator.rb到/plugins目录；复制tag_index.html到/source/_layouts目录。<strong>需要注意的是，还需要复制tag_feed.xml到/source/_includes/custom/目录。</strong>这个官方文档里没提到，在我机器上rake generate时报错。其他文件就不需要复制了，都是些例子。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2012/07/18/add-tag-to-octopress/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2012/07/18/add-category-list-to-octopress/">为octopress添加分类(category)列表</a></h1>
     
     
@@ -280,49 +325,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/04/20/blog-on-github/">使用Github Page来写博客</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-04-20T00:00:00+08:00" pubdate data-updated="true">Apr 20<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>最开始知道<a href="http://pages.github.com/">Github Page</a>，是通过<a href="http://codertrace.com">codertrace</a>上的某些注册用户，他们的BLOG就建立在Github Page上，并且清一色的干净整洁（简陋），这看起来很酷。</p>
-
-<p>Github提供了很多很合coder口味的东西，例如Gist，也包括这里提到的Page。Page并不是特用于建立博客的产品，它仅提供静态页面的显示。它最酷的地方，是通过Git的方式来让你管理这些静态页面。通过建立一个repository，并使用markdown语法来编写文章，然后通过Git来管理这些文章，你就可以自动将其发布出去。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/04/20/blog-on-github/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/10/">&larr; Older</a>
@@ -349,7 +351,7 @@
 <li class='category'><a href='/categories/lua/'>lua (5)</a></li>
 <li class='category'><a href='/categories/module/'>module (2)</a></li>
 <li class='category'><a href='/categories/network/'>network (5)</a></li>
-<li class='category'><a href='/categories/other/'>other (5)</a></li>
+<li class='category'><a href='/categories/other/'>other (6)</a></li>
 <li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
 <li class='category'><a href='/categories/tips/'>tips (21)</a></li>
 <li class='category'><a href='/categories/web/'>web (4)</a></li>
@@ -360,6 +362,10 @@
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/02/02/2013/">my 2013</a>
+      </li>
     
       <li class="post">
         <a href="/2013/09/23/scala-feature-overview/">scala主要特性一览</a>
@@ -377,10 +383,6 @@
         <a href="/2013/08/08/sphinx-dhtcrawler/">dhtcrawler2换用sphinx搜索</a>
       </li>
     
-      <li class="post">
-        <a href="/2013/07/02/dhtcrawler2/">磁力搜索第二版-dhtcrawler2</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -393,7 +395,7 @@
 <section>
   <h1>Tags</h1>
   <ul class="tag-cloud">
-<a style="font-size: 90%" href="/tags/flash/">Flash</a>
+<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
 <a style="font-size: 118%" href="/tags/ice/">ICE</a>
 <a style="font-size: 118%" href="/tags/blog/">blog</a>
 <a style="font-size: 178%" href="/tags/c-c-/">c/c++</a>
@@ -423,7 +425,7 @@
     </div>
   </div>
   <footer role="contentinfo"><p>
-  Copyright &copy; 2013 - Kevin Lynx -
+  Copyright &copy; 2014 - Kevin Lynx -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 </p>
 

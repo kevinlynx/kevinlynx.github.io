@@ -74,6 +74,83 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2013/07/02/dhtcrawler2/">磁力搜索第二版-dhtcrawler2</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-07-02T00:00:00+08:00" pubdate data-updated="true">Jul 2<span>nd</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>接<a href="http://codemacro.com/2013/06/21/magnet-search-impl/">上篇</a>。</p>
+
+<h2>下载使用</h2>
+
+<p>目前为止dhtcrawler2相对dhtcrawler而言，数据库部分调整很大，DHT部分基本沿用之前。但单纯作为一个爬资源的程序而言，DHT部分可以进行大幅削减，这个以后再说。这个版本更快、更稳定。为了方便，我将编译好的erlang二进制文件作为git的主分支，我还添加了一些Windows下的批处理脚本，总之基本上下载源码以后即可运行。</p>
+
+<p>项目地址：<a href="https://github.com/kevinlynx/dhtcrawler2">https://github.com/kevinlynx/dhtcrawler2</a></p>
+
+<h3>使用方法</h3>
+
+<ul>
+<li>下载erlang，我测试的是R16B版本，确保erl等程序被加入<code>Path</code>环境变量</li>
+<li><p>下载mongodb，解压即用：</p>
+
+<pre><code>  mongod --dbpath xxx --setParameter textSearchEnabled=true
+</code></pre></li>
+<li><p>下载dhtcrawler2</p>
+
+<pre><code>  git clone https://github.com/kevinlynx/dhtcrawler2.git
+</code></pre></li>
+<li><p>运行<code>win_start_crawler.bat</code></p></li>
+<li>运行<code>win_start_hash.bat</code></li>
+<li>运行<code>win_start_http.bat</code></li>
+<li>打开<code>localhost:8000</code>查看<code>stats</code></li>
+</ul>
+
+
+<p>爬虫每次运行都会保存DHT节点状态，早期运行的时候收集速度会不够。dhtcrawler2将程序分为3部分：</p>
+
+<ul>
+<li>crawler，即DHT爬虫部分，仅负责收集hash</li>
+<li>hash，准确来讲叫<code>hash reader</code>，处理爬虫收集的hash，处理过程主要涉及到下载种子文件</li>
+<li>http，使用hash处理出来的数据库，以作为Web端接口</li>
+</ul>
+
+
+<p>我没有服务器，但程序有被部署在别人的服务器上：<a href="http://bt.cm">bt.cm</a>，<a href="http://222.175.114.126:8000/">http://222.175.114.126:8000/</a>。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/07/02/dhtcrawler2/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2013/06/21/magnet-search-impl/">使用erlang实现P2P磁力搜索-实现</a></h1>
     
     
@@ -288,61 +365,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2013/05/19/crawl-dht/">P2P中DHT网络爬虫</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-05-19T00:00:00+08:00" pubdate data-updated="true">May 19<span>th</span>, 2013</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>DHT网络爬虫基于DHT网络构建了一个P2P资源搜索引擎。这个搜索引擎不但可以用于构建DHT网络中活跃的资源索引（活跃的资源意味着该网络中肯定有人至少持有该资源的部分数据），还可以分析出该网络中的热门分享资源。<a href="http://xiaoxia.org/">小虾</a>不久前发布了一个这样的搜索引擎：<a href="http://bt.shousibaocai.com/">磁力搜索</a>。他也写博客对此稍作了介绍：<a href="http://xiaoxia.org/2013/05/11/magnet-search-engine/">写了个磁力搜索的网页 － 收录最近热门分享的资源</a>。网络上其实也有其他人做了类似的应用：<a href="http://pacsec.jp/psj11/PacSec2011_Massive-Monitoring_en.pdf">DHT monitoring</a>，<a href="https://www.defcon.org/images/defcon-18/dc-18-presentations/Wolchok/DEFCON-18-Wolchok-Crawling-Bittorrent-DHTS.pdf">Crawling Bittorrent DHT</a></p>
-
-<p>但是他的这篇文章仅介绍了DHT网络的大致工作原理，并且这个爬虫的具体工作原理也没有提到。对此我查阅了些文章及代码，虽然从原理上梳理出了整个实现方案，但很多细节还是不甚清楚。所以本文仅作概要介绍。</p>
-
-<h2>DHT/Magnet/Torrent</h2>
-
-<p>在P2P网络中，要通过种子文件下载一个资源，需要知道整个P2P网络中有哪些计算机正在下载/上传该资源。这里将这些提供某个资源下载的计算机定义为<code>peer</code>。传统的P2P网络中，存在一些<code>tracker</code>服务器，这些服务器的作用主要用于跟踪某个资源有哪些关联的peer。下载这个资源当然得首先取得这些peer。</p>
-
-<p>DHT的出现用于解决当tracker服务器不可用时，P2P客户端依然可以取得某个资源的peer。DHT解决这个问题，是因为它将原来tracker上的资源peer信息分散到了整个网络中。这里将实现了DHT协议的计算机定义为节点(node)。通常一个P2P客户端程序既是peer也是节点。DHT网络有多种实现算法，例如Kademlia。</p>
-
-<p>当某个P2P客户端通过种子文件下载资源时，如果没有tracker服务器，它就会向DHT网络查询这个资源对应的peer列表。资源的标识在DHT网络中称为<code>infohash</code>，是一个20字节长的字符串，一般通过sha1算法获得，也就是一个类似UUID的东西。</p>
-
-<p>实际上，种子文件本身就对应着一个infohash，这个infohash是通过种子文件的文件描述信息动态计算得到。一个种子文件包含了对应资源的描述信息，例如文件名、文件大小等。Magnet，这里指的是磁力链接，它是一个类似URL的字符串地址。P2P软件通过磁力链接，会下载到一个种子文件，然后根据该种子文件继续真实资源的下载。</p>
-
-<p>磁力链接中包含的最重要的信息就是infohash。这个infohash一般为40字节或32字节，它其实只是资源infohash（20字节）的一种编码形式。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2013/05/19/crawl-dht/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/3/">&larr; Older</a>
@@ -369,7 +391,7 @@
 <li class='category'><a href='/categories/lua/'>lua (5)</a></li>
 <li class='category'><a href='/categories/module/'>module (2)</a></li>
 <li class='category'><a href='/categories/network/'>network (5)</a></li>
-<li class='category'><a href='/categories/other/'>other (5)</a></li>
+<li class='category'><a href='/categories/other/'>other (6)</a></li>
 <li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
 <li class='category'><a href='/categories/tips/'>tips (21)</a></li>
 <li class='category'><a href='/categories/web/'>web (4)</a></li>
@@ -380,6 +402,10 @@
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/02/02/2013/">my 2013</a>
+      </li>
     
       <li class="post">
         <a href="/2013/09/23/scala-feature-overview/">scala主要特性一览</a>
@@ -397,10 +423,6 @@
         <a href="/2013/08/08/sphinx-dhtcrawler/">dhtcrawler2换用sphinx搜索</a>
       </li>
     
-      <li class="post">
-        <a href="/2013/07/02/dhtcrawler2/">磁力搜索第二版-dhtcrawler2</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -413,7 +435,7 @@
 <section>
   <h1>Tags</h1>
   <ul class="tag-cloud">
-<a style="font-size: 90%" href="/tags/flash/">Flash</a>
+<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
 <a style="font-size: 118%" href="/tags/ice/">ICE</a>
 <a style="font-size: 118%" href="/tags/blog/">blog</a>
 <a style="font-size: 178%" href="/tags/c-c-/">c/c++</a>
@@ -443,7 +465,7 @@
     </div>
   </div>
   <footer role="contentinfo"><p>
-  Copyright &copy; 2013 - Kevin Lynx -
+  Copyright &copy; 2014 - Kevin Lynx -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 </p>
 

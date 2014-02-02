@@ -74,6 +74,55 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2013/02/12/using-clang/">使用Clang实现C语言编程规范检查</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-02-12T00:00:00+08:00" pubdate data-updated="true">Feb 12<span>th</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>概述</h2>
+
+<p>Clang是LLVM编译器工具集的前端部分，也就是涵盖词法分析、语法语义分析的部分。而LLVM是Apple在Mac OS上用于替代GCC工具集的编译器软件集合。Clang支持类C语言的语言，例如C、C++、Objective C。Clang的与众不同在于其模块化的设计，使其不仅实现编译器前端部分，并且包装成库的形式提供给上层应用。使用Clang可以做诸如语法高亮、语法检查、编程规范检查方面的工作，当然也可以作为你自己的编译器前端。</p>
+
+<p>编程规范一般包含编码格式和语义规范两部分。编码格式用于约定代码的排版、符号命名等；而语义规范则用于约定诸如类型匹配、表达式复杂度等，例如不允许对常数做逻辑运算、检查变量使用前是否被赋值等。本文描述的主要是基于语义方面的检查，其经验来自于最近做的一个检查工具，该工具实现了超过130条的规范。这份规范部分规则来自于<a href="http://en.wikipedia.org/wiki/MISRA_C">MISRA C</a></p>
+
+<h2>编程模式</h2>
+
+<p>编译器前端部分主要是输出代码对应的抽象语法树(AST)。Clang提供给上层的接口也主要是围绕语法树来做操作。通过google一些Clang的资料，你可能会如我当初一样对该如何正确地使用Clang心存疑惑。我最后使用的方式是基于RecursiveASTVisitor。这是一种类似回调的使用机制，通过提供特定语法树节点的接口，Clang在遍历语法树的时候，在遇到该节点时，就会调用到上层代码。不能说这是最好的方式，但起码它可以工作。基于RecursiveASTVisitor使用Clang，程序主体框架大致为：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/02/12/using-clang/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2012/09/17/c-plus-plus-ctor-virtual/">C++陷阱：构造函数中的多态</a></h1>
     
     
@@ -271,64 +320,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/09/03/goes-to-operator/">C/c++中的&#8211;>运算符</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-09-03T15:14:00+08:00" pubdate data-updated="true">Sep 3<span>rd</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>参考<a href="http://stackoverflow.com/questions/1642028/what-is-the-name-of-this-operator">What is the name of this operator: &#8220;&#8211;>&#8221;?</a></p>
-
-<p>c/c++中以下代码是合法的：</p>
-
-<div class="highlight"><pre><code class="c"><span class="cp">#include &lt;stdio.h&gt;</span>
-<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
-<span class="p">{</span>
-     <span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
-     <span class="k">while</span><span class="p">(</span> <span class="n">x</span> <span class="o">--&gt;</span> <span class="mi">0</span> <span class="p">)</span> <span class="c1">// x goes to 0</span>
-     <span class="p">{</span>
-        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d &quot;</span><span class="p">,</span> <span class="n">x</span><span class="p">);</span>
-     <span class="p">}</span>
-<span class="p">}</span>
-</code></pre>
-</div>
-
-
-
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/09/03/goes-to-operator/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/5/">&larr; Older</a>
@@ -355,7 +346,7 @@
 <li class='category'><a href='/categories/lua/'>lua (5)</a></li>
 <li class='category'><a href='/categories/module/'>module (2)</a></li>
 <li class='category'><a href='/categories/network/'>network (5)</a></li>
-<li class='category'><a href='/categories/other/'>other (5)</a></li>
+<li class='category'><a href='/categories/other/'>other (6)</a></li>
 <li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
 <li class='category'><a href='/categories/tips/'>tips (21)</a></li>
 <li class='category'><a href='/categories/web/'>web (4)</a></li>
@@ -366,6 +357,10 @@
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/02/02/2013/">my 2013</a>
+      </li>
     
       <li class="post">
         <a href="/2013/09/23/scala-feature-overview/">scala主要特性一览</a>
@@ -383,10 +378,6 @@
         <a href="/2013/08/08/sphinx-dhtcrawler/">dhtcrawler2换用sphinx搜索</a>
       </li>
     
-      <li class="post">
-        <a href="/2013/07/02/dhtcrawler2/">磁力搜索第二版-dhtcrawler2</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -399,7 +390,7 @@
 <section>
   <h1>Tags</h1>
   <ul class="tag-cloud">
-<a style="font-size: 90%" href="/tags/flash/">Flash</a>
+<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
 <a style="font-size: 118%" href="/tags/ice/">ICE</a>
 <a style="font-size: 118%" href="/tags/blog/">blog</a>
 <a style="font-size: 178%" href="/tags/c-c-/">c/c++</a>
@@ -429,7 +420,7 @@
     </div>
   </div>
   <footer role="contentinfo"><p>
-  Copyright &copy; 2013 - Kevin Lynx -
+  Copyright &copy; 2014 - Kevin Lynx -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 </p>
 

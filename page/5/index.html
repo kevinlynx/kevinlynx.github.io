@@ -74,6 +74,64 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2012/09/03/goes-to-operator/">C/c++中的&#8211;>运算符</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-03T15:14:00+08:00" pubdate data-updated="true">Sep 3<span>rd</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>参考<a href="http://stackoverflow.com/questions/1642028/what-is-the-name-of-this-operator">What is the name of this operator: &#8220;&#8211;>&#8221;?</a></p>
+
+<p>c/c++中以下代码是合法的：</p>
+
+<div class="highlight"><pre><code class="c"><span class="cp">#include &lt;stdio.h&gt;</span>
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+<span class="p">{</span>
+     <span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+     <span class="k">while</span><span class="p">(</span> <span class="n">x</span> <span class="o">--&gt;</span> <span class="mi">0</span> <span class="p">)</span> <span class="c1">// x goes to 0</span>
+     <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d &quot;</span><span class="p">,</span> <span class="n">x</span><span class="p">);</span>
+     <span class="p">}</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2012/09/03/goes-to-operator/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2012/08/29/branch-predictor/">为什么处理排序的数组要比非排序的快？</a></h1>
     
     
@@ -322,69 +380,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/08/17/memcmp-on-copy-value/">使用memcmp比较两个变量结果一定吗？</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-08-17T11:37:00+08:00" pubdate data-updated="true">Aug 17<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>参考<a href="http://stackoverflow.com/questions/11994513/is-using-memcmp-on-array-of-int-strictly-conforming">Is using memcmp on array of int strictly conforming?</a></p>
-
-<p>以下代码一定会输出ok吗？</p>
-
-<div class="highlight"><pre><code class="c"><span class="cp">#include &lt;stdio.h&gt;</span>
-<span class="cp">#include &lt;string.h&gt;</span>
-
-<span class="k">struct</span> <span class="n">S</span> <span class="p">{</span> <span class="kt">int</span> <span class="n">array</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span> <span class="p">};</span>
-
-<span class="kt">int</span> <span class="nf">main</span> <span class="p">()</span> <span class="p">{</span>
-    <span class="k">struct</span> <span class="n">S</span> <span class="n">a</span> <span class="o">=</span> <span class="p">{</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="p">}</span> <span class="p">};</span>
-    <span class="k">struct</span> <span class="n">S</span> <span class="n">b</span><span class="p">;</span>
-    <span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="p">;</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">memcmp</span><span class="p">(</span><span class="n">b</span><span class="p">.</span><span class="n">array</span><span class="p">,</span> <span class="n">a</span><span class="p">.</span><span class="n">array</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">b</span><span class="p">.</span><span class="n">array</span><span class="p">))</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-        <span class="n">puts</span><span class="p">(</span><span class="s">&quot;ok&quot;</span><span class="p">);</span>
-    <span class="p">}</span>
-    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span>
-</code></pre>
-</div>
-
-
-
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/08/17/memcmp-on-copy-value/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/6/">&larr; Older</a>
@@ -411,7 +406,7 @@
 <li class='category'><a href='/categories/lua/'>lua (5)</a></li>
 <li class='category'><a href='/categories/module/'>module (2)</a></li>
 <li class='category'><a href='/categories/network/'>network (5)</a></li>
-<li class='category'><a href='/categories/other/'>other (5)</a></li>
+<li class='category'><a href='/categories/other/'>other (6)</a></li>
 <li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
 <li class='category'><a href='/categories/tips/'>tips (21)</a></li>
 <li class='category'><a href='/categories/web/'>web (4)</a></li>
@@ -422,6 +417,10 @@
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/02/02/2013/">my 2013</a>
+      </li>
     
       <li class="post">
         <a href="/2013/09/23/scala-feature-overview/">scala主要特性一览</a>
@@ -439,10 +438,6 @@
         <a href="/2013/08/08/sphinx-dhtcrawler/">dhtcrawler2换用sphinx搜索</a>
       </li>
     
-      <li class="post">
-        <a href="/2013/07/02/dhtcrawler2/">磁力搜索第二版-dhtcrawler2</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -455,7 +450,7 @@
 <section>
   <h1>Tags</h1>
   <ul class="tag-cloud">
-<a style="font-size: 90%" href="/tags/flash/">Flash</a>
+<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
 <a style="font-size: 118%" href="/tags/ice/">ICE</a>
 <a style="font-size: 118%" href="/tags/blog/">blog</a>
 <a style="font-size: 178%" href="/tags/c-c-/">c/c++</a>
@@ -485,7 +480,7 @@
     </div>
   </div>
   <footer role="contentinfo"><p>
-  Copyright &copy; 2013 - Kevin Lynx -
+  Copyright &copy; 2014 - Kevin Lynx -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 </p>
 
