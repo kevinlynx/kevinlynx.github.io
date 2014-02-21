@@ -74,6 +74,55 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2014/02/21/dhtcrawler-process/">Dhtcrawler的进程模型经验</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-02-21T00:00:00+08:00" pubdate data-updated="true">Feb 21<span>st</span>, 2014</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>距离写<a href="http://codemacro.com/2013/07/02/dhtcrawler2/">dhtcrawler</a>已经有半年时间。半年前就想总结点心得经验，但最后写出来的并没有表达出我特别有感慨的地方。最近又被人问到这方面的经验问题，才静下心来思考整理了下。</p>
+
+<p>我的经验是关于在写一个网络项目时所涉及到的架构（或者说是模型）。</p>
+
+<p>在dhtcrawler中，一个主要的问题是：程序在网络中需要尽可能快尽可能多地收集请求，然后程序需要尽可能快地加工处理这些信息。本质上就这么简单，我觉得很多网络系统面临的都可能是类似的问题。</p>
+
+<p>详细点说，dhtcrawler高峰期每天会收到2000万的DHT协议请求，收到这些请求后，dhtcrawler需要对这些请求做处理，包括：合并相同的请求；从外部网站请求下载种子文件；新增/更新种子信息到数据库；建立种子sphinx索引等。在实际运行期间，高峰期每天能新录入14万个种子。</p>
+
+<p>那么如何架构这个系统来让处理速度尽可能地快呢？首先，毫无疑问这个系统是多线程/多进程，甚至是分布式的。写一个多线程程序学几个API谁都会，但是如何组织这些线程以让系统最优则是一个较困难的问题。根据dhtcrawler的经验，我简单总结了以下几种模型/架构：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/02/21/dhtcrawler-process/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2014/02/02/2013/">My 2013</a></h1>
     
     
@@ -348,59 +397,6 @@ $str
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2013/08/08/sphinx-dhtcrawler/">Dhtcrawler2换用sphinx搜索</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-08-08T00:00:00+08:00" pubdate data-updated="true">Aug 8<span>th</span>, 2013</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>dhtcrawler2最开始使用mongodb自带的全文搜索引擎搜索资源。搜索一些短关键字时很容易导致erlang进程call timeout，也就是查询时间太长。对于像<code>avi</code>这种关键字，搜索时间长达十几秒。搜索的资源数量200万左右。这其中大部分资源只是对root文件名进行了索引，即对于多文件资源而言没有索引单个文件名。索引方式有部分资源是按照字符串子串的形式，没有拆词，非常占用存储空间；有部分是使用了rmmseg（我编译了rmmseg-cpp作为erlang nif库调用 <a href="https://github.com/kevinlynx/erl-rmmseg">erl-rmmseg</a>）进行了拆词，占用空间小了很多，但由于词库问题很多片里的词汇没拆出来。</p>
-
-<p>很早以前我以为搜索耗时的原因是因为数据库太忙，想部署个mongodb集群出来。后来发现数据库没有任何读写的状态下，查询依然慢。终于只好放弃mongodb自带的文本搜索。于是我改用sphinx。简单起见，我直接下载了<a href="http://www.coreseek.cn/">coreseek4.1</a>（sphinx的一个支持中文拆词的包装）。</p>
-
-<p>现在，已经导入了200多万的资源进sphinx，并且索引了所有文件名，索引文件达800M。对于<code>avi</code>关键字的搜索大概消耗0.2秒的时间。<a href="http://bt.cm/e/http_handler:search?q=avi">搜索试试</a>。</p>
-
-<p>以下记录下sphinx在dhtcrawler的应用</p>
-
-<h3>sphinx简介</h3>
-
-<p>sphinx包含两个主要的程序：indexer和searchd。indexer用于建立文本内容的索引，然后searchd基于这些索引提供文本搜索功能，而要使用该功能，可以遵循searchd的网络协议连接searchd这个服务来使用。</p>
-
-<p>indexer可以通过多种方式来获取这些文本内容，文本内容的来源称为数据源。sphinx内置mysql这种数据源，意思是可以直接从mysql数据库中取得数据。sphinx还支持xmlpipe2这种数据源，其数据以xml格式提供给indexer。要导入mongodb数据库里的内容，可以选择使用xmlpipe2这种方式。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2013/08/08/sphinx-dhtcrawler/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/2/">&larr; Older</a>
@@ -419,11 +415,11 @@ $str
 <li class='category'><a href='/categories/scala/'>Scala (1)</a></li>
 <li class='category'><a href='/categories/c-c-/'>c/c++ (13)</a></li>
 <li class='category'><a href='/categories/clang/'>clang (1)</a></li>
-<li class='category'><a href='/categories/erlang/'>erlang (7)</a></li>
+<li class='category'><a href='/categories/erlang/'>erlang (8)</a></li>
 <li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
 <li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
 <li class='category'><a href='/categories/lua/'>lua (5)</a></li>
-<li class='category'><a href='/categories/module/'>module (2)</a></li>
+<li class='category'><a href='/categories/module/'>module (3)</a></li>
 <li class='category'><a href='/categories/network/'>network (5)</a></li>
 <li class='category'><a href='/categories/other/'>other (6)</a></li>
 <li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
@@ -436,6 +432,10 @@ $str
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/02/21/dhtcrawler-process/">dhtcrawler的进程模型经验</a>
+      </li>
     
       <li class="post">
         <a href="/2014/02/02/2013/">my 2013</a>
@@ -453,10 +453,6 @@ $str
         <a href="/2013/08/15/debug-esp-bug/">记一次堆栈平衡错误</a>
       </li>
     
-      <li class="post">
-        <a href="/2013/08/08/sphinx-dhtcrawler/">dhtcrawler2换用sphinx搜索</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -469,21 +465,21 @@ $str
 <section>
   <h1>Tags</h1>
   <ul class="tag-cloud">
-<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
 <a style="font-size: 118%" href="/tags/ice/">ICE</a>
+<a style="font-size: 90%" href="/tags/javascript/">JavaScript</a>
 <a style="font-size: 118%" href="/tags/blog/">blog</a>
 <a style="font-size: 178%" href="/tags/c-c-/">c/c++</a>
-<a style="font-size: 154%" href="/tags/dht/">dht</a>
-<a style="font-size: 118%" href="/tags/dhtcrawler/">dhtcrawler</a>
-<a style="font-size: 168%" href="/tags/erlang/">erlang</a>
+<a style="font-size: 162%" href="/tags/dht/">dht</a>
+<a style="font-size: 134%" href="/tags/dhtcrawler/">dhtcrawler</a>
+<a style="font-size: 173%" href="/tags/erlang/">erlang</a>
 <a style="font-size: 134%" href="/tags/game-develop/">game develop</a>
 <a style="font-size: 118%" href="/tags/html/">html</a>
 <a style="font-size: 90%" href="/tags/ice/">ice</a>
 <a style="font-size: 154%" href="/tags/lisp/">lisp</a>
 <a style="font-size: 154%" href="/tags/lua/">lua</a>
-<a style="font-size: 134%" href="/tags/magnet/">magnet</a>
+<a style="font-size: 146%" href="/tags/magnet/">magnet</a>
 <a style="font-size: 146%" href="/tags/octopress/">octopress</a>
-<a style="font-size: 146%" href="/tags/p2p/">p2p</a>
+<a style="font-size: 154%" href="/tags/p2p/">p2p</a>
 <a style="font-size: 146%" href="/tags/ruby/">ruby</a>
 <a style="font-size: 90%" href="/tags/rup/">rup</a>
 <a style="font-size: 210%" href="/tags/tips/">tips</a>

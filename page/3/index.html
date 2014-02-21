@@ -74,6 +74,64 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2013/06/03/erlang-code-snippets/">Erlang编程技巧若干</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-06-03T21:53:00+08:00" pubdate data-updated="true">Jun 3<span>rd</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>guard</h2>
+
+<p>guard可以以逗号或者分号分隔，以逗号分隔表示最终的结果为各个guard的and结果，以分号则是只要任意一个guard为true则最终结果为true。</p>
+
+<div class="highlight"><pre><code class="erlang"><span class="nf">guard</span><span class="p">(</span><span class="nv">X</span><span class="p">,</span> <span class="nv">Y</span><span class="p">)</span> <span class="k">when</span> <span class="ow">not</span><span class="p">(</span><span class="nv">X</span><span class="o">&gt;</span><span class="nv">Y</span><span class="p">),</span> <span class="nb">is_atom</span><span class="p">(</span><span class="nv">X</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nv">X</span> <span class="o">+</span> <span class="nv">Y</span><span class="p">.</span>
+</code></pre>
+</div>
+
+
+<p>guard在list comprehension中可以筛选元素：</p>
+
+<div class="highlight"><pre><code class="erlang"><span class="nv">NewNodes</span>  <span class="o">=</span> <span class="p">[</span><span class="nv">Node</span> <span class="p">||</span> <span class="nv">Node</span> <span class="o">&lt;-</span> <span class="nv">AllNodes</span><span class="p">,</span> <span class="ow">not</span> <span class="nn">gb_sets</span><span class="p">:</span><span class="nf">is_member</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="nv">NewQueried</span><span class="p">)],</span>
+</code></pre>
+</div>
+
+
+<p>guard中不能使用自定义函数，因为guard应该保证没有副作用，但自定义函数无法保证这一点，所以erlang禁止在guard中使用自定义函数。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/06/03/erlang-code-snippets/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2013/05/19/crawl-dht/">P2P中DHT网络爬虫</a></h1>
     
     
@@ -314,61 +372,6 @@ Obj-&gt;func(args)
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2013/02/15/ice-overview/">分布式程序开发平台ICE概览</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-02-15T00:00:00+08:00" pubdate data-updated="true">Feb 15<span>th</span>, 2013</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>本文基于ICE Manual及相关文档就ICE的一些主要特性做一个概览，它不是一个tutorial，不是一个guid，更不是manual。</p>
-
-<h2>概览</h2>
-
-<p><a href="http://www.zeroc.com/index.html">ICE</a>，Internet Communications Engine，按照官方介绍，是一个支持C++、.Net、Java、Python、Objective-C、Ruby、PHP及ActionScript等语言的分布式程序开发平台。按照我的理解，简单来说它是一个核心功能包装RPC的库。要把这个RPC包装得漂亮，自然而然，对于使用者而言，调用一个远端的接口和调用一个本地的接口没有什么区别，例如：</p>
-
-<div class="highlight"><pre><code class="c">    <span class="n">Object</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="n">xxx</span>
-    <span class="n">obj</span><span class="o">-&gt;</span><span class="n">sayHello</span><span class="p">();</span> 
-</code></pre>
-</div>
-
-
-<p>ICE包装<code>sayHello</code>接口，当应用层调用该接口时，ICE发送调用请求到远端服务器，接收返回结果并返回给应用层。ICE在接口提供方面，做到了这一点。</p>
-
-<p>以下，我将逐个给出ICE中的一些工具、组件、特性说明，以展示它作为一个分布式程序开发平台所拥有的能力。到目前为止，所有这些信息均来自于ICE相关文档，总结出来权当为自己服务。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2013/02/15/ice-overview/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/4/">&larr; Older</a>
@@ -389,11 +392,11 @@ Obj-&gt;func(args)
 <li class='category'><a href='/categories/scala/'>Scala (1)</a></li>
 <li class='category'><a href='/categories/c-c-/'>c/c++ (13)</a></li>
 <li class='category'><a href='/categories/clang/'>clang (1)</a></li>
-<li class='category'><a href='/categories/erlang/'>erlang (7)</a></li>
+<li class='category'><a href='/categories/erlang/'>erlang (8)</a></li>
 <li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
 <li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
 <li class='category'><a href='/categories/lua/'>lua (5)</a></li>
-<li class='category'><a href='/categories/module/'>module (2)</a></li>
+<li class='category'><a href='/categories/module/'>module (3)</a></li>
 <li class='category'><a href='/categories/network/'>network (5)</a></li>
 <li class='category'><a href='/categories/other/'>other (6)</a></li>
 <li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
@@ -406,6 +409,10 @@ Obj-&gt;func(args)
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/02/21/dhtcrawler-process/">dhtcrawler的进程模型经验</a>
+      </li>
     
       <li class="post">
         <a href="/2014/02/02/2013/">my 2013</a>
@@ -423,10 +430,6 @@ Obj-&gt;func(args)
         <a href="/2013/08/15/debug-esp-bug/">记一次堆栈平衡错误</a>
       </li>
     
-      <li class="post">
-        <a href="/2013/08/08/sphinx-dhtcrawler/">dhtcrawler2换用sphinx搜索</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -439,21 +442,21 @@ Obj-&gt;func(args)
 <section>
   <h1>Tags</h1>
   <ul class="tag-cloud">
-<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
 <a style="font-size: 118%" href="/tags/ice/">ICE</a>
+<a style="font-size: 90%" href="/tags/javascript/">JavaScript</a>
 <a style="font-size: 118%" href="/tags/blog/">blog</a>
 <a style="font-size: 178%" href="/tags/c-c-/">c/c++</a>
-<a style="font-size: 154%" href="/tags/dht/">dht</a>
-<a style="font-size: 118%" href="/tags/dhtcrawler/">dhtcrawler</a>
-<a style="font-size: 168%" href="/tags/erlang/">erlang</a>
+<a style="font-size: 162%" href="/tags/dht/">dht</a>
+<a style="font-size: 134%" href="/tags/dhtcrawler/">dhtcrawler</a>
+<a style="font-size: 173%" href="/tags/erlang/">erlang</a>
 <a style="font-size: 134%" href="/tags/game-develop/">game develop</a>
 <a style="font-size: 118%" href="/tags/html/">html</a>
 <a style="font-size: 90%" href="/tags/ice/">ice</a>
 <a style="font-size: 154%" href="/tags/lisp/">lisp</a>
 <a style="font-size: 154%" href="/tags/lua/">lua</a>
-<a style="font-size: 134%" href="/tags/magnet/">magnet</a>
+<a style="font-size: 146%" href="/tags/magnet/">magnet</a>
 <a style="font-size: 146%" href="/tags/octopress/">octopress</a>
-<a style="font-size: 146%" href="/tags/p2p/">p2p</a>
+<a style="font-size: 154%" href="/tags/p2p/">p2p</a>
 <a style="font-size: 146%" href="/tags/ruby/">ruby</a>
 <a style="font-size: 90%" href="/tags/rup/">rup</a>
 <a style="font-size: 210%" href="/tags/tips/">tips</a>

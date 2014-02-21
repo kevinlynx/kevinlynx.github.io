@@ -4,7 +4,7 @@
   <title><![CDATA[Tag: magnet | loop in codes]]></title>
   <link href="http://codemacro.com/tags/magnet/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-02-02T13:51:31+08:00</updated>
+  <updated>2014-02-21T21:01:23+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,83 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[dhtcrawler的进程模型经验]]></title>
+    <link href="http://codemacro.com/2014/02/21/dhtcrawler-process/"/>
+    <updated>2014-02-21T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2014/02/21/dhtcrawler-process</id>
+    <content type="html"><![CDATA[<p>距离写<a href="http://codemacro.com/2013/07/02/dhtcrawler2/">dhtcrawler</a>已经有半年时间。半年前就想总结点心得经验，但最后写出来的并没有表达出我特别有感慨的地方。最近又被人问到这方面的经验问题，才静下心来思考整理了下。</p>
+
+<p>我的经验是关于在写一个网络项目时所涉及到的架构（或者说是模型）。</p>
+
+<p>在dhtcrawler中，一个主要的问题是：程序在网络中需要尽可能快尽可能多地收集请求，然后程序需要尽可能快地加工处理这些信息。本质上就这么简单，我觉得很多网络系统面临的都可能是类似的问题。</p>
+
+<p>详细点说，dhtcrawler高峰期每天会收到2000万的DHT协议请求，收到这些请求后，dhtcrawler需要对这些请求做处理，包括：合并相同的请求；从外部网站请求下载种子文件；新增/更新种子信息到数据库；建立种子sphinx索引等。在实际运行期间，高峰期每天能新录入14万个种子。</p>
+
+<p>那么如何架构这个系统来让处理速度尽可能地快呢？首先，毫无疑问这个系统是多线程/多进程，甚至是分布式的。写一个多线程程序学几个API谁都会，但是如何组织这些线程以让系统最优则是一个较困难的问题。根据dhtcrawler的经验，我简单总结了以下几种模型/架构：</p>
+
+<!-- more -->
+
+
+<h2>简单模型</h2>
+
+<p>约定一个线程/进程为worker。那么简单模型就是每一个worker都包含了完整的处理逻辑，从收到请求，到把该请求处理完毕。</p>
+
+<pre><code>Req -&gt; Worker -&gt; Process -&gt; O
+</code></pre>
+
+<p>当然，我们可以给系统配置若干个Worker，以求最大化效率。例子中，Req的来源是非常快非常多的，而 Process过程相对而言则非常慢，涉及到各种IO操作（从外部网站下载种子，写入数据库等）。</p>
+
+<p>这个模型的整体效率完全受限于Process的过程。如果Req的来源速度还不是稳定的，那么Process的速度将严重影响系统的吞吐性。</p>
+
+<p>当然这个模型的优点就是特别简单，咋并发系统中简单有利于维护和调试。</p>
+
+<h2>粗粒度分离模型</h2>
+
+<p>分离模型指的是把Req的获取过程和处理过程分离开来。也就是合理地将系统中慢的部分和快的部分分离。然后两者之间通过一些数据共享方式来交互。</p>
+
+<pre><code>Req -&gt; ReqWorker -&gt; Pool
+Pool -&gt; ReqProcessor -&gt; O
+</code></pre>
+
+<p>这个时候，ReqWorker可以以尽可能快的速度收集Req，不用受限于ReqProcessor的处理速度。</p>
+
+<p>这个Pool的实现有很多方式。这种模型有点类似于线程/进程间的交互，典型的生产者消费者问题。在需要同步的实现中，Pool可能需要写的比较精巧。</p>
+
+<p>Pool可以放置在内存中。也就是ReqWorker把收到的请求稍作加工就放到内存中。这里的稍作加工可以是一段时间里的重复数据合并。ReqProcessor则可以以一定策略从这个内存中取得Req。这个策略可以是以一定时间间隔，或者基于ReqWorker的通知。</p>
+
+<p>在erlang中，可以以一个单独的进程来维护这个Pool。那么这里就是通过erlang的进程来实现数据的同步。本质上也是基于erlang进程的mailbox机制。这个维护Pool的进程逻辑足够简单，可以快速响应ReqWorker的Req压入，以及ReqProcessor的Req取出。</p>
+
+<p><strong>在用erlang的过程中，很多时候就是在平衡这种(actor)[http://en.wikipedia.org/wiki/Actor_model]进程模式中各种进程间的协调程度。</strong>平衡不好会导致两种情况：a)进程mailbox暴涨最后内存耗尽；b)消费者进程请求资源超时。</p>
+
+<p>Pool被放置在内存中时，本身也可能有问题。例如数据量过大，无论是直接基于OS的程序还是基于erlang/jvm等虚拟机的程序，都可能在这个时候出现问题。并且，把数据放置在内存中也可能由于程序不稳定导致数据丢失。</p>
+
+<p>dhtcrawler中把很多中间数据放置在数据库中。当然这里是个权衡问题。更复杂的系统里我相信就可以加入内存数据库之类的系统。</p>
+
+<p>使用了分离模型之后，还是可以配置每种进程的数量，但是这里的问题在于很难平衡每种进程所配置的比例，以最大化使用CPU内存之类的资源。</p>
+
+<h2>细粒度分离模型</h2>
+
+<p>异步程序编写起来始终比同步程序更困难。在异步系统中需要加入各种例如事件、消息等机制。一个简单的逻辑可能会分散到程序的不同地方。对于资源的管理，错误的排除，性能的调优都带来了困难。</p>
+
+<p>细粒度分离模型同粗粒度模型一样，只不过对进程种类的划分粒度更细。在erlang这种使用进程来组织程序合情合理的语言中，就可以做到每一种进程仅仅只做一种事情，就像函数设计原则一样，功能单一。</p>
+
+<p>以dhtcrawler为例，整个系统可以划分为如下若干种进程：</p>
+
+<ul>
+<li>请求收集，用于收集请求，涉及到网络操作和数据库操作</li>
+<li>请求分类，将请求按是否需要从外部网站下载种子分类，仅涉及到数据库操作</li>
+<li>种子下载，从外部网站下载种子</li>
+<li>种子索引，建立sphinx索引</li>
+</ul>
+
+
+<p>部分简单的进程其代码实现量不到千行。在erlang的进程中也是简单的几个消息，维护起来非常容易。</p>
+
+<p>从上面的这种模型中，进程之间全部通过数据库做交互，那就很自然地可以发展为分布式系统。数据库再通过集群之类的技术，可以较高地提升系统的吞吐量。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[磁力搜索第二版-dhtcrawler2]]></title>
