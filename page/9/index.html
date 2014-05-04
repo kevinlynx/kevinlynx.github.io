@@ -74,6 +74,51 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2012/07/19/popup-window-in-html/">HTML中实现弹出窗口</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-07-19T14:56:00+08:00" pubdate data-updated="true">Jul 19<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><img class="right" src="/assets/res/popup-window-tip.png"></p>
+
+<p>做网页时弹出一个窗口显示一些内容是一种很常见的交互方式，如图中用户点击“个人资料“时并不是转到一个新页面，而是在当前页面弹出修改密码的窗口。弹出窗口的实现方式有很多，这里罗列一种。</p>
+
+<p>弹出窗口的内容是作为一个单独的div存在的，这个div可以在页面刚开始载入时不填入内容，而在以后通过json或者直接返回js来填入。其次，弹出窗口的显示位置一般是绝对位置，一方面是不影响页面布局，另一方面也希望其作为一个顶层窗口来呈现，所以需要指定其position css。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2012/07/19/popup-window-in-html/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2012/07/18/start-to-write-tips/">开始记录编程方面的技巧</a></h1>
     
     
@@ -280,53 +325,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/04/25/game-server-info-2/">谈谈我们的游戏逻辑服务器实现（二）</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-04-25T00:00:00+08:00" pubdate data-updated="true">Apr 25<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>上一篇谈了一些关键技术的实现方案。本篇描述一些遇到的问题。</p>
-
-<h2>一</h2>
-
-<p>在策划制作完了几个职业后（主要是技能制作），大概去年年底公司内部进行了一次混战测试。30个角色在一个场景进行混战，测试结果从技术上来说非常不理想。首先是客户端和服务器都巨卡无比。服务器CPU一直是满负载状态。而客户端又频繁宕机。</p>
-
-<p>我们关注的主要问题，是服务器CPU满负载问题。最开始，我通过日志初步定位为网络模块问题，因为逻辑线程表现不是那么差。然后考虑到技能过程中的特效、动作都是通过服务器消息驱动，并且本身特效和动作就比一般网游复杂，通过逐一屏蔽这一部分功能，最终确认确为网络模块导致。然后团队决定从两方面努力：重写网络模块，改善性能；改善技能实现机制，将表现类逻辑移到客户端。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/04/25/game-server-info-2/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/10/">&larr; Older</a>
@@ -345,14 +343,14 @@
     <li class='category'><a href='/categories/ice/'>ICE (2)</a></li>
 <li class='category'><a href='/categories/javascript/'>Javascript (1)</a></li>
 <li class='category'><a href='/categories/scala/'>Scala (1)</a></li>
-<li class='category'><a href='/categories/c-c-/'>c/c++ (13)</a></li>
+<li class='category'><a href='/categories/c-c-/'>c/c++ (14)</a></li>
 <li class='category'><a href='/categories/clang/'>clang (1)</a></li>
 <li class='category'><a href='/categories/erlang/'>erlang (8)</a></li>
 <li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
 <li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
 <li class='category'><a href='/categories/lua/'>lua (5)</a></li>
 <li class='category'><a href='/categories/module/'>module (3)</a></li>
-<li class='category'><a href='/categories/network/'>network (5)</a></li>
+<li class='category'><a href='/categories/network/'>network (6)</a></li>
 <li class='category'><a href='/categories/other/'>other (6)</a></li>
 <li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
 <li class='category'><a href='/categories/tips/'>tips (21)</a></li>
@@ -364,6 +362,10 @@
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/05/04/muduo-source/">muduo源码阅读</a>
+      </li>
     
       <li class="post">
         <a href="/2014/02/21/dhtcrawler-process/">dhtcrawler的进程模型经验</a>
@@ -381,10 +383,6 @@
         <a href="/2013/08/21/javascript-overview/">Javascript Overview</a>
       </li>
     
-      <li class="post">
-        <a href="/2013/08/15/debug-esp-bug/">记一次堆栈平衡错误</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -397,10 +395,10 @@
 <section>
   <h1>Tags</h1>
   <ul class="tag-cloud">
+<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
 <a style="font-size: 118%" href="/tags/ice/">ICE</a>
-<a style="font-size: 90%" href="/tags/javascript/">JavaScript</a>
 <a style="font-size: 118%" href="/tags/blog/">blog</a>
-<a style="font-size: 178%" href="/tags/c-c-/">c/c++</a>
+<a style="font-size: 182%" href="/tags/c-c-/">c/c++</a>
 <a style="font-size: 162%" href="/tags/dht/">dht</a>
 <a style="font-size: 134%" href="/tags/dhtcrawler/">dhtcrawler</a>
 <a style="font-size: 173%" href="/tags/erlang/">erlang</a>

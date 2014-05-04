@@ -74,6 +74,66 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2013/08/15/debug-esp-bug/">记一次堆栈平衡错误</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-08-15T00:00:00+08:00" pubdate data-updated="true">Aug 15<span>th</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>最近在一个使用Visual Studio开发的C++程序中，出现了如下错误：</p>
+
+<blockquote><p>Run-Time Check Failure #0 - The value of ESP was not properly saved across a function call.  This is usually a result of calling a function declared with one calling convention with a function pointer declared with a different calling convention.</p></blockquote>
+
+<p>这个错误主要指的就是函数调用堆栈不平衡。在C/C++程序中，调用一个函数前会保存当前堆栈信息，目标函数返回后会把堆栈恢复到调用前的状态。函数的参数、局部变量会影响堆栈。而函数堆栈不平衡，一般是因为函数调用方式和目标函数定义方式不一致导致，例如：</p>
+
+<div class="highlight"><pre><code class="c"><span class="kt">void</span> <span class="kr">__stdcall</span> <span class="nf">func</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">)</span> <span class="p">{</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span> <span class="p">{</span>
+    <span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">funcptr</span><span class="p">)(</span><span class="kt">int</span><span class="p">);</span>
+    <span class="n">funcptr</span> <span class="n">ptr</span> <span class="o">=</span> <span class="p">(</span><span class="n">funcptr</span><span class="p">)</span> <span class="n">func</span><span class="p">;</span>
+    <span class="n">ptr</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span> <span class="c1">// 返回后导致堆栈不平衡</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+
+<p><code>__stdcall</code>修饰的函数，其函数参数的出栈由被调用者自己完成，而<code>__cdecl</code>，也就是C/C++函数的默认调用约定，则是调用者完成参数出栈。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/08/15/debug-esp-bug/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2013/08/08/sphinx-dhtcrawler/">Dhtcrawler2换用sphinx搜索</a></h1>
     
     
@@ -295,71 +355,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2013/06/09/ice-web-client/">使用ActionScript开发Ice Web客户端</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-06-09T00:00:00+08:00" pubdate data-updated="true">Jun 9<span>th</span>, 2013</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>我们目前的项目服务器端使用了<a href="http://codemacro.com/2013/02/15/ice-overview/">Ice</a>来构建。Ice有一套自己的网络协议，客户端和服务器端可以基于此协议来交互。由于Ice使用Slice这种中间语言来描述服务器和客户端的交互接口，所以它可以做到极大限度地屏蔽网络协议这个细节。也就是说，我们只要借助Ice和Slice，我们可以轻松地编写网络程序。</p>
-
-<p>然后，我们的后端现在需要一个运行在Web浏览器上的客户端。要与Ice做交互，如果使用TCP协议的话，得保证是长连接的。但HTTP是短连接的。而另一方面，我们还需要选择一个Ice支持的和Web相关的语言来做这件事情。如果要在浏览器端直接与Ice服务建立连接，可供选择的语言/平台包括：</p>
-
-<ul>
-<li>Flash</li>
-<li>Silverlight</li>
-</ul>
-
-
-<p>因为我之前用erlang简单写了个Ice的客户端库，所以我对Ice底层协议有一定了解，可以不一定使用Ice支持的语言，所以HTML5其实也是个选择。此外，如果在浏览器端使用Applet，Java可能也是个选择。</p>
-
-<p>其实几个月前在这块的技术选择问题上我就做过简单的研究，当时确定的方案是使用Flash。但是，后来人员招聘上遇到了问题，看起来要招一个会ActionScript和前端页面技术的程序员来做我们这种项目，似乎大材小用，成本显高了。</p>
-
-<p>那么，考虑到团队里有现成的Java程序员，而且看起来招一个会用Java写网站的程序员简单又便宜，似乎是排除技术原因的最好选择。但是，如果不在浏览器端直接连接服务器来做交互，而是让Web服务器端来做中转的话，会面临不少问题：</p>
-
-<ul>
-<li>浏览器端操作结果的获取问题，说白了就是非实时了，得用Ajax等等技术去模拟实时，代价就是不断轮训，也就是通常说的poll</li>
-<li>Web服务器端需要编写大量代码：对用户操作的映射，结果缓存等等</li>
-</ul>
-
-
-<p>如果能用Flash包装与服务器交互的部分，而把UI相关的东西留给HTML/JS/CSS去做，那是不是可行一点？如果只是用ActionScript编写与服务器端的交互逻辑代码，我就不需要花时间去系统学习ActionScript，甚至如何用Flash做界面，我甚至不用搞懂这些技术之间的关系。基本上看些Ice for ActionScript的例子代码，就可以完成这件事情。</p>
-
-<p>以下记录一些主要的过程/方法：</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2013/06/09/ice-web-client/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/3/">&larr; Older</a>
@@ -378,14 +373,14 @@
     <li class='category'><a href='/categories/ice/'>ICE (2)</a></li>
 <li class='category'><a href='/categories/javascript/'>Javascript (1)</a></li>
 <li class='category'><a href='/categories/scala/'>Scala (1)</a></li>
-<li class='category'><a href='/categories/c-c-/'>c/c++ (13)</a></li>
+<li class='category'><a href='/categories/c-c-/'>c/c++ (14)</a></li>
 <li class='category'><a href='/categories/clang/'>clang (1)</a></li>
 <li class='category'><a href='/categories/erlang/'>erlang (8)</a></li>
 <li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
 <li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
 <li class='category'><a href='/categories/lua/'>lua (5)</a></li>
 <li class='category'><a href='/categories/module/'>module (3)</a></li>
-<li class='category'><a href='/categories/network/'>network (5)</a></li>
+<li class='category'><a href='/categories/network/'>network (6)</a></li>
 <li class='category'><a href='/categories/other/'>other (6)</a></li>
 <li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
 <li class='category'><a href='/categories/tips/'>tips (21)</a></li>
@@ -397,6 +392,10 @@
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/05/04/muduo-source/">muduo源码阅读</a>
+      </li>
     
       <li class="post">
         <a href="/2014/02/21/dhtcrawler-process/">dhtcrawler的进程模型经验</a>
@@ -414,10 +413,6 @@
         <a href="/2013/08/21/javascript-overview/">Javascript Overview</a>
       </li>
     
-      <li class="post">
-        <a href="/2013/08/15/debug-esp-bug/">记一次堆栈平衡错误</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -430,10 +425,10 @@
 <section>
   <h1>Tags</h1>
   <ul class="tag-cloud">
+<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
 <a style="font-size: 118%" href="/tags/ice/">ICE</a>
-<a style="font-size: 90%" href="/tags/javascript/">JavaScript</a>
 <a style="font-size: 118%" href="/tags/blog/">blog</a>
-<a style="font-size: 178%" href="/tags/c-c-/">c/c++</a>
+<a style="font-size: 182%" href="/tags/c-c-/">c/c++</a>
 <a style="font-size: 162%" href="/tags/dht/">dht</a>
 <a style="font-size: 134%" href="/tags/dhtcrawler/">dhtcrawler</a>
 <a style="font-size: 173%" href="/tags/erlang/">erlang</a>

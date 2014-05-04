@@ -74,6 +74,67 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2014/05/04/muduo-source/">Muduo源码阅读</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-05-04T00:00:00+08:00" pubdate data-updated="true">May 4<span>th</span>, 2014</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>最近简单读了下<a href="http://blog.csdn.net/solstice/article/details/5848547">muduo</a>的源码，本文对其主要实现/结构简单总结下。</p>
+
+<p>muduo的主要源码位于net文件夹下，base文件夹是一些基础代码，不影响理解网络部分的实现。muduo主要类包括：</p>
+
+<ul>
+<li>EventLoop</li>
+<li>Channel</li>
+<li>Poller</li>
+<li>TcpConnection</li>
+<li>TcpClient</li>
+<li>TcpServer</li>
+<li>Connector</li>
+<li>Acceptor</li>
+<li>EventLoopThread</li>
+<li>EventLoopThreadPool</li>
+</ul>
+
+
+<p>其中，Poller（及其实现类）包装了Poll/EPoll，封装了OS针对设备(fd)的操作；Channel是设备fd的包装，在muduo中主要包装socket；TcpConnection抽象一个TCP连接，无论是客户端还是服务器只要建立了网络连接就会使用TcpConnection；TcpClient/TcpServer分别抽象TCP客户端和服务器；Connector/Acceptor分别包装TCP客户端和服务器的建立连接/接受连接；EventLoop是一个主控类，是一个事件发生器，它驱动Poller产生/发现事件，然后将事件派发到Channel处理；EventLoopThread是一个带有EventLoop的线程；EventLoopThreadPool自然是一个EventLoopThread的资源池，维护一堆EventLoopThread。</p>
+
+<p>阅读库源码时可以从库的接口层着手，看看关键功能是如何实现的。对于muduo而言，可以从TcpServer/TcpClient/EventLoop/TcpConnection这几个类着手。接下来看看主要功能的实现：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/05/04/muduo-source/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2014/02/21/dhtcrawler-process/">Dhtcrawler的进程模型经验</a></h1>
     
     
@@ -337,66 +398,6 @@ $str
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2013/08/15/debug-esp-bug/">记一次堆栈平衡错误</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-08-15T00:00:00+08:00" pubdate data-updated="true">Aug 15<span>th</span>, 2013</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>最近在一个使用Visual Studio开发的C++程序中，出现了如下错误：</p>
-
-<blockquote><p>Run-Time Check Failure #0 - The value of ESP was not properly saved across a function call.  This is usually a result of calling a function declared with one calling convention with a function pointer declared with a different calling convention.</p></blockquote>
-
-<p>这个错误主要指的就是函数调用堆栈不平衡。在C/C++程序中，调用一个函数前会保存当前堆栈信息，目标函数返回后会把堆栈恢复到调用前的状态。函数的参数、局部变量会影响堆栈。而函数堆栈不平衡，一般是因为函数调用方式和目标函数定义方式不一致导致，例如：</p>
-
-<div class="highlight"><pre><code class="c"><span class="kt">void</span> <span class="kr">__stdcall</span> <span class="nf">func</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">)</span> <span class="p">{</span>
-<span class="p">}</span>
-
-<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span> <span class="p">{</span>
-    <span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">funcptr</span><span class="p">)(</span><span class="kt">int</span><span class="p">);</span>
-    <span class="n">funcptr</span> <span class="n">ptr</span> <span class="o">=</span> <span class="p">(</span><span class="n">funcptr</span><span class="p">)</span> <span class="n">func</span><span class="p">;</span>
-    <span class="n">ptr</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span> <span class="c1">// 返回后导致堆栈不平衡</span>
-    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span>
-</code></pre>
-</div>
-
-
-<p><code>__stdcall</code>修饰的函数，其函数参数的出栈由被调用者自己完成，而<code>__cdecl</code>，也就是C/C++函数的默认调用约定，则是调用者完成参数出栈。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2013/08/15/debug-esp-bug/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/2/">&larr; Older</a>
@@ -413,14 +414,14 @@ $str
     <li class='category'><a href='/categories/ice/'>ICE (2)</a></li>
 <li class='category'><a href='/categories/javascript/'>Javascript (1)</a></li>
 <li class='category'><a href='/categories/scala/'>Scala (1)</a></li>
-<li class='category'><a href='/categories/c-c-/'>c/c++ (13)</a></li>
+<li class='category'><a href='/categories/c-c-/'>c/c++ (14)</a></li>
 <li class='category'><a href='/categories/clang/'>clang (1)</a></li>
 <li class='category'><a href='/categories/erlang/'>erlang (8)</a></li>
 <li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
 <li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
 <li class='category'><a href='/categories/lua/'>lua (5)</a></li>
 <li class='category'><a href='/categories/module/'>module (3)</a></li>
-<li class='category'><a href='/categories/network/'>network (5)</a></li>
+<li class='category'><a href='/categories/network/'>network (6)</a></li>
 <li class='category'><a href='/categories/other/'>other (6)</a></li>
 <li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
 <li class='category'><a href='/categories/tips/'>tips (21)</a></li>
@@ -432,6 +433,10 @@ $str
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/05/04/muduo-source/">muduo源码阅读</a>
+      </li>
     
       <li class="post">
         <a href="/2014/02/21/dhtcrawler-process/">dhtcrawler的进程模型经验</a>
@@ -449,10 +454,6 @@ $str
         <a href="/2013/08/21/javascript-overview/">Javascript Overview</a>
       </li>
     
-      <li class="post">
-        <a href="/2013/08/15/debug-esp-bug/">记一次堆栈平衡错误</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -465,10 +466,10 @@ $str
 <section>
   <h1>Tags</h1>
   <ul class="tag-cloud">
+<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
 <a style="font-size: 118%" href="/tags/ice/">ICE</a>
-<a style="font-size: 90%" href="/tags/javascript/">JavaScript</a>
 <a style="font-size: 118%" href="/tags/blog/">blog</a>
-<a style="font-size: 178%" href="/tags/c-c-/">c/c++</a>
+<a style="font-size: 182%" href="/tags/c-c-/">c/c++</a>
 <a style="font-size: 162%" href="/tags/dht/">dht</a>
 <a style="font-size: 134%" href="/tags/dhtcrawler/">dhtcrawler</a>
 <a style="font-size: 173%" href="/tags/erlang/">erlang</a>
