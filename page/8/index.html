@@ -74,6 +74,49 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2012/08/02/simple-oo-in-lua/">Lua里实现简单的类-对象</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-08-02T10:18:00+08:00" pubdate data-updated="true">Aug 2<span>nd</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>要在Lua里实现面向对象有很多方法，为了支持面向对象的一些特性（类、对象、继承、重载等），其实现可能会比较复杂。看看云风的<a href="http://blog.codingnow.com/2006/06/oo_lua.html">这篇</a>，以及后面的评论，有总结的不错的。这真是让人对Lua刮目相看。但是我并不需要这些机制，一般情况下我只需要支持类即可。</p>
+
+<p>类其实就是定义一个对象的函数模板，避免我写出带模块名并且第一个参数是操作对象的函数（像C一样）。以下代码提炼于rapanui（基于<a href="http://getmoai.com/">moai</a>的高层封装），摘抄于几个月前我基于rapanui移植到android上的一个<a href="https://github.com/kevinlynx/crazyeggs_mobile">小游戏</a>：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2012/08/02/simple-oo-in-lua/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2012/07/30/write-cpp-like-fp/">像写函数式语言代码一样写C++</a></h1>
     
     
@@ -261,60 +304,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/07/20/get-client-timezone-in-rails/">Rails中获取客户端时区</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-07-20T16:42:00+08:00" pubdate data-updated="true">Jul 20<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>开发网站功能时，有时候需要获取客户端（浏览器）所在的时区，然后根据不同的时区做一些不同的逻辑功能。这里提供一种方法，其思路为客户端通过js获取时区，然后发送给服务器，服务器存储时区到session中。</p>
-
-<div class="highlight"><pre><code class="javascript"><span class="kd">function</span> <span class="nx">submit_timezone</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span> <span class="p">{</span>
-  <span class="nx">$</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="nx">url</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;offset_min&#39;</span> <span class="o">:</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="p">(</span><span class="k">new</span> <span class="nb">Date</span><span class="p">()).</span><span class="nx">getTimezoneOffset</span><span class="p">())});</span>
-<span class="p">}</span>
-
-<span class="nx">$</span><span class="p">(</span><span class="nb">document</span><span class="p">).</span><span class="nx">ready</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
-    <span class="nx">submit_timezone</span><span class="p">(</span><span class="s1">&#39;&lt;%= sys_timezone_path %&gt;&#39;</span><span class="p">);</span>
-<span class="p">});</span>
-</code></pre>
-</div>
-
-
-
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/07/20/get-client-timezone-in-rails/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/9/">&larr; Older</a>
@@ -340,7 +329,7 @@
 <li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
 <li class='category'><a href='/categories/lua/'>lua (5)</a></li>
 <li class='category'><a href='/categories/module/'>module (3)</a></li>
-<li class='category'><a href='/categories/network/'>network (6)</a></li>
+<li class='category'><a href='/categories/network/'>network (7)</a></li>
 <li class='category'><a href='/categories/other/'>other (6)</a></li>
 <li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
 <li class='category'><a href='/categories/tips/'>tips (21)</a></li>
@@ -352,6 +341,10 @@
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/06/01/select-limit/">select真的有限制吗</a>
+      </li>
     
       <li class="post">
         <a href="/2014/05/04/muduo-source/">muduo源码阅读</a>
@@ -369,10 +362,6 @@
         <a href="/2013/09/23/scala-feature-overview/">scala主要特性一览</a>
       </li>
     
-      <li class="post">
-        <a href="/2013/08/21/javascript-overview/">Javascript Overview</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -385,7 +374,7 @@
 <section>
   <h1>Tags</h1>
   <ul class="tag-cloud">
-<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
+<a style="font-size: 90%" href="/tags/flash/">Flash</a>
 <a style="font-size: 118%" href="/tags/ice/">ICE</a>
 <a style="font-size: 118%" href="/tags/blog/">blog</a>
 <a style="font-size: 182%" href="/tags/c-c-/">c/c++</a>

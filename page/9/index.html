@@ -74,6 +74,60 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2012/07/20/get-client-timezone-in-rails/">Rails中获取客户端时区</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-07-20T16:42:00+08:00" pubdate data-updated="true">Jul 20<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>开发网站功能时，有时候需要获取客户端（浏览器）所在的时区，然后根据不同的时区做一些不同的逻辑功能。这里提供一种方法，其思路为客户端通过js获取时区，然后发送给服务器，服务器存储时区到session中。</p>
+
+<div class="highlight"><pre><code class="javascript"><span class="kd">function</span> <span class="nx">submit_timezone</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span> <span class="p">{</span>
+  <span class="nx">$</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="nx">url</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;offset_min&#39;</span> <span class="o">:</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="p">(</span><span class="k">new</span> <span class="nb">Date</span><span class="p">()).</span><span class="nx">getTimezoneOffset</span><span class="p">())});</span>
+<span class="p">}</span>
+
+<span class="nx">$</span><span class="p">(</span><span class="nb">document</span><span class="p">).</span><span class="nx">ready</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">submit_timezone</span><span class="p">(</span><span class="s1">&#39;&lt;%= sys_timezone_path %&gt;&#39;</span><span class="p">);</span>
+<span class="p">});</span>
+</code></pre>
+</div>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2012/07/20/get-client-timezone-in-rails/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2012/07/19/popup-window-in-html/">HTML中实现弹出窗口</a></h1>
     
     
@@ -274,57 +328,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/05/10/tolua-api/">tolua的tolua_toxxx系列API设计</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-05-10T00:00:00+08:00" pubdate data-updated="true">May 10<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>我们使用tolua++手工绑定c/c++接口到lua中，在绑定的接口实现里，就需要取出传入的参数。tolua++中提供了一系列tolua_toxxx函数，例如：</p>
-
-<div class="highlight"><pre><code class="c"><span class="n">lua_Number</span> <span class="n">tolua_tonumber</span><span class="p">(</span><span class="n">lua_State</span> <span class="o">*</span><span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">narg</span><span class="p">,</span> <span class="n">lua_Number</span> <span class="n">def</span><span class="p">)</span>
-<span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">tolua_tostring</span><span class="p">(</span><span class="n">lua_State</span> <span class="o">*</span><span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">narg</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">def</span><span class="p">)</span>
-</code></pre>
-</div>
-
-
-<p>这些函数都有一个def参数。乍一看，这些函数使用起来很简单。传入lua_State，传入参数在栈中的位置，然后再传一个<strong>失败</strong>后返回的默认值。</p>
-
-<p>我重点要说的是这里这个<strong>失败</strong>，按正常程序员的理解，针对lua而言，什么情况下算失败呢？lua语言里函数参数支持不传，此时实参为nil，将nil转换为一个c类型必然失败；参数类型不正确算不算失败？你传一个user data，c里按数字来取，这也算失败。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/05/10/tolua-api/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/10/">&larr; Older</a>
@@ -350,7 +353,7 @@
 <li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
 <li class='category'><a href='/categories/lua/'>lua (5)</a></li>
 <li class='category'><a href='/categories/module/'>module (3)</a></li>
-<li class='category'><a href='/categories/network/'>network (6)</a></li>
+<li class='category'><a href='/categories/network/'>network (7)</a></li>
 <li class='category'><a href='/categories/other/'>other (6)</a></li>
 <li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
 <li class='category'><a href='/categories/tips/'>tips (21)</a></li>
@@ -362,6 +365,10 @@
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/06/01/select-limit/">select真的有限制吗</a>
+      </li>
     
       <li class="post">
         <a href="/2014/05/04/muduo-source/">muduo源码阅读</a>
@@ -379,10 +386,6 @@
         <a href="/2013/09/23/scala-feature-overview/">scala主要特性一览</a>
       </li>
     
-      <li class="post">
-        <a href="/2013/08/21/javascript-overview/">Javascript Overview</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -395,7 +398,7 @@
 <section>
   <h1>Tags</h1>
   <ul class="tag-cloud">
-<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
+<a style="font-size: 90%" href="/tags/flash/">Flash</a>
 <a style="font-size: 118%" href="/tags/ice/">ICE</a>
 <a style="font-size: 118%" href="/tags/blog/">blog</a>
 <a style="font-size: 182%" href="/tags/c-c-/">c/c++</a>

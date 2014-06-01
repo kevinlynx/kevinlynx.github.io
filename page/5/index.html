@@ -74,6 +74,65 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2012/09/13/c-plus-plus-virtual-destructor/">C++陷阱：virtual析构函数</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-13T17:03:00+08:00" pubdate data-updated="true">Sep 13<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>有一天有个同事在通过vld调试一个内存泄漏问题，折腾了很久然后找到我。我瞥了一眼他的代码，发现问题和我曾经遇到的一模一样：</p>
+
+<div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">Base</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="o">~</span><span class="n">Base</span><span class="p">();</span>
+<span class="p">};</span>
+
+<span class="n">class</span> <span class="n">Derived</span> <span class="o">:</span> <span class="n">public</span> <span class="n">Base</span> <span class="p">{</span>
+<span class="nl">privated:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">m_data</span><span class="p">;</span>    
+<span class="p">};</span>
+
+<span class="n">Base</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="n">new</span> <span class="n">Derived</span><span class="p">();</span>
+<span class="n">delete</span> <span class="n">obj</span><span class="p">;</span>
+</code></pre>
+</div>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2012/09/13/c-plus-plus-virtual-destructor/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2012/09/06/octopress-seo/">Octopress中的SEO</a></h1>
     
     
@@ -315,81 +374,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/08/29/null-object-pattern/">Null Object模式</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-08-29T15:57:00+08:00" pubdate data-updated="true">Aug 29<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>Null Object模式用于代替空指针（C++中），以避免上层模块对返回值做空值判定。Null Object模式返回的不是一个空指针，而是一个空对象，上层模块对返回值做操作时，不需要做空判定，而是按正常逻辑调用这个对象的某个接口，只不过对于空对象而言，这个接口什么事也没做，例如：</p>
-
-<div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">animal</span> <span class="p">{</span>
-<span class="nl">public:</span>
-  <span class="n">virtual</span> <span class="kt">void</span> <span class="n">make_sound</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">};</span>
- 
-<span class="n">class</span> <span class="n">dog</span> <span class="o">:</span> <span class="n">public</span> <span class="n">animal</span> <span class="p">{</span>
-  <span class="kt">void</span> <span class="n">make_sound</span><span class="p">()</span> <span class="p">{</span> <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;woof!&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span> <span class="p">}</span>
-<span class="p">};</span>
- 
-<span class="n">class</span> <span class="n">null_animal</span> <span class="o">:</span> <span class="n">public</span> <span class="n">animal</span> <span class="p">{</span>
-  <span class="kt">void</span> <span class="n">make_sound</span><span class="p">()</span> <span class="p">{</span> <span class="p">}</span>
-<span class="p">};</span>
-</code></pre>
-</div>
-
-
-<p>在我看来这个模式在C++中其实挺扯淡的，因为去判断一个指针是否为NULL，远比创建一个空类，并且添加若干个空函数代价小更多。更何况，我们还不知道<code>null_animal</code>的生命周期如何管理。</p>
-
-<p>但是在我以往写的代码中，我也写过一些避免空指针判定的代码，例如我会使用引用。注意，引用肯定不能保证所对应的对象是合法的，这就像无法确定一个指针是不是野指针一样：</p>
-
-<div class="highlight"><pre><code class="c"><span class="k">const</span> <span class="n">Item</span> <span class="o">&amp;</span><span class="n">Container</span><span class="o">::</span><span class="n">FindItem</span><span class="p">(</span><span class="kt">int</span> <span class="n">id</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
-    <span class="k">static</span> <span class="n">Item</span> <span class="n">null_item</span><span class="p">;</span>
-    <span class="n">Table</span><span class="o">::</span><span class="n">const_iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">m_items</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">id</span><span class="p">);</span>
-    <span class="k">return</span> <span class="n">it</span> <span class="o">==</span> <span class="n">m_items</span><span class="p">.</span><span class="n">end</span><span class="p">()</span> <span class="o">?</span> <span class="n">null_item</span> <span class="o">:</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">second</span><span class="p">;</span>
-<span class="p">}</span>
-</code></pre>
-</div>
-
-
-<p>参考<a href="http://en.wikipedia.org/wiki/Null_Object_pattern">http://en.wikipedia.org/wiki/Null_Object_pattern</a></p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2012/08/29/null-object-pattern/'>http://codemacro.com/2012/08/29/null-object-pattern/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/6/">&larr; Older</a>
@@ -415,7 +399,7 @@
 <li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
 <li class='category'><a href='/categories/lua/'>lua (5)</a></li>
 <li class='category'><a href='/categories/module/'>module (3)</a></li>
-<li class='category'><a href='/categories/network/'>network (6)</a></li>
+<li class='category'><a href='/categories/network/'>network (7)</a></li>
 <li class='category'><a href='/categories/other/'>other (6)</a></li>
 <li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
 <li class='category'><a href='/categories/tips/'>tips (21)</a></li>
@@ -427,6 +411,10 @@
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/06/01/select-limit/">select真的有限制吗</a>
+      </li>
     
       <li class="post">
         <a href="/2014/05/04/muduo-source/">muduo源码阅读</a>
@@ -444,10 +432,6 @@
         <a href="/2013/09/23/scala-feature-overview/">scala主要特性一览</a>
       </li>
     
-      <li class="post">
-        <a href="/2013/08/21/javascript-overview/">Javascript Overview</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -460,7 +444,7 @@
 <section>
   <h1>Tags</h1>
   <ul class="tag-cloud">
-<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
+<a style="font-size: 90%" href="/tags/flash/">Flash</a>
 <a style="font-size: 118%" href="/tags/ice/">ICE</a>
 <a style="font-size: 118%" href="/tags/blog/">blog</a>
 <a style="font-size: 182%" href="/tags/c-c-/">c/c++</a>

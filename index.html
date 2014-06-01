@@ -74,6 +74,70 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2014/06/01/select-limit/">Select真的有限制吗</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-06-01T00:00:00+08:00" pubdate data-updated="true">Jun 1<span>st</span>, 2014</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>在刚开始学习网络编程时，似乎莫名其妙地就会被某人/某资料告诉<code>select</code>函数是有fd(file descriptor)数量限制的。在最近的一次记忆里还有个人笑说<code>select</code>只支持64个fd。我甚至还写过一篇不负责任甚至错误的博客(<a href="http://www.cppblog.com/kevinlynx/archive/2008/05/20/50500.html">突破select的FD_SETSIZE限制</a>)。有人说，直接重新定义<code>FD_SETSIZE</code>就可以突破这个<code>select</code>的限制，也有人说除了重定义这个宏之外还的重新编译内核。</p>
+
+<p>事实具体是怎样的？实际上，造成这些混乱的原因恰好是不同平台对<code>select</code>的实现不一样。</p>
+
+<h2>Windows的实现</h2>
+
+<p><a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms740141(v=vs.85">MSDN</a>.aspx)上对<code>select</code>的说明：</p>
+
+<pre><code>int select(
+  _In_     int nfds,
+  _Inout_  fd_set *readfds,
+  _Inout_  fd_set *writefds,
+  _Inout_  fd_set *exceptfds,
+  _In_     const struct timeval *timeout
+);
+
+nfds [in] Ignored. The nfds parameter is included only for compatibility with Berkeley sockets.
+</code></pre>
+
+<p>第一个参数MSDN只说没有使用，其存在仅仅是为了保持与Berkeley Socket的兼容。</p>
+
+<blockquote><p>The variable FD_SETSIZE determines the maximum number of descriptors in a set. (The default value of FD_SETSIZE is 64, which can be modified by defining FD_SETSIZE to another value before including Winsock2.h.) Internally, socket handles in an fd_set structure are not represented as bit flags as in Berkeley Unix.</p></blockquote>
+
+<p>Windows上<code>select</code>的实现不同于Berkeley Unix，<strong>后者使用位标志来表示socket</strong>。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/06/01/select-limit/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2014/05/04/muduo-source/">Muduo源码阅读</a></h1>
     
     
@@ -326,78 +390,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2013/08/21/javascript-overview/">Javascript Overview</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-08-21T00:00:00+08:00" pubdate data-updated="true">Aug 21<span>st</span>, 2013</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>Lexical Structure</h2>
-
-<p>In JavaScript, identifiers are used to name variables and functions and to provide labels for certain loops in JavaScript code. A JavaScript identifier must begin with a letter, an underscore (_), or a dollar sign ($). Subsequent characters can be letters, digits, underscores, or dollar signs</p>
-
-<pre><code>i
-abc
-v1
-$str
-</code></pre>
-
-<p>JavaScript allows identifiers to contain letters and digits from the entire Unicode character set.</p>
-
-<p>Like many programming languages, JavaScript uses the semicolon (;) to separate statements from each other. In JavaScript, you can usually omit the semicolon between two statements if those statements are written on separate lines.</p>
-
-<h2>Types/Values/Variables</h2>
-
-<h3>Numbers</h3>
-
-<p>Unlike many languages, JavaScript does not make a distinction between integer values and floating-point values. All numbers in JavaScript are represented as floating-point values.</p>
-
-<pre><code>0
-3
-0xff
-3.14
-</code></pre>
-
-<h3>Strings</h3>
-
-<pre><code>"hello world"
-'hello world'
-"Wouldn't you prefer O'Reilly's book?"  
-</code></pre>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2013/08/21/javascript-overview/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/2/">&larr; Older</a>
@@ -421,7 +413,7 @@ $str
 <li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
 <li class='category'><a href='/categories/lua/'>lua (5)</a></li>
 <li class='category'><a href='/categories/module/'>module (3)</a></li>
-<li class='category'><a href='/categories/network/'>network (6)</a></li>
+<li class='category'><a href='/categories/network/'>network (7)</a></li>
 <li class='category'><a href='/categories/other/'>other (6)</a></li>
 <li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
 <li class='category'><a href='/categories/tips/'>tips (21)</a></li>
@@ -433,6 +425,10 @@ $str
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/06/01/select-limit/">select真的有限制吗</a>
+      </li>
     
       <li class="post">
         <a href="/2014/05/04/muduo-source/">muduo源码阅读</a>
@@ -450,10 +446,6 @@ $str
         <a href="/2013/09/23/scala-feature-overview/">scala主要特性一览</a>
       </li>
     
-      <li class="post">
-        <a href="/2013/08/21/javascript-overview/">Javascript Overview</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -466,7 +458,7 @@ $str
 <section>
   <h1>Tags</h1>
   <ul class="tag-cloud">
-<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
+<a style="font-size: 90%" href="/tags/flash/">Flash</a>
 <a style="font-size: 118%" href="/tags/ice/">ICE</a>
 <a style="font-size: 118%" href="/tags/blog/">blog</a>
 <a style="font-size: 182%" href="/tags/c-c-/">c/c++</a>

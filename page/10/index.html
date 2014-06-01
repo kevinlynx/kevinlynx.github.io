@@ -74,6 +74,57 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2012/05/10/tolua-api/">tolua的tolua_toxxx系列API设计</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-05-10T00:00:00+08:00" pubdate data-updated="true">May 10<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>我们使用tolua++手工绑定c/c++接口到lua中，在绑定的接口实现里，就需要取出传入的参数。tolua++中提供了一系列tolua_toxxx函数，例如：</p>
+
+<div class="highlight"><pre><code class="c"><span class="n">lua_Number</span> <span class="n">tolua_tonumber</span><span class="p">(</span><span class="n">lua_State</span> <span class="o">*</span><span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">narg</span><span class="p">,</span> <span class="n">lua_Number</span> <span class="n">def</span><span class="p">)</span>
+<span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">tolua_tostring</span><span class="p">(</span><span class="n">lua_State</span> <span class="o">*</span><span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">narg</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">def</span><span class="p">)</span>
+</code></pre>
+</div>
+
+
+<p>这些函数都有一个def参数。乍一看，这些函数使用起来很简单。传入lua_State，传入参数在栈中的位置，然后再传一个<strong>失败</strong>后返回的默认值。</p>
+
+<p>我重点要说的是这里这个<strong>失败</strong>，按正常程序员的理解，针对lua而言，什么情况下算失败呢？lua语言里函数参数支持不传，此时实参为nil，将nil转换为一个c类型必然失败；参数类型不正确算不算失败？你传一个user data，c里按数字来取，这也算失败。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2012/05/10/tolua-api/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2012/04/25/game-server-info-2/">谈谈我们的游戏逻辑服务器实现（二）</a></h1>
     
     
@@ -251,49 +302,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2011/09/29/build-blog-by-lisp/">使用Lisp搭建独立博客</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2011-09-29T00:00:00+08:00" pubdate data-updated="true">Sep 29<span>th</span>, 2011</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>本文描述如何使用Lisp工具集搭建一个完整的个人博客站点。一个搭建好的例子站点可以参看我的个人博客：http://codemacro.com。</p>
-
-<p>要搭建一个独立博客，需要两方面的支持。一是博客软件，二是根据选择的博客软件取得必须的“硬件“。例如我这里使用的是Lisp工具集，就需要一个可以完全控制的服务器，所以这里我需要一个VPS。当然，购买一个合适的域名也是必须的。以下将针对这些内容做描述。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2011/09/29/build-blog-by-lisp/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/11/">&larr; Older</a>
@@ -319,7 +327,7 @@
 <li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
 <li class='category'><a href='/categories/lua/'>lua (5)</a></li>
 <li class='category'><a href='/categories/module/'>module (3)</a></li>
-<li class='category'><a href='/categories/network/'>network (6)</a></li>
+<li class='category'><a href='/categories/network/'>network (7)</a></li>
 <li class='category'><a href='/categories/other/'>other (6)</a></li>
 <li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
 <li class='category'><a href='/categories/tips/'>tips (21)</a></li>
@@ -331,6 +339,10 @@
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/06/01/select-limit/">select真的有限制吗</a>
+      </li>
     
       <li class="post">
         <a href="/2014/05/04/muduo-source/">muduo源码阅读</a>
@@ -348,10 +360,6 @@
         <a href="/2013/09/23/scala-feature-overview/">scala主要特性一览</a>
       </li>
     
-      <li class="post">
-        <a href="/2013/08/21/javascript-overview/">Javascript Overview</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -364,7 +372,7 @@
 <section>
   <h1>Tags</h1>
   <ul class="tag-cloud">
-<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
+<a style="font-size: 90%" href="/tags/flash/">Flash</a>
 <a style="font-size: 118%" href="/tags/ice/">ICE</a>
 <a style="font-size: 118%" href="/tags/blog/">blog</a>
 <a style="font-size: 182%" href="/tags/c-c-/">c/c++</a>
