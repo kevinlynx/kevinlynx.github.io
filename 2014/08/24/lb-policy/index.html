@@ -1,0 +1,416 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>分布式环境中的负载均衡策略 - loop in codes</title>
+  <meta name="author" content="Kevin Lynx">
+
+  
+  <meta name="description" content=" 在分布式系统中相同的服务常常会部署很多台，每一台被称为一个服务节点（实例）。通过一些负载均衡策略将服务请求均匀地分布到各个节点，以实现整个系统支撑海量请求的需求。本文描述一些简单的负载均衡策略。 ">
+  
+    <meta name="keywords" content="round-robinconsitent hash负载均衡">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://codemacro.com/2014/08/24/lb-policy">
+  <link href="/favicon.ico" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">loop in codes</a></h1>
+  
+    <h2>Kevin Lynx BLOG</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:codemacro.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/tips">Tips</a></li>
+  <li><a href="/about.html">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">分布式环境中的负载均衡策略</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-08-24T00:00:00+08:00" pubdate data-updated="true">Aug 24<span>th</span>, 2014</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>在分布式系统中相同的服务常常会部署很多台，每一台被称为一个服务节点（实例）。通过一些负载均衡策略将服务请求均匀地分布到各个节点，以实现整个系统支撑海量请求的需求。本文描述一些简单的负载均衡策略。</p>
+
+<h2>Round-robin</h2>
+
+<p>简单地轮询。记录一个选择位置，每次请求来时调整该位置到下一个节点：</p>
+
+<pre><code>curId = ++curId % nodeCnt
+</code></pre>
+
+<h2>随机选择</h2>
+
+<p>随机地在所有节点中选择：</p>
+
+<pre><code>id = random(nodeCnt);
+</code></pre>
+
+<h2>本机优先</h2>
+
+<p>访问后台服务的访问者可能本身是一个整合服务，或者是一个proxy，如果后台服务节点恰好有节点部署在本机的，则可以优先使用。在未找到本机节点时则可以继续走Round-robin策略：</p>
+
+<pre><code>if (node-&gt;ip() == local_ip) {
+    return node;
+} else {
+    return roundRobin();
+}
+</code></pre>
+
+<!-- more -->
+
+
+<p>一旦遍历到本机节点，则后面的请求会一直落到本机节点。所以这里可以加上一些权重机制，仅是保证本机节点会被优先选择，但不会被一直选择。例如：</p>
+
+<pre><code>// initial
+cur_weight = 100;
+...
+// select node
+cur_weight -= 5;
+if (cur_weight &lt;= 0)
+    cur_weight = 100;
+if (cur_weight &gt; 50 &amp;&amp; node-&gt;ip() == local_ip) {
+    return node;
+} else {
+    return roundRobin();
+}
+</code></pre>
+
+<h2>本机房优先</h2>
+
+<p>服务节点可能会被部署到多个机房，有时候确实是需要考虑跨机房服务。同<code>本机优先</code>策略类似，本机房优先则是优先考虑位于相同机房内的服务节点。该请求是从哪个机房中的前端服务发送过来的，则需要前端在请求参数中携带上机房ID。</p>
+
+<p>在服务节点对应的数据结构中，也最好按照机房来组织。</p>
+
+<p>本机房优先策略实际上会作为节点选择的第一道工序，它可以把非本机房的节点先过滤掉，然后再传入后面的各种节点选择策略。这里还可以考虑节点数参数，如果本机房的节点过少，则可以不使用该策略，避免流量严重不均。</p>
+
+<h2>Weighted Round-Robin</h2>
+
+<p>加权轮询。相对于普通轮询而言，该策略中每一个节点都有自己的权重，优先选择权重更大的节点。权重可以根据机器性能预先配置。摘抄一下网上的算法：</p>
+
+<pre><code>假设有一组服务器S = {S0, S1, …, Sn-1}，W(Si)表示服务器Si的权值，一个
+指示变量i表示上一次选择的服务器，指示变量cw表示当前调度的权值，max(S)
+表示集合S中所有服务器的最大权值，gcd(S)表示集合S中所有服务器权值的最大
+公约数。变量i初始化为-1，cw初始化为零。
+
+while (true) {
+  i = (i + 1) mod n;
+  if (i == 0) {
+     cw = cw - gcd(S); 
+     if (cw &lt;= 0) {
+       cw = max(S);
+       if (cw == 0)
+         return NULL;
+     }
+  } 
+  if (W(Si) &gt;= cw) 
+    return Si;
+}
+</code></pre>
+
+<p>遍历完所有节点后权重衰减，衰减到0后重新开始。这样可以让权重更大的节点被选择得更多。</p>
+
+<h2>Consistent Hash</h2>
+
+<p>一致性哈希。一致性哈希用于在分布式环境中，分布在各个节点上的请求，不会因为新增节点（扩容）或减少节点（节点宕机）而变化。如果每个服务节点上都有自己的缓存，其保存了该节点响应请求时的回应。正常情况下，这些缓存都可以很好地被运用，也即cache命中率较高。</p>
+
+<p>如果某个节点不可用了，我们的选择策略又是基于所有节点的公平选择，那么原来一直分配在节点A上请求就很可能被分配到节点B上，从而导致节点A上的缓存较难被命中。这个时候就可以运用一致性哈希来解决。</p>
+
+<p>其基本思想是，在节点选择区间内，在找节点时以顺时针方向找到不小于该请求对应的哈希值的节点。在这个区间里增加很多虚拟节点，每一个虚拟节点相当于一个物理节点的引用，这样相当于把物理节点变成了一个哈希值区间。这个哈希值区间不会因为增加节点和减少节点而变化，那么对某个请求而言，它就会始终落到这个区间里，也就会始终被分配到原来的节点。</p>
+
+<p>至于这个不可用的节点，其上的请求也会被均匀地分配到其他节点中。</p>
+
+<p>摘抄网上的一段代码：</p>
+
+<pre><code>// 添加一个物理节点时，会随之增加很多虚拟节点
+template &lt;class Node, class Data, class Hash&gt;
+size_t HashRing&lt;Node, Data, Hash&gt;::AddNode(const Node&amp; node)
+{
+    size_t hash;
+    std::string nodestr = Stringify(node);
+    for (unsigned int r = 0; r &lt; replicas_; r++) {
+        hash = hash_((nodestr + Stringify(r)).c_str());
+        ring_[hash] = node;  // 物理节点和虚拟节点都保存在一个std::map中
+    }
+    return hash;
+}
+
+// 选择data对应的节点，data可以是请求
+template &lt;class Node, class Data, class Hash&gt;
+const Node&amp; HashRing&lt;Node, Data, Hash&gt;::GetNode(const Data&amp; data) const
+{
+    if (ring_.empty()) {
+        throw EmptyRingException();
+    }
+    size_t hash = hash_(Stringify(data).c_str()); // 对请求进行哈希
+    typename NodeMap::const_iterator it;
+    // Look for the first node &gt;= hash
+    it = ring_.lower_bound(hash); // 找到第一个不小于请求哈希的节点
+    if (it == ring_.end()) {
+        // Wrapped around; get the first node
+        it = ring_.begin();
+    }
+    return it-&gt;second;
+}
+</code></pre>
+
+<p>参考<a href="http://blog.csdn.net/sparkliang/article/details/5279393">一致性 hash 算法(consistent hashing)</a>，<a href="http://www.martinbroadhurst.com/Consistent-Hash-Ring.html">Consistent Hash Ring</a></p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2014/08/24/lb-policy/'>http://codemacro.com/2014/08/24/lb-policy/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-08-24T00:00:00+08:00" pubdate data-updated="true">Aug 24<span>th</span>, 2014</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/categories/network/'>network</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/2014/06/01/select-limit/" title="Previous Post: select真的有限制吗">&laquo; select真的有限制吗</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Categories</h1>
+  <ul id="categories">
+    <li class='category'><a href='/categories/ice/'>ICE (2)</a></li>
+<li class='category'><a href='/categories/javascript/'>Javascript (1)</a></li>
+<li class='category'><a href='/categories/scala/'>Scala (1)</a></li>
+<li class='category'><a href='/categories/c-c-/'>c/c++ (14)</a></li>
+<li class='category'><a href='/categories/clang/'>clang (1)</a></li>
+<li class='category'><a href='/categories/erlang/'>erlang (8)</a></li>
+<li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
+<li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
+<li class='category'><a href='/categories/lua/'>lua (5)</a></li>
+<li class='category'><a href='/categories/module/'>module (3)</a></li>
+<li class='category'><a href='/categories/network/'>network (8)</a></li>
+<li class='category'><a href='/categories/other/'>other (6)</a></li>
+<li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
+<li class='category'><a href='/categories/tips/'>tips (21)</a></li>
+<li class='category'><a href='/categories/web/'>web (4)</a></li>
+
+  </ul>
+</section>
+
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/08/24/lb-policy/">分布式环境中的负载均衡策略</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2014/06/01/select-limit/">select真的有限制吗</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2014/05/04/muduo-source/">muduo源码阅读</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2014/02/21/dhtcrawler-process/">dhtcrawler的进程模型经验</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2014/02/02/2013/">my 2013</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+<div id="recentcomments" class="dsq-widget">
+<h1 class="dsq-widget-title">Recent Comments</h1>
+<script type="text/javascript" src="http://loopincodes.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
+</div>
+<a href="http://disqus.com/">Powered by Disqus</a>
+</section>
+<section>
+  <h1>Tags</h1>
+  <ul class="tag-cloud">
+<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
+<a style="font-size: 118%" href="/tags/ice/">ICE</a>
+<a style="font-size: 118%" href="/tags/blog/">blog</a>
+<a style="font-size: 182%" href="/tags/c-c-/">c/c++</a>
+<a style="font-size: 162%" href="/tags/dht/">dht</a>
+<a style="font-size: 134%" href="/tags/dhtcrawler/">dhtcrawler</a>
+<a style="font-size: 173%" href="/tags/erlang/">erlang</a>
+<a style="font-size: 134%" href="/tags/game-develop/">game develop</a>
+<a style="font-size: 118%" href="/tags/html/">html</a>
+<a style="font-size: 90%" href="/tags/ice/">ice</a>
+<a style="font-size: 154%" href="/tags/lisp/">lisp</a>
+<a style="font-size: 154%" href="/tags/lua/">lua</a>
+<a style="font-size: 146%" href="/tags/magnet/">magnet</a>
+<a style="font-size: 146%" href="/tags/octopress/">octopress</a>
+<a style="font-size: 154%" href="/tags/p2p/">p2p</a>
+<a style="font-size: 146%" href="/tags/ruby/">ruby</a>
+<a style="font-size: 90%" href="/tags/rup/">rup</a>
+<a style="font-size: 210%" href="/tags/tips/">tips</a>
+<a style="font-size: 118%" href="/tags/virtual/">virtual</a>
+<a style="font-size: 134%" href="/tags/web/">web</a>
+
+  </ul>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - Kevin Lynx -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'loopincodes';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://codemacro.com/2014/08/24/lb-policy/';
+        var disqus_url = 'http://codemacro.com/2014/08/24/lb-policy/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
+<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
+
+
+
+</body>
+</html>

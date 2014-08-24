@@ -74,6 +74,72 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2014/08/24/lb-policy/">分布式环境中的负载均衡策略</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-08-24T00:00:00+08:00" pubdate data-updated="true">Aug 24<span>th</span>, 2014</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>在分布式系统中相同的服务常常会部署很多台，每一台被称为一个服务节点（实例）。通过一些负载均衡策略将服务请求均匀地分布到各个节点，以实现整个系统支撑海量请求的需求。本文描述一些简单的负载均衡策略。</p>
+
+<h2>Round-robin</h2>
+
+<p>简单地轮询。记录一个选择位置，每次请求来时调整该位置到下一个节点：</p>
+
+<pre><code>curId = ++curId % nodeCnt
+</code></pre>
+
+<h2>随机选择</h2>
+
+<p>随机地在所有节点中选择：</p>
+
+<pre><code>id = random(nodeCnt);
+</code></pre>
+
+<h2>本机优先</h2>
+
+<p>访问后台服务的访问者可能本身是一个整合服务，或者是一个proxy，如果后台服务节点恰好有节点部署在本机的，则可以优先使用。在未找到本机节点时则可以继续走Round-robin策略：</p>
+
+<pre><code>if (node-&gt;ip() == local_ip) {
+    return node;
+} else {
+    return roundRobin();
+}
+</code></pre>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/08/24/lb-policy/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2014/06/01/select-limit/">Select真的有限制吗</a></h1>
     
     
@@ -290,106 +356,6 @@ nfds [in] Ignored. The nfds parameter is included only for compatibility with Be
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2013/09/23/scala-feature-overview/">Scala主要特性一览</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-09-23T00:00:00+08:00" pubdate data-updated="true">Sep 23<span>rd</span>, 2013</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>概述</h2>
-
-<p>scala语言包含了函数式语言和面向对象语言的语法特性，从我目前的感受来看，这不是一门简单的语言。同Ruby/Erlang相比，其语法集大多了。scala基于JVM或.NET平台，其可以几乎无缝地使用Java库（不但使用上没有负担，其运行效率上也不会增加负担），配合其强大的语言表达能力，还是很有吸引力。</p>
-
-<h2>类型</h2>
-
-<h3>类/对象</h3>
-
-<p>scala中一切都是对象，虽然Java也是这样说的（其实ruby也是这样说的）。在Java中一个数字仅仅是个值，但在scala中却真的是对象：</p>
-
-<div class="highlight"><pre><code class="scala">    
-<span class="n">println</span><span class="o">(</span><span class="s">&quot;2 type: &quot;</span> <span class="o">+</span> <span class="mf">2.</span><span class="n">getClass</span><span class="o">())</span>
-</code></pre>
-</div>
-
-
-<p>scala同Java一样将所有类型都设定了一个基类：<code>Any</code>。不同的是，<code>Any</code>下还区分了<code>AnyVal</code>和<code>AnyRef</code>。</p>
-
-<h3>类型推断</h3>
-
-<p>scala是一门静态类型语言，但是其强大的类型推断可以避免很多冗余信息的代码。例如：</p>
-
-<div class="highlight"><pre><code class="scala">    
-<span class="k">val</span> <span class="n">map</span><span class="k">:</span><span class="kt">Map</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">HashMap</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]</span>
-<span class="c1">// 可简写为</span>
-<span class="k">val</span> <span class="n">map</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">HashMap</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]</span>
-
-<span class="k">def</span> <span class="n">func</span><span class="o">()</span><span class="k">:</span><span class="kt">String</span> <span class="o">=</span> <span class="o">{</span>
-    <span class="s">&quot;hello&quot;</span>
-<span class="o">}</span>
-<span class="c1">// 可简写为</span>
-<span class="k">def</span> <span class="n">func</span><span class="o">()</span> <span class="k">=</span> <span class="o">{</span>
-    <span class="s">&quot;hello&quot;</span>
-<span class="o">}</span>
-</code></pre>
-</div>
-
-
-<p>类型推断可以根据表达式的类型决定这个变量/函数的类型，这就如同C++11中的<code>auto</code>关键字。</p>
-
-<h3>函数</h3>
-
-<p>scala既然包含了函数式语言的特性，那么函数作为first citizen就是自然而言的事情。而function literal的语法形式也就必须更自然（想想common lisp里lambda那蛋疼的关键字）：</p>
-
-<div class="highlight"><pre><code class="scala">    
-<span class="k">val</span> <span class="n">factor</span> <span class="k">=</span> <span class="mi">3</span>
-<span class="k">val</span> <span class="n">multiplier</span> <span class="k">=</span> <span class="o">(</span><span class="n">i</span><span class="k">:</span><span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">i</span> <span class="o">*</span> <span class="n">factor</span> <span class="c1">// function literal, lexical bind to factor</span>
-<span class="k">val</span> <span class="n">l1</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">,</span> <span class="mi">5</span><span class="o">)</span> <span class="n">map</span> <span class="n">multiplier</span> <span class="c1">// map `multiplier` to every element in List l1</span>
-
-<span class="k">def</span> <span class="n">add</span><span class="o">(</span><span class="n">a</span><span class="k">:</span><span class="kt">Int</span><span class="o">,</span> <span class="n">b</span><span class="k">:</span><span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
-  <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
-<span class="o">}</span>
-
-<span class="k">val</span> <span class="n">f</span><span class="k">:</span><span class="o">(</span><span class="kt">Int</span><span class="o">,</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">Int</span> <span class="k">=</span> <span class="n">add</span> <span class="c1">// f is a function type: (Int, Int) =&gt; Int</span>
-<span class="n">println</span><span class="o">(</span><span class="s">&quot;f:&quot;</span> <span class="o">+</span> <span class="n">f</span><span class="o">(</span><span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">))</span>
-</code></pre>
-</div>
-
-
-
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2013/09/23/scala-feature-overview/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page/2/">&larr; Older</a>
@@ -413,7 +379,7 @@ nfds [in] Ignored. The nfds parameter is included only for compatibility with Be
 <li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
 <li class='category'><a href='/categories/lua/'>lua (5)</a></li>
 <li class='category'><a href='/categories/module/'>module (3)</a></li>
-<li class='category'><a href='/categories/network/'>network (7)</a></li>
+<li class='category'><a href='/categories/network/'>network (8)</a></li>
 <li class='category'><a href='/categories/other/'>other (6)</a></li>
 <li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
 <li class='category'><a href='/categories/tips/'>tips (21)</a></li>
@@ -425,6 +391,10 @@ nfds [in] Ignored. The nfds parameter is included only for compatibility with Be
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/08/24/lb-policy/">分布式环境中的负载均衡策略</a>
+      </li>
     
       <li class="post">
         <a href="/2014/06/01/select-limit/">select真的有限制吗</a>
@@ -442,10 +412,6 @@ nfds [in] Ignored. The nfds parameter is included only for compatibility with Be
         <a href="/2014/02/02/2013/">my 2013</a>
       </li>
     
-      <li class="post">
-        <a href="/2013/09/23/scala-feature-overview/">scala主要特性一览</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -458,7 +424,7 @@ nfds [in] Ignored. The nfds parameter is included only for compatibility with Be
 <section>
   <h1>Tags</h1>
   <ul class="tag-cloud">
-<a style="font-size: 90%" href="/tags/flash/">Flash</a>
+<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
 <a style="font-size: 118%" href="/tags/ice/">ICE</a>
 <a style="font-size: 118%" href="/tags/blog/">blog</a>
 <a style="font-size: 182%" href="/tags/c-c-/">c/c++</a>
