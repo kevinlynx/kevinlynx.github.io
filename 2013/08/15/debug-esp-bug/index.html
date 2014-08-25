@@ -9,10 +9,8 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content=" loop in codes, Kevin Lynx blog ">
-  
-    <meta name="keywords" content="espstack堆栈">
-  
+  <meta name="description" content="最近在一个使用Visual Studio开发的C++程序中，出现了如下错误： Run-Time Check Failure #0 - The value of ESP was not properly saved across a function call. This is usually a &hellip;">
+  <meta name="keywords" content="espstack堆栈">
 
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -21,15 +19,16 @@
 
   
   <link rel="canonical" href="http://codemacro.com/2013/08/15/debug-esp-bug">
-  <link href="/favicon.ico" rel="icon">
+  <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
-  <script src="/javascripts/modernizr-2.0.js"></script>
-  <script src="/javascripts/ender.js"></script>
-  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
-<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
-<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 
   
 
@@ -49,7 +48,7 @@
   
 </ul>
   
-<form action="http://google.com/search" method="get">
+<form action="https://www.google.com/search" method="get">
   <fieldset role="search">
     <input type="hidden" name="q" value="site:codemacro.com" />
     <input class="search" type="text" name="q" results="0" placeholder="Search"/>
@@ -59,8 +58,6 @@
 <ul class="main-navigation">
   <li><a href="/">Blog</a></li>
   <li><a href="/blog/archives">Archives</a></li>
-  <li><a href="/tips">Tips</a></li>
-  <li><a href="/about.html">About</a></li>
 </ul>
 
 </nav>
@@ -80,14 +77,7 @@
 
 
 
-
-
-
-
-  
-
-
-<time datetime="2013-08-15T00:00:00+08:00" pubdate data-updated="true">Aug 15<span>th</span>, 2013</time>
+<time class='entry-date' datetime='2013-08-15T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>15</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
         
       </p>
     
@@ -100,7 +90,7 @@
 
 <p>这个错误主要指的就是函数调用堆栈不平衡。在C/C++程序中，调用一个函数前会保存当前堆栈信息，目标函数返回后会把堆栈恢复到调用前的状态。函数的参数、局部变量会影响堆栈。而函数堆栈不平衡，一般是因为函数调用方式和目标函数定义方式不一致导致，例如：</p>
 
-<div class="highlight"><pre><code class="c"><span class="kt">void</span> <span class="kr">__stdcall</span> <span class="nf">func</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">)</span> <span class="p">{</span>
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="kr">__stdcall</span> <span class="nf">func</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">)</span> <span class="p">{</span>
 <span class="p">}</span>
 
 <span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span> <span class="p">{</span>
@@ -108,9 +98,7 @@
     <span class="n">funcptr</span> <span class="n">ptr</span> <span class="o">=</span> <span class="p">(</span><span class="n">funcptr</span><span class="p">)</span> <span class="n">func</span><span class="p">;</span>
     <span class="n">ptr</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span> <span class="c1">// 返回后导致堆栈不平衡</span>
     <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span>
-</code></pre>
-</div>
+<span class="p">}</span></code></pre></div>
 
 
 <p><code>__stdcall</code>修饰的函数，其函数参数的出栈由被调用者自己完成，而<code>__cdecl</code>，也就是C/C++函数的默认调用约定，则是调用者完成参数出栈。</p>
@@ -128,19 +116,17 @@ call @ILT+1345(__RTC_CheckEsp) (0B01546h) ; 检查堆栈是否平衡
 
 <p>但是我们的程序不是这种低级错误。我们调用的函数是放在dll中的，调用约定显示定义为<code>__stdcall</code>，函数声明和实现一致。大致的结构如下：</p>
 
-<div class="highlight"><pre><code class="c"><span class="n">IParser</span> <span class="o">*</span><span class="n">parser</span> <span class="o">=</span> <span class="n">CreateParser</span><span class="p">();</span>
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">IParser</span> <span class="o">*</span><span class="n">parser</span> <span class="o">=</span> <span class="n">CreateParser</span><span class="p">();</span>
 <span class="n">parser</span><span class="o">-&gt;</span><span class="n">Begin</span><span class="p">();</span>
 <span class="p">...</span>
 <span class="p">...</span>
 <span class="n">parser</span><span class="o">-&gt;</span><span class="n">End</span><span class="p">();</span>
-<span class="n">parser</span><span class="o">-&gt;</span><span class="n">Release</span><span class="p">();</span> <span class="c1">// 返回后导致堆栈不平衡</span>
-</code></pre>
-</div>
+<span class="n">parser</span><span class="o">-&gt;</span><span class="n">Release</span><span class="p">();</span> <span class="c1">// 返回后导致堆栈不平衡</span></code></pre></div>
 
 
 <p>IParser的实现在一个dll里，这反而是一个误导人的信息。<code>parser-&gt;Release</code>返回后，堆栈不平衡，<strong>并且仅仅少了一个字节</strong>。一个字节怎么来的？</p>
 
-<p>解决这个问题主要的手段就是跟反汇编，在关键位置查看寄存器和堆栈的内容。编译器生成的代码是正确的，而我们自己的代码乍看上去也没问题。最后甚至使用最傻逼的调试手段&#8211;逐行语句注释查错。</p>
+<p>解决这个问题主要的手段就是跟反汇编，在关键位置查看寄存器和堆栈的内容。编译器生成的代码是正确的，而我们自己的代码乍看上去也没问题。最后甚至使用最傻逼的调试手段&ndash;逐行语句注释查错。</p>
 
 <p>具体查错过程就不细说了。解决问题往往需要更多的冷静，和清晰的思路。最终我使用的方法是，在进入<code>Release</code>之前记录堆栈指针的值，堆栈指针的值会被压入堆栈，以在函数返回后从堆栈弹出，恢复堆栈指针。<code>Release</code>的实现很简单，就是删除一个<code>Parser</code>这个对象，但这个对象的析构会导致很多其他对象被析构。我就逐层地检查，是在哪个函数里改变了堆栈里的内容。</p>
 
@@ -153,23 +139,19 @@ call @ILT+1345(__RTC_CheckEsp) (0B01546h) ; 检查堆栈是否平衡
 
 <p>因为注意到<code>TargetOptions</code>这个字眼，想起了在<code>parser-&gt;Begin</code>里有涉及到这个类的使用，类似于：</p>
 
-<div class="highlight"><pre><code class="c"><span class="n">TargetOptions</span> <span class="n">TO</span><span class="p">;</span>
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">TargetOptions</span> <span class="n">TO</span><span class="p">;</span>
 <span class="p">...</span>
-<span class="n">TargetInfo</span> <span class="o">*</span><span class="n">TI</span> <span class="o">=</span> <span class="n">TargetInfo</span><span class="o">::</span><span class="n">CreateTargetInfo</span><span class="p">(</span><span class="n">m_inst</span><span class="p">.</span><span class="n">getDiagnostics</span><span class="p">(),</span> <span class="n">TO</span><span class="p">);</span>
-</code></pre>
-</div>
+<span class="n">TargetInfo</span> <span class="o">*</span><span class="n">TI</span> <span class="o">=</span> <span class="n">TargetInfo</span><span class="o">::</span><span class="n">CreateTargetInfo</span><span class="p">(</span><span class="n">m_inst</span><span class="p">.</span><span class="n">getDiagnostics</span><span class="p">(),</span> <span class="n">TO</span><span class="p">);</span></code></pre></div>
 
 
 <p>这部分初始化代码，是直接从网上复制的，因为并不影响主要逻辑，所以从来没对这块代码深究。查看<code>CreateTargetInfo</code>的源码，<strong>发现这个函数将<code>TO</code>这个局部变量的地址保存了下来</strong>。</p>
 
 <p>而在<code>Release</code>中，则会对这个保存的临时变量进行删除操作，形如：</p>
 
-<div class="highlight"><pre><code class="c"><span class="kt">void</span> <span class="nf">Delete</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span>
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">Delete</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span>
   <span class="n">assert</span> <span class="p">(</span><span class="n">ref_cnt</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="s">&quot;Reference count is already zero.&quot;</span><span class="p">);</span>
-  <span class="k">if</span> <span class="p">(</span><span class="o">--</span><span class="n">ref_cnt</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="n">delete</span> <span class="n">static_cast</span><span class="o">&lt;</span><span class="k">const</span> <span class="n">Derived</span><span class="o">*&gt;</span><span class="p">(</span><span class="n">this</span><span class="p">);</span>
-<span class="p">}</span>
-</code></pre>
-</div>
+  <span class="k">if</span> <span class="p">(</span><span class="o">--</span><span class="n">ref_cnt</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="k">delete</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="k">const</span> <span class="n">Derived</span><span class="o">*&gt;</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
+<span class="p">}</span></code></pre></div>
 
 
 <p>但是，<strong>问题并不在于对一个局部变量地址进行delete</strong>，<code>delete</code>在调试模式下是做了内存检测的，那会导致一种断言。</p>
@@ -179,14 +161,6 @@ call @ILT+1345(__RTC_CheckEsp) (0B01546h) ; 检查堆栈是否平衡
 <p>而在<code>TargetOptions</code>的<code>Delete</code>函数中，进行了<code>--ref_cnt</code>，这个变量是<code>TargetOptions</code>的第一个成员，它的减1，也就导致了堆栈内容的改变。</p>
 
 <p>至此，整个来龙去脉算是摸清。</p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2013/08/15/debug-esp-bug/'>http://codemacro.com/2013/08/15/debug-esp-bug/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
 </div>
 
 
@@ -202,19 +176,12 @@ call @ILT+1345(__RTC_CheckEsp) (0B01546h) ; 检查堆栈是否平衡
 
 
 
-
-
-
-
-  
-
-
-<time datetime="2013-08-15T00:00:00+08:00" pubdate data-updated="true">Aug 15<span>th</span>, 2013</time>
+<time class='entry-date' datetime='2013-08-15T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>15</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/categories/c-c-/'>c/c++</a>
+    <a class='category' href='/categories/c-slash-c-plus-plus/'>c/c++</a>
   
 </span>
 
@@ -250,28 +217,6 @@ call @ILT+1345(__RTC_CheckEsp) (0B01546h) ; 检查堆栈是否平衡
 <aside class="sidebar">
   
     <section>
-  <h1>Categories</h1>
-  <ul id="categories">
-    <li class='category'><a href='/categories/ice/'>ICE (2)</a></li>
-<li class='category'><a href='/categories/javascript/'>Javascript (1)</a></li>
-<li class='category'><a href='/categories/scala/'>Scala (1)</a></li>
-<li class='category'><a href='/categories/c-c-/'>c/c++ (14)</a></li>
-<li class='category'><a href='/categories/clang/'>clang (1)</a></li>
-<li class='category'><a href='/categories/erlang/'>erlang (8)</a></li>
-<li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
-<li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
-<li class='category'><a href='/categories/lua/'>lua (5)</a></li>
-<li class='category'><a href='/categories/module/'>module (3)</a></li>
-<li class='category'><a href='/categories/network/'>network (8)</a></li>
-<li class='category'><a href='/categories/other/'>other (6)</a></li>
-<li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
-<li class='category'><a href='/categories/tips/'>tips (21)</a></li>
-<li class='category'><a href='/categories/web/'>web (4)</a></li>
-
-  </ul>
-</section>
-
-<section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
     
@@ -297,39 +242,36 @@ call @ILT+1345(__RTC_CheckEsp) (0B01546h) ; 检查堆栈是否平衡
     
   </ul>
 </section>
-<section>
-<div id="recentcomments" class="dsq-widget">
-<h1 class="dsq-widget-title">Recent Comments</h1>
-<script type="text/javascript" src="http://loopincodes.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
-</div>
-<a href="http://disqus.com/">Powered by Disqus</a>
-</section>
-<section>
-  <h1>Tags</h1>
-  <ul class="tag-cloud">
-<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
-<a style="font-size: 118%" href="/tags/ice/">ICE</a>
-<a style="font-size: 118%" href="/tags/blog/">blog</a>
-<a style="font-size: 182%" href="/tags/c-c-/">c/c++</a>
-<a style="font-size: 162%" href="/tags/dht/">dht</a>
-<a style="font-size: 134%" href="/tags/dhtcrawler/">dhtcrawler</a>
-<a style="font-size: 173%" href="/tags/erlang/">erlang</a>
-<a style="font-size: 134%" href="/tags/game-develop/">game develop</a>
-<a style="font-size: 118%" href="/tags/html/">html</a>
-<a style="font-size: 90%" href="/tags/ice/">ice</a>
-<a style="font-size: 154%" href="/tags/lisp/">lisp</a>
-<a style="font-size: 154%" href="/tags/lua/">lua</a>
-<a style="font-size: 146%" href="/tags/magnet/">magnet</a>
-<a style="font-size: 146%" href="/tags/octopress/">octopress</a>
-<a style="font-size: 154%" href="/tags/p2p/">p2p</a>
-<a style="font-size: 146%" href="/tags/ruby/">ruby</a>
-<a style="font-size: 90%" href="/tags/rup/">rup</a>
-<a style="font-size: 210%" href="/tags/tips/">tips</a>
-<a style="font-size: 118%" href="/tags/virtual/">virtual</a>
-<a style="font-size: 134%" href="/tags/web/">web</a>
 
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
   </ul>
+  
+  <a href="https://github.com/kevinlynx">@kevinlynx</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'kevinlynx',
+            count: 6,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
 </section>
+
 
   
 </aside>
@@ -356,7 +298,7 @@ call @ILT+1345(__RTC_CheckEsp) (0B01546h) ; 检查堆栈是否平衡
       
     (function () {
       var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
       (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
     }());
 </script>
@@ -368,9 +310,6 @@ call @ILT+1345(__RTC_CheckEsp) (0B01546h) ; 检查堆栈是否平衡
 
 
 
-
-<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
-<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
 
 
 

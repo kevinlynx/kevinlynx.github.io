@@ -9,10 +9,8 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content=" ">
-  
-    <meta name="keywords" content="c/c++, muduo, reactor">
-  
+  <meta name="description" content="">
+  <meta name="keywords" content="c/c++, muduo, reactor">
 
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -21,15 +19,16 @@
 
   
   <link rel="canonical" href="http://codemacro.com/2014/05/04/muduo-source">
-  <link href="/favicon.ico" rel="icon">
+  <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
-  <script src="/javascripts/modernizr-2.0.js"></script>
-  <script src="/javascripts/ender.js"></script>
-  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
-<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
-<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 
   
 
@@ -49,7 +48,7 @@
   
 </ul>
   
-<form action="http://google.com/search" method="get">
+<form action="https://www.google.com/search" method="get">
   <fieldset role="search">
     <input type="hidden" name="q" value="site:codemacro.com" />
     <input class="search" type="text" name="q" results="0" placeholder="Search"/>
@@ -59,8 +58,6 @@
 <ul class="main-navigation">
   <li><a href="/">Blog</a></li>
   <li><a href="/blog/archives">Archives</a></li>
-  <li><a href="/tips">Tips</a></li>
-  <li><a href="/about.html">About</a></li>
 </ul>
 
 </nav>
@@ -71,7 +68,7 @@
   
   <header>
     
-      <h1 class="entry-title">Muduo源码阅读</h1>
+      <h1 class="entry-title">muduo源码阅读</h1>
     
     
       <p class="meta">
@@ -80,14 +77,7 @@
 
 
 
-
-
-
-
-  
-
-
-<time datetime="2014-05-04T00:00:00+08:00" pubdate data-updated="true">May 4<span>th</span>, 2014</time>
+<time class='entry-date' datetime='2014-05-04T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>4</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
         
       </p>
     
@@ -121,12 +111,10 @@
 
 <h2>建立连接</h2>
 
-<div class="highlight"><pre><code class="c">    <span class="n">TcpClient</span><span class="o">::</span><span class="n">connect</span> 
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">TcpClient</span><span class="o">::</span><span class="n">connect</span> 
         <span class="o">-&gt;</span> <span class="n">Connector</span><span class="o">::</span><span class="n">start</span> 
             <span class="o">-&gt;</span> <span class="n">EventLoop</span><span class="o">::</span><span class="n">runInLoop</span><span class="p">(</span><span class="n">Connector</span><span class="o">::</span><span class="n">startInLoop</span><span class="p">...</span>
-            <span class="o">-&gt;</span> <span class="n">Connector</span><span class="o">::</span><span class="n">connect</span>             
-</code></pre>
-</div>
+            <span class="o">-&gt;</span> <span class="n">Connector</span><span class="o">::</span><span class="n">connect</span></code></pre></div>
 
 
 <p>EventLoop::runInLoop接口用于在this所在的线程运行某个函数，这个后面看下EventLoop的实现就可以了解。 网络连接的最终建立是在Connector::connect中实现，建立连接之后会创建一个Channel来代表这个socket，并且绑定事件监听接口。最后最重要的是，调用<code>Channel::enableWriting</code>。<code>Channel</code>有一系列的enableXX接口，这些接口用于标识自己关心某IO事件。后面会看到他们的实现。</p>
@@ -137,15 +125,13 @@
 
 <p>当Connector发现连接真正建立好后，会回调到<code>TcpClient::newConnection</code>，在TcpClient构造函数中：</p>
 
-<div class="highlight"><pre><code class="c">    <span class="n">connector_</span><span class="o">-&gt;</span><span class="n">setNewConnectionCallback</span><span class="p">(</span>
-      <span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">TcpClient</span><span class="o">::</span><span class="n">newConnection</span><span class="p">,</span> <span class="n">this</span><span class="p">,</span> <span class="n">_1</span><span class="p">));</span>
-</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">connector_</span><span class="o">-&gt;</span><span class="n">setNewConnectionCallback</span><span class="p">(</span>
+      <span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">TcpClient</span><span class="o">::</span><span class="n">newConnection</span><span class="p">,</span> <span class="k">this</span><span class="p">,</span> <span class="n">_1</span><span class="p">));</span></code></pre></div>
 
 
 <p><code>TcpClient::newConnection</code>中创建一个TcpConnection来代表这个连接：</p>
 
-<div class="highlight"><pre><code class="c">    <span class="n">TcpConnectionPtr</span> <span class="nf">conn</span><span class="p">(</span><span class="n">new</span> <span class="n">TcpConnection</span><span class="p">(</span><span class="n">loop_</span><span class="p">,</span>
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">TcpConnectionPtr</span> <span class="nf">conn</span><span class="p">(</span><span class="k">new</span> <span class="n">TcpConnection</span><span class="p">(</span><span class="n">loop_</span><span class="p">,</span>
                                             <span class="n">connName</span><span class="p">,</span>
                                             <span class="n">sockfd</span><span class="p">,</span>
                                             <span class="n">localAddr</span><span class="p">,</span>
@@ -155,28 +141,24 @@
     <span class="n">conn</span><span class="o">-&gt;</span><span class="n">setMessageCallback</span><span class="p">(</span><span class="n">messageCallback_</span><span class="p">);</span>
     <span class="n">conn</span><span class="o">-&gt;</span><span class="n">setWriteCompleteCallback</span><span class="p">(</span><span class="n">writeCompleteCallback_</span><span class="p">);</span>
     <span class="p">...</span>
-    <span class="n">conn</span><span class="o">-&gt;</span><span class="n">connectEstablished</span><span class="p">();</span>
-</code></pre>
-</div>
+    <span class="n">conn</span><span class="o">-&gt;</span><span class="n">connectEstablished</span><span class="p">();</span></code></pre></div>
 
 
 <p>并同时设置事件回调，以上设置的回调都是应用层（即库的使用者）的接口。每一个TcpConnection都有一个Channel，毕竟每一个网络连接都对应了一个socket fd。在TcpConnection构造函数中创建了一个Channel，并设置事件回调函数。</p>
 
 <p><code>TcpConnection::connectEstablished</code>函数最主要的是通知Channel自己开始关心IO读取事件：</p>
 
-<div class="highlight"><pre><code class="c">    <span class="kt">void</span> <span class="n">TcpConnection</span><span class="o">::</span><span class="n">connectEstablished</span><span class="p">()</span>
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">TcpConnection</span><span class="o">::</span><span class="n">connectEstablished</span><span class="p">()</span>
     <span class="p">{</span>
         <span class="p">...</span>
-        <span class="n">channel_</span><span class="o">-&gt;</span><span class="n">enableReading</span><span class="p">();</span>
-</code></pre>
-</div>
+        <span class="n">channel_</span><span class="o">-&gt;</span><span class="n">enableReading</span><span class="p">();</span></code></pre></div>
 
 
 <p>这是自此我们看到的第二个<code>Channel::enableXXX</code>接口，这些接口是如何实现关心IO事件的呢？这个后面讲到。</p>
 
 <p>muduo的数据发送都是通过<code>TcpConnection::send</code>完成，这个就是一般网络库中在不使用OS的异步IO情况下的实现：缓存应用层传递过来的数据，在IO设备可写的情况下尽量写入数据。这个主要实现在<code>TcpConnection::sendInLoop</code>中。</p>
 
-<div class="highlight"><pre><code class="c">    <span class="n">TcpConnection</span><span class="o">::</span><span class="n">sendInLoop</span><span class="p">(....)</span> <span class="p">{</span>
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">TcpConnection</span><span class="o">::</span><span class="n">sendInLoop</span><span class="p">(....)</span> <span class="p">{</span>
         <span class="p">...</span>
         <span class="c1">// if no thing in output queue, try writing directly</span>
         <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">channel_</span><span class="o">-&gt;</span><span class="n">isWriting</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="n">outputBuffer_</span><span class="p">.</span><span class="n">readableBytes</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1">// 设备可写且没有缓存时立即写入</span>
@@ -185,30 +167,26 @@
         <span class="p">}</span>
         <span class="p">...</span>
         <span class="c1">// 否则加入数据到缓存，等待IO可写时再写</span>
-        <span class="n">outputBuffer_</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">static_cast</span><span class="o">&lt;</span><span class="k">const</span> <span class="kt">char</span><span class="o">*&gt;</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">+</span><span class="n">nwrote</span><span class="p">,</span> <span class="n">remaining</span><span class="p">);</span>
+        <span class="n">outputBuffer_</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="k">const</span> <span class="kt">char</span><span class="o">*&gt;</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">+</span><span class="n">nwrote</span><span class="p">,</span> <span class="n">remaining</span><span class="p">);</span>
         <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">channel_</span><span class="o">-&gt;</span><span class="n">isWriting</span><span class="p">())</span>
         <span class="p">{</span>
             <span class="c1">// 注册关心IO写事件，Poller就会对写做检测</span>
             <span class="n">channel_</span><span class="o">-&gt;</span><span class="n">enableWriting</span><span class="p">();</span>
         <span class="p">}</span>
         <span class="p">...</span>     
-    <span class="p">}</span>
-</code></pre>
-</div>
+    <span class="p">}</span></code></pre></div>
 
 
 <p>当IO可写时，Channel就会回调<code>TcpConnection::handleWrite</code>（构造函数中注册）</p>
 
-<div class="highlight"><pre><code class="c">    <span class="kt">void</span> <span class="n">TcpConnection</span><span class="o">::</span><span class="n">handleWrite</span><span class="p">()</span>
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">TcpConnection</span><span class="o">::</span><span class="n">handleWrite</span><span class="p">()</span>
     <span class="p">{</span>
         <span class="p">...</span>
         <span class="k">if</span> <span class="p">(</span><span class="n">channel_</span><span class="o">-&gt;</span><span class="n">isWriting</span><span class="p">())</span>
         <span class="p">{</span>
             <span class="kt">ssize_t</span> <span class="n">n</span> <span class="o">=</span> <span class="n">sockets</span><span class="o">::</span><span class="n">write</span><span class="p">(</span><span class="n">channel_</span><span class="o">-&gt;</span><span class="n">fd</span><span class="p">(),</span>
                                <span class="n">outputBuffer_</span><span class="p">.</span><span class="n">peek</span><span class="p">(),</span>
-                               <span class="n">outputBuffer_</span><span class="p">.</span><span class="n">readableBytes</span><span class="p">());</span>
-</code></pre>
-</div>
+                               <span class="n">outputBuffer_</span><span class="p">.</span><span class="n">readableBytes</span><span class="p">());</span></code></pre></div>
 
 
 <p>服务器端的数据收发同客户端机制一致，不同的是连接(TcpConnection)的建立方式不同。</p>
@@ -217,10 +195,10 @@
 
 <p>服务器接收连接的实现在一个网络库中比较重要。muduo中通过Acceptor类来接收连接。在TcpClient中，其Connector通过一个关心Channel可写的事件来通过连接已建立；在Acceptor中则是通过一个Channel可读的事件来表示有新的连接到来：</p>
 
-<div class="highlight"><pre><code class="c">    <span class="n">Acceptor</span><span class="o">::</span><span class="n">Acceptor</span><span class="p">(....)</span> <span class="p">{</span>
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">Acceptor</span><span class="o">::</span><span class="n">Acceptor</span><span class="p">(....)</span> <span class="p">{</span>
         <span class="p">...</span>
         <span class="n">acceptChannel_</span><span class="p">.</span><span class="n">setReadCallback</span><span class="p">(</span>
-            <span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">Acceptor</span><span class="o">::</span><span class="n">handleRead</span><span class="p">,</span> <span class="n">this</span><span class="p">));</span>
+            <span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">Acceptor</span><span class="o">::</span><span class="n">handleRead</span><span class="p">,</span> <span class="k">this</span><span class="p">));</span>
         <span class="p">...</span> 
     <span class="p">}</span>
 
@@ -231,55 +209,49 @@
         <span class="k">if</span> <span class="p">(</span><span class="n">connfd</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span>
         <span class="p">{</span>
             <span class="p">...</span>
-            <span class="n">newConnectionCallback_</span><span class="p">(</span><span class="n">connfd</span><span class="p">,</span> <span class="n">peerAddr</span><span class="p">);</span> <span class="c1">// 回调到TcpServer::newConnection</span>
-</code></pre>
-</div>
+            <span class="n">newConnectionCallback_</span><span class="p">(</span><span class="n">connfd</span><span class="p">,</span> <span class="n">peerAddr</span><span class="p">);</span> <span class="c1">// 回调到TcpServer::newConnection</span></code></pre></div>
 
 
 <p><code>TcpServer::newConnection</code>中建立一个TcpConnection，并将其附加到一个EventLoopThread中，简单来说就是给其配置一个线程：</p>
 
-<div class="highlight"><pre><code class="c">    <span class="kt">void</span> <span class="n">TcpServer</span><span class="o">::</span><span class="n">newConnection</span><span class="p">(</span><span class="kt">int</span> <span class="n">sockfd</span><span class="p">,</span> <span class="k">const</span> <span class="n">InetAddress</span><span class="o">&amp;</span> <span class="n">peerAddr</span><span class="p">)</span>
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">TcpServer</span><span class="o">::</span><span class="n">newConnection</span><span class="p">(</span><span class="kt">int</span> <span class="n">sockfd</span><span class="p">,</span> <span class="k">const</span> <span class="n">InetAddress</span><span class="o">&amp;</span> <span class="n">peerAddr</span><span class="p">)</span>
     <span class="p">{</span>
         <span class="p">...</span>
         <span class="n">EventLoop</span><span class="o">*</span> <span class="n">ioLoop</span> <span class="o">=</span> <span class="n">threadPool_</span><span class="o">-&gt;</span><span class="n">getNextLoop</span><span class="p">();</span>
-        <span class="n">TcpConnectionPtr</span> <span class="nf">conn</span><span class="p">(</span><span class="n">new</span> <span class="n">TcpConnection</span><span class="p">(</span><span class="n">ioLoop</span><span class="p">,</span>
+        <span class="n">TcpConnectionPtr</span> <span class="nf">conn</span><span class="p">(</span><span class="k">new</span> <span class="n">TcpConnection</span><span class="p">(</span><span class="n">ioLoop</span><span class="p">,</span>
                                                 <span class="n">connName</span><span class="p">,</span>
                                                 <span class="n">sockfd</span><span class="p">,</span>
                                                 <span class="n">localAddr</span><span class="p">,</span>
                                                 <span class="n">peerAddr</span><span class="p">));</span>
         <span class="n">connections_</span><span class="p">[</span><span class="n">connName</span><span class="p">]</span> <span class="o">=</span> <span class="n">conn</span><span class="p">;</span>
         <span class="p">...</span>
-        <span class="n">ioLoop</span><span class="o">-&gt;</span><span class="n">runInLoop</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">TcpConnection</span><span class="o">::</span><span class="n">connectEstablished</span><span class="p">,</span> <span class="n">conn</span><span class="p">));</span>
-</code></pre>
-</div>
+        <span class="n">ioLoop</span><span class="o">-&gt;</span><span class="n">runInLoop</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">TcpConnection</span><span class="o">::</span><span class="n">connectEstablished</span><span class="p">,</span> <span class="n">conn</span><span class="p">));</span></code></pre></div>
 
 
 <h2>IO的驱动</h2>
 
 <p>之前提到，一旦要关心某IO事件了，就调用<code>Channel::enableXXX</code>，这个如何实现的呢？</p>
 
-<div class="highlight"><pre><code class="c">    <span class="n">class</span> <span class="n">Channel</span> <span class="p">{</span>
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">class</span> <span class="nc">Channel</span> <span class="p">{</span>
         <span class="p">...</span>
         <span class="kt">void</span> <span class="n">enableReading</span><span class="p">()</span> <span class="p">{</span> <span class="n">events_</span> <span class="o">|=</span> <span class="n">kReadEvent</span><span class="p">;</span> <span class="n">update</span><span class="p">();</span> <span class="p">}</span>
         <span class="kt">void</span> <span class="n">enableWriting</span><span class="p">()</span> <span class="p">{</span> <span class="n">events_</span> <span class="o">|=</span> <span class="n">kWriteEvent</span><span class="p">;</span> <span class="n">update</span><span class="p">();</span> <span class="p">}</span>
        
     <span class="kt">void</span> <span class="n">Channel</span><span class="o">::</span><span class="n">update</span><span class="p">()</span>
     <span class="p">{</span>
-        <span class="n">loop_</span><span class="o">-&gt;</span><span class="n">updateChannel</span><span class="p">(</span><span class="n">this</span><span class="p">);</span>
+        <span class="n">loop_</span><span class="o">-&gt;</span><span class="n">updateChannel</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
     <span class="p">}</span>
 
     <span class="kt">void</span> <span class="n">EventLoop</span><span class="o">::</span><span class="n">updateChannel</span><span class="p">(</span><span class="n">Channel</span><span class="o">*</span> <span class="n">channel</span><span class="p">)</span>
     <span class="p">{</span>
         <span class="p">...</span>
         <span class="n">poller_</span><span class="o">-&gt;</span><span class="n">updateChannel</span><span class="p">(</span><span class="n">channel</span><span class="p">);</span>
-    <span class="p">}</span>
-</code></pre>
-</div>
+    <span class="p">}</span></code></pre></div>
 
 
 <p>最终调用到<code>Poller::upateChannel</code>。muduo中有两个Poller的实现，分别是Poll和EPoll，可以选择简单的Poll来看：</p>
 
-<div class="highlight"><pre><code class="c">    <span class="kt">void</span> <span class="n">PollPoller</span><span class="o">::</span><span class="n">updateChannel</span><span class="p">(</span><span class="n">Channel</span><span class="o">*</span> <span class="n">channel</span><span class="p">)</span>
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">PollPoller</span><span class="o">::</span><span class="n">updateChannel</span><span class="p">(</span><span class="n">Channel</span><span class="o">*</span> <span class="n">channel</span><span class="p">)</span>
     <span class="p">{</span>
       <span class="p">...</span>
       <span class="k">if</span> <span class="p">(</span><span class="n">channel</span><span class="o">-&gt;</span><span class="n">index</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
@@ -288,19 +260,17 @@
         <span class="n">assert</span><span class="p">(</span><span class="n">channels_</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">channel</span><span class="o">-&gt;</span><span class="n">fd</span><span class="p">())</span> <span class="o">==</span> <span class="n">channels_</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
         <span class="k">struct</span> <span class="n">pollfd</span> <span class="n">pfd</span><span class="p">;</span>
         <span class="n">pfd</span><span class="p">.</span><span class="n">fd</span> <span class="o">=</span> <span class="n">channel</span><span class="o">-&gt;</span><span class="n">fd</span><span class="p">();</span>
-        <span class="n">pfd</span><span class="p">.</span><span class="n">events</span> <span class="o">=</span> <span class="n">static_cast</span><span class="o">&lt;</span><span class="kt">short</span><span class="o">&gt;</span><span class="p">(</span><span class="n">channel</span><span class="o">-&gt;</span><span class="n">events</span><span class="p">());</span> <span class="c1">// 也就是Channel::enableXXX操作的那个events_</span>
+        <span class="n">pfd</span><span class="p">.</span><span class="n">events</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">short</span><span class="o">&gt;</span><span class="p">(</span><span class="n">channel</span><span class="o">-&gt;</span><span class="n">events</span><span class="p">());</span> <span class="c1">// 也就是Channel::enableXXX操作的那个events_</span>
         <span class="n">pfd</span><span class="p">.</span><span class="n">revents</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
         <span class="n">pollfds_</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">pfd</span><span class="p">);</span> <span class="c1">// 加入一个新的pollfd</span>
-        <span class="kt">int</span> <span class="n">idx</span> <span class="o">=</span> <span class="n">static_cast</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">pollfds_</span><span class="p">.</span><span class="n">size</span><span class="p">())</span><span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+        <span class="kt">int</span> <span class="n">idx</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">pollfds_</span><span class="p">.</span><span class="n">size</span><span class="p">())</span><span class="o">-</span><span class="mi">1</span><span class="p">;</span>
         <span class="n">channel</span><span class="o">-&gt;</span><span class="n">set_index</span><span class="p">(</span><span class="n">idx</span><span class="p">);</span>
-        <span class="n">channels_</span><span class="p">[</span><span class="n">pfd</span><span class="p">.</span><span class="n">fd</span><span class="p">]</span> <span class="o">=</span> <span class="n">channel</span><span class="p">;</span>
-</code></pre>
-</div>
+        <span class="n">channels_</span><span class="p">[</span><span class="n">pfd</span><span class="p">.</span><span class="n">fd</span><span class="p">]</span> <span class="o">=</span> <span class="n">channel</span><span class="p">;</span></code></pre></div>
 
 
 <p>可见Poller就是把Channel关心的IO事件转换为OS提供的IO模型数据结构上。通过查看关键的<code>pollfds_</code>的使用，可以发现其主要是在Poller::poll接口里。这个接口会在EventLoop的主循环中不断调用：</p>
 
-<div class="highlight"><pre><code class="c">    <span class="kt">void</span> <span class="n">EventLoop</span><span class="o">::</span><span class="n">loop</span><span class="p">()</span>
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">EventLoop</span><span class="o">::</span><span class="n">loop</span><span class="p">()</span>
     <span class="p">{</span>
       <span class="p">...</span>
       <span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">quit_</span><span class="p">)</span>
@@ -313,9 +283,7 @@
         <span class="p">{</span>
           <span class="n">currentActiveChannel_</span> <span class="o">=</span> <span class="o">*</span><span class="n">it</span><span class="p">;</span>
           <span class="n">currentActiveChannel_</span><span class="o">-&gt;</span><span class="n">handleEvent</span><span class="p">(</span><span class="n">pollReturnTime_</span><span class="p">);</span> <span class="c1">// 获得IO事件，通知各注册回调</span>
-        <span class="p">}</span>
-</code></pre>
-</div>
+        <span class="p">}</span></code></pre></div>
 
 
 <p>整个流程可总结为：各Channel内部会把自己关心的事件告诉给Poller，Poller由EventLoop驱动检测IO，然后返回哪些Channel发生了事件，EventLoop再驱动这些Channel调用各注册回调。</p>
@@ -328,20 +296,18 @@
 
 <p>回到<code>TcpServer::newConnection</code>中：</p>
 
-<div class="highlight"><pre><code class="c">    <span class="kt">void</span> <span class="n">TcpServer</span><span class="o">::</span><span class="n">newConnection</span><span class="p">(</span><span class="kt">int</span> <span class="n">sockfd</span><span class="p">,</span> <span class="k">const</span> <span class="n">InetAddress</span><span class="o">&amp;</span> <span class="n">peerAddr</span><span class="p">)</span>
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">TcpServer</span><span class="o">::</span><span class="n">newConnection</span><span class="p">(</span><span class="kt">int</span> <span class="n">sockfd</span><span class="p">,</span> <span class="k">const</span> <span class="n">InetAddress</span><span class="o">&amp;</span> <span class="n">peerAddr</span><span class="p">)</span>
     <span class="p">{</span>
       <span class="p">...</span>
       <span class="n">EventLoop</span><span class="o">*</span> <span class="n">ioLoop</span> <span class="o">=</span> <span class="n">threadPool_</span><span class="o">-&gt;</span><span class="n">getNextLoop</span><span class="p">();</span>
       <span class="p">...</span>
-      <span class="n">TcpConnectionPtr</span> <span class="n">conn</span><span class="p">(</span><span class="n">new</span> <span class="n">TcpConnection</span><span class="p">(</span><span class="n">ioLoop</span><span class="p">,</span> <span class="c1">// 使用这个选择到的线程中的EventLoop</span>
+      <span class="n">TcpConnectionPtr</span> <span class="n">conn</span><span class="p">(</span><span class="k">new</span> <span class="n">TcpConnection</span><span class="p">(</span><span class="n">ioLoop</span><span class="p">,</span> <span class="c1">// 使用这个选择到的线程中的EventLoop</span>
                                               <span class="n">connName</span><span class="p">,</span>
                                               <span class="n">sockfd</span><span class="p">,</span>
                                               <span class="n">localAddr</span><span class="p">,</span>
                                               <span class="n">peerAddr</span><span class="p">));</span>
       <span class="p">...</span>
-      <span class="n">ioLoop</span><span class="o">-&gt;</span><span class="n">runInLoop</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">TcpConnection</span><span class="o">::</span><span class="n">connectEstablished</span><span class="p">,</span> <span class="n">conn</span><span class="p">));</span>
-</code></pre>
-</div>
+      <span class="n">ioLoop</span><span class="o">-&gt;</span><span class="n">runInLoop</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">TcpConnection</span><span class="o">::</span><span class="n">connectEstablished</span><span class="p">,</span> <span class="n">conn</span><span class="p">));</span></code></pre></div>
 
 
 <p>注意<code>TcpConnection::connectEstablished</code>是如何通过Channel注册关心的IO事件到<code>ioLoop</code>的。</p>
@@ -357,14 +323,6 @@
 <h2>总结</h2>
 
 <p>本文主要对muduo的主要结构及主要机制的实现做了描述，其他如Buffer的实现、定时器的实现大家都可以自行研究。muduo的源码很清晰，通过源码及配合<a href="http://blog.csdn.net/solstice">陈硕博客</a>上的内容可以学到一些网络编程方面的经验。</p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2014/05/04/muduo-source/'>http://codemacro.com/2014/05/04/muduo-source/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
 </div>
 
 
@@ -380,19 +338,12 @@
 
 
 
-
-
-
-
-  
-
-
-<time datetime="2014-05-04T00:00:00+08:00" pubdate data-updated="true">May 4<span>th</span>, 2014</time>
+<time class='entry-date' datetime='2014-05-04T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>4</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/categories/c-c-/'>c/c++</a>, <a class='category' href='/categories/network/'>network</a>
+    <a class='category' href='/categories/c-slash-c-plus-plus/'>c/c++</a>, <a class='category' href='/categories/network/'>network</a>
   
 </span>
 
@@ -428,28 +379,6 @@
 <aside class="sidebar">
   
     <section>
-  <h1>Categories</h1>
-  <ul id="categories">
-    <li class='category'><a href='/categories/ice/'>ICE (2)</a></li>
-<li class='category'><a href='/categories/javascript/'>Javascript (1)</a></li>
-<li class='category'><a href='/categories/scala/'>Scala (1)</a></li>
-<li class='category'><a href='/categories/c-c-/'>c/c++ (14)</a></li>
-<li class='category'><a href='/categories/clang/'>clang (1)</a></li>
-<li class='category'><a href='/categories/erlang/'>erlang (8)</a></li>
-<li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
-<li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
-<li class='category'><a href='/categories/lua/'>lua (5)</a></li>
-<li class='category'><a href='/categories/module/'>module (3)</a></li>
-<li class='category'><a href='/categories/network/'>network (8)</a></li>
-<li class='category'><a href='/categories/other/'>other (6)</a></li>
-<li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
-<li class='category'><a href='/categories/tips/'>tips (21)</a></li>
-<li class='category'><a href='/categories/web/'>web (4)</a></li>
-
-  </ul>
-</section>
-
-<section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
     
@@ -475,39 +404,36 @@
     
   </ul>
 </section>
-<section>
-<div id="recentcomments" class="dsq-widget">
-<h1 class="dsq-widget-title">Recent Comments</h1>
-<script type="text/javascript" src="http://loopincodes.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
-</div>
-<a href="http://disqus.com/">Powered by Disqus</a>
-</section>
-<section>
-  <h1>Tags</h1>
-  <ul class="tag-cloud">
-<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
-<a style="font-size: 118%" href="/tags/ice/">ICE</a>
-<a style="font-size: 118%" href="/tags/blog/">blog</a>
-<a style="font-size: 182%" href="/tags/c-c-/">c/c++</a>
-<a style="font-size: 162%" href="/tags/dht/">dht</a>
-<a style="font-size: 134%" href="/tags/dhtcrawler/">dhtcrawler</a>
-<a style="font-size: 173%" href="/tags/erlang/">erlang</a>
-<a style="font-size: 134%" href="/tags/game-develop/">game develop</a>
-<a style="font-size: 118%" href="/tags/html/">html</a>
-<a style="font-size: 90%" href="/tags/ice/">ice</a>
-<a style="font-size: 154%" href="/tags/lisp/">lisp</a>
-<a style="font-size: 154%" href="/tags/lua/">lua</a>
-<a style="font-size: 146%" href="/tags/magnet/">magnet</a>
-<a style="font-size: 146%" href="/tags/octopress/">octopress</a>
-<a style="font-size: 154%" href="/tags/p2p/">p2p</a>
-<a style="font-size: 146%" href="/tags/ruby/">ruby</a>
-<a style="font-size: 90%" href="/tags/rup/">rup</a>
-<a style="font-size: 210%" href="/tags/tips/">tips</a>
-<a style="font-size: 118%" href="/tags/virtual/">virtual</a>
-<a style="font-size: 134%" href="/tags/web/">web</a>
 
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
   </ul>
+  
+  <a href="https://github.com/kevinlynx">@kevinlynx</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'kevinlynx',
+            count: 6,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
 </section>
+
 
   
 </aside>
@@ -534,7 +460,7 @@
       
     (function () {
       var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
       (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
     }());
 </script>
@@ -546,9 +472,6 @@
 
 
 
-
-<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
-<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
 
 
 

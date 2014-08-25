@@ -9,9 +9,8 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content=" loop in codes, Kevin Lynx blog ">
-  
-    <meta name="keywords" content="c/c++, mmo, game develop, lisp, ruby, lua, web development">
+  <meta name="description" content="问题 在Lua中，因为函数也是第一类值，所以会出现将函数作为另一个函数的参数，或者函数作
+为函数的返回值。这种机制在很多地方都能代码更灵活更简洁，例如: table.sort(table [,comp]) 这里的comp就要求传入一个函数，我们在调用时，大概会有如下形式: table.sort(t &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -21,15 +20,16 @@
 
   
   <link rel="canonical" href="http://codemacro.com/2011/05/09/lua-function-arg">
-  <link href="/favicon.ico" rel="icon">
+  <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
-  <script src="/javascripts/modernizr-2.0.js"></script>
-  <script src="/javascripts/ender.js"></script>
-  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
-<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
-<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 
   
 
@@ -49,7 +49,7 @@
   
 </ul>
   
-<form action="http://google.com/search" method="get">
+<form action="https://www.google.com/search" method="get">
   <fieldset role="search">
     <input type="hidden" name="q" value="site:codemacro.com" />
     <input class="search" type="text" name="q" results="0" placeholder="Search"/>
@@ -59,8 +59,6 @@
 <ul class="main-navigation">
   <li><a href="/">Blog</a></li>
   <li><a href="/blog/archives">Archives</a></li>
-  <li><a href="/tips">Tips</a></li>
-  <li><a href="/about.html">About</a></li>
 </ul>
 
 </nav>
@@ -80,14 +78,7 @@
 
 
 
-
-
-
-
-  
-
-
-<time datetime="2011-05-09T00:00:00+08:00" pubdate data-updated="true">May 9<span>th</span>, 2011</time>
+<time class='entry-date' datetime='2011-05-09T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>9</span><span class='date-suffix'>th</span>, <span class='date-year'>2011</span></span> <span class='time'>12:00 am</span></time>
         
       </p>
     
@@ -99,18 +90,14 @@
 <p>在Lua中，因为函数也是第一类值，所以会出现将函数作为另一个函数的参数，或者函数作
 为函数的返回值。这种机制在很多地方都能代码更灵活更简洁，例如:</p>
 
-<div class="highlight"><pre><code class="lua">    <span class="nb">table.sort</span><span class="p">(</span><span class="n">table</span> <span class="p">[,</span><span class="n">comp</span><span class="p">])</span>
-</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-lua" data-lang="lua"><span class="nb">table.sort</span><span class="p">(</span><span class="n">table</span> <span class="p">[,</span><span class="n">comp</span><span class="p">])</span></code></pre></div>
 
 
 <p>这里的comp就要求传入一个函数，我们在调用时，大概会有如下形式:</p>
 
-<div class="highlight"><pre><code class="lua">    <span class="nb">table.sort</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">comp</span><span class="p">)</span> <span class="c1">-- 直接写函数名</span>
+<div class="highlight"><pre><code class="language-lua" data-lang="lua"><span class="nb">table.sort</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">comp</span><span class="p">)</span> <span class="c1">-- 直接写函数名</span>
     <span class="nb">table.sort</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">local_comp</span><span class="p">)</span> <span class="c1">-- 某个局部函数</span>
-    <span class="nb">table.sort</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="k">function</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="n">xxx</span> <span class="k">end</span> <span class="p">)</span> <span class="c1">-- 临时构造一个匿名函数</span>
-</code></pre>
-</div>
+    <span class="nb">table.sort</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="k">function</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="n">xxx</span> <span class="k">end</span> <span class="p">)</span> <span class="c1">-- 临时构造一个匿名函数</span></code></pre></div>
 
 
 <p>其中最后一种方式最为灵活，任意时候在需要的时候构造一个匿名函数。这种在Lua自身的
@@ -124,11 +111,9 @@
 不是传入一个函数，而是一个全局函数名。C/C++保存这个函数名，在需要回调Lua的时候，
 就在Lua全局表中找到这个函数（根据函数名），然后再调用之。情况大致如下:</p>
 
-<div class="highlight"><pre><code class="lua">    <span class="k">function</span> <span class="nf">lua_func</span> <span class="p">()</span> <span class="n">xxx</span> <span class="k">end</span>
+<div class="highlight"><pre><code class="language-lua" data-lang="lua"><span class="k">function</span> <span class="nf">lua_func</span> <span class="p">()</span> <span class="n">xxx</span> <span class="k">end</span>
     <span class="n">cfunc</span><span class="p">(</span><span class="n">lua_func</span><span class="p">)</span> <span class="c1">-- wrong</span>
-    <span class="n">cfunc</span><span class="p">(</span><span class="s2">&quot;</span><span class="s">lua_func&quot;</span><span class="p">)</span> <span class="c1">-- right</span>
-</code></pre>
-</div>
+    <span class="n">cfunc</span><span class="p">(</span><span class="s2">&quot;</span><span class="s">lua_func&quot;</span><span class="p">)</span> <span class="c1">-- right</span></code></pre></div>
 
 
 <p>我们这回的脚本模块，策划会大量使用需要回调函数的C/C++函数。显然，创建大量的全局 函数，先是从写代码的角度看，就是很伤神的。</p>
@@ -137,34 +122,28 @@
 
 <p>我们最终需要的方式，大概如下:</p>
 
-<div class="highlight"><pre><code class="lua">    <span class="n">cfunc</span><span class="p">(</span><span class="n">lua_func</span><span class="p">)</span> <span class="c1">-- ok</span>
+<div class="highlight"><pre><code class="language-lua" data-lang="lua"><span class="n">cfunc</span><span class="p">(</span><span class="n">lua_func</span><span class="p">)</span> <span class="c1">-- ok</span>
     <span class="n">cfunc</span><span class="p">(</span><span class="k">function</span> <span class="p">()</span> <span class="n">xxx</span> <span class="k">end</span><span class="p">)</span> <span class="c1">-- ok</span>
     <span class="kd">local</span> <span class="n">xxx</span> <span class="o">=</span> <span class="k">function</span> <span class="p">()</span> <span class="n">xxx</span> <span class="k">end</span>
-    <span class="n">cfunc</span><span class="p">(</span><span class="n">xxx</span><span class="p">)</span> <span class="c1">-- ok</span>
-</code></pre>
-</div>
+    <span class="n">cfunc</span><span class="p">(</span><span class="n">xxx</span><span class="p">)</span> <span class="c1">-- ok</span></code></pre></div>
 
 
 <p>要解决这个问题，我的思路是直接在Lua层做一些包装。因为C/C++那边仅支持传入一个全局
 函数名（当然不一定得全局的，根据实际情况，可能在其他自己构造的表里也行），也就是
 一个字符串，所以我的思路就是将Lua函数和一个唯一的字符串做映射。:</p>
 
-<div class="highlight"><pre><code class="lua">    <span class="k">function</span> <span class="nf">wrap</span> <span class="p">(</span><span class="n">fn</span><span class="p">)</span>
+<div class="highlight"><pre><code class="language-lua" data-lang="lua"><span class="k">function</span> <span class="nf">wrap</span> <span class="p">(</span><span class="n">fn</span><span class="p">)</span>
         <span class="kd">local</span> <span class="n">id</span> <span class="o">=</span> <span class="n">generate_id</span><span class="p">()</span>
         <span class="kd">local</span> <span class="n">fn_s</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="s">__callback_fn&quot;</span><span class="o">..</span><span class="n">id</span>
         <span class="nb">_G</span><span class="p">[</span><span class="n">fn_s</span><span class="p">]</span> <span class="o">=</span> <span class="n">fn</span>
         <span class="k">return</span> <span class="n">fn_s</span>
-    <span class="k">end</span>
-</code></pre>
-</div>
+    <span class="k">end</span></code></pre></div>
 
 
 <p>这个wrap函数，就是将一个函数在全局表里映射到一个字符串上，那么在使用时:</p>
 
-<div class="highlight"><pre><code class="lua">    <span class="n">cfunc</span><span class="p">(</span><span class="n">wrap</span><span class="p">(</span><span class="k">function</span> <span class="p">()</span> <span class="n">xxx</span> <span class="k">end</span><span class="p">))</span>
-    <span class="n">cfunc</span><span class="p">(</span><span class="n">const</span> <span class="n">char</span> <span class="o">*</span><span class="n">fn_name</span><span class="p">,</span> <span class="n">xxx</span><span class="p">);</span> <span class="c1">-- cfunc的原型</span>
-</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-lua" data-lang="lua"><span class="n">cfunc</span><span class="p">(</span><span class="n">wrap</span><span class="p">(</span><span class="k">function</span> <span class="p">()</span> <span class="n">xxx</span> <span class="k">end</span><span class="p">))</span>
+    <span class="n">cfunc</span><span class="p">(</span><span class="n">const</span> <span class="n">char</span> <span class="o">*</span><span class="n">fn_name</span><span class="p">,</span> <span class="n">xxx</span><span class="p">);</span> <span class="c1">-- cfunc的原型</span></code></pre></div>
 
 
 <p>cfunc是C/C++方注册进Lua的函数，它的原型很中规中矩，即：只接收一个函数名，一个字
@@ -188,7 +167,7 @@
 <p>这里这个函数调用形式，Lua就会去找ab是否有__call metamethod，如果有，则调用它。这
 个事实暗示我们，一个table也可以被调用。一个改进的wrap函数如下:</p>
 
-<div class="highlight"><pre><code class="lua">    <span class="kd">local</span> <span class="k">function</span> <span class="nf">create_callback_table</span> <span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+<div class="highlight"><pre><code class="language-lua" data-lang="lua"><span class="kd">local</span> <span class="k">function</span> <span class="nf">create_callback_table</span> <span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
         <span class="kd">local</span> <span class="n">t</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">t</span><span class="p">.</span><span class="n">callback</span> <span class="o">=</span> <span class="n">fn</span>
         <span class="nb">setmetatable</span> <span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="p">{</span><span class="n">__call</span> <span class="o">=</span>  <span class="c1">-- 关注__call</span>
@@ -204,9 +183,7 @@
         <span class="kd">local</span> <span class="n">fn_s</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="s">_callback_fn&quot;</span><span class="o">..</span><span class="n">id</span>
         <span class="nb">_G</span><span class="p">[</span><span class="n">fn_s</span><span class="p">]</span> <span class="o">=</span> <span class="n">create_callback_table</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">fn_s</span><span class="p">)</span> <span class="c1">-- _G[fn_s]对应的是一个表</span>
         <span class="k">return</span> <span class="n">fn_s</span>
-    <span class="k">end</span>
-</code></pre>
-</div>
+    <span class="k">end</span></code></pre></div>
 
 
 <p>在我们的C/C++程序中，依然如往常一样，先是从_G里取出函数名对应的对象。虽然这个对
@@ -231,14 +208,6 @@ table在Lua里的代价，也就多了几次Lua函数调用。</p>
 接口。Lua中的table有同样的问题。究其原因，主要是Lua中的函数没有直接的c/c++数据结 构对应。</p>
 
 <p>;; END</p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2011/05/09/lua-function-arg/'>http://codemacro.com/2011/05/09/lua-function-arg/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
 </div>
 
 
@@ -254,14 +223,7 @@ table在Lua里的代价，也就多了几次Lua函数调用。</p>
 
 
 
-
-
-
-
-  
-
-
-<time datetime="2011-05-09T00:00:00+08:00" pubdate data-updated="true">May 9<span>th</span>, 2011</time>
+<time class='entry-date' datetime='2011-05-09T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>9</span><span class='date-suffix'>th</span>, <span class='date-year'>2011</span></span> <span class='time'>12:00 am</span></time>
       
 
 <span class="categories">
@@ -302,28 +264,6 @@ table在Lua里的代价，也就多了几次Lua函数调用。</p>
 <aside class="sidebar">
   
     <section>
-  <h1>Categories</h1>
-  <ul id="categories">
-    <li class='category'><a href='/categories/ice/'>ICE (2)</a></li>
-<li class='category'><a href='/categories/javascript/'>Javascript (1)</a></li>
-<li class='category'><a href='/categories/scala/'>Scala (1)</a></li>
-<li class='category'><a href='/categories/c-c-/'>c/c++ (14)</a></li>
-<li class='category'><a href='/categories/clang/'>clang (1)</a></li>
-<li class='category'><a href='/categories/erlang/'>erlang (8)</a></li>
-<li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
-<li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
-<li class='category'><a href='/categories/lua/'>lua (5)</a></li>
-<li class='category'><a href='/categories/module/'>module (3)</a></li>
-<li class='category'><a href='/categories/network/'>network (8)</a></li>
-<li class='category'><a href='/categories/other/'>other (6)</a></li>
-<li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
-<li class='category'><a href='/categories/tips/'>tips (21)</a></li>
-<li class='category'><a href='/categories/web/'>web (4)</a></li>
-
-  </ul>
-</section>
-
-<section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
     
@@ -349,39 +289,36 @@ table在Lua里的代价，也就多了几次Lua函数调用。</p>
     
   </ul>
 </section>
-<section>
-<div id="recentcomments" class="dsq-widget">
-<h1 class="dsq-widget-title">Recent Comments</h1>
-<script type="text/javascript" src="http://loopincodes.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
-</div>
-<a href="http://disqus.com/">Powered by Disqus</a>
-</section>
-<section>
-  <h1>Tags</h1>
-  <ul class="tag-cloud">
-<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
-<a style="font-size: 118%" href="/tags/ice/">ICE</a>
-<a style="font-size: 118%" href="/tags/blog/">blog</a>
-<a style="font-size: 182%" href="/tags/c-c-/">c/c++</a>
-<a style="font-size: 162%" href="/tags/dht/">dht</a>
-<a style="font-size: 134%" href="/tags/dhtcrawler/">dhtcrawler</a>
-<a style="font-size: 173%" href="/tags/erlang/">erlang</a>
-<a style="font-size: 134%" href="/tags/game-develop/">game develop</a>
-<a style="font-size: 118%" href="/tags/html/">html</a>
-<a style="font-size: 90%" href="/tags/ice/">ice</a>
-<a style="font-size: 154%" href="/tags/lisp/">lisp</a>
-<a style="font-size: 154%" href="/tags/lua/">lua</a>
-<a style="font-size: 146%" href="/tags/magnet/">magnet</a>
-<a style="font-size: 146%" href="/tags/octopress/">octopress</a>
-<a style="font-size: 154%" href="/tags/p2p/">p2p</a>
-<a style="font-size: 146%" href="/tags/ruby/">ruby</a>
-<a style="font-size: 90%" href="/tags/rup/">rup</a>
-<a style="font-size: 210%" href="/tags/tips/">tips</a>
-<a style="font-size: 118%" href="/tags/virtual/">virtual</a>
-<a style="font-size: 134%" href="/tags/web/">web</a>
 
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
   </ul>
+  
+  <a href="https://github.com/kevinlynx">@kevinlynx</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'kevinlynx',
+            count: 6,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
 </section>
+
 
   
 </aside>
@@ -408,7 +345,7 @@ table在Lua里的代价，也就多了几次Lua函数调用。</p>
       
     (function () {
       var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
       (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
     }());
 </script>
@@ -420,9 +357,6 @@ table在Lua里的代价，也就多了几次Lua函数调用。</p>
 
 
 
-
-<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
-<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
 
 
 

@@ -9,10 +9,8 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content=" loop in codes, Kevin Lynx blog ">
-  
-    <meta name="keywords" content="erlangdhtp2pmagnet">
-  
+  <meta name="description" content="接上篇，本篇谈谈一些实现细节。 这个爬虫程序主要的问题在于如何获取P2P网络中分享的资源，获取到资源后索引到数据库中，搜索就是自然而然的事情。 DHT DHT网络本质上是一个用于查询的网络，其用于查询一个资源有哪些计算机正在下载。每个资源都有一个20字节长度的ID用于标示，称为infohash。 &hellip;">
+  <meta name="keywords" content="erlangdhtp2pmagnet">
 
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -21,15 +19,16 @@
 
   
   <link rel="canonical" href="http://codemacro.com/2013/06/21/magnet-search-impl">
-  <link href="/favicon.ico" rel="icon">
+  <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
-  <script src="/javascripts/modernizr-2.0.js"></script>
-  <script src="/javascripts/ender.js"></script>
-  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
-<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
-<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 
   
 
@@ -49,7 +48,7 @@
   
 </ul>
   
-<form action="http://google.com/search" method="get">
+<form action="https://www.google.com/search" method="get">
   <fieldset role="search">
     <input type="hidden" name="q" value="site:codemacro.com" />
     <input class="search" type="text" name="q" results="0" placeholder="Search"/>
@@ -59,8 +58,6 @@
 <ul class="main-navigation">
   <li><a href="/">Blog</a></li>
   <li><a href="/blog/archives">Archives</a></li>
-  <li><a href="/tips">Tips</a></li>
-  <li><a href="/about.html">About</a></li>
 </ul>
 
 </nav>
@@ -80,14 +77,7 @@
 
 
 
-
-
-
-
-  
-
-
-<time datetime="2013-06-21T00:00:00+08:00" pubdate data-updated="true">Jun 21<span>st</span>, 2013</time>
+<time class='entry-date' datetime='2013-06-21T00:00:00+08:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
         
       </p>
     
@@ -118,46 +108,40 @@ http://bt.box.n0808.com
 
 <p>使用这些网站时，需提供磁力哈希（infohash可直接转换），构建特定的URL，发出HTTP请求即可。</p>
 
-<div class="highlight"><pre><code class="erlang">   <span class="nv">U1</span> <span class="o">=</span> <span class="s">&quot;http://torrage.com/torrent/&quot;</span> <span class="o">++</span> <span class="nv">MagHash</span> <span class="o">++</span> <span class="s">&quot;.torrent&quot;</span><span class="p">,</span>
+<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nv">U1</span> <span class="o">=</span> <span class="s">&quot;http://torrage.com/torrent/&quot;</span> <span class="o">++</span> <span class="nv">MagHash</span> <span class="o">++</span> <span class="s">&quot;.torrent&quot;</span><span class="p">,</span>
     <span class="nv">U2</span> <span class="o">=</span> <span class="s">&quot;https://zoink.it/torrent/&quot;</span> <span class="o">++</span> <span class="nv">MagHash</span> <span class="o">++</span> <span class="s">&quot;.torrent&quot;</span><span class="p">,</span>
     <span class="nv">U3</span> <span class="o">=</span> <span class="n">format_btbox_url</span><span class="p">(</span><span class="nv">MagHash</span><span class="p">),</span>
 
 <span class="nf">format_btbox_url</span><span class="p">(</span><span class="nv">MagHash</span><span class="p">)</span> <span class="o">-&gt;</span>
     <span class="nv">H</span> <span class="o">=</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">sublist</span><span class="p">(</span><span class="nv">MagHash</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
     <span class="nv">T</span> <span class="o">=</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">nthtail</span><span class="p">(</span><span class="mi">38</span><span class="p">,</span> <span class="nv">MagHash</span><span class="p">),</span>
-    <span class="s">&quot;http://bt.box.n0808.com/&quot;</span> <span class="o">++</span> <span class="nv">H</span> <span class="o">++</span> <span class="s">&quot;/&quot;</span> <span class="o">++</span> <span class="nv">T</span> <span class="o">++</span> <span class="s">&quot;/&quot;</span> <span class="o">++</span> <span class="nv">MagHash</span> <span class="o">++</span> <span class="s">&quot;.torrent&quot;</span><span class="p">.</span>
-</code></pre>
-</div>
+    <span class="s">&quot;http://bt.box.n0808.com/&quot;</span> <span class="o">++</span> <span class="nv">H</span> <span class="o">++</span> <span class="s">&quot;/&quot;</span> <span class="o">++</span> <span class="nv">T</span> <span class="o">++</span> <span class="s">&quot;/&quot;</span> <span class="o">++</span> <span class="nv">MagHash</span> <span class="o">++</span> <span class="s">&quot;.torrent&quot;</span><span class="p">.</span></code></pre></div>
 
 
 <p>但是，以一个节点的身份加入DHT网络，是无法获取大量查询的。在DHT网络中，每个节点都有一个ID。每个节点在查询信息时，仅询问离信息较近的节点。这里的信息除了infohash外还包含节点，即节点询问一个节点，这个节点在哪里。DHT的典型实现中（Kademlia），使用两个ID的xor操作来确定距离。既然距离的计算是基于ID的，为了尽可能获取整个DHT网络交换的信息，爬虫程序就可以建立尽可能多的DHT节点，让这些节点的ID均匀地分布在ID取值区间内，以这样的方式加入网络。</p>
 
 <p>在dhtcrawler中，我使用以下方式产生了N个大致均匀分布的ID：</p>
 
-<div class="highlight"><pre><code class="erlang"><span class="nf">create_discrete_ids</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span>
+<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nf">create_discrete_ids</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span>
     <span class="p">[</span><span class="nn">dht_id</span><span class="p">:</span><span class="nf">random</span><span class="p">()];</span>
 <span class="nf">create_discrete_ids</span><span class="p">(</span><span class="nv">Count</span><span class="p">)</span> <span class="o">-&gt;</span>
     <span class="nv">Max</span> <span class="o">=</span> <span class="nn">dht_id</span><span class="p">:</span><span class="nf">max</span><span class="p">(),</span>
     <span class="nv">Piece</span> <span class="o">=</span> <span class="nv">Max</span> <span class="ow">div</span> <span class="nv">Count</span><span class="p">,</span>
-    <span class="p">[</span><span class="nn">random</span><span class="p">:</span><span class="nf">uniform</span><span class="p">(</span><span class="nv">Piece</span><span class="p">)</span> <span class="o">+</span> <span class="nv">Index</span> <span class="o">*</span> <span class="nv">Piece</span> <span class="p">||</span> <span class="nv">Index</span> <span class="o">&lt;-</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">seq</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nv">Count</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)].</span>
-</code></pre>
-</div>
+    <span class="p">[</span><span class="nn">random</span><span class="p">:</span><span class="nf">uniform</span><span class="p">(</span><span class="nv">Piece</span><span class="p">)</span> <span class="o">+</span> <span class="nv">Index</span> <span class="o">*</span> <span class="nv">Piece</span> <span class="p">||</span> <span class="nv">Index</span> <span class="o">&lt;-</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">seq</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nv">Count</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)].</span></code></pre></div>
 
 
 <p>除了尽可能多地往DHT网络里部署节点之外，对单个节点而言，也有些注意事项。例如应尽可能快地将自己告诉尽可能多的节点，这可以在启动时进行大量的随机infohash的查询。随着查询过程的深入，该节点会与更多的节点打交道。因为DHT网络里的节点实际上是不稳定的，它今天在线，明天后天可能不在线，所以计算你的ID固定，哪些节点与你较近，本身就是个相对概念。节点在程序退出时，也最好将自己的路由信息（与自己交互的节点列表）保存起来，这样下次启动时就可以更快地加入网络。</p>
 
 <p>在dhtcrawler的实现中，每个节点每个一定时间，都会向网络中随机查询一个infohash，这个infohash是随机产生的。其查询目的不在于infohash，而在于告诉更多的节点，以及在其他节点上保持自己的活跃。</p>
 
-<div class="highlight"><pre><code class="erlang"><span class="nf">handle_event</span><span class="p">(</span><span class="n">startup</span><span class="p">,</span> <span class="p">{</span><span class="nv">MyID</span><span class="p">})</span> <span class="o">-&gt;</span>
+<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nf">handle_event</span><span class="p">(</span><span class="n">startup</span><span class="p">,</span> <span class="p">{</span><span class="nv">MyID</span><span class="p">})</span> <span class="o">-&gt;</span>
     <span class="nn">timer</span><span class="p">:</span><span class="nf">apply_interval</span><span class="p">(</span><span class="o">?</span><span class="nv">QUERY_INTERVAL</span><span class="p">,</span> <span class="o">?</span><span class="nv">MODULE</span><span class="p">,</span> <span class="n">start_tell_more_nodes</span><span class="p">,</span> <span class="p">[</span><span class="nv">MyID</span><span class="p">]).</span>
 
 <span class="nf">start_tell_more_nodes</span><span class="p">(</span><span class="nv">MyID</span><span class="p">)</span> <span class="o">-&gt;</span>
     <span class="nb">spawn</span><span class="p">(</span><span class="o">?</span><span class="nv">MODULE</span><span class="p">,</span> <span class="n">tell_more_nodes</span><span class="p">,</span> <span class="p">[</span><span class="nv">MyID</span><span class="p">]).</span>
 
 <span class="nf">tell_more_nodes</span><span class="p">(</span><span class="nv">MyID</span><span class="p">)</span> <span class="o">-&gt;</span>
-    <span class="p">[</span><span class="nn">search</span><span class="p">:</span><span class="nf">get_peers</span><span class="p">(</span><span class="nv">MyID</span><span class="p">,</span> <span class="nn">dht_id</span><span class="p">:</span><span class="nf">random</span><span class="p">())</span> <span class="p">||</span> <span class="p">_</span> <span class="o">&lt;-</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">seq</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)].</span>
-</code></pre>
-</div>
+    <span class="p">[</span><span class="nn">search</span><span class="p">:</span><span class="nf">get_peers</span><span class="p">(</span><span class="nv">MyID</span><span class="p">,</span> <span class="nn">dht_id</span><span class="p">:</span><span class="nf">random</span><span class="p">())</span> <span class="p">||</span> <span class="p">_</span> <span class="o">&lt;-</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">seq</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)].</span></code></pre></div>
 
 
 <p>DHT节点的完整实现是比较繁琐的，涉及到查询以及繁杂的各种对象的超时（节点、桶、infohash），而超时的处理并不是粗暴地做删除操作。因为本身是基于UDP协议，你得对这些超时对象做进一步的查询才能正确地进一步做其他事情。而搜索也是个繁杂的事情，递归地查询节点，感觉上，你不一定离目标越来越近，由于被查询节点的不确定性（无法确定对方是否在玩弄你，或者本身对方就是个傻逼），你很可能接下来要查询的节点反而离目标变远了。</p>
@@ -174,7 +158,7 @@ http://bt.box.n0808.com
 
 <p>文件的信息无非就是文件名、大小。文件名可能包含utf8编码的名字，为了后面处理的方便，dhtcrawler都会优先使用utf8编码。</p>
 
-<div class="highlight"><pre><code class="erlang">   <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="p">{</span><span class="n">dict</span><span class="p">,</span> <span class="nv">Info</span><span class="p">}}</span> <span class="o">=</span> <span class="nn">dict</span><span class="p">:</span><span class="nf">find</span><span class="p">(</span><span class="o">&lt;&lt;</span><span class="s">&quot;info&quot;</span><span class="o">&gt;&gt;</span><span class="p">,</span> <span class="nv">TD</span><span class="p">),</span>
+<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="p">{</span><span class="n">dict</span><span class="p">,</span> <span class="nv">Info</span><span class="p">}}</span> <span class="o">=</span> <span class="nn">dict</span><span class="p">:</span><span class="nf">find</span><span class="p">(</span><span class="o">&lt;&lt;</span><span class="s">&quot;info&quot;</span><span class="o">&gt;&gt;</span><span class="p">,</span> <span class="nv">TD</span><span class="p">),</span>
     <span class="k">case</span> <span class="n">type</span><span class="p">(</span><span class="nv">Info</span><span class="p">)</span> <span class="k">of</span>
         <span class="n">single</span> <span class="o">-&gt;</span> <span class="p">{</span><span class="n">single</span><span class="p">,</span> <span class="n">parse_single</span><span class="p">(</span><span class="nv">Info</span><span class="p">)};</span>
         <span class="n">multi</span> <span class="o">-&gt;</span> <span class="p">{</span><span class="n">multi</span><span class="p">,</span> <span class="n">parse_multi</span><span class="p">(</span><span class="nv">Info</span><span class="p">)}</span>
@@ -188,9 +172,7 @@ http://bt.box.n0808.com
     <span class="nv">Root</span> <span class="o">=</span> <span class="n">read_string</span><span class="p">(</span><span class="s">&quot;name&quot;</span><span class="p">,</span> <span class="nv">Info</span><span class="p">),</span>
     <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="p">{</span><span class="n">list</span><span class="p">,</span> <span class="nv">Files</span><span class="p">}}</span> <span class="o">=</span> <span class="nn">dict</span><span class="p">:</span><span class="nf">find</span><span class="p">(</span><span class="o">&lt;&lt;</span><span class="s">&quot;files&quot;</span><span class="o">&gt;&gt;</span><span class="p">,</span> <span class="nv">Info</span><span class="p">),</span>
     <span class="nv">FileInfo</span> <span class="o">=</span> <span class="p">[</span><span class="n">parse_file_item</span><span class="p">(</span><span class="nv">Item</span><span class="p">)</span> <span class="p">||</span> <span class="p">{</span><span class="n">dict</span><span class="p">,</span> <span class="nv">Item</span><span class="p">}</span> <span class="o">&lt;-</span> <span class="nv">Files</span><span class="p">],</span>
-    <span class="p">{</span><span class="nv">Root</span><span class="p">,</span> <span class="nv">FileInfo</span><span class="p">}.</span>
-</code></pre>
-</div>
+    <span class="p">{</span><span class="nv">Root</span><span class="p">,</span> <span class="nv">FileInfo</span><span class="p">}.</span></code></pre></div>
 
 
 <h2>数据库</h2>
@@ -213,28 +195,24 @@ http://bt.box.n0808.com
 
 <p>使用mongodb时唯一让我很不爽的是mongodb-erlang这个客户端库的文档太欠缺。这还不算大问题，因为看看源码参数还是可以大概猜到用法。真正悲剧的是mongodb的有些查询功能它是不支持的。例如通过cursor来排序来限制数量。在cursor模块并没有对应的mongodb接口。最终我只好通过以下方式查询，我不明白batchsize，但它可以工作：</p>
 
-<div class="highlight"><pre><code class="erlang"><span class="nf">search_announce_top</span><span class="p">(</span><span class="nv">Conn</span><span class="p">,</span> <span class="nv">Count</span><span class="p">)</span> <span class="o">-&gt;</span>
+<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nf">search_announce_top</span><span class="p">(</span><span class="nv">Conn</span><span class="p">,</span> <span class="nv">Count</span><span class="p">)</span> <span class="o">-&gt;</span>
     <span class="nv">Sel</span> <span class="o">=</span> <span class="p">{</span><span class="n">&#39;$query&#39;</span><span class="p">,</span> <span class="p">{},</span> <span class="n">&#39;$orderby&#39;</span><span class="p">,</span> <span class="p">{</span><span class="n">announce</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">}},</span>
     <span class="nv">List</span> <span class="o">=</span> <span class="n">mongo_do</span><span class="p">(</span><span class="nv">Conn</span><span class="p">,</span> <span class="k">fun</span><span class="p">()</span> <span class="o">-&gt;</span>
         <span class="nv">Cursor</span> <span class="o">=</span> <span class="nn">mongo</span><span class="p">:</span><span class="nf">find</span><span class="p">(</span><span class="o">?</span><span class="nv">COLLNAME</span><span class="p">,</span> <span class="nv">Sel</span><span class="p">,</span> <span class="p">[],</span> <span class="mi">0</span><span class="p">,</span> <span class="nv">Count</span><span class="p">),</span> 
         <span class="nn">mongo_cursor</span><span class="p">:</span><span class="nf">rest</span><span class="p">(</span><span class="nv">Cursor</span><span class="p">)</span>
     <span class="k">end</span><span class="p">),</span>
-    <span class="p">[</span><span class="n">decode_torrent_item</span><span class="p">(</span><span class="nv">Item</span><span class="p">)</span> <span class="p">||</span> <span class="nv">Item</span> <span class="o">&lt;-</span> <span class="nv">List</span><span class="p">].</span>
-</code></pre>
-</div>
+    <span class="p">[</span><span class="n">decode_torrent_item</span><span class="p">(</span><span class="nv">Item</span><span class="p">)</span> <span class="p">||</span> <span class="nv">Item</span> <span class="o">&lt;-</span> <span class="nv">List</span><span class="p">].</span></code></pre></div>
 
 
 <p>另一个悲剧的是，mongodb-erlang还不支持文档的局部更新，它的update接口直接要求传入整个文档。几经折腾，我可以通过runCommand来完成：</p>
 
-<div class="highlight"><pre><code class="erlang"><span class="nf">inc_announce</span><span class="p">(</span><span class="nv">Conn</span><span class="p">,</span> <span class="nv">Hash</span><span class="p">)</span> <span class="k">when</span> <span class="nb">is_list</span><span class="p">(</span><span class="nv">Hash</span><span class="p">)</span> <span class="o">-&gt;</span>
+<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nf">inc_announce</span><span class="p">(</span><span class="nv">Conn</span><span class="p">,</span> <span class="nv">Hash</span><span class="p">)</span> <span class="k">when</span> <span class="nb">is_list</span><span class="p">(</span><span class="nv">Hash</span><span class="p">)</span> <span class="o">-&gt;</span>
     <span class="nv">Cmd</span> <span class="o">=</span> <span class="p">{</span><span class="n">findAndModify</span><span class="p">,</span> <span class="o">?</span><span class="nv">COLLNAME</span><span class="p">,</span> <span class="k">query</span><span class="p">,</span> <span class="p">{</span><span class="n">&#39;_id&#39;</span><span class="p">,</span> <span class="nb">list_to_binary</span><span class="p">(</span><span class="nv">Hash</span><span class="p">)},</span> 
         <span class="n">update</span><span class="p">,</span> <span class="p">{</span><span class="n">&#39;$inc&#39;</span><span class="p">,</span> <span class="p">{</span><span class="n">announce</span><span class="p">,</span> <span class="mi">1</span><span class="p">}},</span>
         <span class="n">new</span><span class="p">,</span> <span class="n">true</span><span class="p">},</span>
     <span class="nv">Ret</span> <span class="o">=</span> <span class="n">mongo_do</span><span class="p">(</span><span class="nv">Conn</span><span class="p">,</span> <span class="k">fun</span><span class="p">()</span> <span class="o">-&gt;</span>
         <span class="nn">mongo</span><span class="p">:</span><span class="nf">command</span><span class="p">(</span><span class="nv">Cmd</span><span class="p">)</span>
-    <span class="k">end</span><span class="p">).</span>
-</code></pre>
-</div>
+    <span class="k">end</span><span class="p">).</span></code></pre></div>
 
 
 <h2>Unicode</h2>
@@ -253,7 +231,7 @@ a中文
 
 <p>那么，在erlang中当我获取到一个字符串list时，我就需要知道哪几个整数合起来实际上对应着一个汉字。erlang里unicode模块里有几个函数可以将unicode字符串list对应的整数合起来，例如：<code>[111, 222, 333]</code>可能表示的是一个汉字，将其转换以下可得到<code>[111222333]</code>这样的形式。</p>
 
-<div class="highlight"><pre><code class="erlang"><span class="nf">split</span><span class="p">(</span><span class="nv">Str</span><span class="p">)</span> <span class="k">when</span> <span class="nb">is_list</span><span class="p">(</span><span class="nv">Str</span><span class="p">)</span> <span class="o">-&gt;</span>
+<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nf">split</span><span class="p">(</span><span class="nv">Str</span><span class="p">)</span> <span class="k">when</span> <span class="nb">is_list</span><span class="p">(</span><span class="nv">Str</span><span class="p">)</span> <span class="o">-&gt;</span>
     <span class="nv">B</span> <span class="o">=</span> <span class="nb">list_to_binary</span><span class="p">(</span><span class="nv">Str</span><span class="p">),</span> <span class="c">% 必须转换为binary</span>
     <span class="k">case</span> <span class="nn">unicode</span><span class="p">:</span><span class="nf">characters_to_list</span><span class="p">(</span><span class="nv">B</span><span class="p">)</span> <span class="k">of</span>
         <span class="p">{</span><span class="n">error</span><span class="p">,</span> <span class="nv">L</span><span class="p">,</span> <span class="nv">D</span><span class="p">}</span> <span class="o">-&gt;</span>
@@ -271,9 +249,7 @@ a中文
     <span class="p">[_|</span><span class="nv">R</span><span class="p">]</span> <span class="o">=</span> <span class="nv">L</span><span class="p">,</span>
     <span class="p">{</span><span class="nv">PreL</span><span class="p">,</span> <span class="p">_}</span> <span class="o">=</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">splitwith</span><span class="p">(</span><span class="k">fun</span><span class="p">(</span><span class="nv">Ch</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="ow">not</span> <span class="n">is_spliter</span><span class="p">(</span><span class="nv">Ch</span><span class="p">)</span> <span class="k">end</span><span class="p">,</span> <span class="nv">L</span><span class="p">),</span>
     <span class="p">[</span><span class="nn">unicode</span><span class="p">:</span><span class="nf">characters_to_binary</span><span class="p">(</span><span class="nn">lists</span><span class="p">:</span><span class="nf">sublist</span><span class="p">(</span><span class="nv">PreL</span><span class="p">,</span> <span class="nv">Len</span><span class="p">))</span> 
-        <span class="p">||</span> <span class="nv">Len</span> <span class="o">&lt;-</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">seq</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">length</span><span class="p">(</span><span class="nv">PreL</span><span class="p">))]</span> <span class="o">++</span> <span class="n">subsplit</span><span class="p">(</span><span class="nv">R</span><span class="p">).</span>
-</code></pre>
-</div>
+        <span class="p">||</span> <span class="nv">Len</span> <span class="o">&lt;-</span> <span class="nn">lists</span><span class="p">:</span><span class="nf">seq</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">length</span><span class="p">(</span><span class="nv">PreL</span><span class="p">))]</span> <span class="o">++</span> <span class="n">subsplit</span><span class="p">(</span><span class="nv">R</span><span class="p">).</span></code></pre></div>
 
 
 <p>除了这里的拆字之外，URL的编码、数据库的存储都还好，没遇到问题。</p>
@@ -291,14 +267,6 @@ a中文
 <p>另一个容易在多进程环境下出现的问题就是消息依赖的上下文改变问题。当投递一个消息到某个进程，到这个消息被处理之前，这段时间这个消息关联的逻辑运算所依赖的上下文环境改变了，例如某个ets元素不见了，在处理这个消息时，你还得以多线程编程的思维来编写代码。</p>
 
 <p>至于supervisor，这玩意你得端正态度。它不是用来包容你的傻逼错误的。当你写下傻逼代码导致进程频繁崩溃的时候，supervisor屁用没有。supervisor的唯一作用，仅仅是在一个确实本身可靠的系统，确实人品问题万分之一崩溃了，重启它。毕竟，一个重启频率的推荐值，是一个小时4次。</p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2013/06/21/magnet-search-impl/'>http://codemacro.com/2013/06/21/magnet-search-impl/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
 </div>
 
 
@@ -314,14 +282,7 @@ a中文
 
 
 
-
-
-
-
-  
-
-
-<time datetime="2013-06-21T00:00:00+08:00" pubdate data-updated="true">Jun 21<span>st</span>, 2013</time>
+<time class='entry-date' datetime='2013-06-21T00:00:00+08:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
       
 
 <span class="categories">
@@ -362,28 +323,6 @@ a中文
 <aside class="sidebar">
   
     <section>
-  <h1>Categories</h1>
-  <ul id="categories">
-    <li class='category'><a href='/categories/ice/'>ICE (2)</a></li>
-<li class='category'><a href='/categories/javascript/'>Javascript (1)</a></li>
-<li class='category'><a href='/categories/scala/'>Scala (1)</a></li>
-<li class='category'><a href='/categories/c-c-/'>c/c++ (14)</a></li>
-<li class='category'><a href='/categories/clang/'>clang (1)</a></li>
-<li class='category'><a href='/categories/erlang/'>erlang (8)</a></li>
-<li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
-<li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
-<li class='category'><a href='/categories/lua/'>lua (5)</a></li>
-<li class='category'><a href='/categories/module/'>module (3)</a></li>
-<li class='category'><a href='/categories/network/'>network (8)</a></li>
-<li class='category'><a href='/categories/other/'>other (6)</a></li>
-<li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
-<li class='category'><a href='/categories/tips/'>tips (21)</a></li>
-<li class='category'><a href='/categories/web/'>web (4)</a></li>
-
-  </ul>
-</section>
-
-<section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
     
@@ -409,39 +348,36 @@ a中文
     
   </ul>
 </section>
-<section>
-<div id="recentcomments" class="dsq-widget">
-<h1 class="dsq-widget-title">Recent Comments</h1>
-<script type="text/javascript" src="http://loopincodes.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
-</div>
-<a href="http://disqus.com/">Powered by Disqus</a>
-</section>
-<section>
-  <h1>Tags</h1>
-  <ul class="tag-cloud">
-<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
-<a style="font-size: 118%" href="/tags/ice/">ICE</a>
-<a style="font-size: 118%" href="/tags/blog/">blog</a>
-<a style="font-size: 182%" href="/tags/c-c-/">c/c++</a>
-<a style="font-size: 162%" href="/tags/dht/">dht</a>
-<a style="font-size: 134%" href="/tags/dhtcrawler/">dhtcrawler</a>
-<a style="font-size: 173%" href="/tags/erlang/">erlang</a>
-<a style="font-size: 134%" href="/tags/game-develop/">game develop</a>
-<a style="font-size: 118%" href="/tags/html/">html</a>
-<a style="font-size: 90%" href="/tags/ice/">ice</a>
-<a style="font-size: 154%" href="/tags/lisp/">lisp</a>
-<a style="font-size: 154%" href="/tags/lua/">lua</a>
-<a style="font-size: 146%" href="/tags/magnet/">magnet</a>
-<a style="font-size: 146%" href="/tags/octopress/">octopress</a>
-<a style="font-size: 154%" href="/tags/p2p/">p2p</a>
-<a style="font-size: 146%" href="/tags/ruby/">ruby</a>
-<a style="font-size: 90%" href="/tags/rup/">rup</a>
-<a style="font-size: 210%" href="/tags/tips/">tips</a>
-<a style="font-size: 118%" href="/tags/virtual/">virtual</a>
-<a style="font-size: 134%" href="/tags/web/">web</a>
 
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
   </ul>
+  
+  <a href="https://github.com/kevinlynx">@kevinlynx</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'kevinlynx',
+            count: 6,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
 </section>
+
 
   
 </aside>
@@ -468,7 +404,7 @@ a中文
       
     (function () {
       var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
       (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
     }());
 </script>
@@ -480,9 +416,6 @@ a中文
 
 
 
-
-<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
-<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
 
 
 

@@ -9,10 +9,8 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content=" loop in codes, Kevin Lynx blog ">
-  
-    <meta name="keywords" content="erlangdhtp2pmagnetdhtcrawler">
-  
+  <meta name="description" content="接上篇。 下载使用 目前为止dhtcrawler2相对dhtcrawler而言，数据库部分调整很大，DHT部分基本沿用之前。但单纯作为一个爬资源的程序而言，DHT部分可以进行大幅削减，这个以后再说。这个版本更快、更稳定。为了方便，我将编译好的erlang二进制文件作为git的主分支， &hellip;">
+  <meta name="keywords" content="erlangdhtp2pmagnetdhtcrawler">
 
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -21,15 +19,16 @@
 
   
   <link rel="canonical" href="http://codemacro.com/2013/07/02/dhtcrawler2">
-  <link href="/favicon.ico" rel="icon">
+  <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
-  <script src="/javascripts/modernizr-2.0.js"></script>
-  <script src="/javascripts/ender.js"></script>
-  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
-<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
-<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 
   
 
@@ -49,7 +48,7 @@
   
 </ul>
   
-<form action="http://google.com/search" method="get">
+<form action="https://www.google.com/search" method="get">
   <fieldset role="search">
     <input type="hidden" name="q" value="site:codemacro.com" />
     <input class="search" type="text" name="q" results="0" placeholder="Search"/>
@@ -59,8 +58,6 @@
 <ul class="main-navigation">
   <li><a href="/">Blog</a></li>
   <li><a href="/blog/archives">Archives</a></li>
-  <li><a href="/tips">Tips</a></li>
-  <li><a href="/about.html">About</a></li>
 </ul>
 
 </nav>
@@ -80,14 +77,7 @@
 
 
 
-
-
-
-
-  
-
-
-<time datetime="2013-07-02T00:00:00+08:00" pubdate data-updated="true">Jul 2<span>nd</span>, 2013</time>
+<time class='entry-date' datetime='2013-07-02T00:00:00+08:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>2</span><span class='date-suffix'>nd</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
         
       </p>
     
@@ -222,7 +212,7 @@
 
 <h3>cache indexer</h3>
 
-<p>dht_crawler是从torrage.com等网站获取种子文件，这些网站看起来都是使用了相同的接口，其都有一个sync目录，里面存放了每天每个月索引的种子hash，例如 http://torrage.com/sync/。这个网站上是否有某个hash对应的种子，就可以从这些索引中检查。</p>
+<p>dht_crawler是从torrage.com等网站获取种子文件，这些网站看起来都是使用了相同的接口，其都有一个sync目录，里面存放了每天每个月索引的种子hash，例如 <a href="http://torrage.com/sync/%E3%80%82%E8%BF%99%E4%B8%AA%E7%BD%91%E7%AB%99%E4%B8%8A%E6%98%AF%E5%90%A6%E6%9C%89%E6%9F%90%E4%B8%AAhash%E5%AF%B9%E5%BA%94%E7%9A%84%E7%A7%8D%E5%AD%90%EF%BC%8C%E5%B0%B1%E5%8F%AF%E4%BB%A5%E4%BB%8E%E8%BF%99%E4%BA%9B%E7%B4%A2%E5%BC%95%E4%B8%AD%E6%A3%80%E6%9F%A5%E3%80%82">http://torrage.com/sync/%E3%80%82%E8%BF%99%E4%B8%AA%E7%BD%91%E7%AB%99%E4%B8%8A%E6%98%AF%E5%90%A6%E6%9C%89%E6%9F%90%E4%B8%AAhash%E5%AF%B9%E5%BA%94%E7%9A%84%E7%A7%8D%E5%AD%90%EF%BC%8C%E5%B0%B1%E5%8F%AF%E4%BB%A5%E4%BB%8E%E8%BF%99%E4%BA%9B%E7%B4%A2%E5%BC%95%E4%B8%AD%E6%A3%80%E6%9F%A5%E3%80%82</a></p>
 
 <p>hash_reader在处理新资源时，请求种子的过程中发现大部分在这些服务器上都没有找到，也就是发起的很多http请求都是404回应，这不但降低了系统的处理能力、带宽，也降低了索引速度。所以我写了一个工具，先手工将sync目录下的所有文件下载到本地，然后通过这个工具 (cache indexer) 将这些索引文件里的hash全部导入数据库。在以后的运行过程中，该工具仅下载当天的索引文件，以更新数据库。 hash_reader 根据配置，会首先检查某个hash是否存在该数据库中，存在的hash才可能在torrage.com上下载得到。</p>
 
@@ -244,19 +234,11 @@
 
 <h2>总结</h2>
 
-<p>一个老外对我说过，&#8221;i have 2 children to feed, so i will not do this only for fun&#8221;。</p>
+<p>一个老外对我说过，"i have 2 children to feed, so i will not do this only for fun"。</p>
 
 <p>你的大部分编程知识来源于网络，所以稍稍回馈一下不会让你丢了饭碗。</p>
 
-<p>我很穷，如果你能让我收获金钱和编程成就，还不会嫌我穿得太邋遢，that&#8217;s really kind of you。</p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2013/07/02/dhtcrawler2/'>http://codemacro.com/2013/07/02/dhtcrawler2/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
+<p>我很穷，如果你能让我收获金钱和编程成就，还不会嫌我穿得太邋遢，that&rsquo;s really kind of you。</p>
 </div>
 
 
@@ -272,14 +254,7 @@
 
 
 
-
-
-
-
-  
-
-
-<time datetime="2013-07-02T00:00:00+08:00" pubdate data-updated="true">Jul 2<span>nd</span>, 2013</time>
+<time class='entry-date' datetime='2013-07-02T00:00:00+08:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>2</span><span class='date-suffix'>nd</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
       
 
 <span class="categories">
@@ -320,28 +295,6 @@
 <aside class="sidebar">
   
     <section>
-  <h1>Categories</h1>
-  <ul id="categories">
-    <li class='category'><a href='/categories/ice/'>ICE (2)</a></li>
-<li class='category'><a href='/categories/javascript/'>Javascript (1)</a></li>
-<li class='category'><a href='/categories/scala/'>Scala (1)</a></li>
-<li class='category'><a href='/categories/c-c-/'>c/c++ (14)</a></li>
-<li class='category'><a href='/categories/clang/'>clang (1)</a></li>
-<li class='category'><a href='/categories/erlang/'>erlang (8)</a></li>
-<li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
-<li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
-<li class='category'><a href='/categories/lua/'>lua (5)</a></li>
-<li class='category'><a href='/categories/module/'>module (3)</a></li>
-<li class='category'><a href='/categories/network/'>network (8)</a></li>
-<li class='category'><a href='/categories/other/'>other (6)</a></li>
-<li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
-<li class='category'><a href='/categories/tips/'>tips (21)</a></li>
-<li class='category'><a href='/categories/web/'>web (4)</a></li>
-
-  </ul>
-</section>
-
-<section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
     
@@ -367,39 +320,36 @@
     
   </ul>
 </section>
-<section>
-<div id="recentcomments" class="dsq-widget">
-<h1 class="dsq-widget-title">Recent Comments</h1>
-<script type="text/javascript" src="http://loopincodes.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
-</div>
-<a href="http://disqus.com/">Powered by Disqus</a>
-</section>
-<section>
-  <h1>Tags</h1>
-  <ul class="tag-cloud">
-<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
-<a style="font-size: 118%" href="/tags/ice/">ICE</a>
-<a style="font-size: 118%" href="/tags/blog/">blog</a>
-<a style="font-size: 182%" href="/tags/c-c-/">c/c++</a>
-<a style="font-size: 162%" href="/tags/dht/">dht</a>
-<a style="font-size: 134%" href="/tags/dhtcrawler/">dhtcrawler</a>
-<a style="font-size: 173%" href="/tags/erlang/">erlang</a>
-<a style="font-size: 134%" href="/tags/game-develop/">game develop</a>
-<a style="font-size: 118%" href="/tags/html/">html</a>
-<a style="font-size: 90%" href="/tags/ice/">ice</a>
-<a style="font-size: 154%" href="/tags/lisp/">lisp</a>
-<a style="font-size: 154%" href="/tags/lua/">lua</a>
-<a style="font-size: 146%" href="/tags/magnet/">magnet</a>
-<a style="font-size: 146%" href="/tags/octopress/">octopress</a>
-<a style="font-size: 154%" href="/tags/p2p/">p2p</a>
-<a style="font-size: 146%" href="/tags/ruby/">ruby</a>
-<a style="font-size: 90%" href="/tags/rup/">rup</a>
-<a style="font-size: 210%" href="/tags/tips/">tips</a>
-<a style="font-size: 118%" href="/tags/virtual/">virtual</a>
-<a style="font-size: 134%" href="/tags/web/">web</a>
 
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
   </ul>
+  
+  <a href="https://github.com/kevinlynx">@kevinlynx</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'kevinlynx',
+            count: 6,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
 </section>
+
 
   
 </aside>
@@ -426,7 +376,7 @@
       
     (function () {
       var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
       (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
     }());
 </script>
@@ -438,9 +388,6 @@
 
 
 
-
-<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
-<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
 
 
 

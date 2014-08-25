@@ -9,9 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content=" loop in codes, Kevin Lynx blog ">
-  
-    <meta name="keywords" content="c/c++, mmo, game develop, lisp, ruby, lua, web development">
+  <meta name="description" content="我们使用tolua++手工绑定c/c++接口到lua中，在绑定的接口实现里，就需要取出传入的参数。tolua++中提供了一系列tolua_toxxx函数，例如： lua_Number tolua_tonumber(lua_State *L, int narg, lua_Number def) &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -21,15 +19,16 @@
 
   
   <link rel="canonical" href="http://codemacro.com/2012/05/10/tolua-api">
-  <link href="/favicon.ico" rel="icon">
+  <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
-  <script src="/javascripts/modernizr-2.0.js"></script>
-  <script src="/javascripts/ender.js"></script>
-  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
-<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
-<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 
   
 
@@ -49,7 +48,7 @@
   
 </ul>
   
-<form action="http://google.com/search" method="get">
+<form action="https://www.google.com/search" method="get">
   <fieldset role="search">
     <input type="hidden" name="q" value="site:codemacro.com" />
     <input class="search" type="text" name="q" results="0" placeholder="Search"/>
@@ -59,8 +58,6 @@
 <ul class="main-navigation">
   <li><a href="/">Blog</a></li>
   <li><a href="/blog/archives">Archives</a></li>
-  <li><a href="/tips">Tips</a></li>
-  <li><a href="/about.html">About</a></li>
 </ul>
 
 </nav>
@@ -80,14 +77,7 @@
 
 
 
-
-
-
-
-  
-
-
-<time datetime="2012-05-10T00:00:00+08:00" pubdate data-updated="true">May 10<span>th</span>, 2012</time>
+<time class='entry-date' datetime='2012-05-10T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>10</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>12:00 am</span></time>
         
       </p>
     
@@ -96,10 +86,8 @@
 
 <div class="entry-content"><p>我们使用tolua++手工绑定c/c++接口到lua中，在绑定的接口实现里，就需要取出传入的参数。tolua++中提供了一系列tolua_toxxx函数，例如：</p>
 
-<div class="highlight"><pre><code class="c"><span class="n">lua_Number</span> <span class="n">tolua_tonumber</span><span class="p">(</span><span class="n">lua_State</span> <span class="o">*</span><span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">narg</span><span class="p">,</span> <span class="n">lua_Number</span> <span class="n">def</span><span class="p">)</span>
-<span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">tolua_tostring</span><span class="p">(</span><span class="n">lua_State</span> <span class="o">*</span><span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">narg</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">def</span><span class="p">)</span>
-</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-c" data-lang="c"><span class="n">lua_Number</span> <span class="n">tolua_tonumber</span><span class="p">(</span><span class="n">lua_State</span> <span class="o">*</span><span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">narg</span><span class="p">,</span> <span class="n">lua_Number</span> <span class="n">def</span><span class="p">)</span>
+<span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">tolua_tostring</span><span class="p">(</span><span class="n">lua_State</span> <span class="o">*</span><span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">narg</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">def</span><span class="p">)</span></code></pre></div>
 
 
 <p>这些函数都有一个def参数。乍一看，这些函数使用起来很简单。传入lua_State，传入参数在栈中的位置，然后再传一个<strong>失败</strong>后返回的默认值。</p>
@@ -113,73 +101,55 @@
 
 <p>然后有一天，服务器宕机了，空指针:</p>
 
-<div class="highlight"><pre><code class="c"><span class="cm">/* 失败返回&quot;&quot;，还能省空指针的判断 */</span>
+<div class="highlight"><pre><code class="language-c" data-lang="c"><span class="cm">/* 失败返回&quot;&quot;，还能省空指针的判断 */</span>
 <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span> <span class="o">=</span> <span class="n">tolua_tostring</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">);</span>
 <span class="k">if</span> <span class="p">(</span><span class="n">name</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="sc">&#39;\0&#39;</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* 空串总得判断吧 */</span>
     <span class="p">...</span>
-<span class="p">}</span>
-</code></pre>
-</div>
+<span class="p">}</span></code></pre></div>
 
 
-<p>跟踪后发现，脚本里传入的是nil，这里的name取出来是NULL，而不是&#8221;&#8220;（的地址）。然后吐槽了一下这个API，辛苦地修改了所有类似代码，增加对空指针的判断。我没有多想。</p>
+<p>跟踪后发现，脚本里传入的是nil，这里的name取出来是NULL，而不是"&ldquo;（的地址）。然后吐槽了一下这个API，辛苦地修改了所有类似代码，增加对空指针的判断。我没有多想。</p>
 
 <p>故事继续，有一天服务器虽然没宕机，但功能不正常了:</p>
 
-<div class="highlight"><pre><code class="c"><span class="kt">float</span> <span class="n">angle</span> <span class="o">=</span> <span class="p">(</span><span class="kt">float</span><span class="p">)</span> <span class="n">tolua_tonumber</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">PI</span><span class="p">);</span>
-<span class="p">...</span>
-</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-c" data-lang="c"><span class="kt">float</span> <span class="n">angle</span> <span class="o">=</span> <span class="p">(</span><span class="kt">float</span><span class="p">)</span> <span class="n">tolua_tonumber</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">PI</span><span class="p">);</span>
+<span class="p">...</span></code></pre></div>
 
 
 <p>这个意思是，这个函数的参数1默认是2*PI，什么是默认？lua里某函数参数不传，或传nil就是使用默认。因为不传的话，这个实参本身就是nil。但，tolua_tonumber的行为不是这样的，它的实现真是偷懒:</p>
 
-<div class="highlight"><pre><code class="c"><span class="n">TOLUA_API</span> <span class="n">lua_Number</span> <span class="nf">tolua_tonumber</span> <span class="p">(</span><span class="n">lua_State</span><span class="o">*</span> <span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">narg</span><span class="p">,</span> <span class="n">lua_Number</span> <span class="n">def</span><span class="p">)</span>
+<div class="highlight"><pre><code class="language-c" data-lang="c"><span class="n">TOLUA_API</span> <span class="n">lua_Number</span> <span class="nf">tolua_tonumber</span> <span class="p">(</span><span class="n">lua_State</span><span class="o">*</span> <span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">narg</span><span class="p">,</span> <span class="n">lua_Number</span> <span class="n">def</span><span class="p">)</span>
 <span class="p">{</span>
- <span class="k">return</span> <span class="n">lua_gettop</span><span class="p">(</span><span class="n">L</span><span class="p">)</span><span class="o">&lt;</span><span class="n">abs</span><span class="p">(</span><span class="n">narg</span><span class="p">)</span> <span class="o">?</span> <span class="n">def</span> <span class="o">:</span> <span class="n">lua_tonumber</span><span class="p">(</span><span class="n">L</span><span class="p">,</span><span class="n">narg</span><span class="p">);</span>
+ <span class="k">return</span> <span class="n">lua_gettop</span><span class="p">(</span><span class="n">L</span><span class="p">)</span><span class="o">&lt;</span><span class="n">abs</span><span class="p">(</span><span class="n">narg</span><span class="p">)</span> <span class="o">?</span> <span class="nl">def</span> <span class="p">:</span> <span class="n">lua_tonumber</span><span class="p">(</span><span class="n">L</span><span class="p">,</span><span class="n">narg</span><span class="p">);</span>
 <span class="p">}</span>
 
 <span class="n">TOLUA_API</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="nf">tolua_tostring</span> <span class="p">(</span><span class="n">lua_State</span><span class="o">*</span> <span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">narg</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">def</span><span class="p">)</span>
 <span class="p">{</span>
- <span class="k">return</span> <span class="n">lua_gettop</span><span class="p">(</span><span class="n">L</span><span class="p">)</span><span class="o">&lt;</span><span class="n">abs</span><span class="p">(</span><span class="n">narg</span><span class="p">)</span> <span class="o">?</span> <span class="n">def</span> <span class="o">:</span> <span class="n">lua_tostring</span><span class="p">(</span><span class="n">L</span><span class="p">,</span><span class="n">narg</span><span class="p">);</span>
-<span class="p">}</span>
-</code></pre>
-</div>
+ <span class="k">return</span> <span class="n">lua_gettop</span><span class="p">(</span><span class="n">L</span><span class="p">)</span><span class="o">&lt;</span><span class="n">abs</span><span class="p">(</span><span class="n">narg</span><span class="p">)</span> <span class="o">?</span> <span class="nl">def</span> <span class="p">:</span> <span class="n">lua_tostring</span><span class="p">(</span><span class="n">L</span><span class="p">,</span><span class="n">narg</span><span class="p">);</span>
+<span class="p">}</span></code></pre></div>
 
 
 <p>意思是，只有当你不传的时候，它才返回默认值，否则就交给lua的API来管，而lua这些API是不支持应用层的默认参数的，对于lua_tonumber错误时就返回0，lua_tostring错误时就返回NULL。</p>
 
 <p>这种其行为和其带来的common sense不一致的API设计，实在让人蛋疼。什么是common sense呢？就像一个UI库里的按钮，我们都知道有click事件，hover事件，UI库的文档甚至都不需要解释什么是click什么是hover，因为大家看到这个东西，就有了共识，无需废话，这就是common sense。就像tolua的这些API，非常普通，大家一看都期待在意外情况下你能返回def值。但它竟然不是。实在不行，你可以模仿lua的check系列函数的实现嘛:</p>
 
-<div class="highlight"><pre><code class="c"><span class="n">LUALIB_API</span> <span class="n">lua_Number</span> <span class="nf">luaL_checknumber</span> <span class="p">(</span><span class="n">lua_State</span> <span class="o">*</span><span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">narg</span><span class="p">)</span> <span class="p">{</span>
+<div class="highlight"><pre><code class="language-c" data-lang="c"><span class="n">LUALIB_API</span> <span class="n">lua_Number</span> <span class="nf">luaL_checknumber</span> <span class="p">(</span><span class="n">lua_State</span> <span class="o">*</span><span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">narg</span><span class="p">)</span> <span class="p">{</span>
   <span class="n">lua_Number</span> <span class="n">d</span> <span class="o">=</span> <span class="n">lua_tonumber</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">narg</span><span class="p">);</span>
   <span class="k">if</span> <span class="p">(</span><span class="n">d</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">lua_isnumber</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">narg</span><span class="p">))</span>  <span class="cm">/* avoid extra test when d is not 0 */</span>
     <span class="n">tag_error</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">narg</span><span class="p">,</span> <span class="n">LUA_TNUMBER</span><span class="p">);</span>
   <span class="k">return</span> <span class="n">d</span><span class="p">;</span>
-<span class="p">}</span>
-</code></pre>
-</div>
+<span class="p">}</span></code></pre></div>
 
 
 <p>即，根本不用去检查栈问题，直接在lua_tonumber之后再做包装检查。何况，lua需要你去检查栈吗？当你访问了栈外的元素时，lua会自动返回一个全局常量luaO_nilobject:</p>
 
-<div class="highlight"><pre><code class="c"><span class="k">static</span> <span class="n">TValue</span> <span class="o">*</span><span class="nf">index2adr</span><span class="p">(</span><span class="n">lua_State</span> <span class="o">*</span><span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">idx</span><span class="p">)</span> <span class="p">{</span>
+<div class="highlight"><pre><code class="language-c" data-lang="c"><span class="k">static</span> <span class="n">TValue</span> <span class="o">*</span><span class="nf">index2adr</span><span class="p">(</span><span class="n">lua_State</span> <span class="o">*</span><span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">idx</span><span class="p">)</span> <span class="p">{</span>
     <span class="p">...</span>
     <span class="k">if</span> <span class="p">(</span><span class="n">o</span> <span class="o">&gt;=</span> <span class="n">L</span><span class="o">-&gt;</span><span class="n">top</span><span class="p">)</span> <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="n">TValue</span><span class="o">*</span><span class="p">,</span> <span class="n">luaO_nilobject</span><span class="p">);</span>
-<span class="p">}</span>
-</code></pre>
-</div>
+<span class="p">}</span></code></pre></div>
 
 
 <p>另，程序悲剧也来源于臆想。</p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2012/05/10/tolua-api/'>http://codemacro.com/2012/05/10/tolua-api/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
 </div>
 
 
@@ -195,14 +165,7 @@
 
 
 
-
-
-
-
-  
-
-
-<time datetime="2012-05-10T00:00:00+08:00" pubdate data-updated="true">May 10<span>th</span>, 2012</time>
+<time class='entry-date' datetime='2012-05-10T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>10</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>12:00 am</span></time>
       
 
 <span class="categories">
@@ -243,28 +206,6 @@
 <aside class="sidebar">
   
     <section>
-  <h1>Categories</h1>
-  <ul id="categories">
-    <li class='category'><a href='/categories/ice/'>ICE (2)</a></li>
-<li class='category'><a href='/categories/javascript/'>Javascript (1)</a></li>
-<li class='category'><a href='/categories/scala/'>Scala (1)</a></li>
-<li class='category'><a href='/categories/c-c-/'>c/c++ (14)</a></li>
-<li class='category'><a href='/categories/clang/'>clang (1)</a></li>
-<li class='category'><a href='/categories/erlang/'>erlang (8)</a></li>
-<li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
-<li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
-<li class='category'><a href='/categories/lua/'>lua (5)</a></li>
-<li class='category'><a href='/categories/module/'>module (3)</a></li>
-<li class='category'><a href='/categories/network/'>network (8)</a></li>
-<li class='category'><a href='/categories/other/'>other (6)</a></li>
-<li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
-<li class='category'><a href='/categories/tips/'>tips (21)</a></li>
-<li class='category'><a href='/categories/web/'>web (4)</a></li>
-
-  </ul>
-</section>
-
-<section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
     
@@ -290,39 +231,36 @@
     
   </ul>
 </section>
-<section>
-<div id="recentcomments" class="dsq-widget">
-<h1 class="dsq-widget-title">Recent Comments</h1>
-<script type="text/javascript" src="http://loopincodes.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
-</div>
-<a href="http://disqus.com/">Powered by Disqus</a>
-</section>
-<section>
-  <h1>Tags</h1>
-  <ul class="tag-cloud">
-<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
-<a style="font-size: 118%" href="/tags/ice/">ICE</a>
-<a style="font-size: 118%" href="/tags/blog/">blog</a>
-<a style="font-size: 182%" href="/tags/c-c-/">c/c++</a>
-<a style="font-size: 162%" href="/tags/dht/">dht</a>
-<a style="font-size: 134%" href="/tags/dhtcrawler/">dhtcrawler</a>
-<a style="font-size: 173%" href="/tags/erlang/">erlang</a>
-<a style="font-size: 134%" href="/tags/game-develop/">game develop</a>
-<a style="font-size: 118%" href="/tags/html/">html</a>
-<a style="font-size: 90%" href="/tags/ice/">ice</a>
-<a style="font-size: 154%" href="/tags/lisp/">lisp</a>
-<a style="font-size: 154%" href="/tags/lua/">lua</a>
-<a style="font-size: 146%" href="/tags/magnet/">magnet</a>
-<a style="font-size: 146%" href="/tags/octopress/">octopress</a>
-<a style="font-size: 154%" href="/tags/p2p/">p2p</a>
-<a style="font-size: 146%" href="/tags/ruby/">ruby</a>
-<a style="font-size: 90%" href="/tags/rup/">rup</a>
-<a style="font-size: 210%" href="/tags/tips/">tips</a>
-<a style="font-size: 118%" href="/tags/virtual/">virtual</a>
-<a style="font-size: 134%" href="/tags/web/">web</a>
 
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
   </ul>
+  
+  <a href="https://github.com/kevinlynx">@kevinlynx</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'kevinlynx',
+            count: 6,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
 </section>
+
 
   
 </aside>
@@ -349,7 +287,7 @@
       
     (function () {
       var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
       (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
     }());
 </script>
@@ -361,9 +299,6 @@
 
 
 
-
-<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
-<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
 
 
 

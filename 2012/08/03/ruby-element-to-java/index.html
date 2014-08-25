@@ -9,9 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content=" loop in codes, Kevin Lynx blog ">
-  
-    <meta name="keywords" content="c/c++, mmo, game develop, lisp, ruby, lua, web development">
+  <meta name="description" content="参考（翻译、摘抄）于Can Ruby Live without Rails?。这篇文章发表于2006年，受访者在回答“如果可以你会把Ruby的哪些特性加入Java“这个问题时，提到了Ruby的一些我个人认为比较突出的语法特性。其实并不是针对Java语言，何况6年时间过去， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -21,15 +19,16 @@
 
   
   <link rel="canonical" href="http://codemacro.com/2012/08/03/ruby-element-to-java">
-  <link href="/favicon.ico" rel="icon">
+  <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
-  <script src="/javascripts/modernizr-2.0.js"></script>
-  <script src="/javascripts/ender.js"></script>
-  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
-<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
-<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 
   
 
@@ -49,7 +48,7 @@
   
 </ul>
   
-<form action="http://google.com/search" method="get">
+<form action="https://www.google.com/search" method="get">
   <fieldset role="search">
     <input type="hidden" name="q" value="site:codemacro.com" />
     <input class="search" type="text" name="q" results="0" placeholder="Search"/>
@@ -59,8 +58,6 @@
 <ul class="main-navigation">
   <li><a href="/">Blog</a></li>
   <li><a href="/blog/archives">Archives</a></li>
-  <li><a href="/tips">Tips</a></li>
-  <li><a href="/about.html">About</a></li>
 </ul>
 
 </nav>
@@ -80,21 +77,14 @@
 
 
 
-
-
-
-
-  
-
-
-<time datetime="2012-08-03T14:14:00+08:00" pubdate data-updated="true">Aug 3<span>rd</span>, 2012</time>
+<time class='entry-date' datetime='2012-08-03T14:14:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>3</span><span class='date-suffix'>rd</span>, <span class='date-year'>2012</span></span> <span class='time'>2:14 pm</span></time>
         
       </p>
     
   </header>
 
 
-<div class="entry-content"><p>参考（翻译、摘抄）于<a href="http://java.sys-con.com/node/251986">Can Ruby Live without Rails?</a>。这篇文章发表于2006年，受访者在回答“如果可以你会把Ruby的哪些特性加入Java“这个问题时，提到了Ruby的一些我个人认为比较突出的语法特性。其实并不是针对Java语言，何况6年时间过去，以Java语法特性的加入速度怕早就有Ruby这些特性了。我对Java不熟，仅限于曾经写的几个简单的android应用，买了&lt;Java编程思想>也没翻完。</p>
+<div class="entry-content"><p>参考（翻译、摘抄）于<a href="http://java.sys-con.com/node/251986">Can Ruby Live without Rails?</a>。这篇文章发表于2006年，受访者在回答“如果可以你会把Ruby的哪些特性加入Java“这个问题时，提到了Ruby的一些我个人认为比较突出的语法特性。其实并不是针对Java语言，何况6年时间过去，以Java语法特性的加入速度怕早就有Ruby这些特性了。我对Java不熟，仅限于曾经写的几个简单的android应用，买了\&lt;Java编程思想>也没翻完。</p>
 
 <p>以下内容半翻译自原文。</p>
 
@@ -102,9 +92,7 @@
 
 <p>闭包支持将代码块作为函数参数传递。这在写很多代码时会比较方便，例如以下代码打印10次字符串：</p>
 
-<div class="highlight"><pre><code class="ruby"><span class="mi">10</span><span class="o">.</span><span class="n">times</span> <span class="p">{</span> <span class="nb">puts</span> <span class="s2">&quot;Hello&quot;</span> <span class="p">}</span>
-</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="mi">10</span><span class="o">.</span><span class="n">times</span> <span class="p">{</span> <span class="nb">puts</span> <span class="s2">&quot;Hello&quot;</span> <span class="p">}</span></code></pre></div>
 
 
 
@@ -112,20 +100,16 @@
 <!-- more -->
 
 
-<p>又例如针对数组的每个元素做一些事情（do&#8230;end是上例中{}的替代）：</p>
+<p>又例如针对数组的每个元素做一些事情（do&hellip;end是上例中{}的替代）：</p>
 
-<div class="highlight"><pre><code class="ruby"><span class="n">array</span><span class="o">.</span><span class="n">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">item</span><span class="o">|</span>
+<div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="n">array</span><span class="o">.</span><span class="n">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">item</span><span class="o">|</span>
   <span class="n">item</span><span class="o">.</span><span class="n">do_something</span>
-<span class="k">end</span>
-</code></pre>
-</div>
+<span class="k">end</span></code></pre></div>
 
 
 <p>也可以构建一个新的数组：</p>
 
-<div class="highlight"><pre><code class="ruby"><span class="n">array</span><span class="o">.</span><span class="n">collect</span> <span class="p">{</span> <span class="o">|</span><span class="n">number</span><span class="o">|</span> <span class="n">number</span> <span class="o">*</span> <span class="n">number</span> <span class="p">}</span>
-</code></pre>
-</div>
+<div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="n">array</span><span class="o">.</span><span class="n">collect</span> <span class="p">{</span> <span class="o">|</span><span class="n">number</span><span class="o">|</span> <span class="n">number</span> <span class="o">*</span> <span class="n">number</span> <span class="p">}</span></code></pre></div>
 
 
 <p>Ruby中闭包的使用随处可见，它的语法形式太简单，这使得要使用它时所付出的代价很小（想想其他语言里得手动构造一个函数对象吧）。</p>
@@ -134,38 +118,32 @@
 
 <p>使用continuation你可以保存一块代码的执行状态，以便将来某个时刻恢复执行。这就像游戏存档一样，玩到一半存档，一段时间回来后取出存档从上次的进度继续玩。</p>
 
-<div class="highlight"><pre><code class="ruby"><span class="nb">require</span> <span class="s1">&#39;continuation&#39;</span> <span class="c1"># 原文中未给这句，须加上</span>
+<div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="nb">require</span> <span class="s1">&#39;continuation&#39;</span> <span class="c1"># 原文中未给这句，须加上</span>
 
 <span class="k">def</span> <span class="nf">loop</span>
   <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="mi">1</span><span class="o">.</span><span class="n">.</span><span class="mi">10</span>
     <span class="nb">puts</span> <span class="n">i</span>
     <span class="nb">callcc</span> <span class="p">{</span> <span class="o">|</span><span class="n">c</span><span class="o">|</span> <span class="k">return</span> <span class="n">c</span> <span class="p">}</span> <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">5</span>
   <span class="k">end</span>
-<span class="k">end</span>
-</code></pre>
-</div>
+<span class="k">end</span></code></pre></div>
 
 
 <p><code>loop</code>函数执行里面那个循环时，当<code>i==5</code>就调用<code>callcc</code>函数（貌似现在Java已有这个了），该函数在回调传入的闭包时构建了一个continuation对象，以上代码直接将此对象返回，循环暂停于<code>i==5</code>。执行代码<code>continuation = loop</code>输出：</p>
 
-<div class="highlight"><pre><code class="ruby"><span class="mi">1</span>
+<div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="mi">1</span>
 <span class="mi">2</span>
 <span class="mi">3</span>
 <span class="mi">4</span>
-<span class="mi">5</span>
-</code></pre>
-</div>
+<span class="mi">5</span></code></pre></div>
 
 
 <p>然后你可以在任意时刻恢复执行那个循环：<code>continuation.call</code>，得到：</p>
 
-<div class="highlight"><pre><code class="ruby"><span class="mi">6</span>
+<div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="mi">6</span>
 <span class="mi">7</span>
 <span class="mi">8</span>
 <span class="mi">9</span>
-<span class="mi">10</span>
-</code></pre>
-</div>
+<span class="mi">10</span></code></pre></div>
 
 
 <p>这个continuation和Lua里的<code>coroutine</code>很像，可以用于实现轻量级的线程。</p>
@@ -178,7 +156,7 @@
 
 <p>这个算是Ruby里用的比较多的特性。open classes可以让你在很多情况下“打开“并重定义某个类，这个类可以是你使用的任意库里的类。Ruby里的类并不是一个封闭的代码集合，作为一个类库的使用者你甚至可以不用修改类库的代码而重新定义、扩展里面的接口。例如Ruby中的数字其实就是Fixnum类，而我们可以为Fixnum直接添加更多的接口（原文的代码有问题，以下我做了修改）：</p>
 
-<div class="highlight"><pre><code class="ruby"><span class="k">class</span> <span class="nc">Fixnum</span>
+<div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="k">class</span> <span class="nc">Fixnum</span>
   <span class="k">def</span> <span class="nf">days</span>
     <span class="nb">self</span><span class="o">.</span><span class="n">hours</span> <span class="o">*</span> <span class="mi">24</span>
   <span class="k">end</span>
@@ -202,9 +180,7 @@
   <span class="k">def</span> <span class="nf">ago</span>
     <span class="no">Time</span><span class="o">.</span><span class="n">now</span> <span class="o">-</span> <span class="nb">self</span>
   <span class="k">end</span>
-<span class="k">end</span>
-</code></pre>
-</div>
+<span class="k">end</span></code></pre></div>
 
 
 <p>基于以上，我们可以写出<code>10.days.ago</code>或者<code>6.hours.from_now</code>这样的代码。这有助于构建DSL(domain specific language)。</p>
@@ -213,24 +189,14 @@
 
 <p>Ruby中一切都是对象。这让我们写代码变得更容易，因为不用处理特殊情况。这些特殊情况主要就是很多基础数据类型并非对象，但Ruby里是。Ruby里每个对象都有一个函数<code>class</code>，表示该对象的类型：</p>
 
-<div class="highlight"><pre><code class="ruby"><span class="mi">1</span><span class="o">.</span><span class="n">class</span> <span class="c1"># =&gt; Fixnum</span>
+<div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="mi">1</span><span class="o">.</span><span class="n">class</span> <span class="c1"># =&gt; Fixnum</span>
 <span class="mi">2</span><span class="o">.</span><span class="mi">5</span><span class="o">.</span><span class="n">class</span> <span class="c1"># = &gt; Float</span>
 <span class="s2">&quot;hello&quot;</span><span class="o">.</span><span class="n">class</span> <span class="c1"># =&gt; String</span>
 <span class="o">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="o">].</span><span class="n">class</span> <span class="c1"># =&gt; Array</span>
-<span class="p">(</span><span class="mi">1</span><span class="o">.</span><span class="n">.</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">class</span> <span class="c1"># =&gt; Range</span>
-</code></pre>
-</div>
+<span class="p">(</span><span class="mi">1</span><span class="o">.</span><span class="n">.</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">class</span> <span class="c1"># =&gt; Range</span></code></pre></div>
 
 
 <p>全文完。</p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2012/08/03/ruby-element-to-java/'>http://codemacro.com/2012/08/03/ruby-element-to-java/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
 </div>
 
 
@@ -246,14 +212,7 @@
 
 
 
-
-
-
-
-  
-
-
-<time datetime="2012-08-03T14:14:00+08:00" pubdate data-updated="true">Aug 3<span>rd</span>, 2012</time>
+<time class='entry-date' datetime='2012-08-03T14:14:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>3</span><span class='date-suffix'>rd</span>, <span class='date-year'>2012</span></span> <span class='time'>2:14 pm</span></time>
       
 
 <span class="categories">
@@ -294,28 +253,6 @@
 <aside class="sidebar">
   
     <section>
-  <h1>Categories</h1>
-  <ul id="categories">
-    <li class='category'><a href='/categories/ice/'>ICE (2)</a></li>
-<li class='category'><a href='/categories/javascript/'>Javascript (1)</a></li>
-<li class='category'><a href='/categories/scala/'>Scala (1)</a></li>
-<li class='category'><a href='/categories/c-c-/'>c/c++ (14)</a></li>
-<li class='category'><a href='/categories/clang/'>clang (1)</a></li>
-<li class='category'><a href='/categories/erlang/'>erlang (8)</a></li>
-<li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
-<li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
-<li class='category'><a href='/categories/lua/'>lua (5)</a></li>
-<li class='category'><a href='/categories/module/'>module (3)</a></li>
-<li class='category'><a href='/categories/network/'>network (8)</a></li>
-<li class='category'><a href='/categories/other/'>other (6)</a></li>
-<li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
-<li class='category'><a href='/categories/tips/'>tips (21)</a></li>
-<li class='category'><a href='/categories/web/'>web (4)</a></li>
-
-  </ul>
-</section>
-
-<section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
     
@@ -341,39 +278,36 @@
     
   </ul>
 </section>
-<section>
-<div id="recentcomments" class="dsq-widget">
-<h1 class="dsq-widget-title">Recent Comments</h1>
-<script type="text/javascript" src="http://loopincodes.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
-</div>
-<a href="http://disqus.com/">Powered by Disqus</a>
-</section>
-<section>
-  <h1>Tags</h1>
-  <ul class="tag-cloud">
-<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
-<a style="font-size: 118%" href="/tags/ice/">ICE</a>
-<a style="font-size: 118%" href="/tags/blog/">blog</a>
-<a style="font-size: 182%" href="/tags/c-c-/">c/c++</a>
-<a style="font-size: 162%" href="/tags/dht/">dht</a>
-<a style="font-size: 134%" href="/tags/dhtcrawler/">dhtcrawler</a>
-<a style="font-size: 173%" href="/tags/erlang/">erlang</a>
-<a style="font-size: 134%" href="/tags/game-develop/">game develop</a>
-<a style="font-size: 118%" href="/tags/html/">html</a>
-<a style="font-size: 90%" href="/tags/ice/">ice</a>
-<a style="font-size: 154%" href="/tags/lisp/">lisp</a>
-<a style="font-size: 154%" href="/tags/lua/">lua</a>
-<a style="font-size: 146%" href="/tags/magnet/">magnet</a>
-<a style="font-size: 146%" href="/tags/octopress/">octopress</a>
-<a style="font-size: 154%" href="/tags/p2p/">p2p</a>
-<a style="font-size: 146%" href="/tags/ruby/">ruby</a>
-<a style="font-size: 90%" href="/tags/rup/">rup</a>
-<a style="font-size: 210%" href="/tags/tips/">tips</a>
-<a style="font-size: 118%" href="/tags/virtual/">virtual</a>
-<a style="font-size: 134%" href="/tags/web/">web</a>
 
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
   </ul>
+  
+  <a href="https://github.com/kevinlynx">@kevinlynx</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'kevinlynx',
+            count: 6,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
 </section>
+
 
   
 </aside>
@@ -400,7 +334,7 @@
       
     (function () {
       var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
       (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
     }());
 </script>
@@ -412,9 +346,6 @@
 
 
 
-
-<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
-<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
 
 
 

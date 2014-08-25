@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[Category: Javascript | loop in codes]]></title>
+  <title><![CDATA[Category: javascript | loop in codes]]></title>
   <link href="http://codemacro.com/categories/javascript/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-08-24T19:24:43+08:00</updated>
+  <updated>2014-08-25T21:34:07+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -72,7 +72,7 @@ NaN
 
 <h3>null/undefined</h3>
 
-<p><code>null</code> is a language keyword that evaluates to a special value that is usually used to indicate the absence of a value. Using the typeof operator on null returns the string "object", indicating that null can be thought of as a special object value that indicates "no object".</p>
+<p><code>null</code> is a language keyword that evaluates to a special value that is usually used to indicate the absence of a value. Using the typeof operator on null returns the string &ldquo;object&rdquo;, indicating that null can be thought of as a special object value that indicates &ldquo;no object&rdquo;.</p>
 
 <h3>Objects</h3>
 
@@ -214,7 +214,7 @@ for(var p in o) // Assign property names of o to variable p
 
 <h2>Objects</h2>
 
-<p>An object is more than a simple stringtovalue map, however. In addition to maintaining its own set of properties, a JavaScript object also inherits the properties of another object, known as its "prototype". The methods of an object are typically inherited properties, and this "prototypal inheritance" is a key feature of JavaScript.</p>
+<p>An object is more than a simple stringtovalue map, however. In addition to maintaining its own set of properties, a JavaScript object also inherits the properties of another object, known as its &ldquo;prototype&rdquo;. The methods of an object are typically inherited properties, and this &ldquo;prototypal inheritance&rdquo; is a key feature of JavaScript.</p>
 
 <p>JavaScript objects are dynamic—properties can usually be added and deleted—but they can be used to simulate the static objects and “structs” of statically typed languages.</p>
 
@@ -358,7 +358,7 @@ g(2) // =&gt; 3
 <h2>Reference</h2>
 
 <ul>
-<li>&lt;Javascript The Definitive Guid 6th></li>
+<li>\<Javascript The Definitive Guid 6th\></li>
 <li><a href="http://javascript.crockford.com/survey.html">A Survey of the JavaScript Programming Language</a></li>
 <li><a href="http://www.2ality.com/2011/10/javascript-overview.html">A quick overview of JavaScript</a></li>
 <li><a href="http://www.csse.monash.edu.au/~lloyd/tildeProgLang/JavaScript/summary.html">JavaScript Summary</a></li>

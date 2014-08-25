@@ -4,7 +4,7 @@
   <title><![CDATA[Category: ruby | loop in codes]]></title>
   <link href="http://codemacro.com/categories/ruby/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-08-24T19:24:43+08:00</updated>
+  <updated>2014-08-25T21:34:07+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -22,19 +22,17 @@
 
 <p>Ruby解析HTML（或XML）可以使用<a href="http://nokogiri.org/">nokogiri</a>。我的应用里需要查找HTML页面里的某个元素，结果发现实现方式非常简单，就像使用jquery一样。例如我要获取到octopress博客文章里的文章内容、文章标题、文章分类，就像这篇博客：</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="o">&lt;</span><span class="sr">/p&gt;</span>
+<p><div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="o">&lt;</span><span class="sr">/p&gt;</span>
 
 <span class="sr">&lt;h1&gt;get post title and content for an octopress post&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
 <span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span><span class="k">def</span> <span class="nf">post_info</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
-  <span class="n">doc</span> <span class="o">=</span> <span class="ss">Nokogiri</span><span class="p">:</span><span class="ss">:HTML</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">url</span><span class="p">))</span>
-  <span class="n">content</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">css</span><span class="p">(</span><span class="s1">&#39;div.entry-content&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">to_s</span>
-  <span class="n">title</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">css</span><span class="p">(</span><span class="s1">&#39;header h1.entry-title&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">inner_html</span>
-  <span class="n">categories</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">css</span><span class="p">(</span><span class="s1">&#39;a.category&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">collect</span> <span class="k">do</span> <span class="o">|</span><span class="n">link</span><span class="o">|</span> <span class="n">link</span><span class="o">.</span><span class="n">content</span> <span class="k">end</span>
+  <span class="n">doc</span> <span class="o">=</span> <span class="no">Nokogiri</span><span class="o">::</span><span class="no">HTML</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">url</span><span class="p">))</span>
+  <span class="n">content</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">css</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">div</span><span class="o">.</span><span class="n">entry</span><span class="o">-</span><span class="n">content</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span><span class="o">.</span><span class="n">to_s</span>
+  <span class="n">title</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">css</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">header</span> <span class="n">h1</span><span class="o">.</span><span class="n">entry</span><span class="o">-</span><span class="n">title</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span><span class="o">.</span><span class="n">inner_html</span>
+  <span class="n">categories</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">css</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">a</span><span class="o">.</span><span class="n">category</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;)</span><span class="o">.</span><span class="n">collect</span> <span class="k">do</span> <span class="o">|</span><span class="n">link</span><span class="o">|</span> <span class="n">link</span><span class="o">.</span><span class="n">content</span> <span class="k">end</span>
   <span class="k">return</span> <span class="n">title</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">categories</span>
-<span class="k">end</span>
-</code></pre>
-</div></p>
+<span class="k">end</span></code></pre></div></p>
 
 <!-- more -->
 
@@ -45,22 +43,16 @@
 
 <p>可以使用<code>rails-xmlrpc</code>这个库，直接使用gem安装：<code>gem install rails-xmlrpc</code>。这个库分为客户端和服务器两部分，我的应用是使用metaweblog API：</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="k">class</span> <span class="nc">MetaWeblogClient</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="ss">XMLRPC</span><span class="p">:</span><span class="ss">:Client</span>
-  <span class="k">def</span> <span class="nf">initialize</span><span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
+<p><div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="k">class</span> <span class="nc">MetaWeblogClient</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="no">XMLRPC</span><span class="o">::</span><span class="no">Client</span>
+  <span class="k">def</span> <span class="nf">initialize</span><span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span>
+    <span class="k">super</span><span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span>
+    <span class="vi">@username</span> <span class="o">=</span> <span class="n">username</span>
+    <span class="vi">@password</span> <span class="o">=</span> <span class="n">password</span>
+  <span class="k">end</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
 
-<span class="sr">&lt;pre&gt;&lt;code&gt;super(host, url)</span>
-<span class="sr">@username = username</span>
-<span class="sr">@password = password</span>
-<span class="sr">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;</span><span class="sr">/pre&gt;</span>
-
-<span class="sr">&lt;p&gt;  end&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span>  <span class="k">def</span> <span class="nf">newPost</span><span class="p">(</span><span class="n">post</span><span class="p">,</span> <span class="n">publish</span><span class="p">)</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
-
-<span class="sr">&lt;pre&gt;&lt;code&gt;call(&quot;metaWeblog.newPost&quot;, &quot;0&quot;, &quot;</span><span class="si">#{</span><span class="vi">@username</span><span class="si">}</span><span class="sr">&quot;, &quot;</span><span class="si">#{</span><span class="vi">@password</span><span class="si">}</span><span class="sr">&quot;, post, publish)</span>
-<span class="sr">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;</span><span class="sr">/pre&gt;</span>
-
-<span class="sr">&lt;p&gt;  end&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
+<span class="sr">&lt;p&gt;  def newPost(post, publish)</span>
+<span class="sr">    call(&amp;ldquo;metaWeblog.newPost&amp;rdquo;, &amp;ldquo;0&amp;rdquo;, &amp;ldquo;</span><span class="si">#{</span><span class="vi">@username</span><span class="si">}</span><span class="sr">&amp;rdquo;, &amp;ldquo;</span><span class="si">#{</span><span class="vi">@password</span><span class="si">}</span><span class="sr">&amp;rdquo;, post, publish)</span>
+<span class="sr">  end&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
 
 <span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span>  <span class="c1"># other methods&lt;/p&gt;</span>
 
@@ -68,49 +60,38 @@
 
 <span class="sr">&lt;p&gt;def new_post(api, url)</span>
 <span class="sr">  title, content, categories = post_info(url)</span>
-<span class="sr">  if title.nil? or content.nil?&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
+<span class="sr">  if title.nil? or content.nil?</span>
+<span class="sr">    puts &amp;ldquo;get post info failed at </span><span class="si">#{</span><span class="n">url</span><span class="si">}</span><span class="sr">\n&amp;rdquo;</span>
+<span class="sr">    return</span>
+<span class="sr">  end</span>
+<span class="sr">  post = { :title =&gt; title, :description =&gt; content, :categories =&gt; categories }</span>
+<span class="sr">  api.newPost(post, true)</span>
+<span class="sr">  puts &amp;ldquo;new post </span><span class="si">#{</span><span class="n">title</span><span class="si">}</span><span class="sr"> in </span><span class="si">#{</span><span class="n">categories</span><span class="si">}</span><span class="sr"> done\n&amp;rdquo;</span>
+<span class="sr">end&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="nb">puts</span> <span class="s2">&quot;get post info failed at </span><span class="si">#{</span><span class="n">url</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
-<span class="k">return</span>
-<span class="o">&lt;</span><span class="sr">/code&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span><span class="n">api</span> <span class="o">=</span> <span class="no">MetaweblogClient</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span>
+<span class="n">new_post</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s2">&quot;http://codemacro.com/2012/08/07/write-standalone-ruby-script/&quot;</span><span class="o">&gt;</span><span class="ss">http</span><span class="p">:</span><span class="sr">//</span><span class="n">codemacro</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="mi">2012</span><span class="o">/</span><span class="mi">08</span><span class="o">/</span><span class="mo">07</span><span class="o">/</span><span class="n">write</span><span class="o">-</span><span class="n">standalone</span><span class="o">-</span><span class="n">ruby</span><span class="o">-</span><span class="n">script</span><span class="o">/&lt;</span><span class="sr">/a&gt;&amp;rdquo;)&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
 
-<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span>  <span class="k">end</span>
-  <span class="n">post</span> <span class="o">=</span> <span class="p">{</span> <span class="ss">:title</span> <span class="o">=&gt;</span> <span class="n">title</span><span class="p">,</span> <span class="ss">:description</span> <span class="o">=&gt;</span> <span class="n">content</span><span class="p">,</span> <span class="ss">:categories</span> <span class="o">=&gt;</span> <span class="n">categories</span> <span class="p">}</span>
-  <span class="n">api</span><span class="o">.</span><span class="n">newPost</span><span class="p">(</span><span class="n">post</span><span class="p">,</span> <span class="kp">true</span><span class="p">)</span>
-  <span class="nb">puts</span> <span class="s2">&quot;new post </span><span class="si">#{</span><span class="n">title</span><span class="si">}</span><span class="s2"> in </span><span class="si">#{</span><span class="n">categories</span><span class="si">}</span><span class="s2"> done</span><span class="se">\n</span><span class="s2">&quot;</span>
-<span class="k">end</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
-
-<span class="sr">&lt;p&gt;api = MetaweblogClient.new(username, password, host, url)</span>
-<span class="sr">new_post(api, &quot;http:/</span><span class="o">/</span><span class="n">codemacro</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="mi">2012</span><span class="o">/</span><span class="mi">08</span><span class="o">/</span><span class="mo">07</span><span class="o">/</span><span class="n">write</span><span class="o">-</span><span class="n">standalone</span><span class="o">-</span><span class="n">ruby</span><span class="o">-</span><span class="n">script</span><span class="o">/</span><span class="s2">&quot;)&lt;/p&gt;</span>
-
-<span class="s2">&lt;p&gt;</span>
-</code></pre>
-</div></p>
+<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <h3>Ruby读取yaml</h3>
 
 <p>就像Rails里那些配置文件一样，都属于yaml配置文件。我的应用里只需使用简单的key-value形式的yaml配置，就像：</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="ss">host</span><span class="p">:</span> <span class="n">www</span><span class="o">.</span><span class="n">cppblog</span><span class="o">.</span><span class="n">com</span>
+<p><div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="ss">host</span><span class="p">:</span> <span class="n">www</span><span class="o">.</span><span class="n">cppblog</span><span class="o">.</span><span class="n">com</span>
 <span class="ss">url</span><span class="p">:</span> <span class="sr">/kevinlynx/se</span><span class="n">rvices</span><span class="o">/</span><span class="n">metaweblog</span><span class="o">.</span><span class="n">aspx</span>
 <span class="ss">username</span><span class="p">:</span> <span class="n">kevinlynx</span>
-<span class="ss">password</span><span class="p">:</span> <span class="n">xxxxxx</span>
-</code></pre>
-</div></p>
+<span class="ss">password</span><span class="p">:</span> <span class="n">xxxxxx</span></code></pre></div></p>
 
 <p>解析的时候需要使用<code>yaml</code>库：</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="n">file</span> <span class="o">=</span> <span class="no">File</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
-<span class="n">cfg</span> <span class="o">=</span> <span class="ss">YAML</span><span class="p">:</span><span class="ss">:load</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
-</code></pre>
-</div></p>
+<p><div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="n">file</span> <span class="o">=</span> <span class="no">File</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+<span class="n">cfg</span> <span class="o">=</span> <span class="no">YAML</span><span class="o">::</span><span class="nb">load</span><span class="p">(</span><span class="n">file</span><span class="p">)</span></code></pre></div></p>
 
 <p>针对以上配置，<code>YAML::load</code>得到的结果就是一个hash表：</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="nb">puts</span> <span class="n">cfg</span><span class="o">[</span><span class="s2">&quot;host&quot;</span><span class="o">]</span>
-<span class="nb">puts</span> <span class="n">cfg</span><span class="o">[</span><span class="s2">&quot;url&quot;</span><span class="o">]</span>
-</code></pre>
-</div></p>
+<p><div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="nb">puts</span> <span class="n">cfg</span><span class="o">[&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">host</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span><span class="o">]</span>
+<span class="nb">puts</span> <span class="n">cfg</span><span class="o">[&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">url</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span><span class="o">]</span></code></pre></div></p>
 
 <p>以上，我写了一个小工具，可以让我每次在<a href="http://codemacro.com">codemacro.com</a>发表博客后，使用这个工具自动解析生成的文章，然后发表到CPPBLOG上。完整源码可在这个上：<a href="https://gist.github.com/3301662">https://gist.github.com/3301662</a></p>
 ]]></content>
@@ -123,17 +104,15 @@
     <id>http://codemacro.com/2012/08/07/write-standalone-ruby-script</id>
     <content type="html"><![CDATA[<p>Ruby肯定不仅仅用于编写Rails程序。要使用Ruby编写独立的脚本/程序，就像shell一样，其方式也很简单：</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="o">&lt;</span><span class="sr">/p&gt;</span>
+<p><div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="o">&lt;</span><span class="sr">/p&gt;</span>
 
 <span class="sr">&lt;h1&gt;!/us</span><span class="n">r</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">env</span> <span class="n">ruby</span><span class="o">&lt;</span><span class="sr">/h1&gt;</span>
 
 <span class="sr">&lt;p&gt;if ARGV.size == 0</span>
-<span class="sr">  puts &#39;usage: program arg1 arg2&#39;</span>
+<span class="sr">  puts &amp;lsquo;usage: program arg1 arg2&amp;rsquo;</span>
 <span class="sr">  exit</span>
 <span class="sr">end</span>
-<span class="sr">ARGV.each do |arg| print arg end</span>
-</code></pre>
-</div></p>
+<span class="sr">ARGV.each do |arg| print arg end</span></code></pre></div></p>
 
 <p>脚本内容没有什么限制，函数、类、模块的组织方式也随意。ARGV是一个特殊的变量，是一个数组，其内保存了传入脚本的参数，不包含程序名。当然，不要忘记给脚本加上可执行权限。</p>
 ]]></content>
@@ -144,7 +123,7 @@
     <link href="http://codemacro.com/2012/08/03/ruby-element-to-java/"/>
     <updated>2012-08-03T14:14:00+08:00</updated>
     <id>http://codemacro.com/2012/08/03/ruby-element-to-java</id>
-    <content type="html"><![CDATA[<p>参考（翻译、摘抄）于<a href="http://java.sys-con.com/node/251986">Can Ruby Live without Rails?</a>。这篇文章发表于2006年，受访者在回答“如果可以你会把Ruby的哪些特性加入Java“这个问题时，提到了Ruby的一些我个人认为比较突出的语法特性。其实并不是针对Java语言，何况6年时间过去，以Java语法特性的加入速度怕早就有Ruby这些特性了。我对Java不熟，仅限于曾经写的几个简单的android应用，买了&lt;Java编程思想>也没翻完。</p>
+    <content type="html"><![CDATA[<p>参考（翻译、摘抄）于<a href="http://java.sys-con.com/node/251986">Can Ruby Live without Rails?</a>。这篇文章发表于2006年，受访者在回答“如果可以你会把Ruby的哪些特性加入Java“这个问题时，提到了Ruby的一些我个人认为比较突出的语法特性。其实并不是针对Java语言，何况6年时间过去，以Java语法特性的加入速度怕早就有Ruby这些特性了。我对Java不熟，仅限于曾经写的几个简单的android应用，买了\&lt;Java编程思想>也没翻完。</p>
 
 <p>以下内容半翻译自原文。</p>
 
@@ -152,26 +131,20 @@
 
 <p>闭包支持将代码块作为函数参数传递。这在写很多代码时会比较方便，例如以下代码打印10次字符串：</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="mi">10</span><span class="o">.</span><span class="n">times</span> <span class="p">{</span> <span class="nb">puts</span> <span class="s2">&quot;Hello&quot;</span> <span class="p">}</span>
-</code></pre>
-</div></p>
+<p><div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="mi">10</span><span class="o">.</span><span class="n">times</span> <span class="p">{</span> <span class="nb">puts</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="no">Hello</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span> <span class="p">}</span></code></pre></div></p>
 
 <!-- more -->
 
 
-<p>又例如针对数组的每个元素做一些事情（do...end是上例中{}的替代）：</p>
+<p>又例如针对数组的每个元素做一些事情（do&hellip;end是上例中{}的替代）：</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="n">array</span><span class="o">.</span><span class="n">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">item</span><span class="o">|</span>
+<p><div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="n">array</span><span class="o">.</span><span class="n">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">item</span><span class="o">|</span>
   <span class="n">item</span><span class="o">.</span><span class="n">do_something</span>
-<span class="k">end</span>
-</code></pre>
-</div></p>
+<span class="k">end</span></code></pre></div></p>
 
 <p>也可以构建一个新的数组：</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="n">array</span><span class="o">.</span><span class="n">collect</span> <span class="p">{</span> <span class="o">|</span><span class="n">number</span><span class="o">|</span> <span class="n">number</span> <span class="o">*</span> <span class="n">number</span> <span class="p">}</span>
-</code></pre>
-</div></p>
+<p><div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="n">array</span><span class="o">.</span><span class="n">collect</span> <span class="p">{</span> <span class="o">|</span><span class="n">number</span><span class="o">|</span> <span class="n">number</span> <span class="o">*</span> <span class="n">number</span> <span class="p">}</span></code></pre></div></p>
 
 <p>Ruby中闭包的使用随处可见，它的语法形式太简单，这使得要使用它时所付出的代价很小（想想其他语言里得手动构造一个函数对象吧）。</p>
 
@@ -179,39 +152,30 @@
 
 <p>使用continuation你可以保存一块代码的执行状态，以便将来某个时刻恢复执行。这就像游戏存档一样，玩到一半存档，一段时间回来后取出存档从上次的进度继续玩。</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="nb">require</span> <span class="s1">&#39;continuation&#39;</span> <span class="c1"># 原文中未给这句，须加上&lt;/p&gt;</span>
+<p><div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="nb">require</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">continuation</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="c1"># 原文中未给这句，须加上&lt;/p&gt;</span>
 
 <span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span><span class="k">def</span> <span class="nf">loop</span>
-  <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="mi">1</span><span class="o">.</span><span class="n">.</span><span class="mi">10</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
-
-<span class="sr">&lt;pre&gt;&lt;code&gt;puts i</span>
-<span class="sr">callcc { |c| return c } if i == 5</span>
-<span class="sr">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;</span><span class="sr">/pre&gt;</span>
-
-<span class="sr">&lt;p&gt;  end</span>
-<span class="sr">end</span>
-</code></pre>
-</div></p>
+  <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="mi">1</span><span class="o">.</span><span class="n">.</span><span class="mi">10</span>
+    <span class="nb">puts</span> <span class="n">i</span>
+    <span class="nb">callcc</span> <span class="p">{</span> <span class="o">|</span><span class="n">c</span><span class="o">|</span> <span class="k">return</span> <span class="n">c</span> <span class="p">}</span> <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">5</span>
+  <span class="k">end</span>
+<span class="k">end</span></code></pre></div></p>
 
 <p><code>loop</code>函数执行里面那个循环时，当<code>i==5</code>就调用<code>callcc</code>函数（貌似现在Java已有这个了），该函数在回调传入的闭包时构建了一个continuation对象，以上代码直接将此对象返回，循环暂停于<code>i==5</code>。执行代码<code>continuation = loop</code>输出：</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="mi">1</span>
+<p><div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="mi">1</span>
 <span class="mi">2</span>
 <span class="mi">3</span>
 <span class="mi">4</span>
-<span class="mi">5</span>
-</code></pre>
-</div></p>
+<span class="mi">5</span></code></pre></div></p>
 
 <p>然后你可以在任意时刻恢复执行那个循环：<code>continuation.call</code>，得到：</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="mi">6</span>
+<p><div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="mi">6</span>
 <span class="mi">7</span>
 <span class="mi">8</span>
 <span class="mi">9</span>
-<span class="mi">10</span>
-</code></pre>
-</div></p>
+<span class="mi">10</span></code></pre></div></p>
 
 <p>这个continuation和Lua里的<code>coroutine</code>很像，可以用于实现轻量级的线程。</p>
 
@@ -223,51 +187,31 @@
 
 <p>这个算是Ruby里用的比较多的特性。open classes可以让你在很多情况下“打开“并重定义某个类，这个类可以是你使用的任意库里的类。Ruby里的类并不是一个封闭的代码集合，作为一个类库的使用者你甚至可以不用修改类库的代码而重新定义、扩展里面的接口。例如Ruby中的数字其实就是Fixnum类，而我们可以为Fixnum直接添加更多的接口（原文的代码有问题，以下我做了修改）：</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="k">class</span> <span class="nc">Fixnum</span>
-  <span class="k">def</span> <span class="nf">days</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
+<p><div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="k">class</span> <span class="nc">Fixnum</span>
+  <span class="k">def</span> <span class="nf">days</span>
+    <span class="nb">self</span><span class="o">.</span><span class="n">hours</span> <span class="o">*</span> <span class="mi">24</span>
+  <span class="k">end</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
 
-<span class="sr">&lt;pre&gt;&lt;code&gt;self.hours * 24</span>
-<span class="sr">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;</span><span class="sr">/pre&gt;</span>
+<span class="sr">&lt;p&gt;  def hours</span>
+<span class="sr">    self.minutes * 60</span>
+<span class="sr">  end&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
 
-<span class="sr">&lt;p&gt;  end&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
+<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span>  <span class="k">def</span> <span class="nf">minutes</span>
+    <span class="nb">self</span><span class="o">.</span><span class="n">seconds</span> <span class="o">*</span> <span class="mi">60</span>
+  <span class="k">end</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
 
-<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span>  <span class="k">def</span> <span class="nf">hours</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
+<span class="sr">&lt;p&gt;  def seconds</span>
+<span class="sr">    self</span>
+<span class="sr">  end&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
 
-<span class="sr">&lt;pre&gt;&lt;code&gt;self.minutes * 60</span>
-<span class="sr">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;</span><span class="sr">/pre&gt;</span>
+<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span>  <span class="k">def</span> <span class="nf">from_now</span>
+    <span class="no">Time</span><span class="o">.</span><span class="n">now</span> <span class="o">+</span> <span class="nb">self</span>
+  <span class="k">end</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
 
-<span class="sr">&lt;p&gt;  end&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span>  <span class="k">def</span> <span class="nf">minutes</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
-
-<span class="sr">&lt;pre&gt;&lt;code&gt;self.seconds * 60</span>
-<span class="sr">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;</span><span class="sr">/pre&gt;</span>
-
-<span class="sr">&lt;p&gt;  end&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span>  <span class="k">def</span> <span class="nf">seconds</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
-
-<span class="sr">&lt;pre&gt;&lt;code&gt;self</span>
-<span class="sr">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;</span><span class="sr">/pre&gt;</span>
-
-<span class="sr">&lt;p&gt;  end&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span>  <span class="k">def</span> <span class="nf">from_now</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
-
-<span class="sr">&lt;pre&gt;&lt;code&gt;Time.now + self</span>
-<span class="sr">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;</span><span class="sr">/pre&gt;</span>
-
-<span class="sr">&lt;p&gt;  end&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span>  <span class="k">def</span> <span class="nf">ago</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
-
-<span class="sr">&lt;pre&gt;&lt;code&gt;Time.now - self</span>
-<span class="sr">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;</span><span class="sr">/pre&gt;</span>
-
-<span class="sr">&lt;p&gt;  end</span>
-<span class="sr">end</span>
-</code></pre>
-</div></p>
+<span class="sr">&lt;p&gt;  def ago</span>
+<span class="sr">    Time.now - self</span>
+<span class="sr">  end</span>
+<span class="sr">end</span></code></pre></div></p>
 
 <p>基于以上，我们可以写出<code>10.days.ago</code>或者<code>6.hours.from_now</code>这样的代码。这有助于构建DSL(domain specific language)。</p>
 
@@ -275,13 +219,11 @@
 
 <p>Ruby中一切都是对象。这让我们写代码变得更容易，因为不用处理特殊情况。这些特殊情况主要就是很多基础数据类型并非对象，但Ruby里是。Ruby里每个对象都有一个函数<code>class</code>，表示该对象的类型：</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="mi">1</span><span class="o">.</span><span class="n">class</span> <span class="c1"># =&gt; Fixnum</span>
+<p><div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="mi">1</span><span class="o">.</span><span class="n">class</span> <span class="c1"># =&gt; Fixnum</span>
 <span class="mi">2</span><span class="o">.</span><span class="mi">5</span><span class="o">.</span><span class="n">class</span> <span class="c1"># = &gt; Float</span>
-<span class="s2">&quot;hello&quot;</span><span class="o">.</span><span class="n">class</span> <span class="c1"># =&gt; String</span>
+<span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">hello</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span><span class="o">.</span><span class="n">class</span> <span class="c1"># =&gt; String</span>
 <span class="o">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="o">].</span><span class="n">class</span> <span class="c1"># =&gt; Array</span>
-<span class="p">(</span><span class="mi">1</span><span class="o">.</span><span class="n">.</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">class</span> <span class="c1"># =&gt; Range</span>
-</code></pre>
-</div></p>
+<span class="p">(</span><span class="mi">1</span><span class="o">.</span><span class="n">.</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">class</span> <span class="c1"># =&gt; Range</span></code></pre></div></p>
 
 <p>全文完。</p>
 ]]></content>
@@ -294,47 +236,31 @@
     <id>http://codemacro.com/2012/07/26/ruby-case-when</id>
     <content type="html"><![CDATA[<p>参考<a href="http://stackoverflow.com/questions/948135/how-to-write-a-switch-statement-in-ruby">How to write a switch statement in Ruby?</a></p>
 
-<p>其实用Rails写个业务逻辑不算复杂的app根本用不上ruby的很多高级语法，更别说&lt;meta programming in ruby>中的东西了（凡是打上meta programming标签的都不是什么简单的东西，参考c++/lisp）。ruby中的case...when语句和c/c++中的switch...case其实根本不是一回事。&lt;Programming in Ruby 2nd>：</p>
+<p>其实用Rails写个业务逻辑不算复杂的app根本用不上ruby的很多高级语法，更别说\<meta programming in ruby\>中的东西了（凡是打上meta programming标签的都不是什么简单的东西，参考c++/lisp）。ruby中的case&hellip;when语句和c/c++中的switch&hellip;case其实根本不是一回事。\<Programming in Ruby 2nd\>：</p>
 
 <blockquote><p>case operates by comparing the target with each of the comparison expression after the when keywords. This test is done using comparison === target.</p></blockquote>
 
 <!-- more -->
 
 
-<p>也就是说case...when用的不是==操作符，不是使用相等逻辑去判断，而是使用===运算符。===运算符从C++的角度简单来说就是判定is-a关系，例如</p>
+<p>也就是说case&hellip;when用的不是==操作符，不是使用相等逻辑去判断，而是使用===运算符。===运算符从C++的角度简单来说就是判定is-a关系，例如</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="no">Fixnum</span> <span class="o">===</span> <span class="mi">1</span>
-<span class="nb">String</span> <span class="o">===</span> <span class="s2">&quot;hello&quot;</span>
-<span class="p">(</span><span class="mi">1</span><span class="o">.</span><span class="n">.</span><span class="mi">3</span><span class="p">)</span> <span class="o">===</span> <span class="mi">2</span>
-</code></pre>
-</div></p>
+<p><div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="no">Fixnum</span> <span class="o">===</span> <span class="mi">1</span>
+<span class="nb">String</span> <span class="o">===</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">hello</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span>
+<span class="p">(</span><span class="mi">1</span><span class="o">.</span><span class="n">.</span><span class="mi">3</span><span class="p">)</span> <span class="o">===</span> <span class="mi">2</span></code></pre></div></p>
 
 <p>1 is a Fixnum，hello is a String，2 is a (1..3) (in the range of)。比较让人产生误解的，大概就是1===1也为true。所以理解起来，也不纯碎是is-a关系。</p>
 
-<p><div class="highlight"><pre><code class="ruby"><span class="k">case</span> <span class="n">a</span>
-<span class="k">when</span> <span class="no">Fixnum</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
-
-<span class="sr">&lt;pre&gt;&lt;code&gt;puts &quot;fixnum&quot;</span>
-<span class="sr">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;</span><span class="sr">/pre&gt;</span>
-
-<span class="sr">&lt;p&gt;when String&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="nb">puts</span> <span class="s2">&quot;string&quot;</span>
-<span class="o">&lt;</span><span class="sr">/code&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span><span class="k">when</span> <span class="p">(</span><span class="mi">1</span><span class="o">.</span><span class="n">.</span><span class="mi">3</span><span class="p">)</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
-
-<span class="sr">&lt;pre&gt;&lt;code&gt;puts &quot;between 1 and 3&quot;</span>
-<span class="sr">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;</span><span class="sr">/pre&gt;</span>
-
-<span class="sr">&lt;p&gt;else&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="nb">puts</span> <span class="s2">&quot;default&quot;</span>
-<span class="o">&lt;</span><span class="sr">/code&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span><span class="k">end</span>
-</code></pre>
-</div></p>
+<p><div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="k">case</span> <span class="n">a</span>
+<span class="k">when</span> <span class="no">Fixnum</span>
+    <span class="nb">puts</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">fixnum</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span>
+<span class="k">when</span> <span class="nb">String</span>
+    <span class="nb">puts</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">string</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span>
+<span class="k">when</span> <span class="p">(</span><span class="mi">1</span><span class="o">.</span><span class="n">.</span><span class="mi">3</span><span class="p">)</span>
+    <span class="nb">puts</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">between</span> <span class="mi">1</span> <span class="ow">and</span> <span class="mi">3</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span>
+<span class="k">else</span>
+    <span class="nb">puts</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">default</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span>
+<span class="k">end</span></code></pre></div></p>
 
 <p>最后，作为一种functional-like language，其语句也算是表达式，意即也有返回值。case..when的返回值就是执行的分支的返回值。</p>
 ]]></content>

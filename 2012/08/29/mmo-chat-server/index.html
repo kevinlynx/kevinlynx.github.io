@@ -9,9 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content=" loop in codes, Kevin Lynx blog ">
-  
-    <meta name="keywords" content="c/c++, mmo, game develop, lisp, ruby, lua, web development">
+  <meta name="description" content="MMO中的聊天服务主要功能就是做客户端之间的聊天内容转发。但是聊天的形式有很多，例如私聊、同场景聊、队伍内聊、工会内聊、全服务器聊、甚至临时组建房间聊。这些逻辑功能其实都是可以做在逻辑服务器上的，最多改改世界服务器，但是这样完成功能的话，不免将聊天本身的逻辑与游戏逻辑关联起来。我们希望做得更上一层 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -21,15 +19,16 @@
 
   
   <link rel="canonical" href="http://codemacro.com/2012/08/29/mmo-chat-server">
-  <link href="/favicon.ico" rel="icon">
+  <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
-  <script src="/javascripts/modernizr-2.0.js"></script>
-  <script src="/javascripts/ender.js"></script>
-  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
   <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
-<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
-<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 
   
 
@@ -49,7 +48,7 @@
   
 </ul>
   
-<form action="http://google.com/search" method="get">
+<form action="https://www.google.com/search" method="get">
   <fieldset role="search">
     <input type="hidden" name="q" value="site:codemacro.com" />
     <input class="search" type="text" name="q" results="0" placeholder="Search"/>
@@ -59,8 +58,6 @@
 <ul class="main-navigation">
   <li><a href="/">Blog</a></li>
   <li><a href="/blog/archives">Archives</a></li>
-  <li><a href="/tips">Tips</a></li>
-  <li><a href="/about.html">About</a></li>
 </ul>
 
 </nav>
@@ -80,14 +77,7 @@
 
 
 
-
-
-
-
-  
-
-
-<time datetime="2012-08-29T09:54:00+08:00" pubdate data-updated="true">Aug 29<span>th</span>, 2012</time>
+<time class='entry-date' datetime='2012-08-29T09:54:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>29</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>9:54 am</span></time>
         
       </p>
     
@@ -107,21 +97,21 @@
 
 
 
-<div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">Entity</span> <span class="p">{</span>
-<span class="nl">public:</span>
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">class</span> <span class="nc">Entity</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
     <span class="c1">// send text to this entity</span>
-    <span class="n">virtual</span> <span class="kt">bool</span> <span class="n">Send</span><span class="p">(</span><span class="n">Entity</span> <span class="o">*</span><span class="n">sender</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">text</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">virtual</span> <span class="kt">bool</span> <span class="n">Send</span><span class="p">(</span><span class="n">Entity</span> <span class="o">*</span><span class="n">sender</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">text</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
 
-<span class="nl">protected:</span>
+<span class="k">protected</span><span class="o">:</span>
     <span class="n">GUID</span> <span class="n">m_id</span><span class="p">;</span>
     <span class="kt">int</span> <span class="n">m_type</span><span class="p">;</span>
 <span class="p">};</span>
 
-<span class="n">class</span> <span class="n">SockEntity</span> <span class="o">:</span> <span class="n">pubilc</span> <span class="n">Entity</span> <span class="p">{</span>
-<span class="nl">public:</span>
-    <span class="n">virtual</span> <span class="kt">bool</span> <span class="n">Send</span><span class="p">(</span><span class="n">Entity</span> <span class="o">*</span><span class="n">sender</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">text</span><span class="p">)</span> <span class="p">{</span>
+<span class="k">class</span> <span class="nc">SockEntity</span> <span class="o">:</span> <span class="n">pubilc</span> <span class="n">Entity</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="k">virtual</span> <span class="kt">bool</span> <span class="n">Send</span><span class="p">(</span><span class="n">Entity</span> <span class="o">*</span><span class="n">sender</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">text</span><span class="p">)</span> <span class="p">{</span>
         <span class="c1">// find the map socket and send text to the socket</span>
-        <span class="kt">long</span> <span class="n">socket</span> <span class="o">=</span> <span class="n">FindSocket</span><span class="p">(</span><span class="n">this</span><span class="p">);</span>
+        <span class="kt">long</span> <span class="n">socket</span> <span class="o">=</span> <span class="n">FindSocket</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
         <span class="n">Message</span> <span class="nf">msg</span><span class="p">(</span><span class="n">MSG_CS2E_SENDTEXT</span><span class="p">);</span>
         <span class="n">msg</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="n">sender</span><span class="o">-&gt;</span><span class="n">ID</span><span class="p">());</span>
         <span class="n">msg</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="n">text</span><span class="p">);</span>
@@ -130,19 +120,17 @@
     <span class="p">}</span>
 <span class="p">};</span>
 
-<span class="n">class</span> <span class="n">GroupEntity</span> <span class="o">:</span> <span class="n">public</span> <span class="n">Entity</span> <span class="p">{</span>
-<span class="nl">public:</span>
-    <span class="n">virtual</span> <span class="kt">bool</span> <span class="n">Send</span><span class="p">(</span><span class="n">Entity</span> <span class="o">*</span><span class="n">sender</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">text</span><span class="p">)</span> <span class="p">{</span>
+<span class="k">class</span> <span class="nc">GroupEntity</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Entity</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="k">virtual</span> <span class="kt">bool</span> <span class="n">Send</span><span class="p">(</span><span class="n">Entity</span> <span class="o">*</span><span class="n">sender</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">text</span><span class="p">)</span> <span class="p">{</span>
         <span class="k">for</span> <span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">list</span><span class="o">&lt;</span><span class="n">Entity</span><span class="o">*&gt;::</span><span class="n">const_iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">m_mems</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span> <span class="n">it</span> <span class="o">!=</span> <span class="n">m_mems</span><span class="p">.</span><span class="n">end</span><span class="p">();</span> <span class="o">++</span><span class="n">it</span><span class="p">)</span> <span class="p">{</span>
             <span class="p">(</span><span class="o">*</span><span class="n">it</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">Send</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">text</span><span class="p">);</span>
         <span class="p">}</span>
         <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
     <span class="p">}</span>
-<span class="nl">private:</span>
+<span class="k">private</span><span class="o">:</span>
     <span class="n">std</span><span class="o">::</span><span class="n">list</span><span class="o">&lt;</span><span class="n">Entity</span><span class="o">*&gt;</span> <span class="n">m_mems</span><span class="p">;</span>
-<span class="p">};</span>
-</code></pre>
-</div>
+<span class="p">};</span></code></pre></div>
 
 
 <p><code>SockEntity</code>用于表示物理上聊天服务器的客户端，例如游戏客户端。</p>
@@ -162,16 +150,14 @@
 
 <p>基于此，我们扩充了Entity的类体系：</p>
 
-<div class="highlight"><pre><code class="c"><span class="n">class</span> <span class="n">ClientEntity</span> <span class="o">:</span> <span class="n">public</span> <span class="n">SockEntity</span> <span class="p">{</span>
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">class</span> <span class="nc">ClientEntity</span> <span class="o">:</span> <span class="k">public</span> <span class="n">SockEntity</span> <span class="p">{</span>
 
-<span class="nl">private:</span>
+<span class="k">private</span><span class="o">:</span>
     <span class="n">GUID</span> <span class="n">m_gsEntity</span><span class="p">;</span> <span class="c1">// 标示该客户端实体位于哪个逻辑服务器实体上</span>
 <span class="p">};</span>
 
-<span class="n">class</span> <span class="n">GSEntity</span> <span class="o">:</span> <span class="n">public</span> <span class="n">SockEntity</span> <span class="p">{</span>
-<span class="p">};</span>
-</code></pre>
-</div>
+<span class="k">class</span> <span class="nc">GSEntity</span> <span class="o">:</span> <span class="k">public</span> <span class="n">SockEntity</span> <span class="p">{</span>
+<span class="p">};</span></code></pre></div>
 
 
 <h3>消息协议</h3>
@@ -194,14 +180,6 @@
 <h2>总结</h2>
 
 <p>整个系统实现下来，实际上是非常简单的，代码量也很少。当然还有很多细节问题，例如聊天信息中携带物品信息，这涉及到异步预处理聊天内容，这里就不方便细说了。</p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2012/08/29/mmo-chat-server/'>http://codemacro.com/2012/08/29/mmo-chat-server/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
 </div>
 
 
@@ -217,14 +195,7 @@
 
 
 
-
-
-
-
-  
-
-
-<time datetime="2012-08-29T09:54:00+08:00" pubdate data-updated="true">Aug 29<span>th</span>, 2012</time>
+<time class='entry-date' datetime='2012-08-29T09:54:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>29</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>9:54 am</span></time>
       
 
 <span class="categories">
@@ -265,28 +236,6 @@
 <aside class="sidebar">
   
     <section>
-  <h1>Categories</h1>
-  <ul id="categories">
-    <li class='category'><a href='/categories/ice/'>ICE (2)</a></li>
-<li class='category'><a href='/categories/javascript/'>Javascript (1)</a></li>
-<li class='category'><a href='/categories/scala/'>Scala (1)</a></li>
-<li class='category'><a href='/categories/c-c-/'>c/c++ (14)</a></li>
-<li class='category'><a href='/categories/clang/'>clang (1)</a></li>
-<li class='category'><a href='/categories/erlang/'>erlang (8)</a></li>
-<li class='category'><a href='/categories/game-develop/'>game develop (4)</a></li>
-<li class='category'><a href='/categories/lisp/'>lisp (5)</a></li>
-<li class='category'><a href='/categories/lua/'>lua (5)</a></li>
-<li class='category'><a href='/categories/module/'>module (3)</a></li>
-<li class='category'><a href='/categories/network/'>network (8)</a></li>
-<li class='category'><a href='/categories/other/'>other (6)</a></li>
-<li class='category'><a href='/categories/ruby/'>ruby (4)</a></li>
-<li class='category'><a href='/categories/tips/'>tips (21)</a></li>
-<li class='category'><a href='/categories/web/'>web (4)</a></li>
-
-  </ul>
-</section>
-
-<section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
     
@@ -312,39 +261,36 @@
     
   </ul>
 </section>
-<section>
-<div id="recentcomments" class="dsq-widget">
-<h1 class="dsq-widget-title">Recent Comments</h1>
-<script type="text/javascript" src="http://loopincodes.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
-</div>
-<a href="http://disqus.com/">Powered by Disqus</a>
-</section>
-<section>
-  <h1>Tags</h1>
-  <ul class="tag-cloud">
-<a style="font-size: 90%" href="/tags/actionscript/">ActionScript</a>
-<a style="font-size: 118%" href="/tags/ice/">ICE</a>
-<a style="font-size: 118%" href="/tags/blog/">blog</a>
-<a style="font-size: 182%" href="/tags/c-c-/">c/c++</a>
-<a style="font-size: 162%" href="/tags/dht/">dht</a>
-<a style="font-size: 134%" href="/tags/dhtcrawler/">dhtcrawler</a>
-<a style="font-size: 173%" href="/tags/erlang/">erlang</a>
-<a style="font-size: 134%" href="/tags/game-develop/">game develop</a>
-<a style="font-size: 118%" href="/tags/html/">html</a>
-<a style="font-size: 90%" href="/tags/ice/">ice</a>
-<a style="font-size: 154%" href="/tags/lisp/">lisp</a>
-<a style="font-size: 154%" href="/tags/lua/">lua</a>
-<a style="font-size: 146%" href="/tags/magnet/">magnet</a>
-<a style="font-size: 146%" href="/tags/octopress/">octopress</a>
-<a style="font-size: 154%" href="/tags/p2p/">p2p</a>
-<a style="font-size: 146%" href="/tags/ruby/">ruby</a>
-<a style="font-size: 90%" href="/tags/rup/">rup</a>
-<a style="font-size: 210%" href="/tags/tips/">tips</a>
-<a style="font-size: 118%" href="/tags/virtual/">virtual</a>
-<a style="font-size: 134%" href="/tags/web/">web</a>
 
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
   </ul>
+  
+  <a href="https://github.com/kevinlynx">@kevinlynx</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'kevinlynx',
+            count: 6,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
 </section>
+
 
   
 </aside>
@@ -371,7 +317,7 @@
       
     (function () {
       var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
       (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
     }());
 </script>
@@ -383,9 +329,6 @@
 
 
 
-
-<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
-<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
 
 
 

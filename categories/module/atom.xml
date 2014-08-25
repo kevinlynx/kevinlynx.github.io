@@ -4,7 +4,7 @@
   <title><![CDATA[Category: module | loop in codes]]></title>
   <link href="http://codemacro.com/categories/module/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-08-24T19:24:43+08:00</updated>
+  <updated>2014-08-25T21:34:07+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -60,7 +60,7 @@ Pool -&gt; ReqProcessor -&gt; O
 
 <p>在erlang中，可以以一个单独的进程来维护这个Pool。那么这里就是通过erlang的进程来实现数据的同步。本质上也是基于erlang进程的mailbox机制。这个维护Pool的进程逻辑足够简单，可以快速响应ReqWorker的Req压入，以及ReqProcessor的Req取出。</p>
 
-<p><strong>在用erlang的过程中，很多时候就是在平衡这种(actor)[http://en.wikipedia.org/wiki/Actor_model]进程模式中各种进程间的协调程度。</strong>平衡不好会导致两种情况：a)进程mailbox暴涨最后内存耗尽；b)消费者进程请求资源超时。</p>
+<p><strong>在用erlang的过程中，很多时候就是在平衡这种(actor)[<a href="http://en.wikipedia.org/wiki/Actor_model">http://en.wikipedia.org/wiki/Actor_model</a>]进程模式中各种进程间的协调程度。</strong>平衡不好会导致两种情况：a)进程mailbox暴涨最后内存耗尽；b)消费者进程请求资源超时。</p>
 
 <p>Pool被放置在内存中时，本身也可能有问题。例如数据量过大，无论是直接基于OS的程序还是基于erlang/jvm等虚拟机的程序，都可能在这个时候出现问题。并且，把数据放置在内存中也可能由于程序不稳定导致数据丢失。</p>
 
@@ -116,7 +116,7 @@ Pool -&gt; ReqProcessor -&gt; O
 
 <h2>RUP概览</h2>
 
-<p>以下均摘自&lt;Thinking in UML>中对RUP的描述：</p>
+<p>以下均摘自\<Thinking in UML\>中对RUP的描述：</p>
 
 <blockquote><p>统一过程归纳和集成了软件开发活动中的最佳实践，它定义了软件开发过程中最重要的阶段和工作（四个阶段和九个核心工作流），定义了参与软件开发过程的各种角色和他们的职责，还定义了软件生产过程中产生的工件，并提供了模板。最后，采用演进式软件生命周期（迭代）将工作、角色和工件串在一起，形成了统一过程。</p>
 
@@ -161,7 +161,7 @@ Pool -&gt; ReqProcessor -&gt; O
 </ul>
 
 
-<p>其中，前6个流程被统称为"engineering disciplines"，后3个流程被称为"supporting disciplines"。当然，我们主要关注前6个流程。那么，这些工作流程和开发阶段又有什么关系呢？上图中其实已经阐明了这些关系。</p>
+<p>其中，前6个流程被统称为&#8221;engineering disciplines&#8221;，后3个流程被称为&#8221;supporting disciplines&#8221;。当然，我们主要关注前6个流程。那么，这些工作流程和开发阶段又有什么关系呢？上图中其实已经阐明了这些关系。</p>
 
 <p>RUP指导迭代开发。在软件开发的这4个阶段中，每一个阶段会被分为若干次迭代。而每一次迭代则涵盖了这9个工作流程。随着开发阶段向产品化靠近，自然而然地，需求的变更、增加自然会减少，所以从图中可以看出，开发过程越到后期，其工作流程中关于需求的工作则越少。同样，在先启阶段，其需求相关的工作则占据了该阶段的主要工作内容。</p>
 
@@ -182,11 +182,11 @@ Pool -&gt; ReqProcessor -&gt; O
 
 <h3>RUP建模</h3>
 
-<p>在我看来，RUP每个工作流程所完成的工作，就是一个建模的过程。所谓建模，简单来说就是将需要描述的事物通过更系统的形式表达出来，以期获得对该事物更深入的理解。&lt;Thinking in UML>中定义建模概念为：</p>
+<p>在我看来，RUP每个工作流程所完成的工作，就是一个建模的过程。所谓建模，简单来说就是将需要描述的事物通过更系统的形式表达出来，以期获得对该事物更深入的理解。\<Thinking in UML\>中定义建模概念为：</p>
 
 <blockquote><p>建模(modeling)，是指通过对客观事物建立一种抽象的方法用以表征事物并获得对事物本身的理解，同时把这种理解概念化，将这些逻辑概念组织起来，构成一种对所观察的对象的内部结构和工作原理的便于理解的表达。</p></blockquote>
 
-<p>在这里，建模的过程需要使用一些工具。在RUP中建模使用UML来完成。在&lt;Thinking in UML>中讲述了UML的核心模型，包括：</p>
+<p>在这里，建模的过程需要使用一些工具。在RUP中建模使用UML来完成。在\<Thinking in UML\>中讲述了UML的核心模型，包括：</p>
 
 <ul>
 <li>业务用例模型</li>
@@ -207,11 +207,11 @@ Pool -&gt; ReqProcessor -&gt; O
 
 <p>例如在“分析设计”工作流程中，可能会使用到系统用例模型、分析模型、软件架构和框架、设计模型等，而业务用例模型可能在这个流程中根本不会用到；相反，业务用例模型则可能在“业务建模”流程中被广泛使用。</p>
 
-<p>前已述及在RUP的每个工作流程中，RUP定义了该流程需要参与的角色，以及这些角色需要进行的活动，例如这里可以看看“分析设计”流程中的角色和活动集（摘自&lt;Thinking in UML>）：</p>
+<p>前已述及在RUP的每个工作流程中，RUP定义了该流程需要参与的角色，以及这些角色需要进行的活动，例如这里可以看看“分析设计”流程中的角色和活动集（摘自\<Thinking in UML\>）：</p>
 
 <p><img src="/assets/res/rup/analyse-action.png" alt="analyse-action" /></p>
 
-<p>相应的，在该工作流程中需要产出的工件集为（摘自&lt;Thinking in UML>）：</p>
+<p>相应的，在该工作流程中需要产出的工件集为（摘自\<Thinking in UML\>）：</p>
 
 <p><img src="/assets/res/rup/analyse-ar.png" alt="analyse-ar" /></p>
 
@@ -239,7 +239,7 @@ Pool -&gt; ReqProcessor -&gt; O
 
 <h3>用例驱动</h3>
 
-<p>用例驱动指的是整个软件项目的推进过程，是依靠“用例”来完成。&lt;Thinking in UML>：</p>
+<p>用例驱动指的是整个软件项目的推进过程，是依靠“用例”来完成。\<Thinking in UML\>：</p>
 
 <blockquote><p>在实际的软件项目中，一个软件要实现的功能通过用例来捕获，接下来的所有分析、设计、实现、测试都由用例来取得，即以实现用例为目标。在统一过程中用例能够驱动的不仅仅是分析设计。</p></blockquote>
 
@@ -265,7 +265,7 @@ Pool -&gt; ReqProcessor -&gt; O
 </ul>
 
 
-<p>进入设计阶段后，虽然可以进一步建模，得到会直接映射到代码的类图、序列图等，但这样的图在面临需求变更时，基本上会面临修改，这意味着维护这些文档需要耗费精力。所以，&lt;Thinking in UML>中主张将精力放在维护分析类模型中，而通过其他约定实现从分析类到实际代码的转换。我觉得这个也在理。</p>
+<p>进入设计阶段后，虽然可以进一步建模，得到会直接映射到代码的类图、序列图等，但这样的图在面临需求变更时，基本上会面临修改，这意味着维护这些文档需要耗费精力。所以，\<Thinking in UML\>中主张将精力放在维护分析类模型中，而通过其他约定实现从分析类到实际代码的转换。我觉得这个也在理。</p>
 
 <h3>规范化整个过程</h3>
 
@@ -275,12 +275,12 @@ Pool -&gt; ReqProcessor -&gt; O
 
 <h2>总结</h2>
 
-<p>我只是一个RUP新手，即便如此，我依然不觉得RUP是软件开发的万能药。我相信任何软件开发方法都是有局限性的。我们在实际使用的时候也只是吸取其精华。不同的开发方法其适用范围也是不一样的。正如有人将RUP和XP做比较时说，如果你使用RUP去开一个杂货铺，在没开张之前你就已经破产了；同样如果你用XP去做飞机，飞机毁了十来次也许才能做出来（from &lt;Thinking in UML> again）。</p>
+<p>我只是一个RUP新手，即便如此，我依然不觉得RUP是软件开发的万能药。我相信任何软件开发方法都是有局限性的。我们在实际使用的时候也只是吸取其精华。不同的开发方法其适用范围也是不一样的。正如有人将RUP和XP做比较时说，如果你使用RUP去开一个杂货铺，在没开张之前你就已经破产了；同样如果你用XP去做飞机，飞机毁了十来次也许才能做出来（from \<Thinking in UML\> again）。</p>
 
 <h2>参考文档</h2>
 
 <ul>
-<li><a href="http://blog.csdn.net/coffeewoo/">&lt;Thinking in UML></a></li>
+<li><a href="http://blog.csdn.net/coffeewoo/">\<Thinking in UML\></a></li>
 <li><a href="http://www.uml.org.cn/SoftWareProcess/2009031017.asp">RUP和IPD流程的优缺点</a></li>
 <li><a href="http://en.wikipedia.org/wiki/IBM_Rational_Unified_Process">IBM Rational Unified Process(wiki)</a></li>
 <li><a href="http://blog.roodo.com/rocksaying/archives/2051417.html">軟體工程三大陣營, RUP, CMMI, Agile Method(需翻墙)</a></li>
