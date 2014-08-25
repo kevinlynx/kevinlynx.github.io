@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-08-25T21:34:07+08:00</updated>
+  <updated>2014-08-25T21:40:45+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[分布式环境中的负载均衡策略]]></title>
-    <link href="http://codemacro.com/2014/08/24/lb-policy/"/>
-    <updated>2014-08-24T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2014/08/24/lb-policy</id>
+    <link href="http://codemacro.com/2014/08/25/lb-policy/"/>
+    <updated>2014-08-25T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2014/08/25/lb-policy</id>
     <content type="html"><![CDATA[<p>在分布式系统中相同的服务常常会部署很多台，每一台被称为一个服务节点（实例）。通过一些负载均衡策略将服务请求均匀地分布到各个节点，以实现整个系统支撑海量请求的需求。本文描述一些简单的负载均衡策略。</p>
 
 <h2>Round-robin</h2>
