@@ -1,25 +1,2 @@
 // This File is imported last, and will override other styles in the cascade
 // Add styles here to make changes without digging in too much
-html {
-    background: $page-bg;
-}
-article {
-    h1, h2, h3, h4, h5, h6
-    {
-        color : $sol_yellow;
-    }
-}
-.tag-cloud {
-    a
-    {
-        text-decoration: none;
-    }
-}
-.post-footer {
-    margin-top: 10px;
-    padding: 5px;
-    background: none repeat scroll 0pt 0pt rgb(238, 238, 238);
-    font-size: 90%;
-    color: gray;
-}
-
