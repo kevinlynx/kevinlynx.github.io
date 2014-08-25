@@ -7,24 +7,38 @@ comments: true
 
 ## Kevin Lynx
 
-### 二线程序员
+### 搜索后端
 
-没什么技术含量，google/microsoft什么的这辈子进的去吗？
+2014.5 - ?
 
-### 非软件工程师
-
-工程师听起来就很牛逼。
+想深化后端开发技能。
 
 ### 计算机科学业余爱好者
+
+2003.7 - ?
 
 * 编译原理/程序语言
 * 网络编程
 
 ### 10人团队/项目Leader
 
-架构；分析设计；沟通；凝聚力；进度；计划；责任；压力。
+2012.12 - 2014.5
+
+架构；分析设计；团队；沟通；凝聚力；进度；计划；责任；压力。
 
 有时候还是想安静专注地写一天代码。
+
+### MMO游戏后端
+
+2008.1 - 2012.11
+
+那些喜欢做游戏和打游戏的青春岁月。
+
+### 疯狂编码
+
+2005.9 - 2008.1
+
+还记得在[GameRes](http://www.gameres.com/)发布的那些游戏吗？
 
 ### 程序语言爱好者
 
@@ -66,12 +80,11 @@ comments: true
 
 我的邮箱：kevinlynx at gmail dot com。
 
-我的腾讯微博：[kevinlynx](http://t.qq.com/kevinlynx)
+我的微博：[kevinlynx](http://weibo.com/kevinlynx)
 
 我的cppblog：[loop_in_codes](http://www.cppblog.com/kevinlynx)
 
 我的独立blog：[loop in codes](http://codemacro.com/)
 
 我的Github：[http://github.com/kevinlynx](http://github.com/kevinlynx)
-
 
