@@ -5,12 +5,12 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Null Object模式 - loop in codes</title>
+  <title>new-page - loop in codes</title>
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="Null Object模式用于代替空指针（C++中），以避免上层模块对返回值做空值判定。Null Object模式返回的不是一个空指针，而是一个空对象，上层模块对返回值做操作时，不需要做空判定，而是按正常逻辑调用这个对象的某个接口，只不过对于空对象而言，这个接口什么事也没做">
-  <meta name="keywords" content="null object, pattern, c/c++">
+  <meta name="description" content="new-page Aug 25th, 2014 10:55 pm Aug 25th, 2014 10:55 pm Comments Please enable JavaScript to view the comments powered by Disqus. Categories c/c &hellip;">
+  
 
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -18,7 +18,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://codemacro.com/2012/08/29/null-object-pattern">
+  <link rel="canonical" href="http://codemacro.com/new-page">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
@@ -65,97 +65,42 @@
   <div id="main">
     <div id="content">
       <div>
-<article class="hentry" role="article">
+<article role="article">
   
   <header>
-    
-      <h1 class="entry-title">Null Object模式</h1>
-    
-    
+    <h1 class="entry-title">new-page</h1>
+    <p class="meta">
+
+
+
+
+<time class='entry-date' datetime='2014-08-25T22:55:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>25</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>10:55 pm</span></time></p>
+  </header>
+  
+  
+
+  
+    <footer>
       <p class="meta">
         
+        
 
 
 
 
-<time class='entry-date' datetime='2012-08-29T15:57:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>29</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>3:57 pm</span></time>
+<time class='entry-date' datetime='2014-08-25T22:55:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>25</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>10:55 pm</span></time>
         
       </p>
-    
-  </header>
-
-
-<div class="entry-content"><p>Null Object模式用于代替空指针（C++中），以避免上层模块对返回值做空值判定。Null Object模式返回的不是一个空指针，而是一个空对象，上层模块对返回值做操作时，不需要做空判定，而是按正常逻辑调用这个对象的某个接口，只不过对于空对象而言，这个接口什么事也没做，例如：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">class</span> <span class="nc">animal</span> <span class="p">{</span>
-<span class="k">public</span><span class="o">:</span>
-  <span class="k">virtual</span> <span class="kt">void</span> <span class="n">make_sound</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">};</span>
- 
-<span class="k">class</span> <span class="nc">dog</span> <span class="o">:</span> <span class="k">public</span> <span class="n">animal</span> <span class="p">{</span>
-  <span class="kt">void</span> <span class="n">make_sound</span><span class="p">()</span> <span class="p">{</span> <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;woof!&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span> <span class="p">}</span>
-<span class="p">};</span>
- 
-<span class="k">class</span> <span class="nc">null_animal</span> <span class="o">:</span> <span class="k">public</span> <span class="n">animal</span> <span class="p">{</span>
-  <span class="kt">void</span> <span class="n">make_sound</span><span class="p">()</span> <span class="p">{</span> <span class="p">}</span>
-<span class="p">};</span></code></pre></div>
-
-
-<p>在我看来这个模式在C++中其实挺扯淡的，因为去判断一个指针是否为NULL，远比创建一个空类，并且添加若干个空函数代价小更多。更何况，我们还不知道<code>null_animal</code>的生命周期如何管理。</p>
-
-<p>但是在我以往写的代码中，我也写过一些避免空指针判定的代码，例如我会使用引用。注意，引用肯定不能保证所对应的对象是合法的，这就像无法确定一个指针是不是野指针一样：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">const</span> <span class="n">Item</span> <span class="o">&amp;</span><span class="n">Container</span><span class="o">::</span><span class="n">FindItem</span><span class="p">(</span><span class="kt">int</span> <span class="n">id</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
-    <span class="k">static</span> <span class="n">Item</span> <span class="n">null_item</span><span class="p">;</span>
-    <span class="n">Table</span><span class="o">::</span><span class="n">const_iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">m_items</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">id</span><span class="p">);</span>
-    <span class="k">return</span> <span class="n">it</span> <span class="o">==</span> <span class="n">m_items</span><span class="p">.</span><span class="n">end</span><span class="p">()</span> <span class="o">?</span> <span class="nl">null_item</span> <span class="p">:</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">second</span><span class="p">;</span>
-<span class="p">}</span></code></pre></div>
-
-
-<p>参考<a href="http://en.wikipedia.org/wiki/Null_Object_pattern">http://en.wikipedia.org/wiki/Null_Object_pattern</a></p>
-</div>
-
-
-  <footer>
-    <p class="meta">
       
-  
-
-<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
-
-      
-
-
-
-
-<time class='entry-date' datetime='2012-08-29T15:57:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>29</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>3:57 pm</span></time>
-      
-
-<span class="categories">
-  
-    <a class='category' href='/categories/c-slash-c-plus-plus/'>c/c++</a>, <a class='category' href='/categories/tips/'>tips</a>
-  
-</span>
-
-
-    </p>
-    
-      <div class="sharing">
+        <div class="sharing">
   
   
   
 </div>
 
-    
-    <p class="meta">
       
-        <a class="basic-alignment left" href="/2012/08/29/mmo-chat-server/" title="Previous Post: MMO聊天服务器设计">&laquo; MMO聊天服务器设计</a>
-      
-      
-        <a class="basic-alignment right" href="/2012/08/29/branch-predictor/" title="Next Post: 为什么处理排序的数组要比非排序的快？">为什么处理排序的数组要比非排序的快？ &raquo;</a>
-      
-    </p>
-  </footer>
+    </footer>
+  
 </article>
 
   <section>
@@ -273,8 +218,8 @@
       
         
         // var disqus_developer = 1;
-        var disqus_identifier = 'http://codemacro.com/2012/08/29/null-object-pattern/';
-        var disqus_url = 'http://codemacro.com/2012/08/29/null-object-pattern/';
+        var disqus_identifier = 'http://codemacro.com/new-page/index.html';
+        var disqus_url = 'http://codemacro.com/new-page/index.html';
         var disqus_script = 'embed.js';
       
     (function () {
