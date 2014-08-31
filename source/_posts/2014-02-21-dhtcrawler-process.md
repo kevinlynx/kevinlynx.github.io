@@ -45,7 +45,7 @@ Pool可以放置在内存中。也就是ReqWorker把收到的请求稍作加工�
 
 在erlang中，可以以一个单独的进程来维护这个Pool。那么这里就是通过erlang的进程来实现数据的同步。本质上也是基于erlang进程的mailbox机制。这个维护Pool的进程逻辑足够简单，可以快速响应ReqWorker的Req压入，以及ReqProcessor的Req取出。
 
-**在用erlang的过程中，很多时候就是在平衡这种(actor)[http://en.wikipedia.org/wiki/Actor_model]进程模式中各种进程间的协调程度。**平衡不好会导致两种情况：a)进程mailbox暴涨最后内存耗尽；b)消费者进程请求资源超时。
+**在用erlang的过程中，很多时候就是在平衡这种[actor](http://en.wikipedia.org/wiki/Actor_model)进程模式中各种进程间的协调程度。**平衡不好会导致两种情况：a)进程mailbox暴涨最后内存耗尽；b)消费者进程请求资源超时。
 
 Pool被放置在内存中时，本身也可能有问题。例如数据量过大，无论是直接基于OS的程序还是基于erlang/jvm等虚拟机的程序，都可能在这个时候出现问题。并且，把数据放置在内存中也可能由于程序不稳定导致数据丢失。
 
