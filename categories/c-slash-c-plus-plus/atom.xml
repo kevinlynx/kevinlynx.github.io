@@ -4,7 +4,7 @@
   <title><![CDATA[Category: c/c++ | loop in codes]]></title>
   <link href="http://codemacro.com/categories/c-slash-c-plus-plus/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-08-25T23:46:33+08:00</updated>
+  <updated>2014-08-31T19:34:59+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,158 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[基于protobuf的RPC实现]]></title>
+    <link href="http://codemacro.com/2014/08/31/protobuf-rpc/"/>
+    <updated>2014-08-31T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2014/08/31/protobuf-rpc</id>
+    <content type="html"><![CDATA[<p>可以对照<a href="http://www.codedump.info/?p=169">使用google protobuf RPC实现echo service</a>一文看，细节本文不再描述。</p>
+
+<p>google protobuf只负责消息的打包和解包，并不包含RPC的实现，但其包含了RPC的定义。假设有下面的RPC定义：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">service</span> <span class="n">MyService</span> <span class="p">{</span>
+        <span class="n">rpc</span> <span class="n">Echo</span><span class="p">(</span><span class="n">EchoReqMsg</span><span class="p">)</span> <span class="n">returns</span><span class="p">(</span><span class="n">EchoRespMsg</span><span class="p">)</span>
+    <span class="p">}</span></code></pre></div></p>
+
+<p>那么要实现这个RPC需要最少做哪些事？总结起来需要完成以下几步：</p>
+
+<h2>客户端</h2>
+
+<p>RPC客户端需要实现<code>google::protobuf::RpcChannel</code>。主要实现<code>RpcChannel::CallMethod</code>接口。客户端调用任何一个RPC接口，最终都是调用到<code>CallMethod</code>。这个函数的典型实现就是将RPC调用参数序列化，然后投递给网络模块进行发送。</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">CallMethod</span><span class="p">(</span><span class="k">const</span> <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">MethodDescriptor</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">method</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">RpcController</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">controller</span><span class="p">,</span>
+                  <span class="k">const</span> <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Message</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">request</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Message</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">response</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Closure</span><span class="o">*</span> <span class="n">done</span><span class="p">)</span> <span class="p">{</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="n">DataBufferOutputStream</span> <span class="n">outputStream</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hellip</span><span class="p">;)</span> <span class="c1">// 取决于你使用的网络实现</span>
+        <span class="n">request</span><span class="o">-&gt;</span><span class="n">SerializeToZeroCopyStream</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">outputStream</span><span class="p">);</span>
+        <span class="n">_connection</span><span class="o">-&gt;</span><span class="n">postData</span><span class="p">(</span><span class="n">outputStream</span><span class="p">.</span><span class="n">getData</span><span class="p">(),</span> <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+    <span class="p">}</span></code></pre></div></p>
+
+<!-- more -->
+
+
+<h2>服务端</h2>
+
+<p>服务端首先需要实现RPC接口，直接实现<code>MyService</code>中定义的接口：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">class</span> <span class="nc">MyServiceImpl</span> <span class="o">:</span> <span class="k">public</span> <span class="n">MyService</span> <span class="p">{</span>
+        <span class="k">virtual</span> <span class="kt">void</span> <span class="n">Echo</span><span class="p">(</span><span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">RpcController</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">controller</span><span class="p">,</span>
+            <span class="k">const</span> <span class="n">EchoReqMsg</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">request</span><span class="p">,</span>
+            <span class="n">EchoRespMsg</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">response</span><span class="p">,</span>
+            <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Closure</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">done</span><span class="p">)</span> <span class="p">{</span>
+            <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+            <span class="n">done</span><span class="o">-&gt;</span><span class="n">Run</span><span class="p">();</span>
+        <span class="p">}</span>
+    <span class="p">}</span></code></pre></div></p>
+
+<h2>标示service&amp;method</h2>
+
+<p>基于以上，可以看出服务端根本不知道客户端想要调用哪一个RPC接口。从服务器接收到网络消息，到调用到<code>MyServiceImpl::Echo</code>还有很大一段距离。</p>
+
+<p>解决方法就是在网络消息中带上RPC接口标识。这个标识可以直接带上service name和method name，但这种实现导致网络消息太大。另一种实现是基于service name和method name生成一个哈希值，因为接口不会太多，所以较容易找到基本不冲突的字符串哈希算法。</p>
+
+<p>无论哪种方法，服务器是肯定需要建立RPC接口标识到protobuf service对象的映射的。</p>
+
+<p>这里提供第三种方法：基于option的方法。</p>
+
+<p>protobuf中option机制类似于这样一种机制：service&amp;method被视为一个对象，其有很多属性，属性包含内置的，以及用户扩展的。用户扩展的就是option。每一个属性有一个值。protobuf提供访问service&amp;method这些属性的接口。</p>
+
+<p>首先扩展service&amp;method的属性，以下定义这些属性的key：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">extend</span> <span class="n">google</span><span class="p">.</span><span class="n">protobuf</span><span class="p">.</span><span class="n">ServiceOptions</span> <span class="p">{</span>
+      <span class="n">required</span> <span class="n">uint32</span> <span class="n">global_service_id</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">extend</span> <span class="n">google</span><span class="p">.</span><span class="n">protobuf</span><span class="p">.</span><span class="n">MethodOptions</span> <span class="p">{</span>
+      <span class="n">required</span> <span class="n">uint32</span> <span class="n">local_method_id</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">;</span>
+    <span class="p">}</span></code></pre></div></p>
+
+<p>应用层定义service&amp;method时可以指定以上key的值：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">service</span> <span class="n">MyService</span>
+    <span class="p">{</span>
+        <span class="n">option</span> <span class="p">(</span><span class="n">arpc</span><span class="p">.</span><span class="n">global_service_id</span><span class="p">)</span> <span class="o">=</span> <span class="mi">2302</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="n">rpc</span> <span class="n">Echo</span><span class="p">(</span><span class="n">EchoReqMsg</span><span class="p">)</span> <span class="n">returns</span><span class="p">(</span><span class="n">EchoRespMsg</span><span class="p">)</span> 
+    <span class="p">{</span>
+        <span class="n">option</span> <span class="p">(</span><span class="n">arpc</span><span class="p">.</span><span class="n">local_method_id</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">rpc</span> <span class="n">Echo_2</span><span class="p">(</span><span class="n">EchoReqMsg</span><span class="p">)</span> <span class="n">returns</span><span class="p">(</span><span class="n">EchoRespMsg</span><span class="p">)</span> 
+    <span class="p">{</span>
+        <span class="n">option</span> <span class="p">(</span><span class="n">arpc</span><span class="p">.</span><span class="n">local_method_id</span><span class="p">)</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="p">...</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p>以上相当于在整个应用中，每个service都被赋予了唯一的id，单个service中的method也有唯一的id。</p>
+
+<p>然后可以通过protobuf取出以上属性值：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">CallMethod</span><span class="p">(</span><span class="k">const</span> <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">MethodDescriptor</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">method</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">RpcController</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">controller</span><span class="p">,</span>
+                  <span class="k">const</span> <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Message</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">request</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Message</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">response</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Closure</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">done</span><span class="p">)</span> <span class="p">{</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">ServiceDescriptor</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">service</span> <span class="o">=</span> <span class="n">method</span><span class="o">-&gt;</span><span class="n">service</span><span class="p">();</span>
+        <span class="kt">uint32_t</span> <span class="n">serviceId</span> <span class="o">=</span> <span class="p">(</span><span class="kt">uint32_t</span><span class="p">)(</span><span class="n">service</span><span class="o">-&gt;</span><span class="n">options</span><span class="p">().</span><span class="n">GetExtension</span><span class="p">(</span><span class="n">global_service_id</span><span class="p">));</span>
+        <span class="kt">uint32_t</span> <span class="n">methodId</span> <span class="o">=</span> <span class="p">(</span><span class="kt">uint32_t</span><span class="p">)(</span><span class="n">method</span><span class="o">-&gt;</span><span class="n">options</span><span class="p">().</span><span class="n">GetExtension</span><span class="p">(</span><span class="n">local_method_id</span><span class="p">));</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+    <span class="p">}</span></code></pre></div></p>
+
+<p>考虑到<code>serviceId</code> <code>methodId</code>的范围，可以直接打包到一个32位整数里：</p>
+
+<pre><code>uint32_t ret = (serviceId &lt;&lt; 16) | methodId;
+</code></pre>
+
+<p>然后就可以把这个值作为网络消息头的一部分发送。</p>
+
+<p>当然服务器端是需要建立这个标识值到service的映射的：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">bool</span> <span class="n">MyRPCServer</span><span class="o">::</span><span class="n">registerService</span><span class="p">(</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Service</span> <span class="o">*</span><span class="n">rpcService</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">const</span> <span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">ServiceDescriptor</span> <span class="o">=</span> <span class="n">rpcService</span><span class="o">-&gt;</span><span class="n">GetDescriptor</span><span class="p">();</span>
+        <span class="kt">int</span> <span class="n">methodCnt</span> <span class="o">=</span> <span class="n">pSerDes</span><span class="o">-&gt;</span><span class="n">method_count</span><span class="p">();</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">methodCnt</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">MethodDescriptor</span> <span class="o">*</span><span class="n">pMethodDes</span> <span class="o">=</span> <span class="n">pSerDes</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">method</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+        <span class="kt">uint32_t</span> <span class="n">rpcCode</span> <span class="o">=</span> <span class="n">PacketCodeBuilder</span><span class="p">()(</span><span class="n">pMethodDes</span><span class="p">);</span> <span class="c1">// 计算出映射值</span>
+        <span class="n">_rpcCallMap</span><span class="p">[</span><span class="n">rpcCode</span><span class="p">]</span> <span class="o">=</span> <span class="n">make_pair</span><span class="p">(</span><span class="n">rpcService</span><span class="p">,</span> <span class="n">pMethodDes</span><span class="p">);</span> <span class="c1">// 建立映射</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p>服务端收到RPC调用后，取出这个标识值，然后再从<code>_rpcCallMap</code>中取出对应的service和method，最后进行调用：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Message</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">response</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pService</span><span class="o">-&gt;</span><span class="n">GetResponsePrototype</span><span class="p">(</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pMethodDes</span><span class="p">).</span><span class="n">New</span><span class="p">();</span>
+    <span class="c1">// 用于回应的closure</span>
+    <span class="n">RPCServerClosure</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pClosure</span> <span class="o">=</span> <span class="k">new</span> <span class="p">(</span><span class="n">nothrow</span><span class="p">)</span> <span class="n">RPCServerClosure</span><span class="p">(</span>
+            <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">channelId</span><span class="p">,</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pConnection</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pReqMsg</span><span class="p">,</span> <span class="n">pResMsg</span><span class="p">,</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">messageCodec</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">version</span><span class="p">);</span>
+    <span class="n">RPCController</span> <span class="o">*</span><span class="n">pController</span> <span class="o">=</span> <span class="n">pClosure</span><span class="o">-&gt;</span><span class="n">GetRpcController</span><span class="p">();</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+    <span class="c1">// protobuf 生成的CallMethod，会自动调用到Echo接口</span>
+    <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pService</span><span class="o">-&gt;</span><span class="n">CallMethod</span><span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pMethodDes</span><span class="p">,</span> <span class="n">pController</span><span class="p">,</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pReqMsg</span><span class="p">,</span> <span class="n">pResMsg</span><span class="p">,</span> <span class="n">pClosure</span><span class="p">);</span></code></pre></div></p>
+
+<h2>参考</h2>
+
+<ul>
+<li><a href="http://www.codedump.info/?p=169">使用google protobuf RPC实现echo service</a></li>
+<li><a href="https://developers.google.com/protocol-buffers/docs/proto?hl=zh-cn#extensions">protobuf extensions</a></li>
+<li><a href="https://developers.google.com/protocol-buffers/docs/proto#services">protobuf service</a></li>
+<li><a href="https://developers.google.com/protocol-buffers/docs/reference/cpp/google.protobuf.descriptor#MethodDescriptor.options.details">protobuf options</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[muduo源码阅读]]></title>
@@ -949,74 +1101,6 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
 <p>该例子代码演示了对三字母词(<a href="http://en.wikipedia.org/wiki/Digraphs_and_trigraphs">wiki trigraph</a>)使用限制的规范检测。</p>
 
 <p>全文完。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[C++陷阱：构造函数中的多态]]></title>
-    <link href="http://codemacro.com/2012/09/17/c-plus-plus-ctor-virtual/"/>
-    <updated>2012-09-17T16:01:00+08:00</updated>
-    <id>http://codemacro.com/2012/09/17/c-plus-plus-ctor-virtual</id>
-    <content type="html"><![CDATA[<p>C++中主要是通过给函数加上<code>virtual</code>关键字来实现多态。多态可用于改变一个接口的实现，也算是一种嵌入应用层代码到底层的实现手段。就算你用不到C++那些复杂的技术，多态肯定会被用到。</p>
-
-<p>但加上<code>virtual</code>不一定能保证多态成功：</p>
-
-<!-- more -->
-
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">Base</span> <span class="p">{</span>
-<span class="k">public</span><span class="o">:</span>
-    <span class="n">Base</span><span class="p">()</span> <span class="p">{</span>
-        <span class="n">Init</span><span class="p">();</span>
-    <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">virtual</span> <span class="o">~</span><span class="n">Base</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">Release</span><span class="p">();</span>
-<span class="p">}</span>
-
-<span class="k">virtual</span> <span class="kt">void</span> <span class="n">Init</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Base::Init</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-<span class="p">}</span>
-
-<span class="k">virtual</span> <span class="kt">void</span> <span class="n">Release</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Base::Release</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-<span class="p">}</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">Derived</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Base</span> <span class="p">{</span>
-<span class="k">public</span><span class="o">:</span>
-    <span class="k">virtual</span> <span class="kt">void</span> <span class="n">Init</span><span class="p">()</span> <span class="p">{</span>
-        <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Derived</span><span class="o">::</span><span class="n">Init</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
-    <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">virtual</span> <span class="kt">void</span> <span class="n">Release</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Derived:Release</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-<span class="p">}</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">()</span>
-<span class="p">{</span>
-    <span class="n">Base</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Derived</span><span class="p">();</span>
-    <span class="k">delete</span> <span class="n">obj</span><span class="p">;</span>
-    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span></code></pre></div></p>
-
-<p>当在构造函数，包括析构函数中调用<code>virtual</code>函数时，预想中的多态是无法完成的，以上代码输出结果为：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">Base</span><span class="o">::</span><span class="n">Init</span>
-<span class="n">Base</span><span class="o">::</span><span class="n">Release</span></code></pre></div></p>
-
-<p>从语言设计角度来看，我个人是不接受这种行为的。我觉得对一门语言而言，几乎所有特性都应该是一致的，不应该或尽量少地出现这种“例外“。如果我构造一个对象，让它以不同的方式被构造，这和改变它的某个行为有什么区别？（从这句话来看，似乎还真有区别）</p>
-
-<p>当然，从语言实现来看，这样的运行结果又似乎是必然的。因为，基类的构造是早于派生类的（作为其一部分），只有当构造完派生类后，其用于支持多态的虚表才会被正确构造。也就是说，在基类中调用虚函数时，既然虚表都为正确构造，自然调用的不会是派生类的虚函数了。析构函数按照析构的顺序来看，也会面临同样的情况。</p>
 ]]></content>
   </entry>
   
