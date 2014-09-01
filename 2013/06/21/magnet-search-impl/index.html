@@ -266,6 +266,14 @@ a中文
 <p>另一个容易在多进程环境下出现的问题就是消息依赖的上下文改变问题。当投递一个消息到某个进程，到这个消息被处理之前，这段时间这个消息关联的逻辑运算所依赖的上下文环境改变了，例如某个ets元素不见了，在处理这个消息时，你还得以多线程编程的思维来编写代码。</p>
 
 <p>至于supervisor，这玩意你得端正态度。它不是用来包容你的傻逼错误的。当你写下傻逼代码导致进程频繁崩溃的时候，supervisor屁用没有。supervisor的唯一作用，仅仅是在一个确实本身可靠的系统，确实人品问题万分之一崩溃了，重启它。毕竟，一个重启频率的推荐值，是一个小时4次。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2013/06/21/magnet-search-impl/'>http://codemacro.com/2013/06/21/magnet-search-impl/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
 </div>
 
 

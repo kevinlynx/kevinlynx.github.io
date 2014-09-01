@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-08-31T19:34:59+08:00</updated>
+  <updated>2014-09-01T23:54:21+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -166,6 +166,14 @@
 <li><a href="https://developers.google.com/protocol-buffers/docs/reference/cpp/google.protobuf.descriptor#MethodDescriptor.options.details">protobuf options</a></li>
 </ul>
 
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2014/08/31/protobuf-rpc/'>http://codemacro.com/2014/08/31/protobuf-rpc/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
 ]]></content>
   </entry>
   
@@ -299,6 +307,14 @@ const Node&amp; HashRing&lt;Node, Data, Hash&gt;::GetNode(const Data&amp; data) 
 </code></pre>
 
 <p>参考<a href="http://blog.csdn.net/sparkliang/article/details/5279393">一致性 hash 算法(consistent hashing)</a>，<a href="http://www.martinbroadhurst.com/Consistent-Hash-Ring.html">Consistent Hash Ring</a></p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2014/08/25/lb-policy/'>http://codemacro.com/2014/08/25/lb-policy/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
 ]]></content>
   </entry>
   
@@ -472,6 +488,14 @@ typedef struct fd_set {
 <li>Windows上<code>select</code>没有fd数量的限制，但因为使用了循环来检查，所以效率相对较低</li>
 <li>Linux上<code>select</code>有<code>FD_SETSIZE</code>的限制，但其相对效率较高</li>
 </ul>
+
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2014/06/01/select-limit/'>http://codemacro.com/2014/06/01/select-limit/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
 
 ]]></content>
   </entry>
@@ -720,6 +744,14 @@ typedef struct fd_set {
 <h2>总结</h2>
 
 <p>本文主要对muduo的主要结构及主要机制的实现做了描述，其他如Buffer的实现、定时器的实现大家都可以自行研究。muduo的源码很清晰，通过源码及配合<a href="http://blog.csdn.net/solstice">陈硕博客</a>上的内容可以学到一些网络编程方面的经验。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2014/05/04/muduo-source/'>http://codemacro.com/2014/05/04/muduo-source/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
 ]]></content>
   </entry>
   
@@ -797,6 +829,14 @@ Pool -&gt; ReqProcessor -&gt; O
 <p>部分简单的进程其代码实现量不到千行。在erlang的进程中也是简单的几个消息，维护起来非常容易。</p>
 
 <p>从上面的这种模型中，进程之间全部通过数据库做交互，那就很自然地可以发展为分布式系统。数据库再通过集群之类的技术，可以较高地提升系统的吞吐量。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2014/02/21/dhtcrawler-process/'>http://codemacro.com/2014/02/21/dhtcrawler-process/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
 ]]></content>
   </entry>
   
@@ -929,6 +969,14 @@ Pool -&gt; ReqProcessor -&gt; O
 <p>越来越相信选择有时候特别重要。</p>
 
 <p>希望2014年，自己还是能把眼前的事踏实做好。无论是技术还是管理还是个人收入，都能真正地上一个台阶。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2014/02/02/2013/'>http://codemacro.com/2014/02/02/2013/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
 ]]></content>
   </entry>
   
@@ -1255,6 +1303,14 @@ Pool -&gt; ReqProcessor -&gt; O
 <h2>小结</h2>
 
 <p>目前基于JVM的语言有很多，基于JVM的好处是可以使用Java社区丰富的库、框架。scala的语法还算优美，值得一试。希望能有机会投入到更大的项目中使用。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2013/09/23/scala-feature-overview/'>http://codemacro.com/2013/09/23/scala-feature-overview/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
 ]]></content>
   </entry>
   
@@ -1609,6 +1665,14 @@ g(2) // =&gt; 3
 <li><a href="http://www.csse.monash.edu.au/~lloyd/tildeProgLang/JavaScript/summary.html">JavaScript Summary</a></li>
 </ul>
 
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2013/08/21/javascript-overview/'>http://codemacro.com/2013/08/21/javascript-overview/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
 ]]></content>
   </entry>
   
@@ -1694,6 +1758,14 @@ call @ILT+1345(__RTC_CheckEsp) (0B01546h) ; 检查堆栈是否平衡
 <p>而在<code>TargetOptions</code>的<code>Delete</code>函数中，进行了<code>--ref_cnt</code>，这个变量是<code>TargetOptions</code>的第一个成员，它的减1，也就导致了堆栈内容的改变。</p>
 
 <p>至此，整个来龙去脉算是摸清。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2013/08/15/debug-esp-bug/'>http://codemacro.com/2013/08/15/debug-esp-bug/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
 ]]></content>
   </entry>
   
@@ -1787,6 +1859,14 @@ call @ILT+1345(__RTC_CheckEsp) (0B01546h) ; 检查堆栈是否平衡
     <span class="n">true</span><span class="p">.</span></code></pre></div>
 
 
+
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2013/08/08/sphinx-dhtcrawler/'>http://codemacro.com/2013/08/08/sphinx-dhtcrawler/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
 
 ]]></content>
   </entry>
@@ -1951,6 +2031,14 @@ call @ILT+1345(__RTC_CheckEsp) (0B01546h) ; 检查堆栈是否平衡
 <p>你的大部分编程知识来源于网络，所以稍稍回馈一下不会让你丢了饭碗。</p>
 
 <p>我很穷，如果你能让我收获金钱和编程成就，还不会嫌我穿得太邋遢，that&rsquo;s really kind of you。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2013/07/02/dhtcrawler2/'>http://codemacro.com/2013/07/02/dhtcrawler2/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
 ]]></content>
   </entry>
   
@@ -2142,6 +2230,14 @@ a中文
 <p>另一个容易在多进程环境下出现的问题就是消息依赖的上下文改变问题。当投递一个消息到某个进程，到这个消息被处理之前，这段时间这个消息关联的逻辑运算所依赖的上下文环境改变了，例如某个ets元素不见了，在处理这个消息时，你还得以多线程编程的思维来编写代码。</p>
 
 <p>至于supervisor，这玩意你得端正态度。它不是用来包容你的傻逼错误的。当你写下傻逼代码导致进程频繁崩溃的时候，supervisor屁用没有。supervisor的唯一作用，仅仅是在一个确实本身可靠的系统，确实人品问题万分之一崩溃了，重启它。毕竟，一个重启频率的推荐值，是一个小时4次。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2013/06/21/magnet-search-impl/'>http://codemacro.com/2013/06/21/magnet-search-impl/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
 ]]></content>
   </entry>
   
@@ -2213,6 +2309,14 @@ a中文
 <p>爬虫程序启动时会读取<code>priv/dhtcrawler.config</code>配置文件，该文件里配置了DHT节点的UDP监听端口、节点数量、数据库地址等，可自行配置。</p>
 
 <p>接下来我会谈谈各部分的实现方法。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2013/06/20/magnet-search/'>http://codemacro.com/2013/06/20/magnet-search/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
 ]]></content>
   </entry>
   
@@ -2393,6 +2497,14 @@ a中文
 <p>综上，我想只能通过前端去规避这个问题。例如，前端开发人员依然可以分开设计很多页面，页面里也可以使用正常的链接。我们编写一些JavaScript代码，将页面里的链接替换成对应的JavaScript代码，动态载入新的页面内容，然后对页面内的部分内容进行替换，从而尽可能让页面设计人员编写正常的网页，同时也解决页面切换问题。</p>
 
 <p>这是个蹩脚的方法，但在我有限的前端知识体系下，似乎也只能这样干了。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2013/06/09/ice-web-client/'>http://codemacro.com/2013/06/09/ice-web-client/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
 ]]></content>
   </entry>
   
@@ -2494,6 +2606,14 @@ a中文
 <h3>数字进制</h3>
 
 <p>16##FF，表示16进制数字0xFF，通用格式为scale##num，即scale进制下的num。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2013/06/03/erlang-code-snippets/'>http://codemacro.com/2013/06/03/erlang-code-snippets/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
 ]]></content>
   </entry>
   
@@ -2655,6 +2775,14 @@ a中文
 <li><a href="https://www.defcon.org/images/defcon-18/dc-18-presentations/Wolchok/DEFCON-18-Wolchok-Crawling-Bittorrent-DHTS.pdf">Crawling Bittorrent DHT</a></li>
 </ul>
 
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2013/05/19/crawl-dht/'>http://codemacro.com/2013/05/19/crawl-dht/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
 ]]></content>
   </entry>
   
@@ -2780,6 +2908,14 @@ Obj-&gt;func(args)
 <p>紧接着我怀揣着对函数式语言的浓烈好奇心看到了erlang。当我看到了concurrent programming的章节时，在一个燥热难耐的下午我的领导找到了我，同我探讨起erlang对我们的网游服务器有什么好处。然后，我结束我了的erlang之旅。</p>
 
 <p>时隔四年，这种小众语言，居然进入了中国程序员的视野，并被用于开发网页游戏服务器。时代在进步，我们总是被甩在后面。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2013/05/08/thought-about-erlang/'>http://codemacro.com/2013/05/08/thought-about-erlang/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
 ]]></content>
   </entry>
   
@@ -2972,6 +3108,14 @@ Obj-&gt;func(args)
 <li><a href="http://www.rabbitmq.com/erlang-client-user-guide.html">Erlang AMQP Client library</a></li>
 <li><a href="http://www.rabbitmq.com/management.html">Manage RabbitMQ by WebUI</a></li>
 </ul>
+
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2013/04/11/rabbitmq-erlang/'>http://codemacro.com/2013/04/11/rabbitmq-erlang/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
 
 ]]></content>
   </entry>
@@ -3172,6 +3316,14 @@ Obj-&gt;func(args)
 <li><a href="http://blog.roodo.com/rocksaying/archives/2051417.html">軟體工程三大陣營, RUP, CMMI, Agile Method(需翻墙)</a></li>
 <li><a href="http://incredibleagile.com/download/xpVsrup.pdf">XP与RUP的比较</a></li>
 </ul>
+
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2013/03/21/rup/'>http://codemacro.com/2013/03/21/rup/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
 
 ]]></content>
   </entry>
@@ -3454,6 +3606,14 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
 <p>关于连接管理，ICE使用了一个称为ACM的机制，即Active connection management。当某个连接非active一段时间后，ICE就会主动关闭此连接。应用层当然可以控制这个行为。</p>
 
 <p>详细参看ICE Manual <a href="http://doc.zeroc.com/display/Doc/Connection+Management+in+Ice">Connection Management</a></p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2013/02/15/ice-overview/'>http://codemacro.com/2013/02/15/ice-overview/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
 ]]></content>
   </entry>
   
