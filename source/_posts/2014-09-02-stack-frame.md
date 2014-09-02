@@ -30,24 +30,24 @@ comments: true
 将代码对应起来：
 
 {% highlight c++ %}
-    void g() {
-        int *p = 0;
-        long a = 0x1234;
-        printf("%p %x\n", &a, a);
-        printf("%p %x\n", &p, p);
-        f();
-        *p = 1;
-    }
+void g() {
+    int *p = 0;
+    long a = 0x1234;
+    printf("%p %x\n", &a, a);
+    printf("%p %x\n", &p, p);
+    f();
+    *p = 1;
+}
 
-    void b(int argc, char **argv) {
-        printf("%p %p\n", &argc, &argv);
-        g();
-    }
+void b(int argc, char **argv) {
+    printf("%p %p\n", &argc, &argv);
+    g();
+}
 
-    int main(int argc, char **argv) {
-        b(argc, argv);
-        return 0;
-    }
+int main(int argc, char **argv) {
+    b(argc, argv);
+    return 0;
+}
 {% endhighlight %}
 
 在函数`g()`中断点，看看堆栈中的内容(64位机器)：
@@ -103,30 +103,30 @@ comments: true
 
 
 {% highlight c++ %}
-    void f() {
-        long *p = 0;
-        p = (long*) (&p + 1); // 取得g()的RBP
-        *p = 0;  // 破坏g()的RBP
-    }
+void f() {
+    long *p = 0;
+    p = (long*) (&p + 1); // 取得g()的RBP
+    *p = 0;  // 破坏g()的RBP
+}
 
-    void g() {
-        int *p = 0;
-        long a = 0x1234;
-        printf("%p %x\n", &a, a);
-        printf("%p %x\n", &p, p);
-        f();
-        *p = 1; // 写0地址导致一次core
-    }
+void g() {
+    int *p = 0;
+    long a = 0x1234;
+    printf("%p %x\n", &a, a);
+    printf("%p %x\n", &p, p);
+    f();
+    *p = 1; // 写0地址导致一次core
+}
 
-    void b(int argc, char **argv) {
-        printf("%p %p\n", &argc, &argv);
-        g();
-    }
+void b(int argc, char **argv) {
+    printf("%p %p\n", &argc, &argv);
+    g();
+}
 
-    int main(int argc, char **argv) {
-        b(argc, argv);
-        return 0;
-    }
+int main(int argc, char **argv) {
+    b(argc, argv);
+    return 0;
+}
 {% endhighlight %}
 
 使用gdb运行该程序：
@@ -169,13 +169,13 @@ comments: true
 例如：
 
 {% highlight c++ %}
-    void f2() {
-        int a = 0x1234;
-        if (a > 0) {
-            int b = 0xff;
-            b = a;
-        }
+void f2() {
+    int a = 0x1234;
+    if (a > 0) {
+        int b = 0xff;
+        b = a;
     }
+}
 {% endhighlight %}
 
 gcc中使用`-fomit-frame-pointer`生成的代码为：
