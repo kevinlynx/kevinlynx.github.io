@@ -3,6 +3,12 @@
   
   
   <url>
+    <loc>http://codemacro.com/2014/09/02/stack-frame/</loc>
+    <lastmod>2014-09-02T00:00:00+08:00</lastmod>
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
     <loc>http://codemacro.com/2014/08/31/protobuf-rpc/</loc>
     <lastmod>2014-08-31T00:00:00+08:00</lastmod>
     <priority>0.8</priority>
@@ -365,28 +371,28 @@
   
   <url>
     <loc>http://codemacro.com/about.html</loc>
-    <lastmod>2014-09-01T23:54:24+08:00</lastmod>
+    <lastmod>2014-09-02T22:07:51+08:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   
   <url>
     <loc>http://codemacro.com/</loc>
-    <lastmod>2014-09-01T23:54:24+08:00</lastmod>
+    <lastmod>2014-09-02T22:07:51+08:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   
   <url>
     <loc>http://codemacro.com/blog/archives/</loc>
-    <lastmod>2014-09-01T23:54:24+08:00</lastmod>
+    <lastmod>2014-09-02T22:07:51+08:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   
   <url>
     <loc>http://codemacro.com/tips/</loc>
-    <lastmod>2014-09-01T23:54:24+08:00</lastmod>
+    <lastmod>2014-09-02T22:07:51+08:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>

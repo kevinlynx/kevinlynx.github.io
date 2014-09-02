@@ -5,12 +5,14 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Null Object模式 - loop in codes</title>
+  <title>loop in codes</title>
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="Null Object模式用于代替空指针（C++中），以避免上层模块对返回值做空值判定。Null Object模式返回的不是一个空指针，而是一个空对象，上层模块对返回值做操作时，不需要做空判定，而是按正常逻辑调用这个对象的某个接口，只不过对于空对象而言，这个接口什么事也没做">
-  <meta name="keywords" content="null object, pattern, c/c++">
+  <meta name="description" content="最近一直在学习Lisp这门语言。回头一看，基本上接近1个月了。刚开始接触Lisp是因为看
+了&lt;Lisp本质&gt;，然后我发现有很多人宗教般地忠诚这门语言，于是就来了兴趣。 当然并不是每次因为某篇写得很geek技术文章就去学习某个新的技术点。一个月时间对我来
+说还是很珍贵了。 &hellip;">
+  
 
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -18,7 +20,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://codemacro.com/2012/08/29/null-object-pattern">
+  <link rel="canonical" href="http://codemacro.com/posts/7">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
@@ -62,12 +64,15 @@
 </nav>
   <div id="main">
     <div id="content">
-      <div>
-<article class="hentry" role="article">
+      <div class="blog-index">
   
+  
+  
+    <article>
+      
   <header>
     
-      <h1 class="entry-title">Null Object模式</h1>
+      <h1 class="entry-title"><a href="/2011/03/13/lisp-writer/">用lisp开发博客客户端</a></h1>
     
     
       <p class="meta">
@@ -76,102 +81,41 @@
 
 
 
-<time class='entry-date' datetime='2012-08-29T15:57:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>29</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>3:57 pm</span></time>
+<time class='entry-date' datetime='2011-03-13T00:00:00+08:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>13</span><span class='date-suffix'>th</span>, <span class='date-year'>2011</span></span> <span class='time'>12:00 am</span></time>
         
       </p>
     
   </header>
 
 
-<div class="entry-content"><p>Null Object模式用于代替空指针（C++中），以避免上层模块对返回值做空值判定。Null Object模式返回的不是一个空指针，而是一个空对象，上层模块对返回值做操作时，不需要做空判定，而是按正常逻辑调用这个对象的某个接口，只不过对于空对象而言，这个接口什么事也没做，例如：</p>
+  <div class="entry-content"><p>最近一直在学习Lisp这门语言。回头一看，基本上接近1个月了。刚开始接触Lisp是因为看
+了&lt;Lisp本质&gt;，然后我发现有很多人宗教般地忠诚这门语言，于是就来了兴趣。</p>
 
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">class</span> <span class="nc">animal</span> <span class="p">{</span>
-<span class="k">public</span><span class="o">:</span>
-  <span class="k">virtual</span> <span class="kt">void</span> <span class="n">make_sound</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">};</span>
- 
-<span class="k">class</span> <span class="nc">dog</span> <span class="o">:</span> <span class="k">public</span> <span class="n">animal</span> <span class="p">{</span>
-  <span class="kt">void</span> <span class="n">make_sound</span><span class="p">()</span> <span class="p">{</span> <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;woof!&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span> <span class="p">}</span>
-<span class="p">};</span>
- 
-<span class="k">class</span> <span class="nc">null_animal</span> <span class="o">:</span> <span class="k">public</span> <span class="n">animal</span> <span class="p">{</span>
-  <span class="kt">void</span> <span class="n">make_sound</span><span class="p">()</span> <span class="p">{</span> <span class="p">}</span>
-<span class="p">};</span></code></pre></div>
+<p><img src="/assets/res/lisp_writer/lisp_believer.png" alt="lisp_believer" /></p>
 
-
-<p>在我看来这个模式在C++中其实挺扯淡的，因为去判断一个指针是否为NULL，远比创建一个空类，并且添加若干个空函数代价小更多。更何况，我们还不知道<code>null_animal</code>的生命周期如何管理。</p>
-
-<p>但是在我以往写的代码中，我也写过一些避免空指针判定的代码，例如我会使用引用。注意，引用肯定不能保证所对应的对象是合法的，这就像无法确定一个指针是不是野指针一样：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">const</span> <span class="n">Item</span> <span class="o">&amp;</span><span class="n">Container</span><span class="o">::</span><span class="n">FindItem</span><span class="p">(</span><span class="kt">int</span> <span class="n">id</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
-    <span class="k">static</span> <span class="n">Item</span> <span class="n">null_item</span><span class="p">;</span>
-    <span class="n">Table</span><span class="o">::</span><span class="n">const_iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">m_items</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">id</span><span class="p">);</span>
-    <span class="k">return</span> <span class="n">it</span> <span class="o">==</span> <span class="n">m_items</span><span class="p">.</span><span class="n">end</span><span class="p">()</span> <span class="o">?</span> <span class="nl">null_item</span> <span class="p">:</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">second</span><span class="p">;</span>
-<span class="p">}</span></code></pre></div>
-
-
-<p>参考<a href="http://en.wikipedia.org/wiki/Null_Object_pattern">http://en.wikipedia.org/wiki/Null_Object_pattern</a></p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2012/08/29/null-object-pattern/'>http://codemacro.com/2012/08/29/null-object-pattern/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
+<p>当然并不是每次因为某篇写得很geek技术文章就去学习某个新的技术点。一个月时间对我来
+说还是很珍贵了。但是Lisp绝对是大部分程序员都值得一学的语言（就像Haskell一样）。
+我能给出的简单理由包括：</p>
 
 </div>
-
-
-  <footer>
-    <p class="meta">
-      
+  
+  
+    <footer>
+      <a rel="full-article" href="/2011/03/13/lisp-writer/">Read on &rarr;</a>
+    </footer>
   
 
-<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
 
-      
-
-
-
-
-<time class='entry-date' datetime='2012-08-29T15:57:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>29</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>3:57 pm</span></time>
-      
-
-<span class="categories">
+    </article>
   
-    <a class='category' href='/categories/c-slash-c-plus-plus/'>c/c++</a>, <a class='category' href='/categories/tips/'>tips</a>
-  
-</span>
-
-
-    </p>
+  <div class="pagination">
     
-      <div class="sharing">
-  
-  
-  
-</div>
-
+    <a href="/blog/archives">Blog Archives</a>
     
-    <p class="meta">
-      
-        <a class="basic-alignment left" href="/2012/08/29/mmo-chat-server/" title="Previous Post: MMO聊天服务器设计">&laquo; MMO聊天服务器设计</a>
-      
-      
-        <a class="basic-alignment right" href="/2012/08/29/branch-predictor/" title="Next Post: 为什么处理排序的数组要比非排序的快？">为什么处理排序的数组要比非排序的快？ &raquo;</a>
-      
-    </p>
-  </footer>
-</article>
-
-  <section>
-    <h1>Comments</h1>
-    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+    <a class="next" href="/posts/6">Newer &rarr;</a>
+    
+  </div>
 </div>
-  </section>
-
-</div>
-
 <aside class="sidebar">
   
     <section>
@@ -219,7 +163,6 @@
   
 </aside>
 
-
     </div>
   </div>
   <footer role="contentinfo"><p>
@@ -238,10 +181,7 @@
       var disqus_shortname = 'loopincodes';
       
         
-        // var disqus_developer = 1;
-        var disqus_identifier = 'http://codemacro.com/2012/08/29/null-object-pattern/';
-        var disqus_url = 'http://codemacro.com/2012/08/29/null-object-pattern/';
-        var disqus_script = 'embed.js';
+        var disqus_script = 'count.js';
       
     (function () {
       var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;

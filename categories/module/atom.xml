@@ -4,7 +4,7 @@
   <title><![CDATA[Category: module | loop in codes]]></title>
   <link href="http://codemacro.com/categories/module/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-09-01T23:54:21+08:00</updated>
+  <updated>2014-09-02T22:07:51+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -161,7 +161,7 @@ Pool -&gt; ReqProcessor -&gt; O
 </ul>
 
 
-<p>其中，前6个流程被统称为&#8221;engineering disciplines&#8221;，后3个流程被称为&#8221;supporting disciplines&#8221;。当然，我们主要关注前6个流程。那么，这些工作流程和开发阶段又有什么关系呢？上图中其实已经阐明了这些关系。</p>
+<p>其中，前6个流程被统称为"engineering disciplines"，后3个流程被称为"supporting disciplines"。当然，我们主要关注前6个流程。那么，这些工作流程和开发阶段又有什么关系呢？上图中其实已经阐明了这些关系。</p>
 
 <p>RUP指导迭代开发。在软件开发的这4个阶段中，每一个阶段会被分为若干次迭代。而每一次迭代则涵盖了这9个工作流程。随着开发阶段向产品化靠近，自然而然地，需求的变更、增加自然会减少，所以从图中可以看出，开发过程越到后期，其工作流程中关于需求的工作则越少。同样，在先启阶段，其需求相关的工作则占据了该阶段的主要工作内容。</p>
 
