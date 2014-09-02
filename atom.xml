@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-09-02T22:01:06+08:00</updated>
+  <updated>2014-09-02T22:12:04+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -202,16 +202,16 @@ $2 = (void *) 0x7fffffffe360
 
 <p>gcc中使用<code>-fomit-frame-pointer</code>生成的代码为：</p>
 
-<div class="highlight"><pre><code class="language-asm" data-lang="asm"><span class="err">(</span><span class="nf">gdb</span><span class="p">)</span> <span class="no">disassemble</span> <span class="no">f2</span>
-    <span class="nf">Dump</span> <span class="no">of</span> <span class="no">assembler</span> <span class="no">code</span> <span class="no">for</span> <span class="no">function</span> <span class="no">f2</span><span class="p">:</span>
-    <span class="err">0</span><span class="nf">x00000000004004a5</span> <span class="err">&lt;</span><span class="no">f2</span><span class="err">+</span><span class="mi">0</span><span class="err">&gt;</span><span class="p">:</span>      <span class="no">movl</span>   <span class="no">$0x1234</span><span class="p">,-</span><span class="mi">0x8</span><span class="p">(</span><span class="nv">%rsp</span><span class="p">)</span>    <span class="c"># int a = 0x1234</span>
-    <span class="err">0</span><span class="nf">x00000000004004ad</span> <span class="err">&lt;</span><span class="no">f2</span><span class="err">+</span><span class="mi">8</span><span class="err">&gt;</span><span class="p">:</span>      <span class="no">cmpl</span>   <span class="no">$0x0</span><span class="p">,-</span><span class="mi">0x8</span><span class="p">(</span><span class="nv">%rsp</span><span class="p">)</span>       
-    <span class="mh">0x00000000004004b2</span> <span class="p">&lt;</span><span class="no">f2</span><span class="p">+</span><span class="mi">13</span><span class="p">&gt;:</span>     <span class="no">jle</span>    <span class="mh">0x4004c4</span> <span class="p">&lt;</span><span class="no">f2</span><span class="p">+</span><span class="mi">31</span><span class="p">&gt;</span>      
-    <span class="mh">0x00000000004004b4</span> <span class="p">&lt;</span><span class="no">f2</span><span class="p">+</span><span class="mi">15</span><span class="p">&gt;:</span>     <span class="no">movl</span>   <span class="no">$0xff</span><span class="p">,-</span><span class="mi">0x4</span><span class="p">(</span><span class="nv">%rsp</span><span class="p">)</span>      <span class="c"># int b = 0xff</span>
-    <span class="err">0</span><span class="nf">x00000000004004bc</span> <span class="err">&lt;</span><span class="no">f2</span><span class="err">+</span><span class="mi">23</span><span class="err">&gt;</span><span class="p">:</span>     <span class="no">mov</span>    <span class="p">-</span><span class="mi">0x8</span><span class="p">(</span><span class="nv">%rsp</span><span class="p">),</span><span class="nv">%eax</span>
-    <span class="err">0</span><span class="nf">x00000000004004c0</span> <span class="err">&lt;</span><span class="no">f2</span><span class="err">+</span><span class="mi">27</span><span class="err">&gt;</span><span class="p">:</span>     <span class="no">mov</span>    <span class="nv">%eax</span><span class="p">,-</span><span class="mi">0x4</span><span class="p">(</span><span class="nv">%rsp</span><span class="p">)</span>
-    <span class="err">0</span><span class="nf">x00000000004004c4</span> <span class="err">&lt;</span><span class="no">f2</span><span class="err">+</span><span class="mi">31</span><span class="err">&gt;</span><span class="p">:</span>     <span class="no">retq</span></code></pre></div>
-
+<pre><code>(gdb) disassemble f2
+Dump of assembler code for function f2:
+0x00000000004004a5 &lt;f2+0&gt;:      movl   $0x1234,-0x8(%rsp)    # int a = 0x1234
+0x00000000004004ad &lt;f2+8&gt;:      cmpl   $0x0,-0x8(%rsp)       
+0x00000000004004b2 &lt;f2+13&gt;:     jle    0x4004c4 &lt;f2+31&gt;      
+0x00000000004004b4 &lt;f2+15&gt;:     movl   $0xff,-0x4(%rsp)      # int b = 0xff
+0x00000000004004bc &lt;f2+23&gt;:     mov    -0x8(%rsp),%eax
+0x00000000004004c0 &lt;f2+27&gt;:     mov    %eax,-0x4(%rsp)
+0x00000000004004c4 &lt;f2+31&gt;:     retq
+</code></pre>
 
 <p>可以发现<code>f2()</code>没有操作<code>RBP</code>之类的指令了。</p>
 

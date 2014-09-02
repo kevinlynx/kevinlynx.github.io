@@ -4,7 +4,7 @@
   <title><![CDATA[Category: c/c++ | loop in codes]]></title>
   <link href="http://codemacro.com/categories/c-slash-c-plus-plus/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-09-02T22:07:51+08:00</updated>
+  <updated>2014-09-02T22:12:04+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -50,28 +50,27 @@
 
 <p>将代码对应起来：</p>
 
-<p>{% highlight c++ %}
-    void g() {
-        int <em>p = 0;
-        long a = 0x1234;
-        printf(&ldquo;%p %x\n&rdquo;, &amp;a, a);
-        printf(&ldquo;%p %x\n&rdquo;, &amp;p, p);
-        f();
-        </em>p = 1;
-    }</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">g</span><span class="p">()</span> <span class="p">{</span>
+        <span class="kt">int</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">p</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="kt">long</span> <span class="n">a</span> <span class="o">=</span> <span class="mh">0x1234</span><span class="p">;</span>
+        <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">%</span><span class="n">p</span> <span class="o">%</span><span class="n">x</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">a</span><span class="p">,</span> <span class="n">a</span><span class="p">);</span>
+        <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">%</span><span class="n">p</span> <span class="o">%</span><span class="n">x</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="p">);</span>
+        <span class="n">f</span><span class="p">();</span>
+        <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">p</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>void b(int argc, char **argv) {
-    printf("%p %p\n", &amp;argc, &amp;argv);
-    g();
-}
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">b</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%p %p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">argc</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">argv</span><span class="p">);</span>
+    <span class="n">g</span><span class="p">();</span>
+<span class="p">}</span>
 
-int main(int argc, char **argv) {
-    b(argc, argv);
-    return 0;
-}
-</code></pre>
+<span class="kt">int</span> <span class="n">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">b</span><span class="p">(</span><span class="n">argc</span><span class="p">,</span> <span class="n">argv</span><span class="p">);</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>在函数<code>g()</code>中断点，看看堆栈中的内容(64位机器)：</p>
 
@@ -127,34 +126,33 @@ $4 = (void *) 0x7fffffffe360
 
 <p>由此我们可以自己构建一个导致gdb无法取得调用堆栈的例子：</p>
 
-<p>{% highlight c++ %}
-    void f() {
-        long <em>p = 0;
-        p = (long</em>) (&amp;p + 1); // 取得g()的RBP
-        *p = 0;  // 破坏g()的RBP
-    }</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">f</span><span class="p">()</span> <span class="p">{</span>
+        <span class="kt">long</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">p</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="p">(</span><span class="kt">long</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">p</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span> <span class="c1">// 取得g()的RBP</span>
+        <span class="o">*</span><span class="n">p</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>  <span class="c1">// 破坏g()的RBP</span>
+    <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>void g() {
-    int *p = 0;
-    long a = 0x1234;
-    printf("%p %x\n", &amp;a, a);
-    printf("%p %x\n", &amp;p, p);
-    f();
-    *p = 1; // 写0地址导致一次core
-}
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">g</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="o">*</span><span class="n">p</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="kt">long</span> <span class="n">a</span> <span class="o">=</span> <span class="mh">0x1234</span><span class="p">;</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%p %x</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">a</span><span class="p">,</span> <span class="n">a</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%p %x</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="p">);</span>
+    <span class="n">f</span><span class="p">();</span>
+    <span class="o">*</span><span class="n">p</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="c1">// 写0地址导致一次core</span>
+<span class="p">}</span>
 
-void b(int argc, char **argv) {
-    printf("%p %p\n", &amp;argc, &amp;argv);
-    g();
-}
+<span class="kt">void</span> <span class="n">b</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%p %p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">argc</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">argv</span><span class="p">);</span>
+    <span class="n">g</span><span class="p">();</span>
+<span class="p">}</span>
 
-int main(int argc, char **argv) {
-    b(argc, argv);
-    return 0;
-}
-</code></pre>
+<span class="kt">int</span> <span class="n">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">b</span><span class="p">(</span><span class="n">argc</span><span class="p">,</span> <span class="n">argv</span><span class="p">);</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>使用gdb运行该程序：</p>
 
@@ -197,15 +195,13 @@ $2 = (void *) 0x7fffffffe360
 
 <p>例如：</p>
 
-<p>{% highlight c++ %}
-    void f2() {
-        int a = 0x1234;
-        if (a > 0) {
-            int b = 0xff;
-            b = a;
-        }
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">f2</span><span class="p">()</span> <span class="p">{</span>
+        <span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mh">0x1234</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">a</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="mh">0xff</span><span class="p">;</span>
+            <span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <p>gcc中使用<code>-fomit-frame-pointer</code>生成的代码为：</p>
 
@@ -233,11 +229,9 @@ Dump of assembler code for function f2:
 
 <p>google protobuf只负责消息的打包和解包，并不包含RPC的实现，但其包含了RPC的定义。假设有下面的RPC定义：</p>
 
-<p>{% highlight c++ %}
-    service MyService {
-        rpc Echo(EchoReqMsg) returns(EchoRespMsg)
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">service</span> <span class="n">MyService</span> <span class="p">{</span>
+        <span class="n">rpc</span> <span class="n">Echo</span><span class="p">(</span><span class="n">EchoReqMsg</span><span class="p">)</span> <span class="n">returns</span><span class="p">(</span><span class="n">EchoRespMsg</span><span class="p">)</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <p>那么要实现这个RPC需要最少做哪些事？总结起来需要完成以下几步：</p>
 
@@ -245,19 +239,17 @@ Dump of assembler code for function f2:
 
 <p>RPC客户端需要实现<code>google::protobuf::RpcChannel</code>。主要实现<code>RpcChannel::CallMethod</code>接口。客户端调用任何一个RPC接口，最终都是调用到<code>CallMethod</code>。这个函数的典型实现就是将RPC调用参数序列化，然后投递给网络模块进行发送。</p>
 
-<p>{% highlight c++ %}
-    void CallMethod(const ::google::protobuf::MethodDescriptor<em> method,
-                  ::google::protobuf::RpcController</em> controller,
-                  const ::google::protobuf::Message<em> request,
-                  ::google::protobuf::Message</em> response,
-                  ::google::protobuf::Closure* done) {
-        &hellip;
-        DataBufferOutputStream outputStream(&hellip;) // 取决于你使用的网络实现
-        request->SerializeToZeroCopyStream(&amp;outputStream);
-        _connection->postData(outputStream.getData(), &hellip;
-        &hellip;
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">CallMethod</span><span class="p">(</span><span class="k">const</span> <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">MethodDescriptor</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">method</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">RpcController</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">controller</span><span class="p">,</span>
+                  <span class="k">const</span> <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Message</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">request</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Message</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">response</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Closure</span><span class="o">*</span> <span class="n">done</span><span class="p">)</span> <span class="p">{</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="n">DataBufferOutputStream</span> <span class="n">outputStream</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hellip</span><span class="p">;)</span> <span class="c1">// 取决于你使用的网络实现</span>
+        <span class="n">request</span><span class="o">-&gt;</span><span class="n">SerializeToZeroCopyStream</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">outputStream</span><span class="p">);</span>
+        <span class="n">_connection</span><span class="o">-&gt;</span><span class="n">postData</span><span class="p">(</span><span class="n">outputStream</span><span class="p">.</span><span class="n">getData</span><span class="p">(),</span> <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <!-- more -->
 
@@ -266,17 +258,15 @@ Dump of assembler code for function f2:
 
 <p>服务端首先需要实现RPC接口，直接实现<code>MyService</code>中定义的接口：</p>
 
-<p>{% highlight c++ %}
-    class MyServiceImpl : public MyService {
-        virtual void Echo(::google::protobuf::RpcController<em> controller,
-            const EchoReqMsg</em> request,
-            EchoRespMsg<em> response,
-            ::google::protobuf::Closure</em> done) {
-            &hellip;
-            done->Run();
-        }
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">class</span> <span class="nc">MyServiceImpl</span> <span class="o">:</span> <span class="k">public</span> <span class="n">MyService</span> <span class="p">{</span>
+        <span class="k">virtual</span> <span class="kt">void</span> <span class="n">Echo</span><span class="p">(</span><span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">RpcController</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">controller</span><span class="p">,</span>
+            <span class="k">const</span> <span class="n">EchoReqMsg</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">request</span><span class="p">,</span>
+            <span class="n">EchoRespMsg</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">response</span><span class="p">,</span>
+            <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Closure</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">done</span><span class="p">)</span> <span class="p">{</span>
+            <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+            <span class="n">done</span><span class="o">-&gt;</span><span class="n">Run</span><span class="p">();</span>
+        <span class="p">}</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <h2>标示service&amp;method</h2>
 
@@ -292,53 +282,48 @@ Dump of assembler code for function f2:
 
 <p>首先扩展service&amp;method的属性，以下定义这些属性的key：</p>
 
-<p>{% highlight c++ %}
-    extend google.protobuf.ServiceOptions {
-      required uint32 global_service_id = 1000;
-    }
-    extend google.protobuf.MethodOptions {
-      required uint32 local_method_id = 1000;
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">extend</span> <span class="n">google</span><span class="p">.</span><span class="n">protobuf</span><span class="p">.</span><span class="n">ServiceOptions</span> <span class="p">{</span>
+      <span class="n">required</span> <span class="n">uint32</span> <span class="n">global_service_id</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">extend</span> <span class="n">google</span><span class="p">.</span><span class="n">protobuf</span><span class="p">.</span><span class="n">MethodOptions</span> <span class="p">{</span>
+      <span class="n">required</span> <span class="n">uint32</span> <span class="n">local_method_id</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">;</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <p>应用层定义service&amp;method时可以指定以上key的值：</p>
 
-<p>{% highlight c++ %}
-    service MyService
-    {
-        option (arpc.global_service_id) = 2302;</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">service</span> <span class="n">MyService</span>
+    <span class="p">{</span>
+        <span class="n">option</span> <span class="p">(</span><span class="n">arpc</span><span class="p">.</span><span class="n">global_service_id</span><span class="p">)</span> <span class="o">=</span> <span class="mi">2302</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>    rpc Echo(EchoReqMsg) returns(EchoRespMsg) 
-    {
-        option (arpc.local_method_id) = 1;
-    }
-    rpc Echo_2(EchoReqMsg) returns(EchoRespMsg) 
-    {
-        option (arpc.local_method_id) = 2;
-    }
-    ...
-}
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="n">rpc</span> <span class="n">Echo</span><span class="p">(</span><span class="n">EchoReqMsg</span><span class="p">)</span> <span class="n">returns</span><span class="p">(</span><span class="n">EchoRespMsg</span><span class="p">)</span> 
+    <span class="p">{</span>
+        <span class="n">option</span> <span class="p">(</span><span class="n">arpc</span><span class="p">.</span><span class="n">local_method_id</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">rpc</span> <span class="n">Echo_2</span><span class="p">(</span><span class="n">EchoReqMsg</span><span class="p">)</span> <span class="n">returns</span><span class="p">(</span><span class="n">EchoRespMsg</span><span class="p">)</span> 
+    <span class="p">{</span>
+        <span class="n">option</span> <span class="p">(</span><span class="n">arpc</span><span class="p">.</span><span class="n">local_method_id</span><span class="p">)</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="p">...</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>以上相当于在整个应用中，每个service都被赋予了唯一的id，单个service中的method也有唯一的id。</p>
 
 <p>然后可以通过protobuf取出以上属性值：</p>
 
-<p>{% highlight c++ %}
-    void CallMethod(const ::google::protobuf::MethodDescriptor<em> method,
-                  ::google::protobuf::RpcController</em> controller,
-                  const ::google::protobuf::Message<em> request,
-                  ::google::protobuf::Message</em> response,
-                  ::google::protobuf::Closure<em> done) {
-        &hellip;
-        google::protobuf::ServiceDescriptor </em>service = method->service();
-        uint32_t serviceId = (uint32_t)(service->options().GetExtension(global_service_id));
-        uint32_t methodId = (uint32_t)(method->options().GetExtension(local_method_id));
-        &hellip;
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">CallMethod</span><span class="p">(</span><span class="k">const</span> <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">MethodDescriptor</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">method</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">RpcController</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">controller</span><span class="p">,</span>
+                  <span class="k">const</span> <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Message</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">request</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Message</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">response</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Closure</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">done</span><span class="p">)</span> <span class="p">{</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">ServiceDescriptor</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">service</span> <span class="o">=</span> <span class="n">method</span><span class="o">-&gt;</span><span class="n">service</span><span class="p">();</span>
+        <span class="kt">uint32_t</span> <span class="n">serviceId</span> <span class="o">=</span> <span class="p">(</span><span class="kt">uint32_t</span><span class="p">)(</span><span class="n">service</span><span class="o">-&gt;</span><span class="n">options</span><span class="p">().</span><span class="n">GetExtension</span><span class="p">(</span><span class="n">global_service_id</span><span class="p">));</span>
+        <span class="kt">uint32_t</span> <span class="n">methodId</span> <span class="o">=</span> <span class="p">(</span><span class="kt">uint32_t</span><span class="p">)(</span><span class="n">method</span><span class="o">-&gt;</span><span class="n">options</span><span class="p">().</span><span class="n">GetExtension</span><span class="p">(</span><span class="n">local_method_id</span><span class="p">));</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <p>考虑到<code>serviceId</code> <code>methodId</code>的范围，可以直接打包到一个32位整数里：</p>
 
@@ -349,34 +334,31 @@ Dump of assembler code for function f2:
 
 <p>当然服务器端是需要建立这个标识值到service的映射的：</p>
 
-<p>{% highlight c++ %}
-    bool MyRPCServer::registerService(google::protobuf::Service *rpcService) {
-        const google::protobuf::ServiceDescriptor = rpcService->GetDescriptor();
-        int methodCnt = pSerDes->method_count();</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">bool</span> <span class="n">MyRPCServer</span><span class="o">::</span><span class="n">registerService</span><span class="p">(</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Service</span> <span class="o">*</span><span class="n">rpcService</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">const</span> <span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">ServiceDescriptor</span> <span class="o">=</span> <span class="n">rpcService</span><span class="o">-&gt;</span><span class="n">GetDescriptor</span><span class="p">();</span>
+        <span class="kt">int</span> <span class="n">methodCnt</span> <span class="o">=</span> <span class="n">pSerDes</span><span class="o">-&gt;</span><span class="n">method_count</span><span class="p">();</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>    for (int i = 0; i &lt; methodCnt; i++) {
-        google::protobuf::MethodDescriptor *pMethodDes = pSerDes-&gt;method(i);
-        uint32_t rpcCode = PacketCodeBuilder()(pMethodDes); // 计算出映射值
-        _rpcCallMap[rpcCode] = make_pair(rpcService, pMethodDes); // 建立映射
-    }
-    return true;
-}
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">methodCnt</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">MethodDescriptor</span> <span class="o">*</span><span class="n">pMethodDes</span> <span class="o">=</span> <span class="n">pSerDes</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">method</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+        <span class="kt">uint32_t</span> <span class="n">rpcCode</span> <span class="o">=</span> <span class="n">PacketCodeBuilder</span><span class="p">()(</span><span class="n">pMethodDes</span><span class="p">);</span> <span class="c1">// 计算出映射值</span>
+        <span class="n">_rpcCallMap</span><span class="p">[</span><span class="n">rpcCode</span><span class="p">]</span> <span class="o">=</span> <span class="n">make_pair</span><span class="p">(</span><span class="n">rpcService</span><span class="p">,</span> <span class="n">pMethodDes</span><span class="p">);</span> <span class="c1">// 建立映射</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>服务端收到RPC调用后，取出这个标识值，然后再从<code>_rpcCallMap</code>中取出对应的service和method，最后进行调用：</p>
 
-<p>{% highlight c++ %}
-    google::protobuf::Message<em> response = <em>pService->GetResponsePrototype(</em>pMethodDes).New();
-    // 用于回应的closure
-    RPCServerClosure </em>pClosure = new (nothrow) RPCServerClosure(
-            <em>channelId, </em>pConnection, <em>pReqMsg, pResMsg, </em>messageCodec, <em>version);
-    RPCController *pController = pClosure->GetRpcController();
-    &hellip;
-    // protobuf 生成的CallMethod，会自动调用到Echo接口
-    </em>pService->CallMethod(<em>pMethodDes, pController, </em>pReqMsg, pResMsg, pClosure);
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Message</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">response</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pService</span><span class="o">-&gt;</span><span class="n">GetResponsePrototype</span><span class="p">(</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pMethodDes</span><span class="p">).</span><span class="n">New</span><span class="p">();</span>
+    <span class="c1">// 用于回应的closure</span>
+    <span class="n">RPCServerClosure</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pClosure</span> <span class="o">=</span> <span class="k">new</span> <span class="p">(</span><span class="n">nothrow</span><span class="p">)</span> <span class="n">RPCServerClosure</span><span class="p">(</span>
+            <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">channelId</span><span class="p">,</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pConnection</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pReqMsg</span><span class="p">,</span> <span class="n">pResMsg</span><span class="p">,</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">messageCodec</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">version</span><span class="p">);</span>
+    <span class="n">RPCController</span> <span class="o">*</span><span class="n">pController</span> <span class="o">=</span> <span class="n">pClosure</span><span class="o">-&gt;</span><span class="n">GetRpcController</span><span class="p">();</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+    <span class="c1">// protobuf 生成的CallMethod，会自动调用到Echo接口</span>
+    <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pService</span><span class="o">-&gt;</span><span class="n">CallMethod</span><span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pMethodDes</span><span class="p">,</span> <span class="n">pController</span><span class="p">,</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pReqMsg</span><span class="p">,</span> <span class="n">pResMsg</span><span class="p">,</span> <span class="n">pClosure</span><span class="p">);</span></code></pre></div></p>
 
 <h2>参考</h2>
 
@@ -422,12 +404,10 @@ Dump of assembler code for function f2:
 
 <h2>建立连接</h2>
 
-<p>{% highlight c++ %}
-    TcpClient::connect
-        -> Connector::start
-            -> EventLoop::runInLoop(Connector::startInLoop&hellip;
-            -> Connector::connect           <br/>
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">TcpClient</span><span class="o">::</span><span class="n">connect</span>
+        <span class="o">-&gt;</span> <span class="n">Connector</span><span class="o">::</span><span class="n">start</span>
+            <span class="o">-&gt;</span> <span class="n">EventLoop</span><span class="o">::</span><span class="n">runInLoop</span><span class="p">(</span><span class="n">Connector</span><span class="o">::</span><span class="n">startInLoop</span><span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+            <span class="o">-&gt;</span> <span class="n">Connector</span><span class="o">::</span><span class="n">connect</span>           <span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span></code></pre></div></p>
 
 <p>EventLoop::runInLoop接口用于在this所在的线程运行某个函数，这个后面看下EventLoop的实现就可以了解。 网络连接的最终建立是在Connector::connect中实现，建立连接之后会创建一个Channel来代表这个socket，并且绑定事件监听接口。最后最重要的是，调用<code>Channel::enableWriting</code>。<code>Channel</code>有一系列的enableXX接口，这些接口用于标识自己关心某IO事件。后面会看到他们的实现。</p>
 
@@ -437,76 +417,67 @@ Dump of assembler code for function f2:
 
 <p>当Connector发现连接真正建立好后，会回调到<code>TcpClient::newConnection</code>，在TcpClient构造函数中：</p>
 
-<p>{% highlight c++ %}
-    connector<em>->setNewConnectionCallback(
-      boost::bind(&amp;TcpClient::newConnection, this, </em>1));
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">connector</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">setNewConnectionCallback</span><span class="p">(</span>
+      <span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">TcpClient</span><span class="o">::</span><span class="n">newConnection</span><span class="p">,</span> <span class="k">this</span><span class="p">,</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="mi">1</span><span class="p">));</span></code></pre></div></p>
 
 <p><code>TcpClient::newConnection</code>中创建一个TcpConnection来代表这个连接：</p>
 
-<p>{% highlight c++ %}
-    TcpConnectionPtr conn(new TcpConnection(loop_,
-                                            connName,
-                                            sockfd,
-                                            localAddr,
-                                            peerAddr));</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">TcpConnectionPtr</span> <span class="nf">conn</span><span class="p">(</span><span class="k">new</span> <span class="n">TcpConnection</span><span class="p">(</span><span class="n">loop_</span><span class="p">,</span>
+                                            <span class="n">connName</span><span class="p">,</span>
+                                            <span class="n">sockfd</span><span class="p">,</span>
+                                            <span class="n">localAddr</span><span class="p">,</span>
+                                            <span class="n">peerAddr</span><span class="p">));</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>conn-&gt;setConnectionCallback(connectionCallback_);
-conn-&gt;setMessageCallback(messageCallback_);
-conn-&gt;setWriteCompleteCallback(writeCompleteCallback_);
-...
-conn-&gt;connectEstablished();
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">conn</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">setConnectionCallback</span><span class="p">(</span><span class="n">connectionCallback_</span><span class="p">);</span>
+<span class="n">conn</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">setMessageCallback</span><span class="p">(</span><span class="n">messageCallback_</span><span class="p">);</span>
+<span class="n">conn</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">setWriteCompleteCallback</span><span class="p">(</span><span class="n">writeCompleteCallback_</span><span class="p">);</span>
+<span class="p">...</span>
+<span class="n">conn</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">connectEstablished</span><span class="p">();</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>并同时设置事件回调，以上设置的回调都是应用层（即库的使用者）的接口。每一个TcpConnection都有一个Channel，毕竟每一个网络连接都对应了一个socket fd。在TcpConnection构造函数中创建了一个Channel，并设置事件回调函数。</p>
 
 <p><code>TcpConnection::connectEstablished</code>函数最主要的是通知Channel自己开始关心IO读取事件：</p>
 
-<p>{% highlight c++ %}
-    void TcpConnection::connectEstablished()
-    {
-        &hellip;
-        channel_->enableReading();
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">TcpConnection</span><span class="o">::</span><span class="n">connectEstablished</span><span class="p">()</span>
+    <span class="p">{</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="n">channel_</span><span class="o">-&gt;</span><span class="n">enableReading</span><span class="p">();</span></code></pre></div></p>
 
 <p>这是自此我们看到的第二个<code>Channel::enableXXX</code>接口，这些接口是如何实现关心IO事件的呢？这个后面讲到。</p>
 
 <p>muduo的数据发送都是通过<code>TcpConnection::send</code>完成，这个就是一般网络库中在不使用OS的异步IO情况下的实现：缓存应用层传递过来的数据，在IO设备可写的情况下尽量写入数据。这个主要实现在<code>TcpConnection::sendInLoop</code>中。</p>
 
-<p>{% highlight c++ %}
-    TcpConnection::sendInLoop(&hellip;.) {
-        &hellip;
-        // if no thing in output queue, try writing directly
-        if (!channel<em>->isWriting() &amp;&amp; outputBuffer</em>.readableBytes() == 0)  // 设备可写且没有缓存时立即写入
-        {
-            nwrote = sockets::write(channel<em>->fd(), data, len);
-        }
-        &hellip;
-        // 否则加入数据到缓存，等待IO可写时再写
-        outputBuffer</em>.append(static_cast<const char*>(data)+nwrote, remaining);
-        if (!channel<em>->isWriting())
-        {
-            // 注册关心IO写事件，Poller就会对写做检测
-            channel</em>->enableWriting();
-        }
-        &hellip;   <br/>
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">TcpConnection</span><span class="o">::</span><span class="n">sendInLoop</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hellip</span><span class="p">;.)</span> <span class="p">{</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="c1">// if no thing in output queue, try writing directly</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">channel</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">isWriting</span><span class="p">()</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">outputBuffer</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">readableBytes</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1">// 设备可写且没有缓存时立即写入</span>
+        <span class="p">{</span>
+            <span class="n">nwrote</span> <span class="o">=</span> <span class="n">sockets</span><span class="o">::</span><span class="n">write</span><span class="p">(</span><span class="n">channel</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">fd</span><span class="p">(),</span> <span class="n">data</span><span class="p">,</span> <span class="n">len</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="c1">// 否则加入数据到缓存，等待IO可写时再写</span>
+        <span class="n">outputBuffer</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="k">const</span> <span class="kt">char</span><span class="o">*&gt;</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">+</span><span class="n">nwrote</span><span class="p">,</span> <span class="n">remaining</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">channel</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">isWriting</span><span class="p">())</span>
+        <span class="p">{</span>
+            <span class="c1">// 注册关心IO写事件，Poller就会对写做检测</span>
+            <span class="n">channel</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">enableWriting</span><span class="p">();</span>
+        <span class="p">}</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>   <span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <p>当IO可写时，Channel就会回调<code>TcpConnection::handleWrite</code>（构造函数中注册）</p>
 
-<p>{% highlight c++ %}
-    void TcpConnection::handleWrite()
-    {
-        &hellip;
-        if (channel<em>->isWriting())
-        {
-            ssize_t n = sockets::write(channel</em>->fd(),
-                               outputBuffer<em>.peek(),
-                               outputBuffer</em>.readableBytes());
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">TcpConnection</span><span class="o">::</span><span class="n">handleWrite</span><span class="p">()</span>
+    <span class="p">{</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">channel</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">isWriting</span><span class="p">())</span>
+        <span class="p">{</span>
+            <span class="kt">ssize_t</span> <span class="n">n</span> <span class="o">=</span> <span class="n">sockets</span><span class="o">::</span><span class="n">write</span><span class="p">(</span><span class="n">channel</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">fd</span><span class="p">(),</span>
+                               <span class="n">outputBuffer</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">peek</span><span class="p">(),</span>
+                               <span class="n">outputBuffer</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">readableBytes</span><span class="p">());</span></code></pre></div></p>
 
 <p>服务器端的数据收发同客户端机制一致，不同的是连接(TcpConnection)的建立方式不同。</p>
 
@@ -514,105 +485,97 @@ conn-&gt;connectEstablished();
 
 <p>服务器接收连接的实现在一个网络库中比较重要。muduo中通过Acceptor类来接收连接。在TcpClient中，其Connector通过一个关心Channel可写的事件来通过连接已建立；在Acceptor中则是通过一个Channel可读的事件来表示有新的连接到来：</p>
 
-<p>{% highlight c++ %}
-    Acceptor::Acceptor(&hellip;.) {
-        &hellip;
-        acceptChannel_.setReadCallback(
-            boost::bind(&amp;Acceptor::handleRead, this));
-        &hellip;
-    }</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">Acceptor</span><span class="o">::</span><span class="n">Acceptor</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hellip</span><span class="p">;.)</span> <span class="p">{</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="n">acceptChannel_</span><span class="p">.</span><span class="n">setReadCallback</span><span class="p">(</span>
+            <span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">Acceptor</span><span class="o">::</span><span class="n">handleRead</span><span class="p">,</span> <span class="k">this</span><span class="p">));</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+    <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>void Acceptor::handleRead()
-{
-    ...
-    int connfd = acceptSocket_.accept(&amp;peerAddr); // 接收连接获得一个新的socket
-    if (connfd &gt;= 0)
-    {
-        ...
-        newConnectionCallback_(connfd, peerAddr); // 回调到TcpServer::newConnection
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">Acceptor</span><span class="o">::</span><span class="n">handleRead</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="p">...</span>
+    <span class="kt">int</span> <span class="n">connfd</span> <span class="o">=</span> <span class="n">acceptSocket_</span><span class="p">.</span><span class="n">accept</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">peerAddr</span><span class="p">);</span> <span class="c1">// 接收连接获得一个新的socket</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">connfd</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="p">...</span>
+        <span class="n">newConnectionCallback_</span><span class="p">(</span><span class="n">connfd</span><span class="p">,</span> <span class="n">peerAddr</span><span class="p">);</span> <span class="c1">// 回调到TcpServer::newConnection</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p><code>TcpServer::newConnection</code>中建立一个TcpConnection，并将其附加到一个EventLoopThread中，简单来说就是给其配置一个线程：</p>
 
-<p>{% highlight c++ %}
-    void TcpServer::newConnection(int sockfd, const InetAddress&amp; peerAddr)
-    {
-        &hellip;
-        EventLoop* ioLoop = threadPool<em>->getNextLoop();
-        TcpConnectionPtr conn(new TcpConnection(ioLoop,
-                                                connName,
-                                                sockfd,
-                                                localAddr,
-                                                peerAddr));
-        connections</em>[connName] = conn;
-        &hellip;
-        ioLoop->runInLoop(boost::bind(&amp;TcpConnection::connectEstablished, conn));
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">TcpServer</span><span class="o">::</span><span class="n">newConnection</span><span class="p">(</span><span class="kt">int</span> <span class="n">sockfd</span><span class="p">,</span> <span class="k">const</span> <span class="n">InetAddress</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">peerAddr</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="n">EventLoop</span><span class="o">*</span> <span class="n">ioLoop</span> <span class="o">=</span> <span class="n">threadPool</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">getNextLoop</span><span class="p">();</span>
+        <span class="n">TcpConnectionPtr</span> <span class="nf">conn</span><span class="p">(</span><span class="k">new</span> <span class="n">TcpConnection</span><span class="p">(</span><span class="n">ioLoop</span><span class="p">,</span>
+                                                <span class="n">connName</span><span class="p">,</span>
+                                                <span class="n">sockfd</span><span class="p">,</span>
+                                                <span class="n">localAddr</span><span class="p">,</span>
+                                                <span class="n">peerAddr</span><span class="p">));</span>
+        <span class="n">connections</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">[</span><span class="n">connName</span><span class="p">]</span> <span class="o">=</span> <span class="n">conn</span><span class="p">;</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="n">ioLoop</span><span class="o">-&gt;</span><span class="n">runInLoop</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">TcpConnection</span><span class="o">::</span><span class="n">connectEstablished</span><span class="p">,</span> <span class="n">conn</span><span class="p">));</span></code></pre></div></p>
 
 <h2>IO的驱动</h2>
 
 <p>之前提到，一旦要关心某IO事件了，就调用<code>Channel::enableXXX</code>，这个如何实现的呢？</p>
 
-<p>{% highlight c++ %}
-    class Channel {
-        &hellip;
-        void enableReading() { events<em> |= kReadEvent; update(); }
-        void enableWriting() { events</em> |= kWriteEvent; update(); }</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">class</span> <span class="nc">Channel</span> <span class="p">{</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="kt">void</span> <span class="nf">enableReading</span><span class="p">()</span> <span class="p">{</span> <span class="n">events</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="o">|=</span> <span class="n">kReadEvent</span><span class="p">;</span> <span class="n">update</span><span class="p">();</span> <span class="p">}</span>
+        <span class="kt">void</span> <span class="nf">enableWriting</span><span class="p">()</span> <span class="p">{</span> <span class="n">events</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="o">|=</span> <span class="n">kWriteEvent</span><span class="p">;</span> <span class="n">update</span><span class="p">();</span> <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>void Channel::update()
-{
-    loop_-&gt;updateChannel(this);
-}
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">Channel</span><span class="o">::</span><span class="n">update</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="n">loop_</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">updateChannel</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
+<span class="p">}</span>
 
-void EventLoop::updateChannel(Channel* channel)
-{
-    ...
-    poller_-&gt;updateChannel(channel);
-}
-</code></pre>
+<span class="kt">void</span> <span class="n">EventLoop</span><span class="o">::</span><span class="n">updateChannel</span><span class="p">(</span><span class="n">Channel</span><span class="o">*</span> <span class="n">channel</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="p">...</span>
+    <span class="n">poller_</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">updateChannel</span><span class="p">(</span><span class="n">channel</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>最终调用到<code>Poller::upateChannel</code>。muduo中有两个Poller的实现，分别是Poll和EPoll，可以选择简单的Poll来看：</p>
 
-<p>{% highlight c++ %}
-    void PollPoller::updateChannel(Channel* channel)
-    {
-      &hellip;
-      if (channel->index() &lt; 0)
-      {
-        // a new one, add to pollfds<em>
-        assert(channels</em>.find(channel->fd()) == channels<em>.end());
-        struct pollfd pfd;
-        pfd.fd = channel->fd();
-        pfd.events = static_cast<short>(channel->events()); // 也就是Channel::enableXXX操作的那个events</em>
-        pfd.revents = 0;
-        pollfds<em>.push_back(pfd); // 加入一个新的pollfd
-        int idx = static_cast<int>(pollfds</em>.size())-1;
-        channel->set_index(idx);
-        channels_[pfd.fd] = channel;
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">PollPoller</span><span class="o">::</span><span class="n">updateChannel</span><span class="p">(</span><span class="n">Channel</span><span class="o">*</span> <span class="n">channel</span><span class="p">)</span>
+    <span class="p">{</span>
+      <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+      <span class="k">if</span> <span class="p">(</span><span class="n">channel</span><span class="o">-&gt;</span><span class="n">index</span><span class="p">()</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="mi">0</span><span class="p">)</span>
+      <span class="p">{</span>
+        <span class="c1">// a new one, add to pollfds&lt;em&gt;</span>
+        <span class="n">assert</span><span class="p">(</span><span class="n">channels</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">channel</span><span class="o">-&gt;</span><span class="n">fd</span><span class="p">())</span> <span class="o">==</span> <span class="n">channels</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
+        <span class="k">struct</span> <span class="n">pollfd</span> <span class="n">pfd</span><span class="p">;</span>
+        <span class="n">pfd</span><span class="p">.</span><span class="n">fd</span> <span class="o">=</span> <span class="n">channel</span><span class="o">-&gt;</span><span class="n">fd</span><span class="p">();</span>
+        <span class="n">pfd</span><span class="p">.</span><span class="n">events</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">short</span><span class="o">&gt;</span><span class="p">(</span><span class="n">channel</span><span class="o">-&gt;</span><span class="n">events</span><span class="p">());</span> <span class="c1">// 也就是Channel::enableXXX操作的那个events&lt;/em&gt;</span>
+        <span class="n">pfd</span><span class="p">.</span><span class="n">revents</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="n">pollfds</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">pfd</span><span class="p">);</span> <span class="c1">// 加入一个新的pollfd</span>
+        <span class="kt">int</span> <span class="n">idx</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">pollfds</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">size</span><span class="p">())</span><span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+        <span class="n">channel</span><span class="o">-&gt;</span><span class="n">set_index</span><span class="p">(</span><span class="n">idx</span><span class="p">);</span>
+        <span class="n">channels_</span><span class="p">[</span><span class="n">pfd</span><span class="p">.</span><span class="n">fd</span><span class="p">]</span> <span class="o">=</span> <span class="n">channel</span><span class="p">;</span></code></pre></div></p>
 
 <p>可见Poller就是把Channel关心的IO事件转换为OS提供的IO模型数据结构上。通过查看关键的<code>pollfds_</code>的使用，可以发现其主要是在Poller::poll接口里。这个接口会在EventLoop的主循环中不断调用：</p>
 
-<p>{% highlight c++ %}
-    void EventLoop::loop()
-    {
-      &hellip;
-      while (!quit<em>)
-      {
-        activeChannels</em>.clear();
-        pollReturnTime<em> = poller</em>->poll(kPollTimeMs, &amp;activeChannels<em>);
-        &hellip;
-        for (ChannelList::iterator it = activeChannels</em>.begin();
-            it != activeChannels<em>.end(); ++it)
-        {
-          currentActiveChannel</em> = *it;
-          currentActiveChannel<em>->handleEvent(pollReturnTime</em>); // 获得IO事件，通知各注册回调
-        }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">EventLoop</span><span class="o">::</span><span class="n">loop</span><span class="p">()</span>
+    <span class="p">{</span>
+      <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+      <span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">quit</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span>
+      <span class="p">{</span>
+        <span class="n">activeChannels</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">clear</span><span class="p">();</span>
+        <span class="n">pollReturnTime</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="o">=</span> <span class="n">poller</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">poll</span><span class="p">(</span><span class="n">kPollTimeMs</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">activeChannels</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">);</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">ChannelList</span><span class="o">::</span><span class="n">iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">activeChannels</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span>
+            <span class="n">it</span> <span class="o">!=</span> <span class="n">activeChannels</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">end</span><span class="p">();</span> <span class="o">++</span><span class="n">it</span><span class="p">)</span>
+        <span class="p">{</span>
+          <span class="n">currentActiveChannel</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="o">=</span> <span class="o">*</span><span class="n">it</span><span class="p">;</span>
+          <span class="n">currentActiveChannel</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">handleEvent</span><span class="p">(</span><span class="n">pollReturnTime</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">);</span> <span class="c1">// 获得IO事件，通知各注册回调</span>
+        <span class="p">}</span></code></pre></div></p>
 
 <p>整个流程可总结为：各Channel内部会把自己关心的事件告诉给Poller，Poller由EventLoop驱动检测IO，然后返回哪些Channel发生了事件，EventLoop再驱动这些Channel调用各注册回调。</p>
 
@@ -624,20 +587,18 @@ void EventLoop::updateChannel(Channel* channel)
 
 <p>回到<code>TcpServer::newConnection</code>中：</p>
 
-<p>{% highlight c++ %}
-    void TcpServer::newConnection(int sockfd, const InetAddress&amp; peerAddr)
-    {
-      &hellip;
-      EventLoop* ioLoop = threadPool_->getNextLoop();
-      &hellip;
-      TcpConnectionPtr conn(new TcpConnection(ioLoop, // 使用这个选择到的线程中的EventLoop
-                                              connName,
-                                              sockfd,
-                                              localAddr,
-                                              peerAddr));
-      &hellip;
-      ioLoop->runInLoop(boost::bind(&amp;TcpConnection::connectEstablished, conn));
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">TcpServer</span><span class="o">::</span><span class="n">newConnection</span><span class="p">(</span><span class="kt">int</span> <span class="n">sockfd</span><span class="p">,</span> <span class="k">const</span> <span class="n">InetAddress</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">peerAddr</span><span class="p">)</span>
+    <span class="p">{</span>
+      <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+      <span class="n">EventLoop</span><span class="o">*</span> <span class="n">ioLoop</span> <span class="o">=</span> <span class="n">threadPool_</span><span class="o">-&gt;</span><span class="n">getNextLoop</span><span class="p">();</span>
+      <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+      <span class="n">TcpConnectionPtr</span> <span class="nf">conn</span><span class="p">(</span><span class="k">new</span> <span class="n">TcpConnection</span><span class="p">(</span><span class="n">ioLoop</span><span class="p">,</span> <span class="c1">// 使用这个选择到的线程中的EventLoop</span>
+                                              <span class="n">connName</span><span class="p">,</span>
+                                              <span class="n">sockfd</span><span class="p">,</span>
+                                              <span class="n">localAddr</span><span class="p">,</span>
+                                              <span class="n">peerAddr</span><span class="p">));</span>
+      <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+      <span class="n">ioLoop</span><span class="o">-&gt;</span><span class="n">runInLoop</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">TcpConnection</span><span class="o">::</span><span class="n">connectEstablished</span><span class="p">,</span> <span class="n">conn</span><span class="p">));</span></code></pre></div></p>
 
 <p>注意<code>TcpConnection::connectEstablished</code>是如何通过Channel注册关心的IO事件到<code>ioLoop</code>的。</p>
 
@@ -666,17 +627,15 @@ void EventLoop::updateChannel(Channel* channel)
 
 <p>这个错误主要指的就是函数调用堆栈不平衡。在C/C++程序中，调用一个函数前会保存当前堆栈信息，目标函数返回后会把堆栈恢复到调用前的状态。函数的参数、局部变量会影响堆栈。而函数堆栈不平衡，一般是因为函数调用方式和目标函数定义方式不一致导致，例如：</p>
 
-<p>{% highlight c++ %}
-void __stdcall func(int a) {
-}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="kr">__stdcall</span> <span class="nf">func</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">)</span> <span class="p">{</span>
+<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>int main(int argc, char<em> argv[]) {
-    typedef void (</em>funcptr)(int);
-    funcptr ptr = (funcptr) func;
-    ptr(1); // 返回后导致堆栈不平衡
-    return 0;
-}
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">argv</span><span class="p">[])</span> <span class="p">{</span>
+    <span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">funcptr</span><span class="p">)(</span><span class="kt">int</span><span class="p">);</span>
+    <span class="n">funcptr</span> <span class="n">ptr</span> <span class="o">=</span> <span class="p">(</span><span class="n">funcptr</span><span class="p">)</span> <span class="n">func</span><span class="p">;</span>
+    <span class="n">ptr</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span> <span class="c1">// 返回后导致堆栈不平衡</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div></p>
 
 <p><code>__stdcall</code>修饰的函数，其函数参数的出栈由被调用者自己完成，而<code>__cdecl</code>，也就是C/C++函数的默认调用约定，则是调用者完成参数出栈。</p>
 
@@ -693,14 +652,12 @@ call @ILT+1345(__RTC_CheckEsp) (0B01546h) ; 检查堆栈是否平衡
 
 <p>但是我们的程序不是这种低级错误。我们调用的函数是放在dll中的，调用约定显示定义为<code>__stdcall</code>，函数声明和实现一致。大致的结构如下：</p>
 
-<p>{% highlight c++ %}
-IParser *parser = CreateParser();
-parser->Begin();
-&hellip;
-&hellip;
-parser->End();
-parser->Release(); // 返回后导致堆栈不平衡
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">IParser</span> <span class="o">*</span><span class="n">parser</span> <span class="o">=</span> <span class="n">CreateParser</span><span class="p">();</span>
+<span class="n">parser</span><span class="o">-&gt;</span><span class="n">Begin</span><span class="p">();</span>
+<span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+<span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+<span class="n">parser</span><span class="o">-&gt;</span><span class="n">End</span><span class="p">();</span>
+<span class="n">parser</span><span class="o">-&gt;</span><span class="n">Release</span><span class="p">();</span> <span class="c1">// 返回后导致堆栈不平衡</span></code></pre></div></p>
 
 <p>IParser的实现在一个dll里，这反而是一个误导人的信息。<code>parser-&gt;Release</code>返回后，堆栈不平衡，<strong>并且仅仅少了一个字节</strong>。一个字节怎么来的？</p>
 
@@ -717,22 +674,18 @@ parser->Release(); // 返回后导致堆栈不平衡
 
 <p>因为注意到<code>TargetOptions</code>这个字眼，想起了在<code>parser-&gt;Begin</code>里有涉及到这个类的使用，类似于：</p>
 
-<p>{% highlight c++ %}
-TargetOptions TO;
-&hellip;
-TargetInfo *TI = TargetInfo::CreateTargetInfo(m_inst.getDiagnostics(), TO);
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">TargetOptions</span> <span class="n">TO</span><span class="p">;</span>
+<span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+<span class="n">TargetInfo</span> <span class="o">*</span><span class="n">TI</span> <span class="o">=</span> <span class="n">TargetInfo</span><span class="o">::</span><span class="n">CreateTargetInfo</span><span class="p">(</span><span class="n">m_inst</span><span class="p">.</span><span class="n">getDiagnostics</span><span class="p">(),</span> <span class="n">TO</span><span class="p">);</span></code></pre></div></p>
 
 <p>这部分初始化代码，是直接从网上复制的，因为并不影响主要逻辑，所以从来没对这块代码深究。查看<code>CreateTargetInfo</code>的源码，<strong>发现这个函数将<code>TO</code>这个局部变量的地址保存了下来</strong>。</p>
 
 <p>而在<code>Release</code>中，则会对这个保存的临时变量进行删除操作，形如：</p>
 
-<p>{% highlight c++ %}
-void Delete() const {
-  assert (ref_cnt > 0 &amp;&amp; &ldquo;Reference count is already zero.&rdquo;);
-  if (&ndash;ref_cnt == 0) delete static_cast<const Derived*>(this);
-}
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">Delete</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span>
+  <span class="n">assert</span> <span class="p">(</span><span class="n">ref_cnt</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Reference</span> <span class="n">count</span> <span class="n">is</span> <span class="n">already</span> <span class="n">zero</span><span class="p">.</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">ndash</span><span class="p">;</span><span class="n">ref_cnt</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="k">delete</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="k">const</span> <span class="n">Derived</span><span class="o">*&gt;</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
+<span class="p">}</span></code></pre></div></p>
 
 <p>但是，<strong>问题并不在于对一个局部变量地址进行delete</strong>，<code>delete</code>在调试模式下是做了内存检测的，那会导致一种断言。</p>
 
@@ -755,10 +708,8 @@ void Delete() const {
 
 <p><a href="http://www.zeroc.com/index.html">ICE</a>，Internet Communications Engine，按照官方介绍，是一个支持C++、.Net、Java、Python、Objective-C、Ruby、PHP及ActionScript等语言的分布式程序开发平台。按照我的理解，简单来说它是一个核心功能包装RPC的库。要把这个RPC包装得漂亮，自然而然，对于使用者而言，调用一个远端的接口和调用一个本地的接口没有什么区别，例如：</p>
 
-<p>{% highlight c++ %}
-    Object *obj = xxx
-    obj->sayHello();
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">Object</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="n">xxx</span>
+    <span class="n">obj</span><span class="o">-&gt;</span><span class="n">sayHello</span><span class="p">();</span></code></pre></div></p>
 
 <p>ICE包装<code>sayHello</code>接口，当应用层调用该接口时，ICE发送调用请求到远端服务器，接收返回结果并返回给应用层。ICE在接口提供方面，做到了这一点。</p>
 
@@ -795,21 +746,18 @@ void Delete() const {
 </ul>
 
 
-<p>{% highlight c++ %}
-    // Printer.ice，Slice源码后缀为ice
-    module Demo {
-        interface Printer {
-            void printString(string s);
-        };
-    };</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// Printer.ice，Slice源码后缀为ice</span>
+    <span class="n">module</span> <span class="n">Demo</span> <span class="p">{</span>
+        <span class="n">interface</span> <span class="n">Printer</span> <span class="p">{</span>
+            <span class="kt">void</span> <span class="n">printString</span><span class="p">(</span><span class="n">string</span> <span class="n">s</span><span class="p">);</span>
+        <span class="p">};</span>
+    <span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>使用ICE提供的程序翻译为C++代码：</p>
 
-<p>{% highlight c++ %}
-    $ slice2cpp Printer.ice
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="err">$</span> <span class="n">slice2cpp</span> <span class="n">Printer</span><span class="p">.</span><span class="n">ice</span></code></pre></div></p>
 
 <p>得到Printer.cpp和Printer.h。Slice翻译出来的目标代码除了封装RPC交互的一些细节外，最重要的，因为本身Slice文件其实是定义接口，但接口的实现，则需要应用层来做。</p>
 
@@ -818,26 +766,22 @@ void Delete() const {
 </ul>
 
 
-<p>{% highlight c++ %}
-    // 翻译出来的Printer.h中有对应于Slice中定义的Printer类，及需要实现的printString接口
-    class PrinterI : public Printer {
-    public:
-        virtual void printString(const string&amp; s, const Ice::Current&amp;) {
-            count &lt;&lt; s &lt;&lt; endl;
-        }
-    };
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// 翻译出来的Printer.h中有对应于Slice中定义的Printer类，及需要实现的printString接口</span>
+    <span class="k">class</span> <span class="nc">PrinterI</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Printer</span> <span class="p">{</span>
+    <span class="k">public</span><span class="o">:</span>
+        <span class="k">virtual</span> <span class="kt">void</span> <span class="n">printString</span><span class="p">(</span><span class="k">const</span> <span class="n">string</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">s</span><span class="p">,</span> <span class="k">const</span> <span class="n">Ice</span><span class="o">::</span><span class="n">Current</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;)</span> <span class="p">{</span>
+            <span class="n">count</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">s</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">endl</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">};</span></code></pre></div></p>
 
 <ul>
 <li>客户端使用生成的Printer.cpp/.h，通过ICE获得一个<code>Printer</code>对象，然后调用其<code>printString</code>接口</li>
 </ul>
 
 
-<p>{% highlight c++ %}
-    // don&rsquo;t care about this
-    PrinterPrx printer = PrinterPrx::checkedCast(base);
-    printer->printString(&ldquo;Hello World!&rdquo;);
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// don&amp;rsquo;t care about this</span>
+    <span class="n">PrinterPrx</span> <span class="n">printer</span> <span class="o">=</span> <span class="n">PrinterPrx</span><span class="o">::</span><span class="n">checkedCast</span><span class="p">(</span><span class="n">base</span><span class="p">);</span>
+    <span class="n">printer</span><span class="o">-&gt;</span><span class="n">printString</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Hello</span> <span class="n">World</span><span class="o">!&amp;</span><span class="n">rdquo</span><span class="p">;);</span></code></pre></div></p>
 
 <p>使用ICE开发应用程序，整体过程即为以上展示。</p>
 
@@ -855,14 +799,12 @@ void Delete() const {
 
 <p>对于<code>Printer</code>例子，一个<code>Printer</code>对象可以被看作是一个ICE Objects。Object可以说是服务器端提供给客户端的接口。所以在服务器端通常会创建出很多个Object。服务器端使用Object Adapter对象去保存这些Object。例如，一个典型的ICE对象在初始化时可能包含以下代码：</p>
 
-<p>{% highlight c++ %}
-    // 创建一个Object Adapter
-    Ice::ObjectAdapterPtr adapter = communicator()->createObjectAdapter(&ldquo;Hello&rdquo;);
-    // 创建一个Object，形如Printer
-    Demo::HelloPtr hello = new HelloI;
-    // 将Object加入到Object Adapter
-    adapter->add(hello, communicator()->stringToIdentity(&ldquo;hello&rdquo;));
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// 创建一个Object Adapter</span>
+    <span class="n">Ice</span><span class="o">::</span><span class="n">ObjectAdapterPtr</span> <span class="n">adapter</span> <span class="o">=</span> <span class="n">communicator</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">createObjectAdapter</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Hello</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+    <span class="c1">// 创建一个Object，形如Printer</span>
+    <span class="n">Demo</span><span class="o">::</span><span class="n">HelloPtr</span> <span class="n">hello</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HelloI</span><span class="p">;</span>
+    <span class="c1">// 将Object加入到Object Adapter</span>
+    <span class="n">adapter</span><span class="o">-&gt;</span><span class="n">add</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="n">communicator</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">stringToIdentity</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">hello</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;));</span></code></pre></div></p>
 
 <p>Facet是Object的一部分，或者说Object是Facet的一个集合，摘Ice manual中的一句话：</p>
 
@@ -872,12 +814,10 @@ void Delete() const {
 
 <p>Proxy是ICE客户端里的概念。客户端通过Proxy访问服务器端上的Object，通过Proxy调用服务器端Object上提供的接口。在客户端上一般有类似以下代码：</p>
 
-<p>{% highlight c++ %}
-    Ice::ObjectPrx base = ic->stringToProxy(&ldquo;SimplePrinter:default -p 10000&rdquo;);
-    // Printer Proxy
-    PrinterPrx printer = PrinterPrx::checkedCast(base);
-    printer->printString(&ldquo;Hello World!&rdquo;);
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">Ice</span><span class="o">::</span><span class="n">ObjectPrx</span> <span class="n">base</span> <span class="o">=</span> <span class="n">ic</span><span class="o">-&gt;</span><span class="n">stringToProxy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="nl">SimplePrinter</span><span class="p">:</span><span class="k">default</span> <span class="o">-</span><span class="n">p</span> <span class="mi">10000</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+    <span class="c1">// Printer Proxy</span>
+    <span class="n">PrinterPrx</span> <span class="n">printer</span> <span class="o">=</span> <span class="n">PrinterPrx</span><span class="o">::</span><span class="n">checkedCast</span><span class="p">(</span><span class="n">base</span><span class="p">);</span>
+    <span class="n">printer</span><span class="o">-&gt;</span><span class="n">printString</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Hello</span> <span class="n">World</span><span class="o">!&amp;</span><span class="n">rdquo</span><span class="p">;);</span></code></pre></div></p>
 
 <p>Proxy又分为几种，包括：</p>
 
@@ -914,9 +854,7 @@ void Delete() const {
 
 <p>Asynchronous Method Invocation，对于客户端而言，用于表示某个服务器端接口是异步操作，需在Slice中使用metadata来修饰这个接口，例如：</p>
 
-<p>{% highlight c++ %}
-    [&ldquo;ami&rdquo;]  void sayHello(int delay)
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="p">[</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">ami</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;]</span>  <span class="kt">void</span> <span class="n">sayHello</span><span class="p">(</span><span class="kt">int</span> <span class="n">delay</span><span class="p">)</span></code></pre></div></p>
 
 <ul>
 <li>AMD</li>
@@ -925,9 +863,7 @@ void Delete() const {
 
 <p>Asynchronous method dispatch，这个针对于服务器端，同样表示这个接口是异步操作，需在Slice中使用metadata来修饰这个接口：</p>
 
-<p>{% highlight c++ %}
-    [&ldquo;ami&rdquo;, &ldquo;amd&rdquo;]  void sayHello(int delay)
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="p">[</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">ami</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">amd</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;]</span>  <span class="kt">void</span> <span class="n">sayHello</span><span class="p">(</span><span class="kt">int</span> <span class="n">delay</span><span class="p">)</span></code></pre></div></p>
 
 <p>通常对于这种异步接口而言，都需要使用Slice metadata <code>ami</code>和<code>amd</code>同时修饰。</p>
 
@@ -1000,13 +936,11 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
 
 <p>对于需要管理服务器的客户端而言，可以大致通过如下代码来完成：</p>
 
-<p>{% highlight c++ %}
-    // 可以通过communicator来获取这个admin object
-    Ice::ObjectPrx adminObj = &hellip;;
-    // 获取admin object里的property facet
-    Ice::PropertiesAdminPrx propAdmin = Ice::PropertiesAdminPrx::checkedCast(adminObj, &ldquo;Properties&rdquo;);
-    Ice::PropertyDict props = propAdmin->getPropertiesForPrefix(&ldquo;&rdquo;);
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// 可以通过communicator来获取这个admin object</span>
+    <span class="n">Ice</span><span class="o">::</span><span class="n">ObjectPrx</span> <span class="n">adminObj</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;;</span>
+    <span class="c1">// 获取admin object里的property facet</span>
+    <span class="n">Ice</span><span class="o">::</span><span class="n">PropertiesAdminPrx</span> <span class="n">propAdmin</span> <span class="o">=</span> <span class="n">Ice</span><span class="o">::</span><span class="n">PropertiesAdminPrx</span><span class="o">::</span><span class="n">checkedCast</span><span class="p">(</span><span class="n">adminObj</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Properties</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+    <span class="n">Ice</span><span class="o">::</span><span class="n">PropertyDict</span> <span class="n">props</span> <span class="o">=</span> <span class="n">propAdmin</span><span class="o">-&gt;</span><span class="n">getPropertiesForPrefix</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span></code></pre></div></p>
 
 <p>详细参看ICE Manual <a href="http://doc.zeroc.com/display/Ice/Administrative+Facility">Administrative Facility</a></p>
 
@@ -1014,17 +948,13 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
 
 <p>前已述及，ICE中的网络连接隐藏于Proxy之下。Proxy有两个接口可以获取这个连接对象：</p>
 
-<p>{% highlight c++ %}
-    ice_getConnection
-    ice_getCachedConnection
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">ice_getConnection</span>
+    <span class="n">ice_getCachedConnection</span></code></pre></div></p>
 
 <p>例如：</p>
 
-<p>{% highlight c++ %}
-    HelloPrx hello = HelloPrx::uncheckedCast(communicator->stringToProxy(&ldquo;hello:tcp -h remote.host.com -p 10000&rdquo;));
-    ConnectionPtr conn = hello->ice_getConnection();
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">HelloPrx</span> <span class="n">hello</span> <span class="o">=</span> <span class="n">HelloPrx</span><span class="o">::</span><span class="n">uncheckedCast</span><span class="p">(</span><span class="n">communicator</span><span class="o">-&gt;</span><span class="n">stringToProxy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="nl">hello</span><span class="p">:</span><span class="n">tcp</span> <span class="o">-</span><span class="n">h</span> <span class="n">remote</span><span class="p">.</span><span class="n">host</span><span class="p">.</span><span class="n">com</span> <span class="o">-</span><span class="n">p</span> <span class="mi">10000</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;));</span>
+    <span class="n">ConnectionPtr</span> <span class="n">conn</span> <span class="o">=</span> <span class="n">hello</span><span class="o">-&gt;</span><span class="n">ice_getConnection</span><span class="p">();</span></code></pre></div></p>
 
 <p>ICE隐藏了网络连接的细节。当ICE发现需要建立连接时才会去建立，例如以上例子中当获得一个Proxy时（这里是HelloPrx），ICE并不建立网络连接，当某个时刻通过该Proxy调用服务器端的某个接口时，ICE发现对应的网络连接没有建立，则发起网络连接。</p>
 
