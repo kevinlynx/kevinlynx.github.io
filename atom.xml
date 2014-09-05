@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-09-04T22:34:26+08:00</updated>
+  <updated>2014-09-06T03:44:48+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,248 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[C++构造/析构函数中的多态(二)]]></title>
+    <link href="http://codemacro.com/2014/09/06/necessary-dtor/"/>
+    <updated>2014-09-06T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2014/09/06/necessary-dtor</id>
+    <content type="html"><![CDATA[<p>本来是几年以前写的一篇博客：<a href="http://codemacro.com/2012/09/17/c-plus-plus-ctor-virtual/">C++陷阱：构造函数中的多态</a>。然后有同学在评论中讨论了起来，为了记录我就在这里单独写一篇，基本上就是用编译器的实现去证明了早就被大家熟知的一些结论。</p>
+
+<p><strong>默认构造函数/析构函数不是在所有情况下都会被生成出来的。</strong>为此我还特地翻出《Inside C++ object model》：</p>
+
+<blockquote><p>2.1 Default Constructor Construction</p>
+
+<p>The C++ Annotated Reference Manual (ARM) [ELLIS90] (Section 12.1) tells us that &ldquo;default constructors…are generated (by the compiler) where needed….&rdquo;</p></blockquote>
+
+<p>后面别人还罗列了好些例子告诉你哪些情况才算<code>needed</code>。本文我就解释<code>构造函数中的多态</code>评论中的问题。</p>
+
+<!-- more -->
+
+
+<p>实验代码如下：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="cp">#include &lt;stdio.h&gt;</span>
+
+<span class="k">class</span> <span class="nc">Base</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="n">Base</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">Init</span><span class="p">();</span>
+    <span class="p">}</span>
+
+    <span class="c1">//virtual</span>
+     <span class="o">~</span><span class="n">Base</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Base dtor</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+        <span class="n">Release</span><span class="p">();</span>
+    <span class="p">}</span>
+
+    <span class="k">virtual</span> <span class="kt">void</span> <span class="n">Init</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Base::Init</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">virtual</span> <span class="kt">void</span> <span class="n">Release</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Base::Release</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="k">class</span> <span class="nc">Derived</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Base</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="cm">/*</span>
+<span class="cm">    ~Derived() {</span>
+<span class="cm">        printf(&quot;Derived dtor\n&quot;);</span>
+<span class="cm">    } // */</span>
+
+    <span class="k">virtual</span> <span class="kt">void</span> <span class="n">Init</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Derived::Init</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">virtual</span> <span class="kt">void</span> <span class="n">Release</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Derived:Release</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="n">Base</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Derived</span><span class="p">();</span>
+    <span class="k">delete</span> <span class="n">obj</span><span class="p">;</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div>
+
+
+<p>去掉<code>Derived</code>的析构函数，去掉<code>Base</code>析构函数的<code>virtual</code>：</p>
+
+<pre><code># g++ -Wa,-adhln -g test.cpp &gt; test.s
+
+  44:test.cpp      ****     delete obj;
+ 227                    .loc 1 44 0
+ 228 0028 488B45F0      movq    -16(%rbp), %rax
+ 229 002c 488945E0      movq    %rax, -32(%rbp)
+ 230 0030 48837DE0      cmpq    $0, -32(%rbp)       
+ 230      00
+ 231 0035 7520          jne .L17                   
+ 232 0037 EB30          jmp .L18
+...
+ 244                .L17:
+ 245                    .loc 1 44 0
+ 246 0057 488B7DE0      movq    -32(%rbp), %rdi
+ 247 005b E8000000      call    _ZN4BaseD1Ev             # 直接call
+</code></pre>
+
+<p>从这里甚至可以看到<code>delete</code>对空指针的判定。<code>Base</code>的析构函数不是<code>virtual</code>，所以这里编译器生成的析构函数调用代码根本不需要用到<code>vptr</code>，直接<code>call</code>就可以。而具体<code>call</code>谁则是根据<code>obj</code>指向的类型<code>Base</code>确定。<em>即使<code>Derived</code>用户定义了析构函数也不会调用，无论是否<code>virtual</code>。</em></p>
+
+<p>事实上编译器甚至不需要生成<code>Derived</code>的析构函数，<em>多傻的编译器才会生成这些什么事都不做的代码而光进出函数就得好几条指令？</em></p>
+
+<p>查看程序中的符号，没有生成<code>Derived</code>析构函数：</p>
+
+<pre><code># nm test
+...
+0000000000400816 W _ZN4Base4InitEv
+00000000004007fe W _ZN4Base7ReleaseEv
+000000000040082e W _ZN4BaseC2Ev
+0000000000400876 W _ZN4BaseD1Ev             
+00000000004007e6 W _ZN7Derived4InitEv
+00000000004007ce W _ZN7Derived7ReleaseEv
+0000000000400852 W _ZN7DerivedC1Ev
+...
+</code></pre>
+
+<p>现在把<code>Base</code>析构函数变为<code>virtual</code>的：</p>
+
+<pre><code>  44:test.cpp      ****     delete obj;
+ 170                    .loc 1 44 0
+ 171 0028 48837DF0      cmpq    $0, -16(%rbp)
+ 171      00
+ 172 002d 7520          jne .L12
+ 173 002f EB32          jmp .L13
+...
+ 185                .L12:
+ 186                    .loc 1 44 0
+ 187 004f 488B45F0      movq    -16(%rbp), %rax     # this -&gt; rax
+ 188 0053 488B00        movq    (%rax), %rax        # *rax -&gt; vptr
+ 189 0056 4883C008      addq    $8, %rax            # vptr += 8
+ 190 005a 488B00        movq    (%rax), %rax        # *vptr -&gt; Base::~Base
+ 191 005d 488B7DF0      movq    -16(%rbp), %rdi     # this as first argument (passed by rdi)
+ 192 0061 FFD0          call    *%rax               # call
+</code></pre>
+
+<p>析构函数动态调用这也是预期的。至于为什么是偏移<code>vptr+8</code>，是因为第一个指针指向的是<code>type_info</code>，具体可看<a href="http://www.cnblogs.com/zhyg6516/archive/2011/03/07/1971898.html">浅议 Dynamic_cast 和 RTTI</a>。<em>vptr和virtual function table还需要详述吗？</em></p>
+
+<p>此时就会生成<code>Derived</code>的析构函数：</p>
+
+<pre><code>...
+000000000040084c W _ZN4Base4InitEv
+00000000004008ac W _ZN4Base7ReleaseEv
+0000000000400864 W _ZN4BaseC2Ev
+0000000000400970 W _ZN4BaseD0Ev
+00000000004009b0 W _ZN4BaseD1Ev
+00000000004008c4 W _ZN4BaseD2Ev
+0000000000400834 W _ZN7Derived4InitEv
+000000000040081c W _ZN7Derived7ReleaseEv
+0000000000400888 W _ZN7DerivedC1Ev
+0000000000400904 W _ZN7DerivedD0Ev          
+000000000040093a W _ZN7DerivedD1Ev
+...
+</code></pre>
+
+<p>细心的人就会发现无论是<code>Base</code>还是<code>Derived</code>都会生成多个析构函数，这个深入下去还有很多内容，具体可以参看：<a href="http://stackoverflow.com/questions/6613870/gnu-gcc-g-why-does-it-generate-multiple-dtors">GNU GCC (g++): Why does it generate multiple dtors?</a>。</p>
+
+<p>甚至可以运行这个例子看到调用到了<code>Derived</code>的析构函数：</p>
+
+<pre><code>(gdb) ni
+0x000000000040080d      45          return 0;
+1: x/3i $pc
+0x40080d &lt;main()+117&gt;:  callq  *%rax                  # 调用
+0x40080f &lt;main()+119&gt;:  mov    $0x0,%eax
+0x400814 &lt;main()+124&gt;:  add    $0x28,%rsp
+(gdb) si
+Derived::~Derived (this=0x7ffff7ffd000, __in_chrg=&lt;value optimized out&gt;) at test.cpp:24
+24      class Derived : public Base {
+1: x/3i $pc
+0x400904 &lt;Derived::~Derived()&gt;: push   %rbp
+0x400905 &lt;Derived::~Derived()+1&gt;:       mov    %rsp,%rbp
+0x400908 &lt;Derived::~Derived()+4&gt;:       sub    $0x10,%rsp
+</code></pre>
+
+<p>其实看<code>Derived</code>的析构函数实现会发现很多有趣的东西：</p>
+
+<pre><code>(gdb) disassemble 'Derived::~Derived'
+Dump of assembler code for function Derived::~Derived():
+0x0000000000400904 &lt;Derived::~Derived()+0&gt;:     push   %rbp
+0x0000000000400905 &lt;Derived::~Derived()+1&gt;:     mov    %rsp,%rbp
+0x0000000000400908 &lt;Derived::~Derived()+4&gt;:     sub    $0x10,%rsp
+0x000000000040090c &lt;Derived::~Derived()+8&gt;:     mov    %rdi,-0x8(%rbp)
+0x0000000000400910 &lt;Derived::~Derived()+12&gt;:    mov    $0x400b50,%edx
+0x0000000000400915 &lt;Derived::~Derived()+17&gt;:    mov    -0x8(%rbp),%rax
+0x0000000000400919 &lt;Derived::~Derived()+21&gt;:    mov    %rdx,(%rax)
+0x000000000040091c &lt;Derived::~Derived()+24&gt;:    mov    -0x8(%rbp),%rdi
+0x0000000000400920 &lt;Derived::~Derived()+28&gt;:    callq  0x4008c4 &lt;Base::~Base()&gt;
+0x0000000000400925 &lt;Derived::~Derived()+33&gt;:    mov    $0x1,%eax
+0x000000000040092a &lt;Derived::~Derived()+38&gt;:    test   %al,%al
+0x000000000040092c &lt;Derived::~Derived()+40&gt;:    je     0x400937 &lt;Derived::~Derived()+51&gt;
+0x000000000040092e &lt;Derived::~Derived()+42&gt;:    mov    -0x8(%rbp),%rdi
+0x0000000000400932 &lt;Derived::~Derived()+46&gt;:    callq  0x400670 &lt;_ZdlPv@plt&gt;               
+0x0000000000400937 &lt;Derived::~Derived()+51&gt;:    leaveq
+0x0000000000400938 &lt;Derived::~Derived()+52&gt;:    retq
+</code></pre>
+
+<p>实际上这个析构函数就是上面的<code>D0</code>版本，它做了一件重要的事就是<code>delete this</code>。具体的可以google gcc对析构函数的实现。</p>
+
+<p>构造函数和析构函数中根本就不会启用多态，这个是结论或者说是标准，但不是原因(真怕又有人告诉我c++ standard某section这样写的所以这就是理由)。既然反正已经看实现了，就索性看一眼编译器怎么处理这个问题：</p>
+
+<pre><code>// Base::~Base
+ 261 0000 55            pushq   %rbp
+ 262                .LCFI22:
+ 263 0001 4889E5        movq    %rsp, %rbp
+ 264                .LCFI23:
+ 265 0004 4883EC10      subq    $16, %rsp
+ 266                .LCFI24:
+ 267 0008 48897DF8      movq    %rdi, -8(%rbp)
+ 268                    .loc 1 10 0
+ 269 000c BA000000      movl    $_ZTV4Base+16, %edx
+ 269      00
+ 270 0011 488B45F8      movq    -8(%rbp), %rax
+ 271 0015 488910        movq    %rdx, (%rax)
+ 272                    .loc 1 11 0
+ 273 0018 BF000000      movl    $.LC4, %edi
+ 273      00
+ 274 001d E8000000      call    puts
+ 274      00
+ 275                    .loc 1 12 0
+ 276 0022 488B7DF8      movq    -8(%rbp), %rdi
+ 277 0026 E8000000      call    _ZN4Base7ReleaseEv  # 直接call绝对地址
+</code></pre>
+
+<p>构造函数一样：</p>
+
+<pre><code>  94 0000 55            pushq   %rbp
+  95                .LCFI9:
+  96 0001 4889E5        movq    %rsp, %rbp
+  97                .LCFI10:
+  98 0004 4883EC10      subq    $16, %rsp
+  99                .LCFI11:
+ 100 0008 48897DF8      movq    %rdi, -8(%rbp)
+ 101                .LBB2:
+ 102                    .loc 1 5 0
+ 103 000c B8000000      movl    $_ZTV4Base+16, %eax
+ 103      00
+ 104 0011 488B55F8      movq    -8(%rbp), %rdx
+ 105 0015 488902        movq    %rax, (%rdx)
+ 106                    .loc 1 6 0
+ 107 0018 488B7DF8      movq    -8(%rbp), %rdi
+ 108 001c E8000000      call    _ZN4Base4InitEv  # 直接call地址
+</code></pre>
+
+<p><em>END</em></p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2014/09/06/necessary-dtor/'>http://codemacro.com/2014/09/06/necessary-dtor/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[C/C++中手动获取调用堆栈]]></title>
@@ -3325,214 +3567,6 @@ Obj-&gt;func(args)
 <p class='post-footer'>
             原文地址：
             <a href='http://codemacro.com/2013/04/11/rabbitmq-erlang/'>http://codemacro.com/2013/04/11/rabbitmq-erlang/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[浅析软件工程开发方法学RUP]]></title>
-    <link href="http://codemacro.com/2013/03/21/rup/"/>
-    <updated>2013-03-21T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2013/03/21/rup</id>
-    <content type="html"><![CDATA[<h2>前言</h2>
-
-<p>因为之前一直处在游戏开发行业，由于种种原因一直对软件工程中的项目管理、项目开发方法缺乏体验。虽然项目中也曾倡导编写更多的文档，无论是模块说明文档还是设计文档，但效果一直不好。不甚理想的地方主要体现在文档的规范性欠缺、不统一、浮于表面没有实质内容。文档的编写缺乏详尽的方法指导，那么所谓的设计文档要么是用来敷衍上级要么就是随着开发人员的水平不一而千差万别。</p>
-
-<p>当我开始目前这个非游戏项目时，我也曾想，前期做好结构设计，制定好关键问题的解决方案，那么要完成这个项目就不在话下了。但是我很快就面临了一个问题：需求不定。回想身处游戏公司的那些日子，程序员总是抱怨策划需求变更过快过多，在每一次策划提出一个需求变更时，谨慎的程序员都会再三让策划保证：放心，不会变了。而我面临的问题则更为严峻。我意识到，项目的需求，就连用户也无法一一罗列出来。我们需要的是需求调研。但就算你将客户的所有需求全部挖掘出来后（这几乎不可能，因为他们自己也不太清楚自己想要什么），当你交付了第一个软件版本，几乎可以肯定客户会提出一大堆的需求变更：我要的不是这个，我要的那个怎么没有，哦，我当初以为你说的是另一个意思。</p>
-
-<p>当然，需求调研这种工作不是让程序员去做的（那会更悲剧，无论是对客户还是对程序员而言，他们都是在对牛弹琴）。但需求的不确定性也总是存在的。</p>
-
-<p>事实上，需求变化本身就是一个很正常的现象。我一向愿意更悲观地处理软件开发方面的问题，所谓小心使得万年船。基于此，我决定摆好心态学学软件开发的方法学。</p>
-
-<h2>概要</h2>
-
-<p>本文简要描述、总结了RUP开发方法学的主要内容，结合我自己的感受阐述了一些RUP的核心原则。我相信我所理解的内容是肤浅的，对于非代码的表达我更相信其是存在歧义的。所以本文仅当是一种经验参考，不必当真。</p>
-
-<p>RUP据传是用于指导大型甚至超大型项目开发的，我们做的不是这样规模的项目。但是我们需要记录下整个项目的开发过程，通过这个过程中产出的<strong>工件</strong>任何一个人可以看出这个项目是如何实现出来的，其目的在于规避唯有从海量代码中才能熟悉项目实现这种问题。这里出现了一个概念：工件，其指的是软件项目开发过程中任何留下记录的事物，例如文档、图、代码等。<strong>RUP的一个重要思想，在于其整个软件开发过程都是可推导的</strong>。例如我们通常说的软件架构，或小一点的模块结构，都是通过开发过程中前面阶段产出的工件推导得出，而<strong>不是凭借程序员的经验拍脑袋想出来的</strong>（经验不太可靠，并且千差万别，而<strong>推导</strong>意味着将每个环节变得可靠）。我们借助RUP的这个特性，创建这些工件，用以建立起软件实现的可靠知识库。</p>
-
-<!-- more -->
-
-
-<h2>RUP概览</h2>
-
-<p>以下均摘自\<Thinking in UML\>中对RUP的描述：</p>
-
-<blockquote><p>统一过程归纳和集成了软件开发活动中的最佳实践，它定义了软件开发过程中最重要的阶段和工作（四个阶段和九个核心工作流），定义了参与软件开发过程的各种角色和他们的职责，还定义了软件生产过程中产生的工件，并提供了模板。最后，采用演进式软件生命周期（迭代）将工作、角色和工件串在一起，形成了统一过程。</p>
-
-<p>统一过程是一种追求稳定的软件方法，它追求开发稳定架构，控制变更</p>
-
-<p>统一过程集成了面向对象方法、UML语言、核心工作流、工件模板和过程指导等知识</p></blockquote>
-
-<p>简单来说，RUP作为一种软件项目开发方法学，<strong>它定义了软件开发的每一个过程，最重要的是它指导了在每一个过程需要产出什么，这些产出又是怎样得到。它试图规范化整个流程，以规避需求变更，项目参与者水平不一等带来的项目不可控等问题，以期一个软件产品稳定地开发出来</strong>。在一个项目开发过程中，最核心的资源是人，最不可控的亦是人。</p>
-
-<h2>RUP过程与实践</h2>
-
-<p>我觉得要快速学习一种知识，需要首先获得这门知识的总体框架。另一方面，在我们获得更多信息后，我们需要挖掘出这门知识的核心思想。学习RUP我觉得从这两方面入手是相对比较快速和有效的手段。</p>
-
-<h3>RUP框架</h3>
-
-<p><strong>RUP定义了软件开发过程的四个阶段，以及9个工作流程</strong>。一张极为经典的RUP开发过程框架图如下：</p>
-
-<p><img src="http://codemacro.com/assets/res/rup/rup.png" alt="rup" /></p>
-
-<p>RUP将整个软件开发过程分为四个阶段：</p>
-
-<ul>
-<li>先启(Inception)、</li>
-<li>精化(Elaboration)</li>
-<li>构建(Construction)</li>
-<li>产品化(Transition)</li>
-</ul>
-
-
-<p>每一个阶段的工作分为9个流程：</p>
-
-<ul>
-<li>业务建模</li>
-<li>需求</li>
-<li>分析设计</li>
-<li>实施</li>
-<li>测试</li>
-<li>部署</li>
-<li>配置与变更管理</li>
-<li>项目管理</li>
-<li>环境</li>
-</ul>
-
-
-<p>其中，前6个流程被统称为&#8221;engineering disciplines&#8221;，后3个流程被称为&#8221;supporting disciplines&#8221;。当然，我们主要关注前6个流程。那么，这些工作流程和开发阶段又有什么关系呢？上图中其实已经阐明了这些关系。</p>
-
-<p>RUP指导迭代开发。在软件开发的这4个阶段中，每一个阶段会被分为若干次迭代。而每一次迭代则涵盖了这9个工作流程。随着开发阶段向产品化靠近，自然而然地，需求的变更、增加自然会减少，所以从图中可以看出，开发过程越到后期，其工作流程中关于需求的工作则越少。同样，在先启阶段，其需求相关的工作则占据了该阶段的主要工作内容。</p>
-
-<p>RUP中的迭代要求在每一次迭代中，都会完整地实施一遍整个工作流程。在软件实施阶段，甚至会在每一个迭代过程完后输出一个可运行的软件版本。这个版本可能会被交付给客户，以期进一步地在功能需求上取得与客户一致的意见。这倒是同敏捷开发有点类似。</p>
-
-<p>既然制定了工作流程，那每一个工作流程该如何去实施呢？<strong>RUP制定了每个工作流程需要参与的角色，这些角色需要从事的活动，以及这些活动产生的工件。</strong></p>
-
-<p>这句话实际上反映了RUP的一个重要信息，摘自wiki：</p>
-
-<blockquote><p>RUP is based on a set of building blocks, or content elements, describing what is to be produced, the necessary skills required and the step-by-step explanation describing how specific development goals are to be achieved. The main building blocks, or content elements, are the following:</p>
-
-<ul>
-<li><strong>Roles (who)</strong> – A Role defines a set of related skills, competencies and responsibilities.</li>
-<li><strong>Work Products (what)</strong> – A Work Product represents something resulting from a task, including all the documents and models produced while working through the process.</li>
-<li><strong>Tasks (how)</strong> – A Task describes a unit of work assigned to a Role that provides a meaningful result.</li>
-</ul>
-</blockquote>
-
-<h3>RUP建模</h3>
-
-<p>在我看来，RUP每个工作流程所完成的工作，就是一个建模的过程。所谓建模，简单来说就是将需要描述的事物通过更系统的形式表达出来，以期获得对该事物更深入的理解。\<Thinking in UML\>中定义建模概念为：</p>
-
-<blockquote><p>建模(modeling)，是指通过对客观事物建立一种抽象的方法用以表征事物并获得对事物本身的理解，同时把这种理解概念化，将这些逻辑概念组织起来，构成一种对所观察的对象的内部结构和工作原理的便于理解的表达。</p></blockquote>
-
-<p>在这里，建模的过程需要使用一些工具。在RUP中建模使用UML来完成。在\<Thinking in UML\>中讲述了UML的核心模型，包括：</p>
-
-<ul>
-<li>业务用例模型</li>
-<li>概念用例模型</li>
-<li>系统用例模型</li>
-<li>领域模型</li>
-<li>分析模型</li>
-<li>软件架构和框架</li>
-<li>设计模型</li>
-<li>组件模型</li>
-<li>实施模型</li>
-</ul>
-
-
-<p>可能在大家的普遍认识中，UML无非就是几种图，并且粗看一眼理解起来也不困难，甚至还能用来画画类图做下代码结构设计。但UML的作用不仅仅如此。</p>
-
-<p>以上所描述的UML核心模型中，每个模型并不单指的的是一种UML图。每个模型实际上都会包含几种UML图，会包含若干张UML图。这些模型基本上渗透于RUP的9个工作流程中，只不过不同的工作流程使用的模型比重不一而已。</p>
-
-<p>例如在“分析设计”工作流程中，可能会使用到系统用例模型、分析模型、软件架构和框架、设计模型等，而业务用例模型可能在这个流程中根本不会用到；相反，业务用例模型则可能在“业务建模”流程中被广泛使用。</p>
-
-<p>前已述及在RUP的每个工作流程中，RUP定义了该流程需要参与的角色，以及这些角色需要进行的活动，例如这里可以看看“分析设计”流程中的角色和活动集（摘自\<Thinking in UML\>）：</p>
-
-<p><img src="http://codemacro.com/assets/res/rup/analyse-action.png" alt="analyse-action" /></p>
-
-<p>相应的，在该工作流程中需要产出的工件集为（摘自\<Thinking in UML\>）：</p>
-
-<p><img src="http://codemacro.com/assets/res/rup/analyse-ar.png" alt="analyse-ar" /></p>
-
-<p>既然使用了UML作为建模工具，所以可以简单地说这些工件主要就是UML图，当然也会有其他文档性质的事物，例如网络协议结构、数据库表等UML无法描述的东西则通过普通文字性文档描述。</p>
-
-<h3>RUP最佳实践</h3>
-
-<p>到目前为止我们已经了解到RUP定义了开发过程(phase)，定义了每个过程包含的若干工作流程，还定义了每个工作流程需要哪些角色从事哪些活动来完成哪些工件。除此之外，RUP还提供了6条最佳实践用以指导软件开发：</p>
-
-<ul>
-<li>迭代开发</li>
-<li>管理需求</li>
-<li>使用基于组件的架构</li>
-<li>可视建模</li>
-<li>持续的质量验证</li>
-<li>控制变更</li>
-</ul>
-
-
-<p>这些实践在我看来仅仅是一些项目开发的指导原则，它们渗透到每一个过程，每一个工作流程。在项目过程中实践这些原则，用以确保项目的成功。例如我们使用UML建模，以达到“可视建模”。我们通过建立需求用例，以“管理需求”。</p>
-
-<h2>RUP核心思想</h2>
-
-<p>似乎没有文档来专门阐述RUP的核心思想，但我觉得掌握其核心思想才是学习的要点所在。要理解一种软件开发方法学的核心思想，其实最好是将其与别的方法学做比较。这里先就我的一些感想做阐述。</p>
-
-<h3>用例驱动</h3>
-
-<p>用例驱动指的是整个软件项目的推进过程，是依靠“用例”来完成。\<Thinking in UML\>：</p>
-
-<blockquote><p>在实际的软件项目中，一个软件要实现的功能通过用例来捕获，接下来的所有分析、设计、实现、测试都由用例来取得，即以实现用例为目标。在统一过程中用例能够驱动的不仅仅是分析设计。</p></blockquote>
-
-<p>用例简单来说就是描述了一个系统功能。但必须注意的是，这仅仅是它定义的一小部分。用例主要分布在“业务建模”、“需求”、“分析设计”这些工作过程中。在不同的过程中用例的粒度和性质都不一样。例如对于一个借书系统而言，在业务建模阶段，我们可以获取出一个“借书”用例，其系统边界甚至不是系统而可能仅关注这个业务本身（因为这个阶段还没有考虑到计算机如何实现这个借书业务）；在系统分析阶段，我们就可以将“借书”这个用例细化为用户和计算机软件系统的交互；进一步地，我们可能会进一步精化这个用例，例如用户通过网页终端“借书”。（这里描述了很多建模的细节，可不必深究，本文只给出一个概要性的介绍）</p>
-
-<p>我们说用例驱动软件开发，但它如何驱动的呢？我在实际的建模过程中，最明显的感受就是用例驱动了整个建模过程。</p>
-
-<ul>
-<li>在需求分析阶段，我以系统使用者的角度绘制出了一份用例图，用于表达使用者对该系统的需求</li>
-<li>然后我绘制序列图（活动图等）来实现这些用例，也就是阐述使用者具体是如何与系统交互的</li>
-<li>从之前的建模过程中我获得对系统功能需求方面的认识</li>
-<li>基于前面的分析我可以绘制出系统用例图，以明确系统的各个功能需求</li>
-<li>同样针对用例绘制用例实现图</li>
-<li>用例本身应该包含更多的文档，因此我编写用例规约用以详细描述各个用例</li>
-<li>从用例规约、用例实现中我可以抽离出一些分析类（较设计类更高抽象的类），包含用例场景中涉及到的实体，控制逻辑</li>
-<li>细化这些分析类，将分析类组织起来形成系统，我会用界面类去衔接各个控制类</li>
-<li>将得到的分析类按模块来划分，从而可以得到一个初步的系统架构</li>
-<li>初步考虑系统实现，我甚至会得到一个初步是的系统部署图</li>
-<li>回过头不断审视系统用例，以确认我是否实现了所有用例，这可以保证我的分析实现了所有需求，<strong>我不用枚举所有系统特性是否被我考虑周全，我仅需在已有用例图中核实</strong></li>
-<li>基于模块实现各个用例，或者基于分析类来实现系统用例</li>
-<li>通过重新绘制以及核实用例，可以进一步精化分析类，分析类在很大程度上会一一对应到设计类，而设计类则对应到实际的代码</li>
-<li>可以进入设计阶段，设计阶段会考虑到系统的实现细节，例如使用的语言，使用的框架等</li>
-</ul>
-
-
-<p>进入设计阶段后，虽然可以进一步建模，得到会直接映射到代码的类图、序列图等，但这样的图在面临需求变更时，基本上会面临修改，这意味着维护这些文档需要耗费精力。所以，\<Thinking in UML\>中主张将精力放在维护分析类模型中，而通过其他约定实现从分析类到实际代码的转换。我觉得这个也在理。</p>
-
-<h3>规范化整个过程</h3>
-
-<p>我个人觉得RUP的一大特点在于规范化了整个软件开发过程，每一个步骤需要哪些角色参与，该干什么，怎么去干都有指导。加之这些活动的”可推导性“，这意味着不论参与角色属于什么水平，都可以稳固地推进项目进程。</p>
-
-<p>此外，这种规范化也会给项目留下详细的演化过程。你可以明确地看到整个软件是如何演化出最终的产品代码，可以深入地理解项目代码中的设计。</p>
-
-<h2>总结</h2>
-
-<p>我只是一个RUP新手，即便如此，我依然不觉得RUP是软件开发的万能药。我相信任何软件开发方法都是有局限性的。我们在实际使用的时候也只是吸取其精华。不同的开发方法其适用范围也是不一样的。正如有人将RUP和XP做比较时说，如果你使用RUP去开一个杂货铺，在没开张之前你就已经破产了；同样如果你用XP去做飞机，飞机毁了十来次也许才能做出来（from \<Thinking in UML\> again）。</p>
-
-<h2>参考文档</h2>
-
-<ul>
-<li><a href="http://blog.csdn.net/coffeewoo/">\<Thinking in UML\></a></li>
-<li><a href="http://www.uml.org.cn/SoftWareProcess/2009031017.asp">RUP和IPD流程的优缺点</a></li>
-<li><a href="http://en.wikipedia.org/wiki/IBM_Rational_Unified_Process">IBM Rational Unified Process(wiki)</a></li>
-<li><a href="http://blog.roodo.com/rocksaying/archives/2051417.html">軟體工程三大陣營, RUP, CMMI, Agile Method(需翻墙)</a></li>
-<li><a href="http://incredibleagile.com/download/xpVsrup.pdf">XP与RUP的比较</a></li>
-</ul>
-
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2013/03/21/rup/'>http://codemacro.com/2013/03/21/rup/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>

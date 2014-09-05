@@ -4,7 +4,7 @@
   <title><![CDATA[Category: c/c++ | loop in codes]]></title>
   <link href="http://codemacro.com/categories/c-slash-c-plus-plus/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-09-04T22:34:26+08:00</updated>
+  <updated>2014-09-06T03:44:48+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,245 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[C++构造/析构函数中的多态(二)]]></title>
+    <link href="http://codemacro.com/2014/09/06/necessary-dtor/"/>
+    <updated>2014-09-06T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2014/09/06/necessary-dtor</id>
+    <content type="html"><![CDATA[<p>本来是几年以前写的一篇博客：<a href="http://codemacro.com/2012/09/17/c-plus-plus-ctor-virtual/">C++陷阱：构造函数中的多态</a>。然后有同学在评论中讨论了起来，为了记录我就在这里单独写一篇，基本上就是用编译器的实现去证明了早就被大家熟知的一些结论。</p>
+
+<p><strong>默认构造函数/析构函数不是在所有情况下都会被生成出来的。</strong>为此我还特地翻出《Inside C++ object model》：</p>
+
+<blockquote><p>2.1 Default Constructor Construction</p>
+
+<p>The C++ Annotated Reference Manual (ARM) [ELLIS90] (Section 12.1) tells us that &ldquo;default constructors…are generated (by the compiler) where needed….&rdquo;</p></blockquote>
+
+<p>后面别人还罗列了好些例子告诉你哪些情况才算<code>needed</code>。本文我就解释<code>构造函数中的多态</code>评论中的问题。</p>
+
+<!-- more -->
+
+
+<p>实验代码如下：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">Base</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="n">Base</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">Init</span><span class="p">();</span>
+    <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="c1">//virtual</span>
+ <span class="o">~</span><span class="n">Base</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Base dtor</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="n">Release</span><span class="p">();</span>
+<span class="p">}</span>
+
+<span class="k">virtual</span> <span class="kt">void</span> <span class="n">Init</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Base::Init</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">virtual</span> <span class="kt">void</span> <span class="n">Release</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Base::Release</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">Derived</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Base</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span>
+    <span class="o">~</span><span class="n">Derived</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Derived</span> <span class="n">dtor</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+    <span class="p">}</span> <span class="c1">// &lt;/em&gt;/&lt;/p&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">virtual</span> <span class="kt">void</span> <span class="n">Init</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Derived::Init</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">virtual</span> <span class="kt">void</span> <span class="n">Release</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Derived:Release</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="n">Base</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Derived</span><span class="p">();</span>
+    <span class="k">delete</span> <span class="n">obj</span><span class="p">;</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div></p>
+
+<p>去掉<code>Derived</code>的析构函数，去掉<code>Base</code>析构函数的<code>virtual</code>：</p>
+
+<pre><code># g++ -Wa,-adhln -g test.cpp &gt; test.s
+
+  44:test.cpp      ****     delete obj;
+ 227                    .loc 1 44 0
+ 228 0028 488B45F0      movq    -16(%rbp), %rax
+ 229 002c 488945E0      movq    %rax, -32(%rbp)
+ 230 0030 48837DE0      cmpq    $0, -32(%rbp)       
+ 230      00
+ 231 0035 7520          jne .L17                   
+ 232 0037 EB30          jmp .L18
+...
+ 244                .L17:
+ 245                    .loc 1 44 0
+ 246 0057 488B7DE0      movq    -32(%rbp), %rdi
+ 247 005b E8000000      call    _ZN4BaseD1Ev             # 直接call
+</code></pre>
+
+<p>从这里甚至可以看到<code>delete</code>对空指针的判定。<code>Base</code>的析构函数不是<code>virtual</code>，所以这里编译器生成的析构函数调用代码根本不需要用到<code>vptr</code>，直接<code>call</code>就可以。而具体<code>call</code>谁则是根据<code>obj</code>指向的类型<code>Base</code>确定。<em>即使<code>Derived</code>用户定义了析构函数也不会调用，无论是否<code>virtual</code>。</em></p>
+
+<p>事实上编译器甚至不需要生成<code>Derived</code>的析构函数，<em>多傻的编译器才会生成这些什么事都不做的代码而光进出函数就得好几条指令？</em></p>
+
+<p>查看程序中的符号，没有生成<code>Derived</code>析构函数：</p>
+
+<pre><code># nm test
+...
+0000000000400816 W _ZN4Base4InitEv
+00000000004007fe W _ZN4Base7ReleaseEv
+000000000040082e W _ZN4BaseC2Ev
+0000000000400876 W _ZN4BaseD1Ev             
+00000000004007e6 W _ZN7Derived4InitEv
+00000000004007ce W _ZN7Derived7ReleaseEv
+0000000000400852 W _ZN7DerivedC1Ev
+...
+</code></pre>
+
+<p>现在把<code>Base</code>析构函数变为<code>virtual</code>的：</p>
+
+<pre><code>  44:test.cpp      ****     delete obj;
+ 170                    .loc 1 44 0
+ 171 0028 48837DF0      cmpq    $0, -16(%rbp)
+ 171      00
+ 172 002d 7520          jne .L12
+ 173 002f EB32          jmp .L13
+...
+ 185                .L12:
+ 186                    .loc 1 44 0
+ 187 004f 488B45F0      movq    -16(%rbp), %rax     # this -&gt; rax
+ 188 0053 488B00        movq    (%rax), %rax        # *rax -&gt; vptr
+ 189 0056 4883C008      addq    $8, %rax            # vptr += 8
+ 190 005a 488B00        movq    (%rax), %rax        # *vptr -&gt; Base::~Base
+ 191 005d 488B7DF0      movq    -16(%rbp), %rdi     # this as first argument (passed by rdi)
+ 192 0061 FFD0          call    *%rax               # call
+</code></pre>
+
+<p>析构函数动态调用这也是预期的。至于为什么是偏移<code>vptr+8</code>，是因为第一个指针指向的是<code>type_info</code>，具体可看<a href="http://www.cnblogs.com/zhyg6516/archive/2011/03/07/1971898.html">浅议 Dynamic_cast 和 RTTI</a>。<em>vptr和virtual function table还需要详述吗？</em></p>
+
+<p>此时就会生成<code>Derived</code>的析构函数：</p>
+
+<pre><code>...
+000000000040084c W _ZN4Base4InitEv
+00000000004008ac W _ZN4Base7ReleaseEv
+0000000000400864 W _ZN4BaseC2Ev
+0000000000400970 W _ZN4BaseD0Ev
+00000000004009b0 W _ZN4BaseD1Ev
+00000000004008c4 W _ZN4BaseD2Ev
+0000000000400834 W _ZN7Derived4InitEv
+000000000040081c W _ZN7Derived7ReleaseEv
+0000000000400888 W _ZN7DerivedC1Ev
+0000000000400904 W _ZN7DerivedD0Ev          
+000000000040093a W _ZN7DerivedD1Ev
+...
+</code></pre>
+
+<p>细心的人就会发现无论是<code>Base</code>还是<code>Derived</code>都会生成多个析构函数，这个深入下去还有很多内容，具体可以参看：<a href="http://stackoverflow.com/questions/6613870/gnu-gcc-g-why-does-it-generate-multiple-dtors">GNU GCC (g++): Why does it generate multiple dtors?</a>。</p>
+
+<p>甚至可以运行这个例子看到调用到了<code>Derived</code>的析构函数：</p>
+
+<pre><code>(gdb) ni
+0x000000000040080d      45          return 0;
+1: x/3i $pc
+0x40080d &lt;main()+117&gt;:  callq  *%rax                  # 调用
+0x40080f &lt;main()+119&gt;:  mov    $0x0,%eax
+0x400814 &lt;main()+124&gt;:  add    $0x28,%rsp
+(gdb) si
+Derived::~Derived (this=0x7ffff7ffd000, __in_chrg=&lt;value optimized out&gt;) at test.cpp:24
+24      class Derived : public Base {
+1: x/3i $pc
+0x400904 &lt;Derived::~Derived()&gt;: push   %rbp
+0x400905 &lt;Derived::~Derived()+1&gt;:       mov    %rsp,%rbp
+0x400908 &lt;Derived::~Derived()+4&gt;:       sub    $0x10,%rsp
+</code></pre>
+
+<p>其实看<code>Derived</code>的析构函数实现会发现很多有趣的东西：</p>
+
+<pre><code>(gdb) disassemble 'Derived::~Derived'
+Dump of assembler code for function Derived::~Derived():
+0x0000000000400904 &lt;Derived::~Derived()+0&gt;:     push   %rbp
+0x0000000000400905 &lt;Derived::~Derived()+1&gt;:     mov    %rsp,%rbp
+0x0000000000400908 &lt;Derived::~Derived()+4&gt;:     sub    $0x10,%rsp
+0x000000000040090c &lt;Derived::~Derived()+8&gt;:     mov    %rdi,-0x8(%rbp)
+0x0000000000400910 &lt;Derived::~Derived()+12&gt;:    mov    $0x400b50,%edx
+0x0000000000400915 &lt;Derived::~Derived()+17&gt;:    mov    -0x8(%rbp),%rax
+0x0000000000400919 &lt;Derived::~Derived()+21&gt;:    mov    %rdx,(%rax)
+0x000000000040091c &lt;Derived::~Derived()+24&gt;:    mov    -0x8(%rbp),%rdi
+0x0000000000400920 &lt;Derived::~Derived()+28&gt;:    callq  0x4008c4 &lt;Base::~Base()&gt;
+0x0000000000400925 &lt;Derived::~Derived()+33&gt;:    mov    $0x1,%eax
+0x000000000040092a &lt;Derived::~Derived()+38&gt;:    test   %al,%al
+0x000000000040092c &lt;Derived::~Derived()+40&gt;:    je     0x400937 &lt;Derived::~Derived()+51&gt;
+0x000000000040092e &lt;Derived::~Derived()+42&gt;:    mov    -0x8(%rbp),%rdi
+0x0000000000400932 &lt;Derived::~Derived()+46&gt;:    callq  0x400670 &lt;_ZdlPv@plt&gt;               
+0x0000000000400937 &lt;Derived::~Derived()+51&gt;:    leaveq
+0x0000000000400938 &lt;Derived::~Derived()+52&gt;:    retq
+</code></pre>
+
+<p>实际上这个析构函数就是上面的<code>D0</code>版本，它做了一件重要的事就是<code>delete this</code>。具体的可以google gcc对析构函数的实现。</p>
+
+<p>构造函数和析构函数中根本就不会启用多态，这个是结论或者说是标准，但不是原因(真怕又有人告诉我c++ standard某section这样写的所以这就是理由)。既然反正已经看实现了，就索性看一眼编译器怎么处理这个问题：</p>
+
+<pre><code>// Base::~Base
+ 261 0000 55            pushq   %rbp
+ 262                .LCFI22:
+ 263 0001 4889E5        movq    %rsp, %rbp
+ 264                .LCFI23:
+ 265 0004 4883EC10      subq    $16, %rsp
+ 266                .LCFI24:
+ 267 0008 48897DF8      movq    %rdi, -8(%rbp)
+ 268                    .loc 1 10 0
+ 269 000c BA000000      movl    $_ZTV4Base+16, %edx
+ 269      00
+ 270 0011 488B45F8      movq    -8(%rbp), %rax
+ 271 0015 488910        movq    %rdx, (%rax)
+ 272                    .loc 1 11 0
+ 273 0018 BF000000      movl    $.LC4, %edi
+ 273      00
+ 274 001d E8000000      call    puts
+ 274      00
+ 275                    .loc 1 12 0
+ 276 0022 488B7DF8      movq    -8(%rbp), %rdi
+ 277 0026 E8000000      call    _ZN4Base7ReleaseEv  # 直接call绝对地址
+</code></pre>
+
+<p>构造函数一样：</p>
+
+<pre><code>  94 0000 55            pushq   %rbp
+  95                .LCFI9:
+  96 0001 4889E5        movq    %rsp, %rbp
+  97                .LCFI10:
+  98 0004 4883EC10      subq    $16, %rsp
+  99                .LCFI11:
+ 100 0008 48897DF8      movq    %rdi, -8(%rbp)
+ 101                .LBB2:
+ 102                    .loc 1 5 0
+ 103 000c B8000000      movl    $_ZTV4Base+16, %eax
+ 103      00
+ 104 0011 488B55F8      movq    -8(%rbp), %rdx
+ 105 0015 488902        movq    %rax, (%rdx)
+ 106                    .loc 1 6 0
+ 107 0018 488B7DF8      movq    -8(%rbp), %rdi
+ 108 001c E8000000      call    _ZN4Base4InitEv  # 直接call地址
+</code></pre>
+
+<p><em>END</em></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[C/C++中手动获取调用堆栈]]></title>
@@ -688,277 +927,6 @@ call @ILT+1345(__RTC_CheckEsp) (0B01546h) ; 检查堆栈是否平衡
 <p>而在<code>TargetOptions</code>的<code>Delete</code>函数中，进行了<code>--ref_cnt</code>，这个变量是<code>TargetOptions</code>的第一个成员，它的减1，也就导致了堆栈内容的改变。</p>
 
 <p>至此，整个来龙去脉算是摸清。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[分布式程序开发平台ICE概览]]></title>
-    <link href="http://codemacro.com/2013/02/15/ice-overview/"/>
-    <updated>2013-02-15T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2013/02/15/ice-overview</id>
-    <content type="html"><![CDATA[<p>本文基于ICE Manual及相关文档就ICE的一些主要特性做一个概览，它不是一个tutorial，不是一个guid，更不是manual。</p>
-
-<h2>概览</h2>
-
-<p><a href="http://www.zeroc.com/index.html">ICE</a>，Internet Communications Engine，按照官方介绍，是一个支持C++、.Net、Java、Python、Objective-C、Ruby、PHP及ActionScript等语言的分布式程序开发平台。按照我的理解，简单来说它是一个核心功能包装RPC的库。要把这个RPC包装得漂亮，自然而然，对于使用者而言，调用一个远端的接口和调用一个本地的接口没有什么区别，例如：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">Object</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="n">xxx</span>
-    <span class="n">obj</span><span class="o">-&gt;</span><span class="n">sayHello</span><span class="p">();</span></code></pre></div></p>
-
-<p>ICE包装<code>sayHello</code>接口，当应用层调用该接口时，ICE发送调用请求到远端服务器，接收返回结果并返回给应用层。ICE在接口提供方面，做到了这一点。</p>
-
-<p>以下，我将逐个给出ICE中的一些工具、组件、特性说明，以展示它作为一个分布式程序开发平台所拥有的能力。到目前为止，所有这些信息均来自于ICE相关文档，总结出来权当为自己服务。</p>
-
-<!-- more -->
-
-
-<h2>Slice</h2>
-
-<p>Slice(Specification Language for Ice)是ICE定义的一种中间语言，其语法类似于C++。对于一个RPC过程而言，例如上面调用远端的<code>sayHello</code>接口，其主要涉及到调用这个接口的参数和返回值传递，当然接口本身的传递不在话下，ICE为了包装这个过程，其使用了这样一种方式：使用者使用Slice语言描述RPC过程中调用的接口，例如该接口属于哪个类，该接口有哪些参数哪些返回值；然后使用者使用ICE提供的Slice编译器（实际上是一个语言翻译程序）将Slice源码翻译成目标语言。而这个目标语言，则是使用者开发应用程序的开发语言，即上文提到的C++、.Net、Java等。</p>
-
-<p>这些翻译出来的目标代码，就封装了<code>sayHello</code>底层实现的一切细节。当然事情没有这么简单，但我们目前只需关注简单的这一部分。ICE之所以支持那么多种开发语言，正是Slice立下的功劳。Slice语言本身的语言特性，实际上受限于目标语言的语言特性，例如Slice支持异常，恰是因为Slice转换的所有语言都包含异常这个语法特性。</p>
-
-<p>Slice还有一个重要特性，在于一份Slice源码被翻译出来的目标代码，一般情况是被服务器和客户端同时使用。</p>
-
-<h2>开发步骤</h2>
-
-<p>使用ICE开发应用程序，其步骤遵循：</p>
-
-<ol>
-<li>编写Slice，说明整个RPC中涉及到的接口调用，编译它</li>
-<li>基于Slice目标代码和ICE库编写Server</li>
-<li>基于Slice目标带啊和ICE库编写Client</li>
-</ol>
-
-
-<h2>一个例子</h2>
-
-<p>有必要展示一个例子，以获得使用ICE开发应用程序的感性认识。这个例子是一个简单的hello world程序，客户端让服务器打印一个字符串。</p>
-
-<ul>
-<li>编写Slice</li>
-</ul>
-
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// Printer.ice，Slice源码后缀为ice</span>
-    <span class="n">module</span> <span class="n">Demo</span> <span class="p">{</span>
-        <span class="n">interface</span> <span class="n">Printer</span> <span class="p">{</span>
-            <span class="kt">void</span> <span class="n">printString</span><span class="p">(</span><span class="n">string</span> <span class="n">s</span><span class="p">);</span>
-        <span class="p">};</span>
-    <span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
-
-<p>使用ICE提供的程序翻译为C++代码：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="err">$</span> <span class="n">slice2cpp</span> <span class="n">Printer</span><span class="p">.</span><span class="n">ice</span></code></pre></div></p>
-
-<p>得到Printer.cpp和Printer.h。Slice翻译出来的目标代码除了封装RPC交互的一些细节外，最重要的，因为本身Slice文件其实是定义接口，但接口的实现，则需要应用层来做。</p>
-
-<ul>
-<li>服务器端使用生成的Printer.cpp/.h，并实现Printer接口</li>
-</ul>
-
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// 翻译出来的Printer.h中有对应于Slice中定义的Printer类，及需要实现的printString接口</span>
-    <span class="k">class</span> <span class="nc">PrinterI</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Printer</span> <span class="p">{</span>
-    <span class="k">public</span><span class="o">:</span>
-        <span class="k">virtual</span> <span class="kt">void</span> <span class="n">printString</span><span class="p">(</span><span class="k">const</span> <span class="n">string</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">s</span><span class="p">,</span> <span class="k">const</span> <span class="n">Ice</span><span class="o">::</span><span class="n">Current</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;)</span> <span class="p">{</span>
-            <span class="n">count</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">s</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">endl</span><span class="p">;</span>
-        <span class="p">}</span>
-    <span class="p">};</span></code></pre></div></p>
-
-<ul>
-<li>客户端使用生成的Printer.cpp/.h，通过ICE获得一个<code>Printer</code>对象，然后调用其<code>printString</code>接口</li>
-</ul>
-
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// don&amp;rsquo;t care about this</span>
-    <span class="n">PrinterPrx</span> <span class="n">printer</span> <span class="o">=</span> <span class="n">PrinterPrx</span><span class="o">::</span><span class="n">checkedCast</span><span class="p">(</span><span class="n">base</span><span class="p">);</span>
-    <span class="n">printer</span><span class="o">-&gt;</span><span class="n">printString</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Hello</span> <span class="n">World</span><span class="o">!&amp;</span><span class="n">rdquo</span><span class="p">;);</span></code></pre></div></p>
-
-<p>使用ICE开发应用程序，整体过程即为以上展示。</p>
-
-<h2>概念</h2>
-
-<p>ICE包含了很多概念，作为一个开发平台而言，有其专有术语一点不过分，熟悉这些概念可以更容易学习ICE。这里罗列一些关键概念。</p>
-
-<h3>服务器端和客户端</h3>
-
-<p>ICE中的服务器端和客户端和一般网络程序中的概念不太一样。在若干个交互的网络程序中，我们都很好理解这样一种现象：某个程序有多个角色，它可能是作为A程序的服务器端，也可能是作为B程序的客户端。ICE中的服务器和客户端角色更容易变换。</p>
-
-<p>以Printer例子为例，如果我们的<code>printString</code>接口有一个回调函数参数（这在ICE中很常见），服务器实现<code>printString</code>时，当其打印出字符串后，需通过该回调函数通知客户端。这样的回调机制在ICE的实现中，会创建一个新的网络连接，而此时，这个原有的服务器端就变成了原有客户端的客户。当然，你也可以避免这样的情况出现。</p>
-
-<h3>ICE Objects/Object Adapter/Facet</h3>
-
-<p>对于<code>Printer</code>例子，一个<code>Printer</code>对象可以被看作是一个ICE Objects。Object可以说是服务器端提供给客户端的接口。所以在服务器端通常会创建出很多个Object。服务器端使用Object Adapter对象去保存这些Object。例如，一个典型的ICE对象在初始化时可能包含以下代码：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// 创建一个Object Adapter</span>
-    <span class="n">Ice</span><span class="o">::</span><span class="n">ObjectAdapterPtr</span> <span class="n">adapter</span> <span class="o">=</span> <span class="n">communicator</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">createObjectAdapter</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Hello</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
-    <span class="c1">// 创建一个Object，形如Printer</span>
-    <span class="n">Demo</span><span class="o">::</span><span class="n">HelloPtr</span> <span class="n">hello</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HelloI</span><span class="p">;</span>
-    <span class="c1">// 将Object加入到Object Adapter</span>
-    <span class="n">adapter</span><span class="o">-&gt;</span><span class="n">add</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="n">communicator</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">stringToIdentity</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">hello</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;));</span></code></pre></div></p>
-
-<p>Facet是Object的一部分，或者说Object是Facet的一个集合，摘Ice manual中的一句话：</p>
-
-<blockquote><p>An Ice object is actually a collection of sub-objects known as facets whose types are not necessarily related.</p></blockquote>
-
-<h3>Proxy</h3>
-
-<p>Proxy是ICE客户端里的概念。客户端通过Proxy访问服务器端上的Object，通过Proxy调用服务器端Object上提供的接口。在客户端上一般有类似以下代码：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">Ice</span><span class="o">::</span><span class="n">ObjectPrx</span> <span class="n">base</span> <span class="o">=</span> <span class="n">ic</span><span class="o">-&gt;</span><span class="n">stringToProxy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="nl">SimplePrinter</span><span class="p">:</span><span class="k">default</span> <span class="o">-</span><span class="n">p</span> <span class="mi">10000</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
-    <span class="c1">// Printer Proxy</span>
-    <span class="n">PrinterPrx</span> <span class="n">printer</span> <span class="o">=</span> <span class="n">PrinterPrx</span><span class="o">::</span><span class="n">checkedCast</span><span class="p">(</span><span class="n">base</span><span class="p">);</span>
-    <span class="n">printer</span><span class="o">-&gt;</span><span class="n">printString</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Hello</span> <span class="n">World</span><span class="o">!&amp;</span><span class="n">rdquo</span><span class="p">;);</span></code></pre></div></p>
-
-<p>Proxy又分为几种，包括：</p>
-
-<h4>Direct Proxy</h4>
-
-<p>Direct Proxy，这里的<code>direct</code>意指这个proxy访问的object时，是否携带了地址(EndPoint)信息，例如上面例子中<code>SimplePrinter:default -p 10000</code>就是一个地址。</p>
-
-<h4>Indirect Proxy</h4>
-
-<p>Indirect Proxy相对Direct Proxy而言，其没有具体的地址，仅仅是一个符号。通常包含两种形式：</p>
-
-<ul>
-<li>SimplePrinter</li>
-<li>SimplePrinter@PrinterAdapter</li>
-</ul>
-
-
-<p>为了获取真正的地址，客户端需要一个定位服务（location service）来获取这个符号对应的地址。ICE中提供了一些默认的服务程序，IceGrid就是其中之一，而IceGrid的作用就包括定位具体的地址，即翻译符号地址到具体的地址。</p>
-
-<p>这里Indirect Proxy可以看作一个域名，而Direct Proxy可以看作是IP地址。Indirect Proxy使用时，就需要借助DNS翻译得到域名对应的IP地址。</p>
-
-<h4>Fixed Proxy</h4>
-
-<p>由于Proxy是用于与服务器端的Object通信的，客户端借助Proxy来访问服务器端的Object，所以Proxy通常都会对应一个真实的网络连接。在ICE中，一般的Proxy于网络连接(Connection)实际上是没有太大关联的。一个Proxy可以没有Connection，也可以在建立这个Connection后又断开之。但是，ICE提供了一种特殊的Proxy，Fixed Proxy，这种Proxy紧密地与一个Connection绑定在一起，其生命周期被强制关联起来。</p>
-
-<p>关于Fixed Proxy可以参看ICE Manual <a href="http://doc.zeroc.com/display/Doc/Connection+Management+in+Ice">Connection Management</a>。</p>
-
-<h3>其他</h3>
-
-<ul>
-<li>AMI</li>
-</ul>
-
-
-<p>Asynchronous Method Invocation，对于客户端而言，用于表示某个服务器端接口是异步操作，需在Slice中使用metadata来修饰这个接口，例如：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="p">[</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">ami</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;]</span>  <span class="kt">void</span> <span class="n">sayHello</span><span class="p">(</span><span class="kt">int</span> <span class="n">delay</span><span class="p">)</span></code></pre></div></p>
-
-<ul>
-<li>AMD</li>
-</ul>
-
-
-<p>Asynchronous method dispatch，这个针对于服务器端，同样表示这个接口是异步操作，需在Slice中使用metadata来修饰这个接口：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="p">[</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">ami</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">amd</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;]</span>  <span class="kt">void</span> <span class="n">sayHello</span><span class="p">(</span><span class="kt">int</span> <span class="n">delay</span><span class="p">)</span></code></pre></div></p>
-
-<p>通常对于这种异步接口而言，都需要使用Slice metadata <code>ami</code>和<code>amd</code>同时修饰。</p>
-
-<ul>
-<li>idempotent</li>
-</ul>
-
-
-<p>idempotent是Slice中的概念，同const一样用于修饰某个接口的特性。idempotent表示该接口无论调用多少次，其执行结果都是相同的，例如一般的<code>get</code>类接口。</p>
-
-<ul>
-<li>batched invocation</li>
-</ul>
-
-
-<p>客户端调用服务器端的接口这个动作称为<code>invocation</code>。就像网络层的数据缓存一样，ICE对于接口调用也可能暂时缓存，当多个提交请求缓存起来后，然后调用刷新接口全部刷新到服务器端，则称为<code>batched invocation</code>。</p>
-
-<h2>服务</h2>
-
-<p>ICE除了提供一个库之外，还提供了一些应用程序。这些应用程序本身也是一些服务器，提供了一些方便的功能方便我们开发分布式程序。</p>
-
-<h3>Freeze</h3>
-
-<p>Freeze用于将Slice对象持久化到数据库中，按照Manual里的说法，它应该是一个编译器，可以生成一些持久化操作的代码。Freeze持久化对象时使用的数据库是Berkeley DB。</p>
-
-<blockquote><p>Ice has a built-in object persistence service, known as Freeze. Freeze makes it easy to store object state in a database: you define the state stored by your objects in Slice, and the Freeze compiler generates code that stores and retrieves object state to and from a database. Freeze uses Berkeley DB as its database.</p></blockquote>
-
-<p>FreezeScript有点类似于Rails中的数据库操作工具，可用于操作持久化到数据库中的对象数据。</p>
-
-<blockquote><p>Ice also offers a tool set collectively called FreezeScript that makes it easier to maintain databases and to migrate the contents of existing databases to a new schema if the type definitions of objects change.</p></blockquote>
-
-<h3>IceBox</h3>
-
-<p>IceBox可用于管理服务器中的动态组件。这些动态组件本质上也是提供服务的ICE程序。在形式上，这些组件可以是动态连接库。</p>
-
-<blockquote><p>IceBox is a simple application server that can orchestrate the starting and stopping of a number of application components. Application components can be deployed as a dynamic library instead of as a process.</p></blockquote>
-
-<h3>IceGrid</h3>
-
-<p>IceGrid相当于一个DNS解析服务，可以让服务器不用配置EndPoint，客户端也不用指定服务器的EndPoint，以方便大量的服务器部署。在一般的应用中，我们需要为ICE服务器指定绑定的网络地址（IP和端口），同时也需要为客户端指定服务器端的地址信息。当服务增加到一定数量时，就会存在管理上和配置上的麻烦。而IceGrid则是用于避免这种麻烦，将服务器端和客户端上的地址信息通过一个符号代替，就像我们把Internet上的服务器使用域名来标识一样。</p>
-
-<p>但IceGrid的作用不仅如此，通过配合部署一系列称为IceGrid Node的程序，IceGrid还可以管理各个服务器的启动、关闭、宕机重启等，其中甚至包括负载均衡。</p>
-
-<blockquote><p>IceGrid provides a facility to activate servers on demand, when a client first invokes an operation.
-Server activation is taken care of by IceGrid nodes. You must run an IceGrid node on each machine on which you want IceGrid to start servers on demand.</p></blockquote>
-
-<p>简要介绍可以参看ICE Manual <a href="http://doc.zeroc.com/display/Doc/Teach+Yourself+IceGrid+in+10+Minutes">Teach Yourself IceGrid in 10 minutes</a></p>
-
-<h3>Glacier2</h3>
-
-<blockquote><p>Glacier2 is a lightweight firewall traversal solution for Ice applications.</p></blockquote>
-
-<p>按我的理解，Glacier2就像一个网关服务器。它被部署在服务器和客户端之间，我们的服务器群部署在内网，外网不可访问，然后通过Glacier2，外部网络的客户端就可以访问内网的服务器群提供的服务。</p>
-
-<p>对于服务器的开发而言，使用Glacier2，服务器端不需要做任何改动。客户端需要配置Glacier2服务的地址信息，也需要配置要使用服务器的地址信息。Glacier2通过客户端欲访问的服务器地址，在内网定位到真实的服务器，并转发请求提供服务。</p>
-
-<p>Glacier2支持验证客户端，从这一点看来，它又有点像一个验证服务器。通过验证客户端，以提供被正确授权的客户端以完整服务。</p>
-
-<p>Glacier2的工作过程可以描述为：</p>
-
-<blockquote><p>When a client invokes an operation on a routed proxy, the client connects to one of Glacier2&rsquo;s client endpoints and sends the request as if Glacier2 is the server. Glacier2 then establishes an outgoing connection to the client&rsquo;s intended server in the private network, forwards the request to that server, and returns the reply (if any) to the client. Glacier2 is essentially acting as a local client on behalf of the remote client.</p></blockquote>
-
-<p>一个Glacier2可服务于若干个客户端和服务器。</p>
-
-<p>详细参看ICE Manual <a href="http://doc.zeroc.com/display/Ice/Glacier2">Glacier2</a></p>
-
-<h2>管理</h2>
-
-<p>ICE服务器可以提供给外部一定的管理功能，包括：关闭服务器、读取服务器配置。这个功能是通过操作Ice.Admin这个Ice Object来实现的。这个Object包含两个Facet：Process和Property，分别对应于关闭服务器和读取服务器配置功能。</p>
-
-<p>对于需要管理服务器的客户端而言，可以大致通过如下代码来完成：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// 可以通过communicator来获取这个admin object</span>
-    <span class="n">Ice</span><span class="o">::</span><span class="n">ObjectPrx</span> <span class="n">adminObj</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;;</span>
-    <span class="c1">// 获取admin object里的property facet</span>
-    <span class="n">Ice</span><span class="o">::</span><span class="n">PropertiesAdminPrx</span> <span class="n">propAdmin</span> <span class="o">=</span> <span class="n">Ice</span><span class="o">::</span><span class="n">PropertiesAdminPrx</span><span class="o">::</span><span class="n">checkedCast</span><span class="p">(</span><span class="n">adminObj</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Properties</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
-    <span class="n">Ice</span><span class="o">::</span><span class="n">PropertyDict</span> <span class="n">props</span> <span class="o">=</span> <span class="n">propAdmin</span><span class="o">-&gt;</span><span class="n">getPropertiesForPrefix</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span></code></pre></div></p>
-
-<p>详细参看ICE Manual <a href="http://doc.zeroc.com/display/Ice/Administrative+Facility">Administrative Facility</a></p>
-
-<h2>连接管理</h2>
-
-<p>前已述及，ICE中的网络连接隐藏于Proxy之下。Proxy有两个接口可以获取这个连接对象：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">ice_getConnection</span>
-    <span class="n">ice_getCachedConnection</span></code></pre></div></p>
-
-<p>例如：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">HelloPrx</span> <span class="n">hello</span> <span class="o">=</span> <span class="n">HelloPrx</span><span class="o">::</span><span class="n">uncheckedCast</span><span class="p">(</span><span class="n">communicator</span><span class="o">-&gt;</span><span class="n">stringToProxy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="nl">hello</span><span class="p">:</span><span class="n">tcp</span> <span class="o">-</span><span class="n">h</span> <span class="n">remote</span><span class="p">.</span><span class="n">host</span><span class="p">.</span><span class="n">com</span> <span class="o">-</span><span class="n">p</span> <span class="mi">10000</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;));</span>
-    <span class="n">ConnectionPtr</span> <span class="n">conn</span> <span class="o">=</span> <span class="n">hello</span><span class="o">-&gt;</span><span class="n">ice_getConnection</span><span class="p">();</span></code></pre></div></p>
-
-<p>ICE隐藏了网络连接的细节。当ICE发现需要建立连接时才会去建立，例如以上例子中当获得一个Proxy时（这里是HelloPrx），ICE并不建立网络连接，当某个时刻通过该Proxy调用服务器端的某个接口时，ICE发现对应的网络连接没有建立，则发起网络连接。</p>
-
-<p>以上例子在获取Proxy时，使用了<code>uncheckCast</code>，关于<code>checkedCast</code>和<code>uncheckedCast</code>，也影响着网络连接的建立逻辑：</p>
-
-<blockquote><p>On the other hand, if the code were to use a checkedCast instead, then connection establishment would take place as part of the checkedCast, because a checked cast requires a remote call to determine whether the target object supports the specified interface.</p></blockquote>
-
-<p>关于连接管理，ICE使用了一个称为ACM的机制，即Active connection management。当某个连接非active一段时间后，ICE就会主动关闭此连接。应用层当然可以控制这个行为。</p>
-
-<p>详细参看ICE Manual <a href="http://doc.zeroc.com/display/Doc/Connection+Management+in+Ice">Connection Management</a></p>
 ]]></content>
   </entry>
   
