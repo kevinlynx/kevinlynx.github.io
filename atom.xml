@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-09-06T03:44:48+08:00</updated>
+  <updated>2014-09-09T21:14:29+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,210 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[理解git常用命令原理]]></title>
+    <link href="http://codemacro.com/2014/09/09/understand-git/"/>
+    <updated>2014-09-09T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2014/09/09/understand-git</id>
+    <content type="html"><![CDATA[<p>git不同于类似SVN这种版本管理系统，虽然熟悉常用的操作就可以满足大部分需求，但为了在遇到麻烦时不至于靠蛮力去尝试，了解git的原理还是很有必要。</p>
+
+<h2>文件</h2>
+
+<p>通过git管理的文件版本信息全部存放在根目录<code>.git</code>下，稍微看下：</p>
+
+<pre><code>$ ls .git
+COMMIT_EDITMSG  HEAD       branches  description  index  logs     packed-refs
+FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
+</code></pre>
+
+<p>git除了提供给我们平时常用的一些命令之外，还有很多底层命令，可以用于查看以上部分文件表示的东西。</p>
+
+<h2>三个区域/三类对象</h2>
+
+<p>理解git里的三个区域概念非常重要。git里很多常用的命令都是围绕着这三个区域来做的。它们分别为：</p>
+
+<ul>
+<li>working directory，也就是你所操作的那些文件</li>
+<li>history，你所提交的所有记录，文件历史内容等等。<strong>git是个分布式版本管理系统，在你本地有项目的所有历史提交记录；文件历史记录；提交日志等等。</strong></li>
+<li>stage(index)，暂存区域，本质上是个文件，也就是<code>.git/index</code></li>
+</ul>
+
+
+<!-- more -->
+
+
+<p>git中还有三类常用对象（实际不止三种），理解这三类对象也很重要。分别为：</p>
+
+<ul>
+<li>blob，用于表示一个文件</li>
+<li>tree，用于表示一个目录，索引到若干文件或子目录</li>
+<li>commit，用于表示一次提交(commit)</li>
+</ul>
+
+
+<p>所有对象都会以文件的形式保存在<code>.git/objects</code>目录，一个对象一个文件。</p>
+
+<p>接下来把上面所有的内容关联起来。做以下操作：</p>
+
+<pre><code>$ mkdir test &amp;&amp; cd test
+$ git init
+$ ls -a .git/objects             # 没有文件
+.  ..  info  pack
+$ touch readme                   # working directory里增加了一个readme文件
+$ git add readme                 # 添加一个文件到stage区域
+$ git ls-files --stage           # 这个命令可以查看stage区域里的内容，可以看到有readme
+100644 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 0       readme
+$ ls -a .git/objects             # 同时.git/objects增加了一个e6的目录
+.  ..  e6  info  pack
+$ ls -a .git/objects/e6/         # e6目录下增加了一个文件
+.  ..  9de29bb2d1d6434b8b29ae775ad8c2e48c5391
+</code></pre>
+
+<p>上面的操作展示了git中三个区域三个对象的部分关联关系。git中每个对象都以一个40个字符长度的SHA-1哈希值为标识，以这40个字符的前2个字符作为文件夹，以后38个字符为文件名。</p>
+
+<p>基于以上继续操作：</p>
+
+<pre><code>$ git commit -m 'first commit'   # commit会将stage里标识的文件提交到history区域
+[master (root-commit) 8bf6969] first commit
+ 0 files changed, 0 insertions(+), 0 deletions(-)
+ create mode 100644 readme
+
+$ ls -a .git/objects             # 增加了2个文件，也就是2个对象
+.  ..  8b  e6  e8  info  pack
+$ git ls-files --stage           # stage仅表示当前被版本管理的文件，所以内容不变
+100644 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 0       readme
+
+# git cat-file 命令可以用于查看.git/objects下的文件，意即可用于查看对象
+$ git cat-file -t e69de29bb2d1d6434b8b29ae775ad8c2e48c5391      # 这个是之前git add readme产生的文件对象 blob
+blob
+
+# 同样我们来查看git commit -m后新增的两个对象
+
+$ ls .git/objects/8b/
+f696927c17526eb8f0c6dae8badb968a001ed0
+$ git cat-file -t 8bf696927c17526eb8f0c6dae8badb968a001ed0  # 记得带上8b这个文件夹名，才算一个完整的对象ID。这是一个commit对象
+commit
+$ ls .git/objects/e8
+0ad49ace82167de62e498622d70377d913c79e
+$ git cat-file -t e80ad49ace82167de62e498622d70377d913c79e  # tree对象
+tree
+</code></pre>
+
+<p>区域和对象如何交互的可以用下图描述：</p>
+
+<p><img src="http://codemacro.com/assets/res/git-objects.png" alt="" /></p>
+
+<p>通过<code>git cat-file -p</code>可以查看对象的更多描述，<code>git cat-file -t</code>仅获取对象的类型。做以下操作获得更深的认识：</p>
+
+<pre><code># 这个commit对象记录了提交者的信息，还包括指向的tree对象
+$  git cat-file -p 8bf696927c17526eb8f0c6dae8badb968a001ed0
+tree e80ad49ace82167de62e498622d70377d913c79e
+author Kevin Lynx &lt;kevinlynx@gmail.com&gt; 1410090424 +0800
+committer Kevin Lynx &lt;kevinlynx@gmail.com&gt; 1410090424 +0800
+
+first commit
+
+# 查看tree对象可以看出tree指向的blob对象 
+$ git cat-file -p e80ad49ace82167de62e498622d70377d913c79e
+100644 blob e69de29bb2d1d6434b8b29ae775ad8c2e48c5391    readme
+</code></pre>
+
+<p>即使是已经被版本管理的文件，发生改动后（正常改动或合并）都使用<code>git add</code>来重新mark它。创建第二次提交进一步认识：</p>
+
+<pre><code>$ echo 'hello git' &gt; readme
+$ touch install
+$ git ls-files --stage       # 不使用git add，暂存区域内容没变
+100644 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 0       readme
+
+# 此时stage里内容未变，提示no changes added to commit
+$ git commit
+# On branch master
+# Changed but not updated:
+#   (use "git add &lt;file&gt;..." to update what will be committed)
+#   (use "git checkout -- &lt;file&gt;..." to discard changes in working directory)
+#
+#       modified:   readme
+#
+# Untracked files:
+#   (use "git add &lt;file&gt;..." to include in what will be committed)
+#
+#       install
+no changes added to commit (use "git add" and/or "git commit -a")
+
+$ git add readme
+$ ls .git/objects/  # git add之后.git/objects下新增文件
+8b  8d  e6  e8  info  pack
+$ ls .git/objects/8d/
+0e41234f24b6da002d962a26c2495ea16a425f
+$ git cat-file -p 8d0e41234f24b6da002d962a26c2495ea16a425f # 查看该新增对象
+hello git
+
+# 这个时候还可以在提交前撤销git add readme
+$ git reset readme  # 从history到stage
+Unstaged changes after reset:
+M       readme
+$ cat readme
+hello git
+$ git checkout readme # 从stage到working directory
+$ cat readme # 没有内容，回到第一个版本
+
+$ git add install # 添加新创建的文件
+$ git ls-files --stage # stage中的内容是最新的readme和新添加的install
+100644 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 0       install
+100644 8d0e41234f24b6da002d962a26c2495ea16a425f 0       readme
+$ ls .git/objects/
+8b  8d  e6  e8  info  pack
+</code></pre>
+
+<p>以上，发现一个有趣的现象：新加的<code>install</code>文件的SHA-1哈希值和之前的<code>readme</code>相同，这是因为这2个文件都是空的，内容相同。继续：</p>
+
+<pre><code>$ git commit -m 'second commit'
+$ ls .git/objects/  # 提交后新增2个对象
+45  72  8b  8d  e6  e8  info  pack
+
+$ ls .git/objects/72/
+b94e949c5fca6092cc74c751a7bb35ee71c283
+$ git cat-file -p 72b94e949c5fca6092cc74c751a7bb35ee71c283
+tree 45cf0bd049d7eea4558b14f33a894db27c7c1130                    # 新创建的tree对象
+parent 8bf696927c17526eb8f0c6dae8badb968a001ed0                  # commit对象有parent，正是上一次提交
+author Kevin Lynx &lt;kevinlynx@gmail.com&gt; 1410094456 +0800
+committer Kevin Lynx &lt;kevinlynx@gmail.com&gt; 1410094456 +0800
+
+second commit
+# 新创建的tree对象指向了2个文件
+$ git cat-file -p 45cf0bd049d7eea4558b14f33a894db27c7c1130
+100644 blob e69de29bb2d1d6434b8b29ae775ad8c2e48c5391    install
+100644 blob 8d0e41234f24b6da002d962a26c2495ea16a425f    readme
+</code></pre>
+
+<p>需要注意，有时候我们使用<code>git commit -a</code>，它会直接将已经加入版本管理的文件一起提交，从而跳过了<code>git add</code>这个过程。同git很多操作一样，它只是一个快捷操作。</p>
+
+<h2>总结</h2>
+
+<p>从上面的内容其实已经可以看出git的优势所在，它可以完全不需要服务器就完成一个版本控制系统的所有事情。在.git文件中它记录了所有的文件的所有历史提交，记录了每一次提交的信息。</p>
+
+<p>git的常用操作中还会涉及到分支、远端仓库等，空了再写。</p>
+
+<h2>参考文档</h2>
+
+<ul>
+<li><a href="http://www.nowamagic.net/academy/detail/48160210">Git的思想和基本工作原理</a></li>
+<li><a href="http://marklodato.github.io/visual-git-guide/index-zh-cn.html?no-svg">图解Git</a></li>
+<li><a href="http://blog.jobbole.com/26209/">Git详解之九：Git内部原理</a></li>
+<li><a href="http://www.oschina.net/translate/git-fetch-and-merge">Git 少用 Pull 多用 Fetch 和 Merge</a></li>
+</ul>
+
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2014/09/09/understand-git/'>http://codemacro.com/2014/09/09/understand-git/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[C++构造/析构函数中的多态(二)]]></title>
@@ -3366,207 +3570,6 @@ Obj-&gt;func(args)
 <p class='post-footer'>
             原文地址：
             <a href='http://codemacro.com/2013/05/08/thought-about-erlang/'>http://codemacro.com/2013/05/08/thought-about-erlang/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[erlang和RabbitMQ学习总结]]></title>
-    <link href="http://codemacro.com/2013/04/11/rabbitmq-erlang/"/>
-    <updated>2013-04-11T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2013/04/11/rabbitmq-erlang</id>
-    <content type="html"><![CDATA[<h2>AMQP和RabbitMQ概述</h2>
-
-<p><a href="http://www.amqp.org/">AMQP</a>(Advanced Message Queue Protocol)定义了一种消息系统规范。这个规范描述了在一个分布式的系统中各个子系统如何通过消息交互。而<a href="http://www.rabbitmq.com/">RabbitMQ</a>则是AMQP的一种基于erlang的实现。</p>
-
-<p>AMQP将分布式系统中各个子系统隔离开来，子系统之间不再有依赖。子系统仅依赖于消息。子系统不关心消息的发送者，也不关心消息的接受者。</p>
-
-<p>AMQP中有一些概念，用于定义与应用层的交互。这些概念包括：message、queue、exchange、channel, connection, broker、vhost。</p>
-
-<p><em>注：到目前为止我并没有打算使用AMQP，所以没有做更深入的学习，仅为了找个机会写写erlang代码，以下信息仅供参考。</em></p>
-
-<ul>
-<li>message，即消息，简单来说就是应用层需要发送的数据</li>
-<li>queue，即队列，用于存储消息</li>
-<li>exchange，有翻译为“路由”，它用于投递消息，<strong>应用程序在发送消息时并不是指定消息被发送到哪个队列，而是将消息投递给路由，由路由投递到队列</strong></li>
-<li>channel，几乎所有操作都在channel中进行，有点类似一个沟通通道</li>
-<li>connection，应用程序与broker的网络连接</li>
-<li>broker，可简单理解为实现AMQP的服务，例如RabbitMQ服务</li>
-</ul>
-
-
-<p>关于AMQP可以通过一篇很有名的文章了解更多：<a href="http://blog.ftofficer.com/2010/03/translation-rabbitmq-python-rabbits-and-warrens/">RabbitMQ+Python入门经典 兔子和兔子窝</a></p>
-
-<p>RabbitMQ的运行需要erlang的支持，erlang和RabbitMQ在windows下都可以直接使用安装程序，非常简单。RabbitMQ还支持网页端的管理，这需要开启一些RabbitMQ的插件，可以参考<a href="http://www.rabbitmq.com/management.html">官方文档</a>。</p>
-
-<p>RabbitMQ本质上其实是一个服务器，与这个服务器做交互则是通过AMQP定义的协议，应用可以使用一个实现了AMQP协议的库来与服务器交互。这里我使用erlang的一个客户端，对应着RabbitMQ的tutorial，使用erlang实现了一遍。基于这个过程我将一些关键实现罗列出来以供记忆：</p>
-
-<!-- more -->
-
-
-<h2>主要功能使用</h2>
-
-<p>关于RabbitMQ erlang client的使用说明可以参考<a href="http://www.rabbitmq.com/erlang-client-user-guide.html">官方文档</a>。这个client library下载下来后是两个ez文件，其实就是zip文件，本身是erlang支持的库打包格式，但据说这个feature还不成熟。总之我是直接解压，然后在环境变量中指定<code>ERL_LIBS</code>到解压目录。使用时使用<code>include_lib</code>包含库文件（类似C语言里的头文件）：</p>
-
-<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="p">-</span><span class="ni">include_lib</span><span class="p">(</span><span class="s">&quot;amqp_client/include/amqp_client.hrl&quot;</span><span class="p">).</span></code></pre></div>
-
-
-<h3>Connection/Channel</h3>
-
-<p>对于连接到本地的RabbitMQ服务：</p>
-
-<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">Connection</span><span class="p">}</span> <span class="o">=</span> <span class="nn">amqp_connection</span><span class="p">:</span><span class="nf">start</span><span class="p">(</span><span class="nl">#amqp_params_network</span><span class="p">{}),</span>
-    <span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">Channel</span><span class="p">}</span> <span class="o">=</span> <span class="nn">amqp_connection</span><span class="p">:</span><span class="nf">open_channel</span><span class="p">(</span><span class="nv">Connection</span><span class="p">),</span></code></pre></div>
-
-
-<h3>创建Queue</h3>
-
-<p>每个Queue都有名字，这个名字可以人为指定，也可以由系统分配。Queue创建后如果不显示删除，断开网络连接是不会自动删除这个Queue的，这个可以在RabbitMQ的web管理端看到。</p>
-
-<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nl">#&#39;queue.declare_ok&#39;</span><span class="p">{</span><span class="n">queue</span> <span class="o">=</span> <span class="nv">Q</span><span class="p">}</span>
-        <span class="o">=</span> <span class="nn">amqp_channel</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Channel</span><span class="p">,</span> <span class="nl">#&#39;queue.declare&#39;</span><span class="p">{</span><span class="n">queue</span> <span class="o">=</span> <span class="o">&lt;&lt;</span><span class="s">&quot;rpc_queue&quot;</span><span class="o">&gt;&gt;</span><span class="p">}),</span></code></pre></div>
-
-
-<p>但也可以指定Queue会在程序退出后被自动删除，需要指定<code>exclusive</code>参数：</p>
-
-<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nv">QDecl</span> <span class="o">=</span> <span class="nl">#&#39;queue.declare&#39;</span><span class="p">{</span><span class="n">queue</span> <span class="o">=</span> <span class="o">&lt;&lt;&gt;&gt;</span><span class="p">,</span> <span class="n">exclusive</span> <span class="o">=</span> <span class="n">true</span><span class="p">},</span>
-    <span class="nl">#&#39;queue.declare_ok&#39;</span><span class="p">{</span><span class="n">queue</span> <span class="o">=</span> <span class="nv">Q</span><span class="p">}</span> <span class="o">=</span> <span class="nn">amqp_channel</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Channel</span><span class="p">,</span> <span class="nv">QDecl</span><span class="p">),</span></code></pre></div>
-
-
-<p>上例中queue的名字未指定，由系统分配。</p>
-
-<h3>发送消息</h3>
-
-<p>一般情况下，消息其实是发送给exchange的：</p>
-
-<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nv">Payload</span> <span class="o">=</span> <span class="o">&lt;&lt;</span><span class="s">&quot;hello&quot;</span><span class="o">&gt;&gt;</span>
-    <span class="nv">Publish</span> <span class="o">=</span> <span class="nl">#&#39;basic.publish&#39;</span><span class="p">{</span><span class="n">exchange</span> <span class="o">=</span> <span class="o">&lt;&lt;</span><span class="s">&quot;log_exchange&quot;</span><span class="o">&gt;&gt;</span><span class="p">},</span>
-    <span class="nn">amqp_channel</span><span class="p">:</span><span class="nf">cast</span><span class="p">(</span><span class="nv">Channel</span><span class="p">,</span> <span class="nv">Publish</span><span class="p">,</span> <span class="nl">#amqp_msg</span><span class="p">{</span><span class="n">payload</span> <span class="o">=</span> <span class="nv">Payload</span><span class="p">}),</span></code></pre></div>
-
-
-<p>exchange有一系列规则，决定某个消息将被投递到哪个队列。</p>
-
-<p>发送消息时也可以不指定exchange，这个时候消息的投递将依赖于<code>routing_key</code>，<code>routing_key</code>在这种场景下就对应着目标queue的名字：</p>
-
-<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nl">#&#39;queue.declare_ok&#39;</span><span class="p">{</span><span class="n">queue</span> <span class="o">=</span> <span class="nv">Q</span><span class="p">}</span>
-        <span class="o">=</span> <span class="nn">amqp_channel</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Channel</span><span class="p">,</span> <span class="nl">#&#39;queue.declare&#39;</span><span class="p">{</span><span class="n">queue</span> <span class="o">=</span> <span class="o">&lt;&lt;</span><span class="s">&quot;rpc_queue&quot;</span><span class="o">&gt;&gt;</span><span class="p">}),</span>
-    <span class="nv">Payload</span> <span class="o">=</span> <span class="o">&lt;&lt;</span><span class="s">&quot;hello&quot;</span><span class="o">&gt;&gt;</span><span class="p">,</span>
-    <span class="nv">Publish</span> <span class="o">=</span> <span class="nl">#&#39;basic.publish&#39;</span><span class="p">{</span><span class="n">exchange</span> <span class="o">=</span> <span class="o">&lt;&lt;&gt;&gt;</span><span class="p">,</span> <span class="n">routing_key</span> <span class="o">=</span> <span class="nv">Q</span><span class="p">},</span>
-    <span class="nn">amqp_channel</span><span class="p">:</span><span class="nf">cast</span><span class="p">(</span><span class="nv">Channel</span><span class="p">,</span> <span class="nv">Publish</span><span class="p">,</span> <span class="nl">#amqp_msg</span><span class="p">{</span><span class="n">payload</span> <span class="o">=</span> <span class="nv">Payload</span><span class="p">}),</span></code></pre></div>
-
-
-<h3>接收消息</h3>
-
-<p>可以通过注册一个消息consumer来完成消息的异步接收：</p>
-
-<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nv">Sub</span> <span class="o">=</span> <span class="nl">#&#39;basic.consume&#39;</span> <span class="p">{</span><span class="n">queue</span> <span class="o">=</span> <span class="nv">Q</span><span class="p">},</span>
-    <span class="nl">#&#39;basic.consume_ok&#39;</span><span class="p">{</span><span class="n">consumer_tag</span> <span class="o">=</span> <span class="nv">Tag</span><span class="p">}</span> <span class="o">=</span> <span class="nn">amqp_channel</span><span class="p">:</span><span class="nf">subscribe</span><span class="p">(</span><span class="nv">Channel</span><span class="p">,</span> <span class="nv">Sub</span><span class="p">,</span> <span class="n">self</span><span class="p">()),</span></code></pre></div>
-
-
-<p>以上注册了了一个consumer，监听变量<code>Q</code>指定的队列。当有消息到达该队列时，系统就会向consumer进程对应的mailbox投递一个通知，我们可以使用<code>receive</code>来接收该通知：</p>
-
-<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nf">loop</span><span class="p">(</span><span class="nv">Channel</span><span class="p">)</span> <span class="o">-&gt;</span>
-        <span class="k">receive</span> 
-            <span class="c">% This is the first message received (from RabbitMQ)</span>
-            <span class="nl">#&#39;basic.consume_ok&#39;</span><span class="p">{}</span> <span class="o">-&gt;</span> 
-                <span class="n">loop</span><span class="p">(</span><span class="nv">Channel</span><span class="p">);</span>
-            <span class="c">% a delivery</span>
-            <span class="p">{</span><span class="nl">#&#39;basic.deliver&#39;</span><span class="p">{</span><span class="n">delivery_tag</span> <span class="o">=</span> <span class="nv">Tag</span><span class="p">},</span> <span class="nl">#amqp_msg</span><span class="p">{</span><span class="n">payload</span> <span class="o">=</span> <span class="nv">Payload</span><span class="p">}}</span> <span class="o">-&gt;</span>
-                <span class="n">echo</span><span class="p">(</span><span class="nv">Payload</span><span class="p">),</span>
-                <span class="c">% ack the message</span>
-                <span class="nn">amqp_channel</span><span class="p">:</span><span class="nf">cast</span><span class="p">(</span><span class="nv">Channel</span><span class="p">,</span> <span class="nl">#&#39;basic.ack&#39;</span><span class="p">{</span><span class="n">delivery_tag</span> <span class="o">=</span> <span class="nv">Tag</span><span class="p">}),</span>
-                <span class="n">loop</span><span class="p">(</span><span class="nv">Channel</span><span class="p">);</span>
-        <span class="p">...</span></code></pre></div>
-
-
-<h3>绑定exchange和queue</h3>
-
-<p>绑定(binding)其实也算AMQP里的一个关键概念，它用于建立exchange和queue之间的联系，以方便exchange在收到消息后将消息投递到队列。我们不一定需要将队列和exchange绑定起来。</p>
-
-<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nv">Binding</span> <span class="o">=</span> <span class="nl">#&#39;queue.bind&#39;</span><span class="p">{</span><span class="n">queue</span> <span class="o">=</span> <span class="nv">Queue</span><span class="p">,</span> <span class="n">exchange</span> <span class="o">=</span> <span class="nv">Exchange</span><span class="p">,</span> <span class="n">routing_key</span> <span class="o">=</span> <span class="nv">RoutingKey</span><span class="p">},</span>
-    <span class="nl">#&#39;queue.bind_ok&#39;</span><span class="p">{}</span> <span class="o">=</span> <span class="nn">amqp_channel</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Channel</span><span class="p">,</span> <span class="nv">Binding</span><span class="p">)</span></code></pre></div>
-
-
-<p>在绑定的时候需要填入一个<code>routing_key</code>的参数，不同类型的exchange对该值的处理方式不一样，例如后面提到<code>fanout</code>类型的exchange时，就不需要该值。</p>
-
-<h2>更多细节</h2>
-
-<p>通过阅读<a href="http://www.rabbitmq.com/getstarted.html">RabbitMQ tutorial</a>，我们还会获得很多细节信息。例如exchange的种类、binding等。</p>
-
-<h3>exchange分类</h3>
-
-<p>exchange有四种类型，不同类型决定了其在收到消息后，该如何处理这条消息（投递规则），这四种类型为：</p>
-
-<ul>
-<li>fanout</li>
-<li>direct</li>
-<li>topic</li>
-<li>headers</li>
-</ul>
-
-
-<p><strong>fanout</strong>类型的exchange是一个广播exchange，它在收到消息后会将消息广播给所有绑定到它上面的队列。绑定(binding)用于将队列和exchange关联起来。我们可以在创建exchange的时候指定exchange的类型：</p>
-
-<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nv">Declare</span> <span class="o">=</span> <span class="nl">#&#39;exchange.declare&#39;</span><span class="p">{</span><span class="n">exchange</span> <span class="o">=</span> <span class="o">&lt;&lt;</span><span class="s">&quot;my_exchange&quot;</span><span class="o">&gt;&gt;</span><span class="p">,</span> <span class="n">type</span> <span class="o">=</span> <span class="o">&lt;&lt;</span><span class="s">&quot;fanout&quot;</span><span class="o">&gt;&gt;</span><span class="p">}</span>
-    <span class="nl">#&#39;exchange.declare_ok&#39;</span><span class="p">{}</span> <span class="o">=</span> <span class="nn">amqp_channel</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Channel</span><span class="p">,</span> <span class="nv">Declare</span><span class="p">)</span></code></pre></div>
-
-
-<p><strong>direct</strong>类型的exchange在收到消息后，会将此消息投递到发送消息时指定的<code>routing_key</code>和绑定队列到exchange上时的<code>routing_key</code>相同的队列里。可以多次绑定一个队列到一个exchange上，每次指定不同的<code>routing_key</code>，就可以接收多种<code>routing_key</code>类型的消息。<strong>注意，绑定队列时我们可以填入一个<code>routing_key</code>，发送消息时也可以指定一个<code>routing_key</code>。</strong></p>
-
-<p><strong>topic</strong>类型的exchange相当于是direct exchange的扩展，direct exchange在投递消息到队列时，是单纯的对<code>routing_key</code>做相等判定，而topic exchange则是一个<code>routing_key</code>的字符串匹配，就像正则表达式一样。在<code>routing_key</code>中可以填入一种字符串匹配符号：</p>
-
-<pre><code>* (star) can substitute for exactly one word.
-# (hash) can substitute for zero or more words.
-</code></pre>
-
-<p><em>header exchange tutorial中未提到，我也不深究</em></p>
-
-<h3>消息投递及回应</h3>
-
-<p>每个消息都可以提供回应，以使RabbitMQ确定该消息确实被收到。RabbitMQ重新投递消息仅依靠与consumer的网络连接情况，所以只要网络连接正常，consumer卡死也不会导致RabbitMQ重投消息。如下回应消息：</p>
-
-<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nn">amqp_channel</span><span class="p">:</span><span class="nf">cast</span><span class="p">(</span><span class="nv">Channel</span><span class="p">,</span> <span class="nl">#&#39;basic.ack&#39;</span><span class="p">{</span><span class="n">delivery_tag</span> <span class="o">=</span> <span class="nv">Tag</span><span class="p">}),</span></code></pre></div>
-
-
-<p>其中<code>Tag</code>来源于接收到消息时里的<code>Tag</code>。</p>
-
-<p>如果有多个consumer监听了一个队列，RabbitMQ会依次把消息投递到这些consumer上。这里的投递原则使用了<code>round robin</code>方法，也就是轮流方式。如前所述，如果某个consumer的处理逻辑耗时严重，则将导致多个consumer出现负载不均衡的情况，而RabbitMQ并不关心consumer的负载。可以通过消息回应机制来避免RabbitMQ使用这种消息数平均的投递原则：</p>
-
-<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nv">Prefetch</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="nn">amqp_channel</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Channel</span><span class="p">,</span> <span class="nl">#&#39;basic.qos&#39;</span><span class="p">{</span><span class="n">prefetch_count</span> <span class="o">=</span> <span class="nv">Prefetch</span><span class="p">})</span></code></pre></div>
-
-
-<h3>消息可靠性</h3>
-
-<p>RabbitMQ可以保证消息的可靠性，这需要设置消息和队列都为durable的：</p>
-
-<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nl">#&#39;queue.declare_ok&#39;</span><span class="p">{</span><span class="n">queue</span> <span class="o">=</span> <span class="nv">Q</span><span class="p">}</span> <span class="o">=</span> <span class="nn">amqp_channel</span><span class="p">:</span><span class="nf">call</span><span class="p">(</span><span class="nv">Channel</span><span class="p">,</span> <span class="nl">#&#39;queue.declare&#39;</span><span class="p">{</span><span class="n">queue</span> <span class="o">=</span> <span class="o">&lt;&lt;</span><span class="s">&quot;hello_queue&quot;</span><span class="o">&gt;&gt;</span><span class="p">,</span> <span class="n">durable</span> <span class="o">=</span> <span class="n">true</span><span class="p">}),</span>
-
-    <span class="nv">Payload</span> <span class="o">=</span> <span class="o">&lt;&lt;</span><span class="s">&quot;foobar&quot;</span><span class="o">&gt;&gt;</span><span class="p">,</span>
-    <span class="nv">Publish</span> <span class="o">=</span> <span class="nl">#&#39;basic.publish&#39;</span><span class="p">{</span><span class="n">exchange</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">routing_key</span> <span class="o">=</span> <span class="nv">Queue</span><span class="p">},</span>
-    <span class="nv">Props</span> <span class="o">=</span> <span class="nl">#&#39;P_basic&#39;</span><span class="p">{</span><span class="n">delivery_mode</span> <span class="o">=</span> <span class="mi">2</span><span class="p">},</span> <span class="c">%% persistent message</span>
-    <span class="nv">Msg</span> <span class="o">=</span> <span class="nl">#amqp_msg</span><span class="p">{</span><span class="n">props</span> <span class="o">=</span> <span class="nv">Props</span><span class="p">,</span> <span class="n">payload</span> <span class="o">=</span> <span class="nv">Payload</span><span class="p">},</span>
-    <span class="nn">amqp_channel</span><span class="p">:</span><span class="nf">cast</span><span class="p">(</span><span class="nv">Channel</span><span class="p">,</span> <span class="nv">Publish</span><span class="p">,</span> <span class="nv">Msg</span><span class="p">)</span></code></pre></div>
-
-
-<h2>参考</h2>
-
-<p>除了参考RabbitMQ tutorial外，还可以看看别人使用erlang是如何实现这些tutorial的，github上有一个这样的项目：<a href="https://github.com/rabbitmq/rabbitmq-tutorials/tree/master/erlang">rabbitmq-tutorials</a>。我自己也实现了一份，包括rabbitmq-tutorials中没实现的RPC。后来我发现原来<a href="https://github.com/kevinlynx/rabbitmq-erlang-client">rabbitmq erlang client</a>的实现里已经包含了一个RPC模块。</p>
-
-<ul>
-<li><a href="http://blog.chinaunix.net/uid-22312037-id-3458208.html">RabbitMQ源码解析前奏&ndash;AMQP协议</a></li>
-<li><a href="http://blog.ftofficer.com/2010/03/translation-rabbitmq-python-rabbits-and-warrens/">RabbitMQ+Python入门经典 兔子和兔子窝</a></li>
-<li><a href="http://www.rabbitmq.com/erlang-client-user-guide.html">Erlang AMQP Client library</a></li>
-<li><a href="http://www.rabbitmq.com/management.html">Manage RabbitMQ by WebUI</a></li>
-</ul>
-
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2013/04/11/rabbitmq-erlang/'>http://codemacro.com/2013/04/11/rabbitmq-erlang/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>

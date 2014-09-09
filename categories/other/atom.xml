@@ -4,7 +4,7 @@
   <title><![CDATA[Category: other | loop in codes]]></title>
   <link href="http://codemacro.com/categories/other/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-09-06T03:44:48+08:00</updated>
+  <updated>2014-09-09T21:14:29+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,202 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[理解git常用命令原理]]></title>
+    <link href="http://codemacro.com/2014/09/09/understand-git/"/>
+    <updated>2014-09-09T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2014/09/09/understand-git</id>
+    <content type="html"><![CDATA[<p>git不同于类似SVN这种版本管理系统，虽然熟悉常用的操作就可以满足大部分需求，但为了在遇到麻烦时不至于靠蛮力去尝试，了解git的原理还是很有必要。</p>
+
+<h2>文件</h2>
+
+<p>通过git管理的文件版本信息全部存放在根目录<code>.git</code>下，稍微看下：</p>
+
+<pre><code>$ ls .git
+COMMIT_EDITMSG  HEAD       branches  description  index  logs     packed-refs
+FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
+</code></pre>
+
+<p>git除了提供给我们平时常用的一些命令之外，还有很多底层命令，可以用于查看以上部分文件表示的东西。</p>
+
+<h2>三个区域/三类对象</h2>
+
+<p>理解git里的三个区域概念非常重要。git里很多常用的命令都是围绕着这三个区域来做的。它们分别为：</p>
+
+<ul>
+<li>working directory，也就是你所操作的那些文件</li>
+<li>history，你所提交的所有记录，文件历史内容等等。<strong>git是个分布式版本管理系统，在你本地有项目的所有历史提交记录；文件历史记录；提交日志等等。</strong></li>
+<li>stage(index)，暂存区域，本质上是个文件，也就是<code>.git/index</code></li>
+</ul>
+
+
+<!-- more -->
+
+
+<p>git中还有三类常用对象（实际不止三种），理解这三类对象也很重要。分别为：</p>
+
+<ul>
+<li>blob，用于表示一个文件</li>
+<li>tree，用于表示一个目录，索引到若干文件或子目录</li>
+<li>commit，用于表示一次提交(commit)</li>
+</ul>
+
+
+<p>所有对象都会以文件的形式保存在<code>.git/objects</code>目录，一个对象一个文件。</p>
+
+<p>接下来把上面所有的内容关联起来。做以下操作：</p>
+
+<pre><code>$ mkdir test &amp;&amp; cd test
+$ git init
+$ ls -a .git/objects             # 没有文件
+.  ..  info  pack
+$ touch readme                   # working directory里增加了一个readme文件
+$ git add readme                 # 添加一个文件到stage区域
+$ git ls-files --stage           # 这个命令可以查看stage区域里的内容，可以看到有readme
+100644 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 0       readme
+$ ls -a .git/objects             # 同时.git/objects增加了一个e6的目录
+.  ..  e6  info  pack
+$ ls -a .git/objects/e6/         # e6目录下增加了一个文件
+.  ..  9de29bb2d1d6434b8b29ae775ad8c2e48c5391
+</code></pre>
+
+<p>上面的操作展示了git中三个区域三个对象的部分关联关系。git中每个对象都以一个40个字符长度的SHA-1哈希值为标识，以这40个字符的前2个字符作为文件夹，以后38个字符为文件名。</p>
+
+<p>基于以上继续操作：</p>
+
+<pre><code>$ git commit -m 'first commit'   # commit会将stage里标识的文件提交到history区域
+[master (root-commit) 8bf6969] first commit
+ 0 files changed, 0 insertions(+), 0 deletions(-)
+ create mode 100644 readme
+
+$ ls -a .git/objects             # 增加了2个文件，也就是2个对象
+.  ..  8b  e6  e8  info  pack
+$ git ls-files --stage           # stage仅表示当前被版本管理的文件，所以内容不变
+100644 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 0       readme
+
+# git cat-file 命令可以用于查看.git/objects下的文件，意即可用于查看对象
+$ git cat-file -t e69de29bb2d1d6434b8b29ae775ad8c2e48c5391      # 这个是之前git add readme产生的文件对象 blob
+blob
+
+# 同样我们来查看git commit -m后新增的两个对象
+
+$ ls .git/objects/8b/
+f696927c17526eb8f0c6dae8badb968a001ed0
+$ git cat-file -t 8bf696927c17526eb8f0c6dae8badb968a001ed0  # 记得带上8b这个文件夹名，才算一个完整的对象ID。这是一个commit对象
+commit
+$ ls .git/objects/e8
+0ad49ace82167de62e498622d70377d913c79e
+$ git cat-file -t e80ad49ace82167de62e498622d70377d913c79e  # tree对象
+tree
+</code></pre>
+
+<p>区域和对象如何交互的可以用下图描述：</p>
+
+<p><img src="/assets/res/git-objects.png" alt="" /></p>
+
+<p>通过<code>git cat-file -p</code>可以查看对象的更多描述，<code>git cat-file -t</code>仅获取对象的类型。做以下操作获得更深的认识：</p>
+
+<pre><code># 这个commit对象记录了提交者的信息，还包括指向的tree对象
+$  git cat-file -p 8bf696927c17526eb8f0c6dae8badb968a001ed0
+tree e80ad49ace82167de62e498622d70377d913c79e
+author Kevin Lynx &lt;kevinlynx@gmail.com&gt; 1410090424 +0800
+committer Kevin Lynx &lt;kevinlynx@gmail.com&gt; 1410090424 +0800
+
+first commit
+
+# 查看tree对象可以看出tree指向的blob对象 
+$ git cat-file -p e80ad49ace82167de62e498622d70377d913c79e
+100644 blob e69de29bb2d1d6434b8b29ae775ad8c2e48c5391    readme
+</code></pre>
+
+<p>即使是已经被版本管理的文件，发生改动后（正常改动或合并）都使用<code>git add</code>来重新mark它。创建第二次提交进一步认识：</p>
+
+<pre><code>$ echo 'hello git' &gt; readme
+$ touch install
+$ git ls-files --stage       # 不使用git add，暂存区域内容没变
+100644 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 0       readme
+
+# 此时stage里内容未变，提示no changes added to commit
+$ git commit
+# On branch master
+# Changed but not updated:
+#   (use "git add &lt;file&gt;..." to update what will be committed)
+#   (use "git checkout -- &lt;file&gt;..." to discard changes in working directory)
+#
+#       modified:   readme
+#
+# Untracked files:
+#   (use "git add &lt;file&gt;..." to include in what will be committed)
+#
+#       install
+no changes added to commit (use "git add" and/or "git commit -a")
+
+$ git add readme
+$ ls .git/objects/  # git add之后.git/objects下新增文件
+8b  8d  e6  e8  info  pack
+$ ls .git/objects/8d/
+0e41234f24b6da002d962a26c2495ea16a425f
+$ git cat-file -p 8d0e41234f24b6da002d962a26c2495ea16a425f # 查看该新增对象
+hello git
+
+# 这个时候还可以在提交前撤销git add readme
+$ git reset readme  # 从history到stage
+Unstaged changes after reset:
+M       readme
+$ cat readme
+hello git
+$ git checkout readme # 从stage到working directory
+$ cat readme # 没有内容，回到第一个版本
+
+$ git add install # 添加新创建的文件
+$ git ls-files --stage # stage中的内容是最新的readme和新添加的install
+100644 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 0       install
+100644 8d0e41234f24b6da002d962a26c2495ea16a425f 0       readme
+$ ls .git/objects/
+8b  8d  e6  e8  info  pack
+</code></pre>
+
+<p>以上，发现一个有趣的现象：新加的<code>install</code>文件的SHA-1哈希值和之前的<code>readme</code>相同，这是因为这2个文件都是空的，内容相同。继续：</p>
+
+<pre><code>$ git commit -m 'second commit'
+$ ls .git/objects/  # 提交后新增2个对象
+45  72  8b  8d  e6  e8  info  pack
+
+$ ls .git/objects/72/
+b94e949c5fca6092cc74c751a7bb35ee71c283
+$ git cat-file -p 72b94e949c5fca6092cc74c751a7bb35ee71c283
+tree 45cf0bd049d7eea4558b14f33a894db27c7c1130                    # 新创建的tree对象
+parent 8bf696927c17526eb8f0c6dae8badb968a001ed0                  # commit对象有parent，正是上一次提交
+author Kevin Lynx &lt;kevinlynx@gmail.com&gt; 1410094456 +0800
+committer Kevin Lynx &lt;kevinlynx@gmail.com&gt; 1410094456 +0800
+
+second commit
+# 新创建的tree对象指向了2个文件
+$ git cat-file -p 45cf0bd049d7eea4558b14f33a894db27c7c1130
+100644 blob e69de29bb2d1d6434b8b29ae775ad8c2e48c5391    install
+100644 blob 8d0e41234f24b6da002d962a26c2495ea16a425f    readme
+</code></pre>
+
+<p>需要注意，有时候我们使用<code>git commit -a</code>，它会直接将已经加入版本管理的文件一起提交，从而跳过了<code>git add</code>这个过程。同git很多操作一样，它只是一个快捷操作。</p>
+
+<h2>总结</h2>
+
+<p>从上面的内容其实已经可以看出git的优势所在，它可以完全不需要服务器就完成一个版本控制系统的所有事情。在.git文件中它记录了所有的文件的所有历史提交，记录了每一次提交的信息。</p>
+
+<p>git的常用操作中还会涉及到分支、远端仓库等，空了再写。</p>
+
+<h2>参考文档</h2>
+
+<ul>
+<li><a href="http://www.nowamagic.net/academy/detail/48160210">Git的思想和基本工作原理</a></li>
+<li><a href="http://marklodato.github.io/visual-git-guide/index-zh-cn.html?no-svg">图解Git</a></li>
+<li><a href="http://blog.jobbole.com/26209/">Git详解之九：Git内部原理</a></li>
+<li><a href="http://www.oschina.net/translate/git-fetch-and-merge">Git 少用 Pull 多用 Fetch 和 Merge</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[my 2013]]></title>
@@ -329,78 +525,6 @@
 <p>这样，我的博客<a href="http://codemacro.com">http://codemacro.com</a>的rss输出可能会繁杂点，这对于某些人而言估计会起到恶心的效果。而我自己的博客可能也会变得不那么像个人博客。我也想过单独做个网站出来，但仔细想想还是制止自己少瞎折腾了。如有建议欢迎批评。</p>
 
 <p>好，就这样，没了。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[使用Github Page来写博客]]></title>
-    <link href="http://codemacro.com/2012/04/20/blog-on-github/"/>
-    <updated>2012-04-20T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2012/04/20/blog-on-github</id>
-    <content type="html"><![CDATA[<p>最开始知道<a href="http://pages.github.com/">Github Page</a>，是通过<a href="http://codertrace.com">codertrace</a>上的某些注册用户，他们的BLOG就建立在Github Page上，并且清一色的干净整洁（简陋），这看起来很酷。</p>
-
-<p>Github提供了很多很合coder口味的东西，例如Gist，也包括这里提到的Page。Page并不是特用于建立博客的产品，它仅提供静态页面的显示。它最酷的地方，是通过Git的方式来让你管理这些静态页面。通过建立一个repository，并使用markdown语法来编写文章，然后通过Git来管理这些文章，你就可以自动将其发布出去。</p>
-
-<!-- more -->
-
-
-<p>当然，要搭建一个像样点的博客，使用Github Page还不太方便。这里可以使用<a href="https://github.com/mojombo/jekyll">Jekyll</a>。Jekyll是一个静态网页生成器，它可以将你的markdown文件自动输出为对应的网页。而Github Page也支持Jekyll。</p>
-
-<p>为了更方便地搭建博客，我还使用了<a href="http://jekyllbootstrap.com">Jekyll-bootstrap</a>。jekyll-bootstrap其实就是一些模板文件，提供了一些博客所需的特殊功能，例如评论，访问统计。</p>
-
-<p>基于以上，我就可以像在Github上做项目一样，编写markdown文章，然后git push即可。可以使用jekyll &ndash;server在本地开启一个WEB SERVER，然后编写文章时，可以在本地预览。</p>
-
-<p>Github Page还支持custom domain，如你所见，我将我的域名codemacro.com绑定到了Github Page所提供的IP，而不再是我的VPS。你可以通过kevinlynx.github.com或者codemacro.com访问这个博客。</p>
-
-<hr/>
-
-
-<p>当然实际情况并没有那么简单，例如并没有太多的theme可供选择，虽然jekyll-bootstrap提供了一些，但还是太少。虽然，你甚至可以fork别人的jekyll博客，使用别人定制的theme，但，这对于一个不想过于折腾的人说，门槛也过高了点。</p>
-
-<p>jekyll-bootstrap使用了twitter的bootstrap css引擎，但我并不懂这个，所以，我也只能定制些基本的页面样式。</p>
-
-<hr/>
-
-
-<p>1年前我编写了<a href="https://github.com/kevinlynx/ext-blog">ext-blog</a>，并且在我的VPS上开启了codemacro.com这个博客。本来，它是一个ext-blog很好的演示例子，但维护这个博客给我带来诸多不便。例如，每次发布文章我都需要使用更早前用lisp写的cl-writer，我为什么就不愿意去做更多的包装来让cl-writer更好用？这真是一个垃圾软件，虽然它是我写的。另一方面，codemacro.com使用的主题，虽然是我抄的，但依然太丑，并且恶心。</p>
-
-<p>更别说那个消耗我VPS所有内存的lisp解释器，以及那恶心的两位数字乘法的验证码&mdash;你能想象别人得有多强烈的留言欲望，才愿意开一个计算器？</p>
-
-<hr/>
-
-
-<p>说说codertrace.com。我其实写了篇关于codertrace.com的总结，但没有作为博客发布。做这个事情的结果，简单总结来说就是瞎JB折腾没有任何结果。我真的是个苦逼双子男，我每次做件事情都需要巨大的毅力才能让自己专注下去。</p>
-
-<p>整个过程中，收到了些网友的邮件，看到了些评论，虽然不多。邮件/评论中有建议的，也有单纯的交流的，也有单纯鼓励的。我想说的是，thanks guys。</p>
-
-<hr/>
-
-
-<p>Anyway, try Github Page, save your VPS money :D.</p>
-
-<hr/>
-
-
-<p><strong>update</strong></p>
-
-<p>具体的搭建步骤，其实Github Page以及Jekyll的帮助文档中其实已经有说明。而Jekyll-bootstrap给了更为详细的说明：</p>
-
-<ul>
-<li><a href="http://jekyllbootstrap.com/index.html#start-now">安装</a></li>
-<li><a href="http://jekyllbootstrap.com/usage/jekyll-quick-start.html">发布</a></li>
-</ul>
-
-
-<p>其大概步骤，差不多为：</p>
-
-<ul>
-<li>Github上创建一个repository</li>
-<li>安装jekyll（这是一个ruby gem），这是为了本地预览</li>
-<li>clone Jekyll-bootstrap到你刚创建的repository</li>
-<li>在_post目录下创建日志</li>
-<li>提交日志到Github</li>
-</ul>
-
 ]]></content>
   </entry>
   
