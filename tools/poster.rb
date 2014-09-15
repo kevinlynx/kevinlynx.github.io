@@ -7,6 +7,7 @@ require 'nokogiri'
 require 'open-uri'
 require 'xmlrpc/client'
 require 'yaml'
+require 'rack/utils'
 
 class MetaWeblogClient < XMLRPC::Client
   def initialize(username, password, host, url)
@@ -34,6 +35,14 @@ class MetaWeblogClient < XMLRPC::Client
   def newMediaObject(data)
     call("metaWeblog.newMediaObject", "0", "#{@username}", "#{@password}", data)
   end
+end
+
+def fix_img_url(content)
+  content.search('img').map { |img| 
+    if not img['src'].start_with?('http')
+      img['src'] = 'http://codemacro.com' + img['src']
+    end
+  }
 end
 
 # get post title and content for an octopress post
@@ -81,6 +90,40 @@ def edit_post(api, postid, url)
   puts "edit post #{title} in #{categories} done\n"
 end
 
+def dump4csdn(content, title)
+  open('post.txt', 'w') { |f| f.puts content.to_s }
+end
+
+def fix_code(content)
+  content.search('pre').map { |pre| 
+    code = pre.at('code')
+    pre['name'] = 'code'
+    pre['class'] = 'plain'
+    pre.inner_html = Rack::Utils::escape_html(code.text)
+    if code['data-lang'] == 'c++'
+      pre['class'] = 'cpp'
+    end
+  }
+end
+
+def append_footer_css(content)
+  footer = content.at('.post-footer')
+  footer['style'] = %{
+    font-size:80%;color:#888888;margin:5px;padding:5px 10px;border:1px solid #565656;
+    border-top-color:#cbcbcb;border-left-color:#a5a5a5;border-right-color:#a5a5a5
+  }
+end
+
+def load4csdn(url)
+  doc = Nokogiri::HTML(open(url))
+  content = doc.css('div.entry-content')
+  title = doc.css('header h1.entry-title').inner_html
+  fix_img_url(content)
+  fix_code(content)
+  append_footer_css(content)
+  dump4csdn(content, title)
+end
+
 def main
   file = "rposter.yaml"
   config = load_config(file)
@@ -95,6 +138,8 @@ def main
     new_post(api, ARGV[1])
   elsif cmd == "edit"
     edit_post(api, ARGV[1], ARGV[2])
+  elsif cmd == "csdn"
+    load4csdn(ARGV[1])
   else
     puts "unknown command #{cmd}\n"
   end
