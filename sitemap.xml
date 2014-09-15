@@ -3,6 +3,12 @@
   
   
   <url>
+    <loc>http://codemacro.com/2014/09/15/inside-static-library/</loc>
+    <lastmod>2014-09-15T00:00:00+08:00</lastmod>
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
     <loc>http://codemacro.com/2014/09/09/understand-git/</loc>
     <lastmod>2014-09-09T00:00:00+08:00</lastmod>
     <priority>0.8</priority>
@@ -383,28 +389,28 @@
   
   <url>
     <loc>http://codemacro.com/about.html</loc>
-    <lastmod>2014-09-09T21:14:29+08:00</lastmod>
+    <lastmod>2014-09-15T22:40:09+08:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   
   <url>
     <loc>http://codemacro.com/</loc>
-    <lastmod>2014-09-09T21:14:29+08:00</lastmod>
+    <lastmod>2014-09-15T22:40:09+08:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   
   <url>
     <loc>http://codemacro.com/blog/archives/</loc>
-    <lastmod>2014-09-09T21:14:29+08:00</lastmod>
+    <lastmod>2014-09-15T22:40:09+08:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   
   <url>
     <loc>http://codemacro.com/tips/</loc>
-    <lastmod>2014-09-09T21:14:29+08:00</lastmod>
+    <lastmod>2014-09-15T22:40:09+08:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>

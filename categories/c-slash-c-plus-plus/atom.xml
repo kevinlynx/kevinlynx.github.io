@@ -4,7 +4,7 @@
   <title><![CDATA[Category: c/c++ | loop in codes]]></title>
   <link href="http://codemacro.com/categories/c-slash-c-plus-plus/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-09-09T21:14:29+08:00</updated>
+  <updated>2014-09-15T22:40:09+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,241 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[浅析静态库链接原理]]></title>
+    <link href="http://codemacro.com/2014/09/15/inside-static-library/"/>
+    <updated>2014-09-15T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2014/09/15/inside-static-library</id>
+    <content type="html"><![CDATA[<p>静态库的链接基本上同链接目标文件<code>.obj/.o</code>相同，但也有些不同的地方。本文简要描述linux下静态库在链接过程中的一些细节。</p>
+
+<h2>静态库文件格式</h2>
+
+<p>静态库远远不同于动态库，不涉及到符号重定位之类的问题。静态库本质上只是将一堆目标文件进行打包而已。静态库没有标准，不同的linux下都会有些细微的差别。大致的格式<a href="http://en.wikipedia.org/wiki/Ar_%28Unix%29#File_format_details">wiki</a>上描述的较清楚：</p>
+
+<pre><code>Global header
+-----------------        +-------------------------------
+File header 1       ---&gt; | File name
+File content 1  |        | File modification timestamp 
+-----------------        | Owner ID
+File header 2            | Group ID
+File content 2           | File mode
+-----------------        | File size in bytes
+...                      | File magic
+                         +-------------------------------
+</code></pre>
+
+<p><code>File header</code>很多字段都是以ASCII码表示，所以可以用文本编辑器打开。</p>
+
+<p>静态库本质上就是使用<code>ar</code>命令打包一堆<code>.o</code>文件。我们甚至可以用<code>ar</code>随意打包一些文件：</p>
+
+<pre><code>$ echo 'hello' &gt; a.txt &amp;&amp; echo 'world' &gt; b.txt
+$ ar -r test.a a.txt b.txt
+$ cat test.a
+!&lt;arch&gt;
+a.txt/          1410628755  60833 100   100644  6         `
+hello
+b.txt/          1410628755  60833 100   100644  6         `
+world
+</code></pre>
+
+<!-- more -->
+
+
+<h2>链接过程</h2>
+
+<p>链接器在链接静态库时，同链接一般的<code>.o</code>基本相似。链接过程大致可以归纳下图：</p>
+
+<p><img src="/assets/res/link-process.png" alt="" /></p>
+
+<p>总结为：</p>
+
+<ul>
+<li><strong>所有传入链接器的<code>.o</code>都会被链接进最终的可执行程序</strong>；链接<code>.o</code>时，会将<code>.o</code>中的<code>global symbol</code>和<code>unresolved symbol</code>放入一个临时表</li>
+<li>如果多个<code>.o</code>定义了相同的<code>global symbol</code>，那么就会得到多重定义的链接错误</li>
+<li>如果链接结束了，<code>unresolved symbol</code>表不为空，那么就会得到符号未定义的链接错误</li>
+<li><code>.a</code>静态库处理本质上就是处理其中的每一个<code>.o</code>，不同的是，如果某个<code>.o</code>中没有一个符号属于<code>unresolved symbol</code>表，也就是链接器此时怀疑该<code>.o</code>没有必要，那么其就会被忽略</li>
+</ul>
+
+
+<p>可以通过一些代码来展示以上过程。在开发C++程序时，可以利用文件静态变量会先于<code>main</code>之前执行做一些可能利于程序结构的事情。如果某个<code>.o</code>（包含静态库中打包的<code>.o</code>）被链接进程序，那么其文件静态变量就会先于<code>main</code>初始化。</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// test.cpp&lt;/p&gt;</span>
+
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">Test</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="n">Test</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Test</span> <span class="n">ctor</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+    <span class="p">}</span>
+<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">static</span> <span class="n">Test</span> <span class="n">s_test</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// lib.cpp&lt;/p&gt;</span>
+
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">Lib</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="n">Lib</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Lib</span> <span class="n">ctor</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+    <span class="p">}</span>
+<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">static</span> <span class="n">Lib</span> <span class="n">s_lib</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// main.cpp&lt;/p&gt;</span>
+
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">main</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div></p>
+
+<p>以上代码<code>main.cpp</code>中未引用任何<code>test.cpp``lib.cpp</code>中的符号：</p>
+
+<pre><code>$ g++ -o test test.o lib.o main.o
+$ ./test
+Lib ctor
+Test ctor
+main
+</code></pre>
+
+<p>生成的可执行程序执行如预期，其链接了<code>test.o``lib.o</code>。但是如果把<code>lib.o</code>以静态库的形式进行链接，情况就不一样了：为了做对比，基于以上的代码再加一个文件，及修改<code>main.cpp</code>：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// libfn.cpp</span>
+<span class="kt">int</span> <span class="nf">sum</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">,</span> <span class="kt">int</span> <span class="n">b</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">;</span>
+<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// main.cpp&lt;/p&gt;</span>
+
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">main</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+    <span class="k">extern</span> <span class="kt">int</span> <span class="nf">sum</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="nl">sum</span><span class="p">:</span> <span class="o">%</span><span class="n">d</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="n">sum</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">));</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div></p>
+
+<p>将<code>libfn.o</code>和<code>lib.o</code>创建为静态库：</p>
+
+<pre><code>$ ar -r libfn.a libfn.o lib.o
+$ g++ -o test main.o test.o -lfn -L.
+$ ./test
+Test ctor
+main
+sum: 5
+</code></pre>
+
+<p>因为<code>lib.o</code>没有被链接，导致其文件静态变量也未得到初始化。</p>
+
+<p>调整链接顺序，可以进一步检验前面的链接过程：</p>
+
+<pre><code># 将libfn.a的链接放在main.o前面
+
+$ g++ -o test test.o -lfn main.o  -L.
+main.o: In function `main':
+main.cpp:(.text+0x19): undefined reference to `sum(int, int)'
+collect2: ld returned 1 exit status
+</code></pre>
+
+<p>这个问题遇到得比较多，也有点让人觉得莫名其妙。其原因就在于链接器在链接<code>libfn.a</code>的时候，发现<code>libfn.o</code>依然没有<strong>被之前链接的<code>*.o</code>引用到，也就是没有任何符号在<code>unresolved symbol table</code>中</strong>，所以<code>libfn.o</code>也被忽略。</p>
+
+<h2>一些实践</h2>
+
+<p>在实际开发中还会遇到一些静态库相关的问题。</p>
+
+<h3>链接顺序问题</h3>
+
+<p>前面的例子已经展示了这个问题。<strong>调整库的链接顺序</strong>可以解决大部分问题，但当静态库之间存在环形依赖时，则无法通过调整顺序来解决。</p>
+
+<h4>-whole-archive</h4>
+
+<p><code>-whole-archive</code>选项告诉链接器把静态库中的所有<code>.o</code>都进行链接，针对以上例子：</p>
+
+<pre><code>$ g++ -o test -L. test.o -Wl,--whole-archive -lfn main.o -Wl,--no-whole-archive
+$ ./test
+Lib ctor
+Test ctor
+main
+sum: 5
+</code></pre>
+
+<p>连<code>lib.o</code>也被链接了进来。<em><code>-Wl</code>选项告诉gcc将其作为链接器参数传入；之所以在命令行结尾加上<code>--no-whole-archive</code>是为了告诉编译器不要链接gcc默认的库</em></p>
+
+<p>可以看出这个方法还是有点暴力了。</p>
+
+<h4>&ndash;start-group</h4>
+
+<p>格式为：</p>
+
+<pre><code>--start-group archives --end-group
+</code></pre>
+
+<p>位于<code>--start-group</code>  <code>--end-group</code>中的所有静态库将被反复搜索，而不是默认的只搜索一次，直到不再有新的<code>unresolved symbol</code>产生为止。也就是说，出现在这里的<code>.o</code>如果发现有<code>unresolved symbol</code>，则可能回到之前的静态库中继续搜索。</p>
+
+<pre><code>$ g++ -o test -L. test.o -Wl,--start-group -lfn main.o -Wl,--end-group
+$ ./test
+Test ctor
+main
+sum: 5
+</code></pre>
+
+<p>查看<code>ldd</code>关于该参数的man page还可以一窥链接过程的细节：</p>
+
+<blockquote><p>The specified archives are searched repeatedly until no new undefined references are created. Normally, an archive is searched only once in the order that it is specified on the command line. If a symbol in that archive is needed to resolve an undefined symbol referred to by an object in an archive that appears later on the command line, the linker would not be able to resolve that reference. By grouping the archives, they all be searched repeatedly until all possible references are resolved.</p></blockquote>
+
+<h3>嵌套静态库</h3>
+
+<p>由于<code>ar</code>创建静态库时本质上只是对文件进行打包，所以甚至可以创建一个嵌套的静态库，从而测试链接器是否会递归处理静态库中的<code>.o</code>：</p>
+
+<pre><code>$ ar -r libfn.a libfn.o
+$ ar -r liboutfn.a libfn.a lib.o
+$ g++ -o test -L. test.o main.o -loutfn
+main.o: In function `main':
+main.cpp:(.text+0x19): undefined reference to `sum(int, int)'
+collect2: ld returned 1 exit status
+</code></pre>
+
+<p><strong>可见链接器并不会递归处理静态库中的文件</strong></p>
+
+<p>之所以要提到嵌套静态库这个问题，是因为我发现很多时候我们喜欢为一个静态库工程链接其他静态库。当然，这里的链接并非真正的链接（仅是打包），这个过程当然可以聪明到将其他静态库里的<code>.o</code>提取出来然后打包到新的静态库。</p>
+
+<p>如果我们使用的是类似<a href="http://www.scons.org/">scons</a>这种封装更高的依赖项管理工具，那么它是否会这样干呢？</p>
+
+<p>基于之前的例子，我们使用scons来创建<code>liboutfn.a</code>：</p>
+
+<pre><code># Sconstruct
+StaticLibrary('liboutfn.a', ['libfn.a', 'lib.o'])
+</code></pre>
+
+<p>使用文本编辑器打开<code>liboutfn.a</code>就可以看到其内容，或者使用：</p>
+
+<pre><code>$ ar -tv liboutfn.a
+rw-r--r-- 60833/100   1474 Sep 14 02:59 2014 libfn.a
+rw-r--r-- 60833/100   2448 Sep 14 02:16 2014 lib.o
+</code></pre>
+
+<p>可见scons也只是单纯地打包。<strong>所以，在scons中构建一个静态库时，再<code>链接</code>其他静态库是没有意义的</strong></p>
+
+<h2>参考文档</h2>
+
+<ul>
+<li><a href="http://en.wikipedia.org/wiki/Ar_%28Unix%29#File_format_details">ar (Unix)</a></li>
+<li><a href="http://linux.die.net/man/1/ld">ld man page</a></li>
+<li><a href="http://wen00072-blog.logdown.com/posts/188339-study-on-the-gnu-ld">GNU ld初探</a></li>
+<li><a href="http://eli.thegreenplace.net/2013/07/09/library-order-in-static-linking/">Library order in static linking</a></li>
+<li><a href="http://www.linuxjournal.com/article/6463?page=0,1">Linkers and Loaders</a></li>
+<li><a href="http://www.scons.org/doc/0.96.1/HTML/scons-user/c549.html">scons Building and Linking with Libraries</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[C++构造/析构函数中的多态(二)]]></title>
@@ -846,87 +1081,6 @@ Dump of assembler code for function f2:
 <h2>总结</h2>
 
 <p>本文主要对muduo的主要结构及主要机制的实现做了描述，其他如Buffer的实现、定时器的实现大家都可以自行研究。muduo的源码很清晰，通过源码及配合<a href="http://blog.csdn.net/solstice">陈硕博客</a>上的内容可以学到一些网络编程方面的经验。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[记一次堆栈平衡错误]]></title>
-    <link href="http://codemacro.com/2013/08/15/debug-esp-bug/"/>
-    <updated>2013-08-15T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2013/08/15/debug-esp-bug</id>
-    <content type="html"><![CDATA[<p>最近在一个使用Visual Studio开发的C++程序中，出现了如下错误：</p>
-
-<blockquote><p>Run-Time Check Failure #0 - The value of ESP was not properly saved across a function call.  This is usually a result of calling a function declared with one calling convention with a function pointer declared with a different calling convention.</p></blockquote>
-
-<p>这个错误主要指的就是函数调用堆栈不平衡。在C/C++程序中，调用一个函数前会保存当前堆栈信息，目标函数返回后会把堆栈恢复到调用前的状态。函数的参数、局部变量会影响堆栈。而函数堆栈不平衡，一般是因为函数调用方式和目标函数定义方式不一致导致，例如：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="kr">__stdcall</span> <span class="nf">func</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">)</span> <span class="p">{</span>
-<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">argv</span><span class="p">[])</span> <span class="p">{</span>
-    <span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">funcptr</span><span class="p">)(</span><span class="kt">int</span><span class="p">);</span>
-    <span class="n">funcptr</span> <span class="n">ptr</span> <span class="o">=</span> <span class="p">(</span><span class="n">funcptr</span><span class="p">)</span> <span class="n">func</span><span class="p">;</span>
-    <span class="n">ptr</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span> <span class="c1">// 返回后导致堆栈不平衡</span>
-    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span></code></pre></div></p>
-
-<p><code>__stdcall</code>修饰的函数，其函数参数的出栈由被调用者自己完成，而<code>__cdecl</code>，也就是C/C++函数的默认调用约定，则是调用者完成参数出栈。</p>
-
-<!-- more -->
-
-
-<p>Visual Studio在debug模式下会在我们的代码中加入不少检查代码，例如以上代码对应的汇编中，就会增加一个检查堆栈是否平衡的函数调用，当出现问题时，就会出现提示<code>Run-Time Check Failure...</code>这样的错误对话框：</p>
-
-<pre><code>call dword ptr [ptr]  ; ptr(1)
-add  esp,4  ; cdecl方式，调用者清除参数
-cmp  esi,esp  
-call @ILT+1345(__RTC_CheckEsp) (0B01546h) ; 检查堆栈是否平衡
-</code></pre>
-
-<p>但是我们的程序不是这种低级错误。我们调用的函数是放在dll中的，调用约定显示定义为<code>__stdcall</code>，函数声明和实现一致。大致的结构如下：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">IParser</span> <span class="o">*</span><span class="n">parser</span> <span class="o">=</span> <span class="n">CreateParser</span><span class="p">();</span>
-<span class="n">parser</span><span class="o">-&gt;</span><span class="n">Begin</span><span class="p">();</span>
-<span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-<span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-<span class="n">parser</span><span class="o">-&gt;</span><span class="n">End</span><span class="p">();</span>
-<span class="n">parser</span><span class="o">-&gt;</span><span class="n">Release</span><span class="p">();</span> <span class="c1">// 返回后导致堆栈不平衡</span></code></pre></div></p>
-
-<p>IParser的实现在一个dll里，这反而是一个误导人的信息。<code>parser-&gt;Release</code>返回后，堆栈不平衡，<strong>并且仅仅少了一个字节</strong>。一个字节怎么来的？</p>
-
-<p>解决这个问题主要的手段就是跟反汇编，在关键位置查看寄存器和堆栈的内容。编译器生成的代码是正确的，而我们自己的代码乍看上去也没问题。最后甚至使用最傻逼的调试手段&ndash;逐行语句注释查错。</p>
-
-<p>具体查错过程就不细说了。解决问题往往需要更多的冷静，和清晰的思路。最终我使用的方法是，在进入<code>Release</code>之前记录堆栈指针的值，堆栈指针的值会被压入堆栈，以在函数返回后从堆栈弹出，恢复堆栈指针。<code>Release</code>的实现很简单，就是删除一个<code>Parser</code>这个对象，但这个对象的析构会导致很多其他对象被析构。我就逐层地检查，是在哪个函数里改变了堆栈里的内容。</p>
-
-<p>理论上，函数本身是操作不到调用者的堆栈的。而现在看来，确实是被调用函数，也就是<code>Release</code>改写了调用者的堆栈内容。要改变堆栈的内容，只有通过局部变量的地址才能做到。</p>
-
-<p>最终，我发现在调用完以下函数后，我跟踪的堆栈地址内容发生了改变：</p>
-
-<pre><code>call llvm::RefCountedBase&lt;clang::TargetOptions&gt;::Release (10331117h)
-</code></pre>
-
-<p>因为注意到<code>TargetOptions</code>这个字眼，想起了在<code>parser-&gt;Begin</code>里有涉及到这个类的使用，类似于：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">TargetOptions</span> <span class="n">TO</span><span class="p">;</span>
-<span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-<span class="n">TargetInfo</span> <span class="o">*</span><span class="n">TI</span> <span class="o">=</span> <span class="n">TargetInfo</span><span class="o">::</span><span class="n">CreateTargetInfo</span><span class="p">(</span><span class="n">m_inst</span><span class="p">.</span><span class="n">getDiagnostics</span><span class="p">(),</span> <span class="n">TO</span><span class="p">);</span></code></pre></div></p>
-
-<p>这部分初始化代码，是直接从网上复制的，因为并不影响主要逻辑，所以从来没对这块代码深究。查看<code>CreateTargetInfo</code>的源码，<strong>发现这个函数将<code>TO</code>这个局部变量的地址保存了下来</strong>。</p>
-
-<p>而在<code>Release</code>中，则会对这个保存的临时变量进行删除操作，形如：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">Delete</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span>
-  <span class="n">assert</span> <span class="p">(</span><span class="n">ref_cnt</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Reference</span> <span class="n">count</span> <span class="n">is</span> <span class="n">already</span> <span class="n">zero</span><span class="p">.</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
-  <span class="k">if</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">ndash</span><span class="p">;</span><span class="n">ref_cnt</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="k">delete</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="k">const</span> <span class="n">Derived</span><span class="o">*&gt;</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
-<span class="p">}</span></code></pre></div></p>
-
-<p>但是，<strong>问题并不在于对一个局部变量地址进行delete</strong>，<code>delete</code>在调试模式下是做了内存检测的，那会导致一种断言。</p>
-
-<p><code>TargetOptions</code>包含了<code>ref_cnt</code>这个成员。当出了<code>Begin</code>作用域后，parser保存的<code>TargetOptions</code>的地址，指向的内容（堆栈）发生了改变，也就是<code>ref_cnt</code>这个成员变量的值不再正常。由于一些巧合，主要是代码中各个局部变量、函数调用顺序、函数参数个数（曾尝试去除<code>Begin</code>的参数，可以避免错误提示），导致在调用<code>Release</code>前堆栈指针恰好等于之前保存的<code>TargetOptions</code>的地址。注意，之前保存的<code>TargetOptions</code>的地址，和调用<code>Release</code>前的堆栈指针值相同了。</p>
-
-<p>而在<code>TargetOptions</code>的<code>Delete</code>函数中，进行了<code>--ref_cnt</code>，这个变量是<code>TargetOptions</code>的第一个成员，它的减1，也就导致了堆栈内容的改变。</p>
-
-<p>至此，整个来龙去脉算是摸清。</p>
 ]]></content>
   </entry>
   
