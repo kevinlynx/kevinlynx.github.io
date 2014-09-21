@@ -48,10 +48,11 @@ end
 # get post title and content for an octopress post
 def post_info(url)
   doc = Nokogiri::HTML(open(url))
-  content = doc.css('div.entry-content').to_s
+  content = doc.css('div.entry-content')
+  fix_img_url(content)
   title = doc.css('header h1.entry-title').inner_html
   categories = doc.css('a.category').collect do |link| link.content end
-  return title, content, categories
+  return title, content.to_s, categories
 end
 
 def load_config(file)
