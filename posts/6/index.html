@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="参考http://paz.am/blog/blog/2012/06/25/octopress-category-list-plugin/。大致步骤为： 增加category_list插件 保存以下代码到plugins/category_list_tag.rb： module Jekyll &hellip;">
+  <meta name="description" content="同添加category list一样，网络上有很多方法，这里列举一种。首先到https://github.com/robbyedwards/octopress-tag-pages和https://github.com/robbyedwards/octopress-tag- &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,44 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2012/07/18/add-tag-to-octopress/">为octopress添加tag cloud</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2012-07-18T16:37:00+08:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>18</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>4:37 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>同添加category list一样，网络上有很多方法，这里列举一种。首先到<a href="https://github.com/robbyedwards/octopress-tag-pages">https://github.com/robbyedwards/octopress-tag-pages</a>和<a href="https://github.com/robbyedwards/octopress-tag-cloud">https://github.com/robbyedwards/octopress-tag-cloud</a>clone这两个项目的代码。这两个项目分别用于产生tag page和tag cloud。 针对这两个插件，需要手工复制一些文件到你的octopress目录。</p>
+
+<p><strong>octopress-tag-pages</strong></p>
+
+<p>复制tag_generator.rb到/plugins目录；复制tag_index.html到/source/_layouts目录。<strong>需要注意的是，还需要复制tag_feed.xml到/source/_includes/custom/目录。</strong>这个官方文档里没提到，在我机器上rake generate时报错。其他文件就不需要复制了，都是些例子。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2012/07/18/add-tag-to-octopress/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -440,44 +478,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2011/04/30/multi-inherit-void/">多重继承和void*的糗事</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2011-04-30T00:00:00+08:00'><span class='date'><span class='date-month'>Apr</span> <span class='date-day'>30</span><span class='date-suffix'>th</span>, <span class='date-year'>2011</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>C++为了兼容C，导致了不少语言阴暗面。Bjarne
-Stroustrup在&lt;D&amp;E>一书里也常为此表现出无奈。另一方面，强制转换也是C++的一大诟病。但是，因为我们的应用环境总是那么“不
-纯”，所以也就常常导致各种问题。</p>
-
-<p>本文即描述了一个关于强制转换带来的问题。这个问题几年前我曾遇到过(&lt;<a href="http://www.cppblog.com/kevinlynx/archive/2008/04/24/48001.html">多线程下vc2003,vc2005对虚函数表处理的BUG？</a>>)，当时没来得及深究。深究C++的某些语法，实在是件辛苦事。所以，这里也不提过于诡异的用法。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2011/04/30/multi-inherit-void/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/7">&larr; Older</a>
@@ -492,11 +492,15 @@ Stroustrup在&lt;D&amp;E>一书里也常为此表现出无奈。另一方面，�
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (18)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (8)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (18)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (9)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/09/21/zk-watch-benchmark/">zookeeper节点数与watch的性能测试</a>
+      </li>
     
       <li class="post">
         <a href="/2014/09/15/inside-static-library/">浅析静态库链接原理</a>
@@ -514,10 +518,6 @@ Stroustrup在&lt;D&amp;E>一书里也常为此表现出无奈。另一方面，�
         <a href="/2014/09/02/stack-frame/">C/C++中手动获取调用堆栈</a>
       </li>
     
-      <li class="post">
-        <a href="/2014/08/31/protobuf-rpc/">基于protobuf的RPC实现</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -529,7 +529,7 @@ Stroustrup在&lt;D&amp;E>一书里也常为此表现出无奈。另一方面，�
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 151.42857142857144%'>c/c++(18)</a> <a href='/categories/clang' style='font-size: 102.85714285714286%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 122.85714285714286%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.42857142857143%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.71428571428571%'>ice(2)</a> <a href='/categories/javascript' style='font-size: 102.85714285714286%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 114.28571428571429%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 114.28571428571429%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.57142857142857%'>module(3)</a> <a href='/categories/network' style='font-size: 122.85714285714286%'>network(8)</a> <a href='/categories/other' style='font-size: 120.0%'>other(7)</a> <a href='/categories/ruby' style='font-size: 111.42857142857143%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.85714285714286%'>scala(1)</a> <a href='/categories/tips' style='font-size: 160.0%'>tips(21)</a> <a href='/categories/web' style='font-size: 111.42857142857143%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 151.42857142857144%'>c/c++(18)</a> <a href='/categories/clang' style='font-size: 102.85714285714286%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 122.85714285714286%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.42857142857143%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.71428571428571%'>ice(2)</a> <a href='/categories/javascript' style='font-size: 102.85714285714286%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 114.28571428571429%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 114.28571428571429%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.57142857142857%'>module(3)</a> <a href='/categories/network' style='font-size: 125.71428571428572%'>network(9)</a> <a href='/categories/other' style='font-size: 120.0%'>other(7)</a> <a href='/categories/ruby' style='font-size: 111.42857142857143%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.85714285714286%'>scala(1)</a> <a href='/categories/tips' style='font-size: 160.0%'>tips(21)</a> <a href='/categories/web' style='font-size: 111.42857142857143%'>web(4)</a> </span>
 </section>
 
   

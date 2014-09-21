@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-09-15T22:40:09+08:00</updated>
+  <updated>2014-09-21T20:53:13+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,99 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[zookeeper节点数与watch的性能测试]]></title>
+    <link href="http://codemacro.com/2014/09/21/zk-watch-benchmark/"/>
+    <updated>2014-09-21T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2014/09/21/zk-watch-benchmark</id>
+    <content type="html"><![CDATA[<p>zookeeper中节点数量理论上仅受限于内存，但一个节点下的子节点数量<a href="http://zookeeper-user.578899.n2.nabble.com/ZooKeeper-Limitation-td6675643.html">受限于request/response 1M数据</a> (<a href="http://web.archiveorange.com/archive/v/AQXskdBodZB7kWpjpjHw">size of data / number of znodes</a>)</p>
+
+<p>zookeeper的watch机制用于数据变更时zookeeper的主动通知。watch可以被附加到每一个节点上，那么如果一个应用有10W个节点，那zookeeper中就可能有10W个watch（甚至更多）。每一次在zookeeper完成改写节点的操作时就会检测是否有对应的watch，有的话则会通知到watch。<a href="http://shift-alt-ctrl.iteye.com/blog/1847320">Zookeeper-Watcher机制与异步调用原理</a></p>
+
+<p>本文将关注以下内容：</p>
+
+<ul>
+<li>zookeeper的性能是否会受节点数量的影响</li>
+<li>zookeeper的性能是否会受watch数量的影响</li>
+</ul>
+
+
+<h2>测试方法</h2>
+
+<p>在3台机器上分别部署一个zookeeper，版本为<code>3.4.3</code>，机器配置：</p>
+
+<pre><code>Intel(R) Xeon(R) CPU E5-2430 0 @ 2.20GHz
+
+16G
+
+java version "1.6.0_32"
+Java(TM) SE Runtime Environment (build 1.6.0_32-b05)
+OpenJDK (Taobao) 64-Bit Server VM (build 20.0-b12-internal, mixed mode)
+</code></pre>
+
+<p>大部分实验JVM堆大小使用默认，也就是<code>1/4 RAM</code>：</p>
+
+<pre><code>java -XX:+PrintFlagsFinal -version | grep HeapSize
+</code></pre>
+
+<p>测试客户端使用<a href="https://github.com/phunt/zk-smoketest">zk-smoketest</a>，针对watch的测试则是我自己写的。基于zk-smoketest我写了些脚本可以自动跑数据并提取结果，相关脚本可以在这里找到：<a href="https://github.com/kevinlynx/zk-benchmark">https://github.com/kevinlynx/zk-benchmark</a></p>
+
+<!-- more -->
+
+
+<h2>测试结果</h2>
+
+<h3>节点数对读写性能的影响</h3>
+
+<p>测试最大10W个节点，度量1秒内操作数(ops)：</p>
+
+<p><img src="http://codemacro.com/assets/res/zk_benchmark/node_count.png" alt="" /></p>
+
+<p>可见节点数的增加并不会对zookeeper读写性能造成影响。</p>
+
+<h3>节点数据大小对读写性能的影响</h3>
+
+<p>这个网上其实已经有公认的结论。本身单个节点数据越大，对网络方面的吞吐就会造成影响，所以其数据越大读写性能越低也在预料之中。</p>
+
+<p><img src="http://codemacro.com/assets/res/zk_benchmark/node_size.png" alt="" /></p>
+
+<p>写数据会在zookeeper集群内进行同步，所以其速度整体会比读数据更慢。该实验需要把超时时间进行一定上调，同时我也把JVM最大堆大小调整到8G。</p>
+
+<p>测试结果很明显，节点数据大小会严重影响zookeeper效率。</p>
+
+<h2>watch对读写性能的影响</h2>
+
+<p>zk-smoketest自带的latency测试有个参数<code>--watch_multiple</code>用来指定watch的数量，但其实仅是指定客户端的数量，在server端通过<code>echo whcp | nc 127.0.0.1 4181</code>会发现实际每个节点还是只有一个watch。</p>
+
+<p>在我写的测试中，则是通过创建多个客户端来模拟单个节点上的多个watch。这也更符合实际应用。同时对节点的写也是在另一个独立的客户端中，这样可以避免zookeeper client的实现对测试带来的干扰。</p>
+
+<p>每一次完整的测试，首先是对每个节点添加节点数据的watch，然后在另一个客户端中对这些节点进行数据改写，收集这些改写操作的耗时，以确定添加的watch对这些写操作带来了多大的影响。</p>
+
+<p><img src="http://codemacro.com/assets/res/zk_benchmark/watch.png" alt="" /></p>
+
+<p>图中，<code>0 watch</code>表示没有对节点添加watch；<code>1 watch</code>表示有一个客户端对每个节点进行了watch；<code>3 watch</code>表示有其他3个客户端对每个节点进行了watch；依次类推。</p>
+
+<p>可见，watch对写操作还是有较大影响的，毕竟需要进行网络传输。同样，这里也显示出整个zookeeper的watch数量同节点数量一样对整体性能没有影响。</p>
+
+<h2>总体结论</h2>
+
+<ul>
+<li>对单个节点的操作并不会因为zookeeper中节点的总数而受到影响</li>
+<li>数据大小对zookeeper的性能有较大影响，性能和内存都会</li>
+<li>单个节点上独立session的watch数对性能有一定影响</li>
+</ul>
+
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2014/09/21/zk-watch-benchmark/'>http://codemacro.com/2014/09/21/zk-watch-benchmark/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[浅析静态库链接原理]]></title>
@@ -3509,175 +3602,6 @@ a中文
 <p class='post-footer'>
             原文地址：
             <a href='http://codemacro.com/2013/06/03/erlang-code-snippets/'>http://codemacro.com/2013/06/03/erlang-code-snippets/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[P2P中DHT网络爬虫]]></title>
-    <link href="http://codemacro.com/2013/05/19/crawl-dht/"/>
-    <updated>2013-05-19T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2013/05/19/crawl-dht</id>
-    <content type="html"><![CDATA[<p>DHT网络爬虫基于DHT网络构建了一个P2P资源搜索引擎。这个搜索引擎不但可以用于构建DHT网络中活跃的资源索引（活跃的资源意味着该网络中肯定有人至少持有该资源的部分数据），还可以分析出该网络中的热门分享资源。<a href="http://xiaoxia.org/">小虾</a>不久前发布了一个这样的搜索引擎：<a href="http://bt.shousibaocai.com/">磁力搜索</a>。他也写博客对此稍作了介绍：<a href="http://xiaoxia.org/2013/05/11/magnet-search-engine/">写了个磁力搜索的网页 － 收录最近热门分享的资源</a>。网络上其实也有其他人做了类似的应用：<a href="http://pacsec.jp/psj11/PacSec2011_Massive-Monitoring_en.pdf">DHT monitoring</a>，<a href="https://www.defcon.org/images/defcon-18/dc-18-presentations/Wolchok/DEFCON-18-Wolchok-Crawling-Bittorrent-DHTS.pdf">Crawling Bittorrent DHT</a></p>
-
-<p>但是他的这篇文章仅介绍了DHT网络的大致工作原理，并且这个爬虫的具体工作原理也没有提到。对此我查阅了些文章及代码，虽然从原理上梳理出了整个实现方案，但很多细节还是不甚清楚。所以本文仅作概要介绍。</p>
-
-<h2>DHT/Magnet/Torrent</h2>
-
-<p>在P2P网络中，要通过种子文件下载一个资源，需要知道整个P2P网络中有哪些计算机正在下载/上传该资源。这里将这些提供某个资源下载的计算机定义为<code>peer</code>。传统的P2P网络中，存在一些<code>tracker</code>服务器，这些服务器的作用主要用于跟踪某个资源有哪些关联的peer。下载这个资源当然得首先取得这些peer。</p>
-
-<p>DHT的出现用于解决当tracker服务器不可用时，P2P客户端依然可以取得某个资源的peer。DHT解决这个问题，是因为它将原来tracker上的资源peer信息分散到了整个网络中。这里将实现了DHT协议的计算机定义为节点(node)。通常一个P2P客户端程序既是peer也是节点。DHT网络有多种实现算法，例如Kademlia。</p>
-
-<p>当某个P2P客户端通过种子文件下载资源时，如果没有tracker服务器，它就会向DHT网络查询这个资源对应的peer列表。资源的标识在DHT网络中称为<code>infohash</code>，是一个20字节长的字符串，一般通过sha1算法获得，也就是一个类似UUID的东西。</p>
-
-<p>实际上，种子文件本身就对应着一个infohash，这个infohash是通过种子文件的文件描述信息动态计算得到。一个种子文件包含了对应资源的描述信息，例如文件名、文件大小等。Magnet，这里指的是磁力链接，它是一个类似URL的字符串地址。P2P软件通过磁力链接，会下载到一个种子文件，然后根据该种子文件继续真实资源的下载。</p>
-
-<p>磁力链接中包含的最重要的信息就是infohash。这个infohash一般为40字节或32字节，它其实只是资源infohash（20字节）的一种编码形式。</p>
-
-<!-- more -->
-
-
-<h2>Kademlia</h2>
-
-<p>Kademlia是DHT网络的一种实现。网络上关于这个算法的文章，主要是围绕整个DHT网络的实现原理进行论述。个人觉得这些文章很蛋疼，基本上读了之后对于要如何去实现一个DHT客户端还是没有概念。这里主要可参考<a href="http://blog.csdn.net/mergerly/article/details/7989281">P2P中DHT网络介绍</a>，以及BitTorrent网站上的<a href="http://www.bittorrent.org/beps/bep_0005.html">DHT协议描述</a></p>
-
-<p>Kad的主要目的是用于查询某个资源对应的peer列表，而这个peer列表实际上是分散在整个网络中。网络中节点数量很大，如果要获得peer列表，最简单的做法无非就是依次询问网络中的每个节点。这当然不可行。所以在Kad算法中，设立了一个路由表。每一个节点都有一份路由表。这个是按照节点之间的距离关系构建出来的。节点之间的距离当然也有特定的算法定义，在Kad中通过对两个节点的ID进行异或操作得到。节点的ID和infohash通过相同算法构建，都是20字节长度。节点和infohash之间也有距离关系，实际上表示的是节点和资源的距离关系。</p>
-
-<p>有了这个路由表之后，再通过一个基于距离关系的查找算法，就可以实现不用挨个遍历就找到特定的节点。而查找资源peer这个操作，正是基于节点查找这个过程。</p>
-
-<p>路由表的实现，按我的理解，有点类似一般的hash表结构。在这个表中有160个桶，称为K桶，这个桶的数量在实现上可以动态增长。每个桶保存有限个元素，例如K取值为8，指的就是这个桶最多保存8个元素。每个元素就是一个节点，节点包含节点ID、地址信息以及peer信息。这些桶可以通过距离值索引得到，即距离值会经过一个hash算法，使其值落到桶的索引范围内。</p>
-
-<p>要加入一个DHT网络，需要首先知道这个网络中的任意一个节点。如何获得这个节点？在一些开源的P2P软件中，会提供一些节点地址，例如<a href="http://www.transmissionbt.com/">transmission</a>中提供的dht.transmissionbt.com:6881。</p>
-
-<h3>协议</h3>
-
-<p>Kad定义了节点之间的交互协议。这些协议支撑了整个DHT网络里信息分布式存储的实现。这些协议都是使用UDP来传送。其协议格式使用一种称为<a href="http://en.wikipedia.org/wiki/Bencode">bencode</a>的编码方式来编码协议数据。bencode是一种文本格式的编码，它还用于种子文件内的信息编码。</p>
-
-<p>Kad协议具体格式可参考BitTorrent的定义：<a href="(http://www.bittorrent.org/beps/bep_0005.html">DHT Protocol</a>。这些协议包括4种请求：ping，find_node，get_peer，announce_peer。在有些文档中这些请求的名字会有不同，例如announce_peer又被称为store，get_peer被称为find_value。这4种请求中，都会有对应的回应消息。其中最重要的消息是<code>get_peer</code>，其目的在于在网络中查找某个资源对应的peer列表。</p>
-
-<p>值得一提的是，所有这些请求，包括各种回应，都可以用于处理该消息的节点构建路由表。因为路由表本质就是存储网络中的节点信息。</p>
-
-<h4>ping</h4>
-
-<p>用于确定某个节点是否在线。这个请求主要用于辅助路由表的更新。</p>
-
-<h4>find_node</h4>
-
-<p>用于查找某个节点，以获得其地址信息。当某个节点接收到该请求后，如果目标节点不在自己的路由表里，那么就返回离目标节点较近的K个节点。这个消息可用于节点启动时构建路由表。通过find_node方式构建路由表，其实现方式为向DHT网络查询自己。那么，接收该查询的节点就会一直返回其他节点了列表，查询者递归查询，直到无法查询为止。那么，什么时候无法继续查询呢？这一点我也不太清楚。每一次查询得到的都是离目标节点更接近的节点集，那么理论上经过若干次递归查询后，就无法找到离目标节点更近的节点了，因为最近的节点是自己，但自己还未完全加入网络。这意味着最后所有节点都会返回空的节点集合，这样就算查询结束？</p>
-
-<p>实际上，通过find_node来构建路由表，以及顺带加入DHT网络，这种方式什么时候停止在我看来并不重要。路由表的构建并不需要在启动时构建完成，在以后与其他节点的交互过程中，路由表本身就会慢慢地得到构建。在初始阶段尽可能地通过find_node去与其他节点交互，最大的好处无非就是尽早地让网络中的其他节点认识自己。</p>
-
-<h4>get_peer</h4>
-
-<p>通过资源的infohash获得资源对应的peer列表。当查询者获得资源的peer列表后，它就可以通过这些peer进行资源下载了。收到该请求的节点会在自己的路由表中查找该infohash，如果有收录，就返回对应的peer列表。如果没有，则返回离该infohash较近的若干个节点。查询者若收到的是节点列表，那么就会递归查找。这个过程同find_node一样。</p>
-
-<p>值得注意的是，get_peer的回应消息里会携带一个token，该token会用于稍后的announce_peer请求。</p>
-
-<h4>announce_peer</h4>
-
-<p>该请求主要目的在于通知，通知其他节点自己开始下载某个资源。这个消息用于构建网络中资源的peer列表。当一个已经加入DHT网络的P2P客户端通过种子文件开始下载资源时，首先在网络中查询该资源的peer列表，这个过程通过get_peer完成。当某个节点从get_peer返回peer时，查询者开始下载，然后通过announce_peer告诉返回这个peer的节点。</p>
-
-<p>announce_peer中会携带get_peer回应消息里的token。关于这一点，我有一个疑问是，在<a href="http://blog.csdn.net/mergerly/article/details/7989281">P2P中DHT网络介绍</a>文档中提到：</p>
-
-<blockquote><p>(announce_peer)同时会把自己的peer信息发送给先前的告诉者和自己K桶中的k个最近的节点存储该peer-list信息</p></blockquote>
-
-<p>不管这里提到的K的最近的节点是离自己最近，还是离资源infohash最近的节点，因为处理announce_peer消息时，有一个token的验证过程。但是这K个节点中，并没有在之前创建对应的token。我通过transmission中的DHT实现做了个数据收集，可以证明的是，announce_peer消息是不仅仅会发给get_peer的回应者的。</p>
-
-<h2>DHT爬虫</h2>
-
-<p>DHT爬虫是一个遵循Kad协议的假节点程序。具体可以参考小虾发布的那个网站应用：<a href="http://bt.shousibaocai.com/">磁力搜索</a>。</p>
-
-<p>这个爬虫的实现方式，主要包含以下内容：</p>
-
-<ul>
-<li>通过其他节点的announce_peer发来的infohash确认网络中有某个资源可被下载</li>
-<li>通过从网络中获取这个资源的种子文件，来获得该资源的描述</li>
-</ul>
-
-
-<p>通过累计收集得到的资源信息，就可以提供一个资源搜索引擎，或者构建资源统计信息。以下进一步描述实现细节。整个爬虫的实现依赖了一个很重要的信息，那就是资源的infohash实际上就是一个磁力链接（当然需要包装一下数据）。这意味着一旦我们获得了一个infohash，我们就等于获得了一个种子。</p>
-
-<h3>获得资源通知</h3>
-
-<p>当爬虫程序加入DHT网络后，它总会收到其他节点发来的announce_peer消息。announce_peer消息与get_peer消息里都带了资源的infohash，但是get_peer里的infohash对应的资源在该网络中不一定存在，即该资源没有任何可用peer。而announce_peer则表示已经确认了该网络中有节点正在下载该资源，也即该资源的数据确实存在该网络中。</p>
-
-<p>所以，爬虫程序需要尽最大努力地获取其他节点发来的announce_peer消息。如果announce_peer消息会发送给离消息发送节点较近的节点，那么，一方面，爬虫程序应该将自己告诉网络中尽可能多的节点。这可以通过一次完整的find_node操作实现。另一方面，爬虫程序内部实现可以部署多个DHT节点，总之目的在于尽可能地让爬虫程序称为其他节点的较近者。</p>
-
-<p>当收集到infohash之后，爬虫程序还需要通过该infohash获得对应资源的描述信息。</p>
-
-<h3>获取资源信息</h3>
-
-<p>获得资源描述信息，其实就是通过infohash获得对应的种子文件。这需要实现P2P协议里的文件分享协议。种子文件的获取其实就是一个文件下载过程，下载到种子文件之后，就可以获取到资源描述。这个过程一种简单的方法，就是从infohash构建出一个磁力链接，然后交给一个支持磁力下载的程序下载种子。</p>
-
-<p>从infohash构建出磁力链接非常简单，只需要将infohash编码成磁力链接的xt字段即可，构建实现可以从transmission源码里找到：</p>
-
-<div class="highlight"><pre><code class="language-c" data-lang="c"><span class="cm">/* 这个算法其实和printf(&quot;%02x&quot;, sha1[i])一样 */</span>
-<span class="kt">void</span> <span class="nf">tr_sha1_to_hex</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">out</span><span class="p">,</span> <span class="k">const</span> <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">*</span><span class="n">sha1</span><span class="p">)</span>
-<span class="p">{</span>
-    <span class="kt">int</span> <span class="n">i</span><span class="p">;</span>
-    <span class="k">static</span> <span class="k">const</span> <span class="kt">char</span> <span class="n">hex</span><span class="p">[]</span> <span class="o">=</span> <span class="s">&quot;0123456789abcdef&quot;</span><span class="p">;</span>
-
-    <span class="k">for</span> <span class="p">(</span><span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="mi">20</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
-        <span class="k">const</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">val</span> <span class="o">=</span> <span class="o">*</span><span class="n">sha1</span><span class="o">++</span><span class="p">;</span>
-        <span class="o">*</span><span class="n">out</span><span class="o">++</span> <span class="o">=</span> <span class="n">hex</span><span class="p">[</span><span class="n">val</span> <span class="o">&gt;&gt;</span> <span class="mi">4</span><span class="p">];</span>
-        <span class="o">*</span><span class="n">out</span><span class="o">++</span> <span class="o">=</span> <span class="n">hex</span><span class="p">[</span><span class="n">val</span> <span class="o">&amp;</span> <span class="mh">0xf</span><span class="p">];</span>
-    <span class="p">}</span>
-    <span class="o">*</span><span class="n">out</span> <span class="o">=</span> <span class="sc">&#39;\0&#39;</span><span class="p">;</span>
-<span class="p">}</span>
-
-<span class="kt">void</span> <span class="nf">appendMagnet</span><span class="p">(</span><span class="kt">FILE</span> <span class="o">*</span><span class="n">fp</span><span class="p">,</span> <span class="k">const</span> <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">*</span><span class="n">info_hash</span><span class="p">)</span> <span class="p">{</span>
-    <span class="kt">char</span> <span class="n">out</span><span class="p">[</span><span class="mi">48</span><span class="p">];</span>
-    <span class="n">tr_sha1_to_hex</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">info_hash</span><span class="p">);</span>
-    <span class="n">fprintf</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="s">&quot;magnet:?xt=urn:btih:%s&quot;</span><span class="p">,</span> <span class="n">out</span><span class="p">);</span>
-<span class="p">}</span></code></pre></div>
-
-
-<p>现在你就可以做一个实验，在transmission的DHT实现中，在announce_peer消息的处理代码中，将收到的infohash通过上面的<code>appendMagnet</code>转换为磁力链接输出到日志文件里。然后，可以通过支持磁力链接的程序（例如QQ旋风）直接下载。有趣的是，当QQ旋风开始下载该磁力链接对应的种子文件时，你自己的测试程序能收到QQ旋风程序发出的announce_peer消息。当然，你得想办法让这个测试程序尽可能地让其他节点知道你，这可以通过很多方式实现。</p>
-
-<h2>总结</h2>
-
-<p>最终的DHT爬虫除了需要实现DHT协议之外，还需要实现P2P文件下载协议，甚至包括一个种子文件解析模块。看起来包含不小的工作量。而如果要包装为一个资源搜索引擎，还会涉及到资源存储以及搜索，更别说前端呈现了。这个时候，如果你使用的语言不包含这些工具库，那实在是太悲剧了。没错，我就没找到一个erlang DHT库（倒是有erlang实现的BT客户端，懒得去剥了）。</p>
-
-<h2>UPDATE</h2>
-
-<p>通过详细阅读transmission里的DHT实现，一些之前的疑惑随之解开。</p>
-
-<h3>announce_peer会发给哪些节点</h3>
-
-<p>在一次对infohash的查询过程中，所有对本节点发出的get_peer作出回应的节点（不论这个回应节点回应的是nodes还是peers），当本节点取得peer信息时，就会对所有这些节点发出announce_peer。get_peer的回应消息里，不论是peer还是node，都会携带一个token，这样在将来收到对方的announce_peer时，就可以验证该token。</p>
-
-<h3>节点和bucket状态</h3>
-
-<p>在本地的路由表中，保存的node是有状态之分的。状态分为三种：good/dubious/bad。good节点基本可以断定该节点是一个在线的并且可以正常回应消息的节点；而bad节点则是可确定的无效节点，通常会尽快从路由表中移除；而dubious则是介于good和bad节点之间，表示可能有问题的节点，需要进一步发送例如ping消息来确认其状态。路由表中应该尽可能保证保存的是good节点，对查询消息的回应里也需携带好的节点。</p>
-
-<p>bucket也是有状态的，当一个bucket中的所有节点在一定时间之内都没有任何活动的时候，该bucket则应该考虑进行状态的确认，确认方式可以随机选择该bucket中的节点进行find_node操作（这也是find_node除了用于启动之外的唯一作用，但具体实现不见得使用这种方式）。没有消息来往的bucket则应该考虑移除。DHT中几乎所有操作都会涉及到bucket的索引，如果索引到一个所有节点都有问题的bucket，那么该操作可能就无法完成。</p>
-
-<h3>search在何时停止</h3>
-
-<p>首先，某次发起的search，无论是对node还是对peer，都可能导致进一步产生若干个search。这些search都是基于transaction id来标识的。由一次search导致产生的所有子search都拥有相同的transaction id，以使得在该search成功或失败时可以通过该transaction id来删除对应的所有search。transaction id也就是DHT中每个消息消息头&#8221;t&#8221;的值。</p>
-
-<p>但是search何时停止？transmission中是通过超时机制来停止。在search过程中，如果长时间没有收到跟该search关联的节点发来的回应消息，那么就撤销该search，表示搜索失败。</p>
-
-<h2>参考资料</h2>
-
-<ul>
-<li><a href="http://www.bittorrent.org/beps/bep_0005.html">DHT Protocol</a></li>
-<li><a href="http://blog.csdn.net/mergerly/article/details/7989281">P2P中DHT网络介绍</a></li>
-<li><a href="http://blog.csdn.net/mergerly/article/details/8013694">Torrent文件结构解析</a></li>
-<li><a href="http://bitdht.sourceforge.net/">BitDHT源码</a></li>
-<li><a href="http://www.transmissionbt.com/">Transmission DHT源码</a></li>
-<li><a href="http://en.wikipedia.org/wiki/Bencode">bencode</a></li>
-<li><a href="http://en.wikipedia.org/wiki/Magnet">magnet</a></li>
-<li><a href="https://www.defcon.org/images/defcon-18/dc-18-presentations/Wolchok/DEFCON-18-Wolchok-Crawling-Bittorrent-DHTS.pdf">Crawling Bittorrent DHT</a></li>
-</ul>
-
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2013/05/19/crawl-dht/'>http://codemacro.com/2013/05/19/crawl-dht/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>

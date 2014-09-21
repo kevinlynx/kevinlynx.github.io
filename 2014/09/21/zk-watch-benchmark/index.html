@@ -5,12 +5,11 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>About - loop in codes</title>
+  <title>zookeeper节点数与watch的性能测试 - loop in codes</title>
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="About Kevin Lynx 搜索后端 2014.5 - ? 想深化后端开发技能。 计算机科学业余爱好者 2003.7 - ? 编译原理/程序语言
-网络编程 10人团队/项目Leader 2012.12 - 2014.5 架构；分析设计；团队；沟通；凝聚力；进度；计划；责任；压力。 &hellip;">
+  <meta name="description" content="zookeeper中节点数量理论上仅受限于内存，但一个节点下的子节点数量受限于request/response 1M数据 (size of data / number of znodes) zookeeper的watch机制用于数据变更时zookeeper的主动通知。 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -19,7 +18,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://codemacro.com/about.html">
+  <link rel="canonical" href="http://codemacro.com/2014/09/21/zk-watch-benchmark">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
@@ -64,125 +63,152 @@
   <div id="main">
     <div id="content">
       <div>
-<article role="article">
+<article class="hentry" role="article">
   
   <header>
-    <h1 class="entry-title">About</h1>
+    
+      <h1 class="entry-title">zookeeper节点数与watch的性能测试</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-09-21T00:00:00+08:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
     
   </header>
-  
-  <h2>Kevin Lynx</h2>
 
-<h3>搜索后端</h3>
 
-<p>2014.5 - ?</p>
+<div class="entry-content"><p>zookeeper中节点数量理论上仅受限于内存，但一个节点下的子节点数量<a href="http://zookeeper-user.578899.n2.nabble.com/ZooKeeper-Limitation-td6675643.html">受限于request/response 1M数据</a> (<a href="http://web.archiveorange.com/archive/v/AQXskdBodZB7kWpjpjHw">size of data / number of znodes</a>)</p>
 
-<p>想深化后端开发技能。</p>
+<p>zookeeper的watch机制用于数据变更时zookeeper的主动通知。watch可以被附加到每一个节点上，那么如果一个应用有10W个节点，那zookeeper中就可能有10W个watch（甚至更多）。每一次在zookeeper完成改写节点的操作时就会检测是否有对应的watch，有的话则会通知到watch。<a href="http://shift-alt-ctrl.iteye.com/blog/1847320">Zookeeper-Watcher机制与异步调用原理</a></p>
 
-<h3>计算机科学业余爱好者</h3>
-
-<p>2003.7 - ?</p>
+<p>本文将关注以下内容：</p>
 
 <ul>
-<li>编译原理/程序语言</li>
-<li>网络编程</li>
+<li>zookeeper的性能是否会受节点数量的影响</li>
+<li>zookeeper的性能是否会受watch数量的影响</li>
 </ul>
 
 
-<h3>10人团队/项目Leader</h3>
+<h2>测试方法</h2>
 
-<p>2012.12 - 2014.5</p>
+<p>在3台机器上分别部署一个zookeeper，版本为<code>3.4.3</code>，机器配置：</p>
 
-<p>架构；分析设计；团队；沟通；凝聚力；进度；计划；责任；压力。</p>
+<pre><code>Intel(R) Xeon(R) CPU E5-2430 0 @ 2.20GHz
 
-<p>有时候还是想安静专注地写一天代码。</p>
+16G
 
-<h3>MMO游戏后端</h3>
+java version "1.6.0_32"
+Java(TM) SE Runtime Environment (build 1.6.0_32-b05)
+OpenJDK (Taobao) 64-Bit Server VM (build 20.0-b12-internal, mixed mode)
+</code></pre>
 
-<p>2008.1 - 2012.11</p>
+<p>大部分实验JVM堆大小使用默认，也就是<code>1/4 RAM</code>：</p>
 
-<p>那些喜欢做游戏和打游戏的青春岁月。</p>
+<pre><code>java -XX:+PrintFlagsFinal -version | grep HeapSize
+</code></pre>
 
-<h3>疯狂编码</h3>
+<p>测试客户端使用<a href="https://github.com/phunt/zk-smoketest">zk-smoketest</a>，针对watch的测试则是我自己写的。基于zk-smoketest我写了些脚本可以自动跑数据并提取结果，相关脚本可以在这里找到：<a href="https://github.com/kevinlynx/zk-benchmark">https://github.com/kevinlynx/zk-benchmark</a></p>
 
-<p>2005.9 - 2008.1</p>
+<!-- more -->
 
-<p>还记得在<a href="http://www.gameres.com/">GameRes</a>发布的那些游戏吗？</p>
 
-<h3>程序语言爱好者</h3>
+<h2>测试结果</h2>
 
-<p>喜欢有闭包有高阶函数的语言。</p>
+<h3>节点数对读写性能的影响</h3>
+
+<p>测试最大10W个节点，度量1秒内操作数(ops)：</p>
+
+<p><img src="/assets/res/zk_benchmark/node_count.png" alt="" /></p>
+
+<p>可见节点数的增加并不会对zookeeper读写性能造成影响。</p>
+
+<h3>节点数据大小对读写性能的影响</h3>
+
+<p>这个网上其实已经有公认的结论。本身单个节点数据越大，对网络方面的吞吐就会造成影响，所以其数据越大读写性能越低也在预料之中。</p>
+
+<p><img src="/assets/res/zk_benchmark/node_size.png" alt="" /></p>
+
+<p>写数据会在zookeeper集群内进行同步，所以其速度整体会比读数据更慢。该实验需要把超时时间进行一定上调，同时我也把JVM最大堆大小调整到8G。</p>
+
+<p>测试结果很明显，节点数据大小会严重影响zookeeper效率。</p>
+
+<h2>watch对读写性能的影响</h2>
+
+<p>zk-smoketest自带的latency测试有个参数<code>--watch_multiple</code>用来指定watch的数量，但其实仅是指定客户端的数量，在server端通过<code>echo whcp | nc 127.0.0.1 4181</code>会发现实际每个节点还是只有一个watch。</p>
+
+<p>在我写的测试中，则是通过创建多个客户端来模拟单个节点上的多个watch。这也更符合实际应用。同时对节点的写也是在另一个独立的客户端中，这样可以避免zookeeper client的实现对测试带来的干扰。</p>
+
+<p>每一次完整的测试，首先是对每个节点添加节点数据的watch，然后在另一个客户端中对这些节点进行数据改写，收集这些改写操作的耗时，以确定添加的watch对这些写操作带来了多大的影响。</p>
+
+<p><img src="/assets/res/zk_benchmark/watch.png" alt="" /></p>
+
+<p>图中，<code>0 watch</code>表示没有对节点添加watch；<code>1 watch</code>表示有一个客户端对每个节点进行了watch；<code>3 watch</code>表示有其他3个客户端对每个节点进行了watch；依次类推。</p>
+
+<p>可见，watch对写操作还是有较大影响的，毕竟需要进行网络传输。同样，这里也显示出整个zookeeper的watch数量同节点数量一样对整体性能没有影响。</p>
+
+<h2>总体结论</h2>
 
 <ul>
-<li>C/C++(2004-今)</li>
-<li>Lua(2009-2012)</li>
-<li>Common Lisp(2011)</li>
-<li>Ruby(2012)</li>
-<li>Erlang(2013)</li>
-<li>Scala(2013-2014)</li>
-<li>Javascript(2014)</li>
-<li>杂项
-
-<ul>
-<li>汇编(破解；C++编译器实现)</li>
-<li>Java(Android)</li>
-<li>HTML/CSS</li>
-</ul>
-</li>
+<li>对单个节点的操作并不会因为zookeeper中节点的总数而受到影响</li>
+<li>数据大小对zookeeper的性能有较大影响，性能和内存都会</li>
+<li>单个节点上独立session的watch数对性能有一定影响</li>
 </ul>
 
 
-<h3>业余项目</h3>
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2014/09/21/zk-watch-benchmark/'>http://codemacro.com/2014/09/21/zk-watch-benchmark/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
 
-<ul>
-<li><a href="http://www.cppblog.com/kevinlynx/archive/2008/05/14/49783.html">games</a>，每个4000行</li>
-<li><a href="http://edge2d.googlecode.com/">edge2d</a>(2007-2008)，想做个牛逼的引擎</li>
-<li><a href="https://github.com/kevinlynx/luafeiq">luaFeiq</a>，想在Linux下使用飞秋</li>
-<li><a href="https://github.com/kevinlynx/ext-blog">ext-blog</a>，Common Lisp写的博客系统</li>
-<li><a href="https://github.com/kevinlynx/codertrace">codertrace</a>，想聚合程序员信息的网站</li>
-<li><a href="https://github.com/kevinlynx/dhtcrawler2">dhtcrawler2</a>，看片神器</li>
-<li>杂项若干</li>
-</ul>
+</div>
 
 
-<h3>经历</h3>
-
-<ul>
-<li>高中，GVBasic/C/瞎折腾</li>
-<li>大学，C++/DirectX/HGE/PopcapFramework/Irrlicht，各种小游戏</li>
-<li>工作，网游网游，瞎折腾，非网游，瞎折腾</li>
-</ul>
-
-
-<h3>坐标</h3>
-
-<p>中国四川成都</p>
-
-<h3>链接</h3>
-
-<p>我的邮箱：kevinlynx at gmail dot com。</p>
-
-<p>我的微博：<a href="http://weibo.com/kevinlynx">kevinlynx</a></p>
-
-<p>我的cppblog：<a href="http://www.cppblog.com/kevinlynx">loop_in_codes</a></p>
-
-<p>我的独立blog：<a href="http://codemacro.com/">loop in codes</a></p>
-
-<p>我的Github：<a href="http://github.com/kevinlynx">http://github.com/kevinlynx</a></p>
-
-  
-    <footer>
+  <footer>
+    <p class="meta">
       
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
+
       
-        <div class="sharing">
+
+
+
+
+<time class='entry-date' datetime='2014-09-21T00:00:00+08:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/categories/network/'>network</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
   
   
   
 </div>
 
+    
+    <p class="meta">
       
-    </footer>
-  
+        <a class="basic-alignment left" href="/2014/09/15/inside-static-library/" title="Previous Post: 浅析静态库链接原理">&laquo; 浅析静态库链接原理</a>
+      
+      
+    </p>
+  </footer>
 </article>
 
   <section>
@@ -260,8 +286,8 @@
       
         
         // var disqus_developer = 1;
-        var disqus_identifier = 'http://codemacro.com/about.html';
-        var disqus_url = 'http://codemacro.com/about.html';
+        var disqus_identifier = 'http://codemacro.com/2014/09/21/zk-watch-benchmark/';
+        var disqus_url = 'http://codemacro.com/2014/09/21/zk-watch-benchmark/';
         var disqus_script = 'embed.js';
       
     (function () {

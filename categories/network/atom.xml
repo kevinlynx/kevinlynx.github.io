@@ -4,7 +4,7 @@
   <title><![CDATA[Category: network | loop in codes]]></title>
   <link href="http://codemacro.com/categories/network/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-09-15T22:40:09+08:00</updated>
+  <updated>2014-09-21T20:53:27+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,91 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[zookeeper节点数与watch的性能测试]]></title>
+    <link href="http://codemacro.com/2014/09/21/zk-watch-benchmark/"/>
+    <updated>2014-09-21T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2014/09/21/zk-watch-benchmark</id>
+    <content type="html"><![CDATA[<p>zookeeper中节点数量理论上仅受限于内存，但一个节点下的子节点数量<a href="http://zookeeper-user.578899.n2.nabble.com/ZooKeeper-Limitation-td6675643.html">受限于request/response 1M数据</a> (<a href="http://web.archiveorange.com/archive/v/AQXskdBodZB7kWpjpjHw">size of data / number of znodes</a>)</p>
+
+<p>zookeeper的watch机制用于数据变更时zookeeper的主动通知。watch可以被附加到每一个节点上，那么如果一个应用有10W个节点，那zookeeper中就可能有10W个watch（甚至更多）。每一次在zookeeper完成改写节点的操作时就会检测是否有对应的watch，有的话则会通知到watch。<a href="http://shift-alt-ctrl.iteye.com/blog/1847320">Zookeeper-Watcher机制与异步调用原理</a></p>
+
+<p>本文将关注以下内容：</p>
+
+<ul>
+<li>zookeeper的性能是否会受节点数量的影响</li>
+<li>zookeeper的性能是否会受watch数量的影响</li>
+</ul>
+
+
+<h2>测试方法</h2>
+
+<p>在3台机器上分别部署一个zookeeper，版本为<code>3.4.3</code>，机器配置：</p>
+
+<pre><code>Intel(R) Xeon(R) CPU E5-2430 0 @ 2.20GHz
+
+16G
+
+java version "1.6.0_32"
+Java(TM) SE Runtime Environment (build 1.6.0_32-b05)
+OpenJDK (Taobao) 64-Bit Server VM (build 20.0-b12-internal, mixed mode)
+</code></pre>
+
+<p>大部分实验JVM堆大小使用默认，也就是<code>1/4 RAM</code>：</p>
+
+<pre><code>java -XX:+PrintFlagsFinal -version | grep HeapSize
+</code></pre>
+
+<p>测试客户端使用<a href="https://github.com/phunt/zk-smoketest">zk-smoketest</a>，针对watch的测试则是我自己写的。基于zk-smoketest我写了些脚本可以自动跑数据并提取结果，相关脚本可以在这里找到：<a href="https://github.com/kevinlynx/zk-benchmark">https://github.com/kevinlynx/zk-benchmark</a></p>
+
+<!-- more -->
+
+
+<h2>测试结果</h2>
+
+<h3>节点数对读写性能的影响</h3>
+
+<p>测试最大10W个节点，度量1秒内操作数(ops)：</p>
+
+<p><img src="/assets/res/zk_benchmark/node_count.png" alt="" /></p>
+
+<p>可见节点数的增加并不会对zookeeper读写性能造成影响。</p>
+
+<h3>节点数据大小对读写性能的影响</h3>
+
+<p>这个网上其实已经有公认的结论。本身单个节点数据越大，对网络方面的吞吐就会造成影响，所以其数据越大读写性能越低也在预料之中。</p>
+
+<p><img src="/assets/res/zk_benchmark/node_size.png" alt="" /></p>
+
+<p>写数据会在zookeeper集群内进行同步，所以其速度整体会比读数据更慢。该实验需要把超时时间进行一定上调，同时我也把JVM最大堆大小调整到8G。</p>
+
+<p>测试结果很明显，节点数据大小会严重影响zookeeper效率。</p>
+
+<h2>watch对读写性能的影响</h2>
+
+<p>zk-smoketest自带的latency测试有个参数<code>--watch_multiple</code>用来指定watch的数量，但其实仅是指定客户端的数量，在server端通过<code>echo whcp | nc 127.0.0.1 4181</code>会发现实际每个节点还是只有一个watch。</p>
+
+<p>在我写的测试中，则是通过创建多个客户端来模拟单个节点上的多个watch。这也更符合实际应用。同时对节点的写也是在另一个独立的客户端中，这样可以避免zookeeper client的实现对测试带来的干扰。</p>
+
+<p>每一次完整的测试，首先是对每个节点添加节点数据的watch，然后在另一个客户端中对这些节点进行数据改写，收集这些改写操作的耗时，以确定添加的watch对这些写操作带来了多大的影响。</p>
+
+<p><img src="/assets/res/zk_benchmark/watch.png" alt="" /></p>
+
+<p>图中，<code>0 watch</code>表示没有对节点添加watch；<code>1 watch</code>表示有一个客户端对每个节点进行了watch；<code>3 watch</code>表示有其他3个客户端对每个节点进行了watch；依次类推。</p>
+
+<p>可见，watch对写操作还是有较大影响的，毕竟需要进行网络传输。同样，这里也显示出整个zookeeper的watch数量同节点数量一样对整体性能没有影响。</p>
+
+<h2>总体结论</h2>
+
+<ul>
+<li>对单个节点的操作并不会因为zookeeper中节点的总数而受到影响</li>
+<li>数据大小对zookeeper的性能有较大影响，性能和内存都会</li>
+<li>单个节点上独立session的watch数对性能有一定影响</li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[分布式环境中的负载均衡策略]]></title>
@@ -352,10 +437,12 @@ typedef struct fd_set {
 
 <h2>建立连接</h2>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">TcpClient</span><span class="o">::</span><span class="n">connect</span>
-        <span class="o">-&gt;</span> <span class="n">Connector</span><span class="o">::</span><span class="n">start</span>
-            <span class="o">-&gt;</span> <span class="n">EventLoop</span><span class="o">::</span><span class="n">runInLoop</span><span class="p">(</span><span class="n">Connector</span><span class="o">::</span><span class="n">startInLoop</span><span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-            <span class="o">-&gt;</span> <span class="n">Connector</span><span class="o">::</span><span class="n">connect</span>           <span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span></code></pre></div></p>
+<p>{% highlight c++ %}
+    TcpClient::connect
+        -> Connector::start
+            -> EventLoop::runInLoop(Connector::startInLoop&hellip;
+            -> Connector::connect           <br/>
+{% endhighlight %}</p>
 
 <p>EventLoop::runInLoop接口用于在this所在的线程运行某个函数，这个后面看下EventLoop的实现就可以了解。 网络连接的最终建立是在Connector::connect中实现，建立连接之后会创建一个Channel来代表这个socket，并且绑定事件监听接口。最后最重要的是，调用<code>Channel::enableWriting</code>。<code>Channel</code>有一系列的enableXX接口，这些接口用于标识自己关心某IO事件。后面会看到他们的实现。</p>
 
@@ -365,67 +452,76 @@ typedef struct fd_set {
 
 <p>当Connector发现连接真正建立好后，会回调到<code>TcpClient::newConnection</code>，在TcpClient构造函数中：</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">connector</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">setNewConnectionCallback</span><span class="p">(</span>
-      <span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">TcpClient</span><span class="o">::</span><span class="n">newConnection</span><span class="p">,</span> <span class="k">this</span><span class="p">,</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="mi">1</span><span class="p">));</span></code></pre></div></p>
+<p>{% highlight c++ %}
+    connector<em>->setNewConnectionCallback(
+      boost::bind(&amp;TcpClient::newConnection, this, </em>1));
+{% endhighlight %}</p>
 
 <p><code>TcpClient::newConnection</code>中创建一个TcpConnection来代表这个连接：</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">TcpConnectionPtr</span> <span class="nf">conn</span><span class="p">(</span><span class="k">new</span> <span class="n">TcpConnection</span><span class="p">(</span><span class="n">loop_</span><span class="p">,</span>
-                                            <span class="n">connName</span><span class="p">,</span>
-                                            <span class="n">sockfd</span><span class="p">,</span>
-                                            <span class="n">localAddr</span><span class="p">,</span>
-                                            <span class="n">peerAddr</span><span class="p">));</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+    TcpConnectionPtr conn(new TcpConnection(loop_,
+                                            connName,
+                                            sockfd,
+                                            localAddr,
+                                            peerAddr));</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">conn</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">setConnectionCallback</span><span class="p">(</span><span class="n">connectionCallback_</span><span class="p">);</span>
-<span class="n">conn</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">setMessageCallback</span><span class="p">(</span><span class="n">messageCallback_</span><span class="p">);</span>
-<span class="n">conn</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">setWriteCompleteCallback</span><span class="p">(</span><span class="n">writeCompleteCallback_</span><span class="p">);</span>
-<span class="p">...</span>
-<span class="n">conn</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">connectEstablished</span><span class="p">();</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+<pre><code>conn-&gt;setConnectionCallback(connectionCallback_);
+conn-&gt;setMessageCallback(messageCallback_);
+conn-&gt;setWriteCompleteCallback(writeCompleteCallback_);
+...
+conn-&gt;connectEstablished();
+</code></pre>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+<p>{% endhighlight %}</p>
 
 <p>并同时设置事件回调，以上设置的回调都是应用层（即库的使用者）的接口。每一个TcpConnection都有一个Channel，毕竟每一个网络连接都对应了一个socket fd。在TcpConnection构造函数中创建了一个Channel，并设置事件回调函数。</p>
 
 <p><code>TcpConnection::connectEstablished</code>函数最主要的是通知Channel自己开始关心IO读取事件：</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">TcpConnection</span><span class="o">::</span><span class="n">connectEstablished</span><span class="p">()</span>
-    <span class="p">{</span>
-        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-        <span class="n">channel_</span><span class="o">-&gt;</span><span class="n">enableReading</span><span class="p">();</span></code></pre></div></p>
+<p>{% highlight c++ %}
+    void TcpConnection::connectEstablished()
+    {
+        &hellip;
+        channel_->enableReading();
+{% endhighlight %}</p>
 
 <p>这是自此我们看到的第二个<code>Channel::enableXXX</code>接口，这些接口是如何实现关心IO事件的呢？这个后面讲到。</p>
 
 <p>muduo的数据发送都是通过<code>TcpConnection::send</code>完成，这个就是一般网络库中在不使用OS的异步IO情况下的实现：缓存应用层传递过来的数据，在IO设备可写的情况下尽量写入数据。这个主要实现在<code>TcpConnection::sendInLoop</code>中。</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">TcpConnection</span><span class="o">::</span><span class="n">sendInLoop</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hellip</span><span class="p">;.)</span> <span class="p">{</span>
-        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-        <span class="c1">// if no thing in output queue, try writing directly</span>
-        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">channel</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">isWriting</span><span class="p">()</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">outputBuffer</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">readableBytes</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1">// 设备可写且没有缓存时立即写入</span>
-        <span class="p">{</span>
-            <span class="n">nwrote</span> <span class="o">=</span> <span class="n">sockets</span><span class="o">::</span><span class="n">write</span><span class="p">(</span><span class="n">channel</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">fd</span><span class="p">(),</span> <span class="n">data</span><span class="p">,</span> <span class="n">len</span><span class="p">);</span>
-        <span class="p">}</span>
-        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-        <span class="c1">// 否则加入数据到缓存，等待IO可写时再写</span>
-        <span class="n">outputBuffer</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="k">const</span> <span class="kt">char</span><span class="o">*&gt;</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">+</span><span class="n">nwrote</span><span class="p">,</span> <span class="n">remaining</span><span class="p">);</span>
-        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">channel</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">isWriting</span><span class="p">())</span>
-        <span class="p">{</span>
-            <span class="c1">// 注册关心IO写事件，Poller就会对写做检测</span>
-            <span class="n">channel</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">enableWriting</span><span class="p">();</span>
-        <span class="p">}</span>
-        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>   <span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
-    <span class="p">}</span></code></pre></div></p>
+<p>{% highlight c++ %}
+    TcpConnection::sendInLoop(&hellip;.) {
+        &hellip;
+        // if no thing in output queue, try writing directly
+        if (!channel<em>->isWriting() &amp;&amp; outputBuffer</em>.readableBytes() == 0)  // 设备可写且没有缓存时立即写入
+        {
+            nwrote = sockets::write(channel<em>->fd(), data, len);
+        }
+        &hellip;
+        // 否则加入数据到缓存，等待IO可写时再写
+        outputBuffer</em>.append(static_cast<const char*>(data)+nwrote, remaining);
+        if (!channel<em>->isWriting())
+        {
+            // 注册关心IO写事件，Poller就会对写做检测
+            channel</em>->enableWriting();
+        }
+        &hellip;   <br/>
+    }
+{% endhighlight %}</p>
 
 <p>当IO可写时，Channel就会回调<code>TcpConnection::handleWrite</code>（构造函数中注册）</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">TcpConnection</span><span class="o">::</span><span class="n">handleWrite</span><span class="p">()</span>
-    <span class="p">{</span>
-        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">channel</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">isWriting</span><span class="p">())</span>
-        <span class="p">{</span>
-            <span class="kt">ssize_t</span> <span class="n">n</span> <span class="o">=</span> <span class="n">sockets</span><span class="o">::</span><span class="n">write</span><span class="p">(</span><span class="n">channel</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">fd</span><span class="p">(),</span>
-                               <span class="n">outputBuffer</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">peek</span><span class="p">(),</span>
-                               <span class="n">outputBuffer</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">readableBytes</span><span class="p">());</span></code></pre></div></p>
+<p>{% highlight c++ %}
+    void TcpConnection::handleWrite()
+    {
+        &hellip;
+        if (channel<em>->isWriting())
+        {
+            ssize_t n = sockets::write(channel</em>->fd(),
+                               outputBuffer<em>.peek(),
+                               outputBuffer</em>.readableBytes());
+{% endhighlight %}</p>
 
 <p>服务器端的数据收发同客户端机制一致，不同的是连接(TcpConnection)的建立方式不同。</p>
 
@@ -433,97 +529,105 @@ typedef struct fd_set {
 
 <p>服务器接收连接的实现在一个网络库中比较重要。muduo中通过Acceptor类来接收连接。在TcpClient中，其Connector通过一个关心Channel可写的事件来通过连接已建立；在Acceptor中则是通过一个Channel可读的事件来表示有新的连接到来：</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">Acceptor</span><span class="o">::</span><span class="n">Acceptor</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hellip</span><span class="p">;.)</span> <span class="p">{</span>
-        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-        <span class="n">acceptChannel_</span><span class="p">.</span><span class="n">setReadCallback</span><span class="p">(</span>
-            <span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">Acceptor</span><span class="o">::</span><span class="n">handleRead</span><span class="p">,</span> <span class="k">this</span><span class="p">));</span>
-        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-    <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+    Acceptor::Acceptor(&hellip;.) {
+        &hellip;
+        acceptChannel_.setReadCallback(
+            boost::bind(&amp;Acceptor::handleRead, this));
+        &hellip;
+    }</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">Acceptor</span><span class="o">::</span><span class="n">handleRead</span><span class="p">()</span>
-<span class="p">{</span>
-    <span class="p">...</span>
-    <span class="kt">int</span> <span class="n">connfd</span> <span class="o">=</span> <span class="n">acceptSocket_</span><span class="p">.</span><span class="n">accept</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">peerAddr</span><span class="p">);</span> <span class="c1">// 接收连接获得一个新的socket</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">connfd</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
-    <span class="p">{</span>
-        <span class="p">...</span>
-        <span class="n">newConnectionCallback_</span><span class="p">(</span><span class="n">connfd</span><span class="p">,</span> <span class="n">peerAddr</span><span class="p">);</span> <span class="c1">// 回调到TcpServer::newConnection</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+<pre><code>void Acceptor::handleRead()
+{
+    ...
+    int connfd = acceptSocket_.accept(&amp;peerAddr); // 接收连接获得一个新的socket
+    if (connfd &gt;= 0)
+    {
+        ...
+        newConnectionCallback_(connfd, peerAddr); // 回调到TcpServer::newConnection
+</code></pre>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+<p>{% endhighlight %}</p>
 
 <p><code>TcpServer::newConnection</code>中建立一个TcpConnection，并将其附加到一个EventLoopThread中，简单来说就是给其配置一个线程：</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">TcpServer</span><span class="o">::</span><span class="n">newConnection</span><span class="p">(</span><span class="kt">int</span> <span class="n">sockfd</span><span class="p">,</span> <span class="k">const</span> <span class="n">InetAddress</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">peerAddr</span><span class="p">)</span>
-    <span class="p">{</span>
-        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-        <span class="n">EventLoop</span><span class="o">*</span> <span class="n">ioLoop</span> <span class="o">=</span> <span class="n">threadPool</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">getNextLoop</span><span class="p">();</span>
-        <span class="n">TcpConnectionPtr</span> <span class="nf">conn</span><span class="p">(</span><span class="k">new</span> <span class="n">TcpConnection</span><span class="p">(</span><span class="n">ioLoop</span><span class="p">,</span>
-                                                <span class="n">connName</span><span class="p">,</span>
-                                                <span class="n">sockfd</span><span class="p">,</span>
-                                                <span class="n">localAddr</span><span class="p">,</span>
-                                                <span class="n">peerAddr</span><span class="p">));</span>
-        <span class="n">connections</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">[</span><span class="n">connName</span><span class="p">]</span> <span class="o">=</span> <span class="n">conn</span><span class="p">;</span>
-        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-        <span class="n">ioLoop</span><span class="o">-&gt;</span><span class="n">runInLoop</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">TcpConnection</span><span class="o">::</span><span class="n">connectEstablished</span><span class="p">,</span> <span class="n">conn</span><span class="p">));</span></code></pre></div></p>
+<p>{% highlight c++ %}
+    void TcpServer::newConnection(int sockfd, const InetAddress&amp; peerAddr)
+    {
+        &hellip;
+        EventLoop* ioLoop = threadPool<em>->getNextLoop();
+        TcpConnectionPtr conn(new TcpConnection(ioLoop,
+                                                connName,
+                                                sockfd,
+                                                localAddr,
+                                                peerAddr));
+        connections</em>[connName] = conn;
+        &hellip;
+        ioLoop->runInLoop(boost::bind(&amp;TcpConnection::connectEstablished, conn));
+{% endhighlight %}</p>
 
 <h2>IO的驱动</h2>
 
 <p>之前提到，一旦要关心某IO事件了，就调用<code>Channel::enableXXX</code>，这个如何实现的呢？</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">class</span> <span class="nc">Channel</span> <span class="p">{</span>
-        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-        <span class="kt">void</span> <span class="nf">enableReading</span><span class="p">()</span> <span class="p">{</span> <span class="n">events</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="o">|=</span> <span class="n">kReadEvent</span><span class="p">;</span> <span class="n">update</span><span class="p">();</span> <span class="p">}</span>
-        <span class="kt">void</span> <span class="nf">enableWriting</span><span class="p">()</span> <span class="p">{</span> <span class="n">events</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="o">|=</span> <span class="n">kWriteEvent</span><span class="p">;</span> <span class="n">update</span><span class="p">();</span> <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+    class Channel {
+        &hellip;
+        void enableReading() { events<em> |= kReadEvent; update(); }
+        void enableWriting() { events</em> |= kWriteEvent; update(); }</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">Channel</span><span class="o">::</span><span class="n">update</span><span class="p">()</span>
-<span class="p">{</span>
-    <span class="n">loop_</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">updateChannel</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
-<span class="p">}</span>
+<pre><code>void Channel::update()
+{
+    loop_-&gt;updateChannel(this);
+}
 
-<span class="kt">void</span> <span class="n">EventLoop</span><span class="o">::</span><span class="n">updateChannel</span><span class="p">(</span><span class="n">Channel</span><span class="o">*</span> <span class="n">channel</span><span class="p">)</span>
-<span class="p">{</span>
-    <span class="p">...</span>
-    <span class="n">poller_</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">updateChannel</span><span class="p">(</span><span class="n">channel</span><span class="p">);</span>
-<span class="p">}</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+void EventLoop::updateChannel(Channel* channel)
+{
+    ...
+    poller_-&gt;updateChannel(channel);
+}
+</code></pre>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+<p>{% endhighlight %}</p>
 
 <p>最终调用到<code>Poller::upateChannel</code>。muduo中有两个Poller的实现，分别是Poll和EPoll，可以选择简单的Poll来看：</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">PollPoller</span><span class="o">::</span><span class="n">updateChannel</span><span class="p">(</span><span class="n">Channel</span><span class="o">*</span> <span class="n">channel</span><span class="p">)</span>
-    <span class="p">{</span>
-      <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-      <span class="k">if</span> <span class="p">(</span><span class="n">channel</span><span class="o">-&gt;</span><span class="n">index</span><span class="p">()</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="mi">0</span><span class="p">)</span>
-      <span class="p">{</span>
-        <span class="c1">// a new one, add to pollfds&lt;em&gt;</span>
-        <span class="n">assert</span><span class="p">(</span><span class="n">channels</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">channel</span><span class="o">-&gt;</span><span class="n">fd</span><span class="p">())</span> <span class="o">==</span> <span class="n">channels</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
-        <span class="k">struct</span> <span class="n">pollfd</span> <span class="n">pfd</span><span class="p">;</span>
-        <span class="n">pfd</span><span class="p">.</span><span class="n">fd</span> <span class="o">=</span> <span class="n">channel</span><span class="o">-&gt;</span><span class="n">fd</span><span class="p">();</span>
-        <span class="n">pfd</span><span class="p">.</span><span class="n">events</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">short</span><span class="o">&gt;</span><span class="p">(</span><span class="n">channel</span><span class="o">-&gt;</span><span class="n">events</span><span class="p">());</span> <span class="c1">// 也就是Channel::enableXXX操作的那个events&lt;/em&gt;</span>
-        <span class="n">pfd</span><span class="p">.</span><span class="n">revents</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-        <span class="n">pollfds</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">pfd</span><span class="p">);</span> <span class="c1">// 加入一个新的pollfd</span>
-        <span class="kt">int</span> <span class="n">idx</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">pollfds</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">size</span><span class="p">())</span><span class="o">-</span><span class="mi">1</span><span class="p">;</span>
-        <span class="n">channel</span><span class="o">-&gt;</span><span class="n">set_index</span><span class="p">(</span><span class="n">idx</span><span class="p">);</span>
-        <span class="n">channels_</span><span class="p">[</span><span class="n">pfd</span><span class="p">.</span><span class="n">fd</span><span class="p">]</span> <span class="o">=</span> <span class="n">channel</span><span class="p">;</span></code></pre></div></p>
+<p>{% highlight c++ %}
+    void PollPoller::updateChannel(Channel* channel)
+    {
+      &hellip;
+      if (channel->index() &lt; 0)
+      {
+        // a new one, add to pollfds<em>
+        assert(channels</em>.find(channel->fd()) == channels<em>.end());
+        struct pollfd pfd;
+        pfd.fd = channel->fd();
+        pfd.events = static_cast<short>(channel->events()); // 也就是Channel::enableXXX操作的那个events</em>
+        pfd.revents = 0;
+        pollfds<em>.push_back(pfd); // 加入一个新的pollfd
+        int idx = static_cast<int>(pollfds</em>.size())-1;
+        channel->set_index(idx);
+        channels_[pfd.fd] = channel;
+{% endhighlight %}</p>
 
 <p>可见Poller就是把Channel关心的IO事件转换为OS提供的IO模型数据结构上。通过查看关键的<code>pollfds_</code>的使用，可以发现其主要是在Poller::poll接口里。这个接口会在EventLoop的主循环中不断调用：</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">EventLoop</span><span class="o">::</span><span class="n">loop</span><span class="p">()</span>
-    <span class="p">{</span>
-      <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-      <span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">quit</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span>
-      <span class="p">{</span>
-        <span class="n">activeChannels</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">clear</span><span class="p">();</span>
-        <span class="n">pollReturnTime</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="o">=</span> <span class="n">poller</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">poll</span><span class="p">(</span><span class="n">kPollTimeMs</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">activeChannels</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">);</span>
-        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-        <span class="k">for</span> <span class="p">(</span><span class="n">ChannelList</span><span class="o">::</span><span class="n">iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">activeChannels</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span>
-            <span class="n">it</span> <span class="o">!=</span> <span class="n">activeChannels</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">end</span><span class="p">();</span> <span class="o">++</span><span class="n">it</span><span class="p">)</span>
-        <span class="p">{</span>
-          <span class="n">currentActiveChannel</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="o">=</span> <span class="o">*</span><span class="n">it</span><span class="p">;</span>
-          <span class="n">currentActiveChannel</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">handleEvent</span><span class="p">(</span><span class="n">pollReturnTime</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">);</span> <span class="c1">// 获得IO事件，通知各注册回调</span>
-        <span class="p">}</span></code></pre></div></p>
+<p>{% highlight c++ %}
+    void EventLoop::loop()
+    {
+      &hellip;
+      while (!quit<em>)
+      {
+        activeChannels</em>.clear();
+        pollReturnTime<em> = poller</em>->poll(kPollTimeMs, &amp;activeChannels<em>);
+        &hellip;
+        for (ChannelList::iterator it = activeChannels</em>.begin();
+            it != activeChannels<em>.end(); ++it)
+        {
+          currentActiveChannel</em> = *it;
+          currentActiveChannel<em>->handleEvent(pollReturnTime</em>); // 获得IO事件，通知各注册回调
+        }
+{% endhighlight %}</p>
 
 <p>整个流程可总结为：各Channel内部会把自己关心的事件告诉给Poller，Poller由EventLoop驱动检测IO，然后返回哪些Channel发生了事件，EventLoop再驱动这些Channel调用各注册回调。</p>
 
@@ -535,18 +639,20 @@ typedef struct fd_set {
 
 <p>回到<code>TcpServer::newConnection</code>中：</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">TcpServer</span><span class="o">::</span><span class="n">newConnection</span><span class="p">(</span><span class="kt">int</span> <span class="n">sockfd</span><span class="p">,</span> <span class="k">const</span> <span class="n">InetAddress</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">peerAddr</span><span class="p">)</span>
-    <span class="p">{</span>
-      <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-      <span class="n">EventLoop</span><span class="o">*</span> <span class="n">ioLoop</span> <span class="o">=</span> <span class="n">threadPool_</span><span class="o">-&gt;</span><span class="n">getNextLoop</span><span class="p">();</span>
-      <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-      <span class="n">TcpConnectionPtr</span> <span class="nf">conn</span><span class="p">(</span><span class="k">new</span> <span class="n">TcpConnection</span><span class="p">(</span><span class="n">ioLoop</span><span class="p">,</span> <span class="c1">// 使用这个选择到的线程中的EventLoop</span>
-                                              <span class="n">connName</span><span class="p">,</span>
-                                              <span class="n">sockfd</span><span class="p">,</span>
-                                              <span class="n">localAddr</span><span class="p">,</span>
-                                              <span class="n">peerAddr</span><span class="p">));</span>
-      <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-      <span class="n">ioLoop</span><span class="o">-&gt;</span><span class="n">runInLoop</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">TcpConnection</span><span class="o">::</span><span class="n">connectEstablished</span><span class="p">,</span> <span class="n">conn</span><span class="p">));</span></code></pre></div></p>
+<p>{% highlight c++ %}
+    void TcpServer::newConnection(int sockfd, const InetAddress&amp; peerAddr)
+    {
+      &hellip;
+      EventLoop* ioLoop = threadPool_->getNextLoop();
+      &hellip;
+      TcpConnectionPtr conn(new TcpConnection(ioLoop, // 使用这个选择到的线程中的EventLoop
+                                              connName,
+                                              sockfd,
+                                              localAddr,
+                                              peerAddr));
+      &hellip;
+      ioLoop->runInLoop(boost::bind(&amp;TcpConnection::connectEstablished, conn));
+{% endhighlight %}</p>
 
 <p>注意<code>TcpConnection::connectEstablished</code>是如何通过Channel注册关心的IO事件到<code>ioLoop</code>的。</p>
 
@@ -633,188 +739,27 @@ typedef struct fd_set {
 
 <p>在导入xml到sphinx的索引过程中，本身我输出的内容都是unicode的，但有很多资源会导致indexer解析xml出错。出错后indexer直接停止对当前xml的处理。后来查阅资料发现是因为这些无法被indexer处理的xml内容包含unicode里的控制字符，例如 ä (U+00E4)。我的解决办法是直接过滤掉这些控制字符。unicode的控制字符参看<a href="http://www.utf8-chartable.de/">UTF-8 encoding table and Unicode characters</a>。在erlang中干这个事居然不复杂：</p>
 
-<p><div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nf">strip_invalid_unicode</span><span class="p">(</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&gt;&gt;</span><span class="p">)</span> <span class="o">-&gt;</span>
-    <span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&gt;&gt;</span><span class="p">;</span>
-<span class="nf">strip_invalid_unicode</span><span class="p">(</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="nv">C</span><span class="o">/</span><span class="n">utf8</span><span class="p">,</span> <span class="nv">R</span><span class="o">/</span><span class="n">binary</span><span class="o">&gt;&gt;</span><span class="p">)</span> <span class="o">-&gt;</span>
-    <span class="k">case</span> <span class="n">is_valid_unicode</span><span class="err">&amp;</span><span class="n">copy</span><span class="p">;</span> <span class="k">of</span>
-        <span class="n">true</span> <span class="o">-&gt;</span>
-            <span class="nv">RR</span> <span class="o">=</span> <span class="n">strip_invalid_unicode</span><span class="err">&amp;</span><span class="n">reg</span><span class="p">;,</span>
-            <span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="nv">C</span><span class="o">/</span><span class="n">utf8</span><span class="p">,</span> <span class="nv">RR</span><span class="o">/</span><span class="n">binary</span><span class="o">&gt;&gt;</span><span class="p">;</span>
-        <span class="n">false</span> <span class="o">-&gt;</span>
-            <span class="n">strip_invalid_unicode</span><span class="err">&amp;</span><span class="n">reg</span><span class="p">;</span>
-    <span class="k">end</span><span class="p">;</span>
-<span class="nf">strip_invalid_unicode</span><span class="p">(</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;_,</span> <span class="nv">R</span><span class="o">/</span><span class="n">binary</span><span class="o">&gt;&gt;</span><span class="p">)</span> <span class="o">-&gt;</span>
-    <span class="n">strip_invalid_unicode</span><span class="err">&amp;</span><span class="n">reg</span><span class="p">;.</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">is_valid_unicode</span><span class="err">&amp;</span><span class="n">copy</span><span class="p">;</span> <span class="k">when</span> <span class="nv">C</span> <span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="mi">16#20</span> <span class="o">-&gt;</span>
-    <span class="n">false</span><span class="p">;</span>
-<span class="n">is_valid_unicode</span><span class="err">&amp;</span><span class="n">copy</span><span class="p">;</span> <span class="k">when</span> <span class="nv">C</span> <span class="o">&gt;=</span> <span class="mi">16#7f</span><span class="p">,</span> <span class="nv">C</span> <span class="o">=</span><span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="mi">16#ff</span> <span class="o">-&gt;</span>
-    <span class="n">false</span><span class="p">;</span>
-<span class="nf">is_valid_unicode</span><span class="p">(_)</span> <span class="o">-&gt;</span>
-    <span class="n">true</span><span class="p">.</span></code></pre></div></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[磁力搜索第二版-dhtcrawler2]]></title>
-    <link href="http://codemacro.com/2013/07/02/dhtcrawler2/"/>
-    <updated>2013-07-02T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2013/07/02/dhtcrawler2</id>
-    <content type="html"><![CDATA[<p>接<a href="http://codemacro.com/2013/06/21/magnet-search-impl/">上篇</a>。</p>
-
-<h2>下载使用</h2>
-
-<p>目前为止dhtcrawler2相对dhtcrawler而言，数据库部分调整很大，DHT部分基本沿用之前。但单纯作为一个爬资源的程序而言，DHT部分可以进行大幅削减，这个以后再说。这个版本更快、更稳定。为了方便，我将编译好的erlang二进制文件作为git的主分支，我还添加了一些Windows下的批处理脚本，总之基本上下载源码以后即可运行。</p>
-
-<p>项目地址：<a href="https://github.com/kevinlynx/dhtcrawler2">https://github.com/kevinlynx/dhtcrawler2</a></p>
-
-<h3>使用方法</h3>
-
-<ul>
-<li>下载erlang，我测试的是R16B版本，确保erl等程序被加入<code>Path</code>环境变量</li>
-<li><p>下载mongodb，解压即用：</p>
-
-<pre><code>  mongod --dbpath xxx --setParameter textSearchEnabled=true
-</code></pre></li>
-<li><p>下载dhtcrawler2</p>
-
-<pre><code>  git clone https://github.com/kevinlynx/dhtcrawler2.git
-</code></pre></li>
-<li><p>运行<code>win_start_crawler.bat</code></p></li>
-<li>运行<code>win_start_hash.bat</code></li>
-<li>运行<code>win_start_http.bat</code></li>
-<li>打开<code>localhost:8000</code>查看<code>stats</code></li>
-</ul>
-
-
-<p>爬虫每次运行都会保存DHT节点状态，早期运行的时候收集速度会不够。dhtcrawler2将程序分为3部分：</p>
-
-<ul>
-<li>crawler，即DHT爬虫部分，仅负责收集hash</li>
-<li>hash，准确来讲叫<code>hash reader</code>，处理爬虫收集的hash，处理过程主要涉及到下载种子文件</li>
-<li>http，使用hash处理出来的数据库，以作为Web端接口</li>
-</ul>
-
-
-<p>我没有服务器，但程序有被部署在别人的服务器上：<a href="http://bt.cm">bt.cm</a>，<a href="http://222.175.114.126:8000/">http://222.175.114.126:8000/</a>。</p>
-
-<!-- more -->
-
-
-<h3>其他工具</h3>
-
-<p>为了提高资源索引速度，我陆续写了一些工具，包括：</p>
-
-<ul>
-<li>import_tors，用于导入本地种子文件到数据库</li>
-<li>tor_cache，用于下载种子到本地，仅仅提供下载的功能，hash_reader在需要种子文件时，可以先从本地取</li>
-<li>cache_indexer，目前hash_reader取种子都是从torrage.com之类的种子缓存站点取，这些站点提供了种子列表，cache_indexer将这些列表导入数据库，hash_reader在请求种子文件前可以通过该数据库检查torrage.com上有无此种子，从而减少多余的http请求</li>
-</ul>
-
-
-<p>这些工具的代码都被放在dhtcrawler2中，可以查看对应的启动脚本来查看具体如何启动。</p>
-
-<h3>OS/Database</h3>
-
-<p>根据实际的测试效果来看，当收集的资源量过百万时（目前bt.cm录入近160万资源），4G内存的Windows平台，mongodb很容易就会挂掉。挂掉的原因全是1455，页面文件太小。有人建议不要在Windows下使用mongodb，Linux下我自己没做过测试。</p>
-
-<p>mongodb可以部署为集群形式(replica-set)，当初我想把http部分的查询放在一个只读的mongodb实例上，但因为建立集群时，要同步已有的10G数据库，而每次同步都以mongodb挂掉结束，遂放弃。在目前bt.cm的配置中，数据库torrent的锁比例（db lock）很容易上50%，这也让http在搜索时，经常出现搜索超时的情况。</p>
-
-<h2>技术信息</h2>
-
-<p>dhtcrawler最早的版本有很多问题，修复过的最大的一个问题是关于erlang定时器的，在DHT实现中，需要对每个节点每个peer做超时处理，在erlang中的做法直接是针对每个节点注册了一个定时器。这不是问题，问题在于定时器资源就像没有GC的内存资源一样，是会由于程序员的代码问题而出现资源泄漏。所以，dhtcrawler第一个版本在节点数配置在100以上的情况下，用不了多久就会内存耗尽，最终导致erlang虚拟机core dump。</p>
-
-<p>除了这个问题以外，dhtcrawler的资源收录速度也不是很快。这当然跟数据库和获取种子的速度有直接关系。尤其是获取种子，使用的是一些提供info-hash到种子映射的网站，通过HTTP请求来下载种子文件。我以为通过BT协议直接下载种子会快些，并且实时性也要高很多，因为这个种子可能未被这些缓存网站收录，但却可以直接向对方请求得到。为此，我还特地翻阅了相关<a href="http://www.bittorrent.org/beps/bep_0009.html">协议</a>，并且用erlang实现了（以后的文章我会讲到具体实现这个协议）。</p>
-
-<p>后来我怀疑get_peers的数量会不会比announce_peer多，但是理论上一般的客户端在get_peers之后都是announce_peer，但是如果get_peers查询的peers恰好不在线呢？这意味着很多资源虽然已经存在，只不过你恰好暂时请求不到。实际测试时，发现get_peers基本是announce_peer数量的10倍。</p>
-
-<p>将hash的获取方式做了调整后，dhtcrawler在几分钟以内以几乎每秒上百个新增种子的速度工作。然后，程序挂掉。</p>
-
-<p>从dhtcrawler到今天为止的dhtcrawler2，中间间隔了刚好1个月。我的所有业余时间全部扑在这个项目上，面临的问题一直都是程序的内存泄漏、资源收录的速度不够快，到后来又变为数据库压力过大。每一天我都以为我将会完成一个稳定版本，然后终于可以去干点别的事情，但总是干不完，目前完没完都还在观察。我始终明白在做优化前需要进行详尽的数据收集和分析，从而真正地优化到正确的点上，但也总是凭直觉和少量数据分析就开始尝试。</p>
-
-<p>这里谈谈遇到的一些问题。</p>
-
-<h3>erlang call timeout</h3>
-
-<p>最开始遇到erlang中<code>gen_server:call</code>出现<code>timeout</code>错误时，我还一直以为是进程死锁了。相关代码读来读去，实在觉得不可能发生死锁。后来发现，当erlang虚拟机压力上去后，例如内存太大，但没大到耗尽系统所有内存（耗进所有内存基本就core dump了），进程间的调用就会出现timeout。</p>
-
-<p>当然，内存占用过大可能只是表象。其进程过多，进程消息队列太长，也许才是导致出现timeout的根本原因。消息队列过长，也可能是由于发生了<em>消息泄漏</em>的缘故。消息泄漏我指的是这样一种情况，进程自己给自己发消息（当然是cast或info），这个消息被处理时又会发送相同的消息，正常情况下，gen_server处理了一个该消息，就会从消息队列里移除它，然后再发送相同的消息，这不会出问题。但是当程序逻辑出问题，每次处理该消息时，都会发生多余一个的同类消息，那消息队列自然就会一直增长。</p>
-
-<p>保持进程逻辑简单，以避免这种逻辑错误。</p>
-
-<h3>erlang gb_trees</h3>
-
-<p>我在不少的地方使用了gb_trees，dht_crawler里就可能出现<code>gb_trees:get(xxx, nil)</code>这种错误。乍一看，我以为我真的传入了一个<code>nil</code>值进去。然后我苦看代码，以为在某个地方我会把这个gb_trees对象改成了nil。但事情不是这样的，gb_tress使用一个tuple作为tree的节点，当某个节点没有子节点时，就会以nil表示。</p>
-
-<p><code>gb_trees:get(xxx, nil)</code>类似的错误，实际指的是<code>xxx</code>没有在这个gb_trees中找到。</p>
-
-<h3>erlang httpc</h3>
-
-<p>dht_crawler通过http协议从torrage.com之类的缓存网站下载种子。最开始我为了尽量少依赖第三方库，使用的是erlang自带的httpc。后来发现程序有内存泄漏，google发现erlang自带的httpc早为人诟病，当然也有大神说在某个版本之后这个httpc已经很不错。为了省事，我直接换了ibrowse，替换之后正常很多。但是由于没有具体分析测试过，加之时间有点远了，我也记不太清细节。因为早期的http请求部分，没有做数量限制，也可能是由于我的使用导致的问题。</p>
-
-<p>某个版本后，我才将http部分严格地与hash处理部分区分开来。相较数据库操作而言，http请求部分慢了若干数量级。在hash_reader中将这两块分开，严格限制了提交给httpc的请求数，以获得稳定性。</p>
-
-<p>对于一个复杂的网络系统而言，分清哪些是耗时的哪些是不大耗时的，才可能获得性能的提升。对于hash_reader而言，处理一个hash的速度，虽然很大程度取决于数据库，但相较http请求，已经快很多。它在处理这些hash时，会将数据库已收录的资源和待下载的资源分离开，以尽快的速度处理已存在的，而将待下载的处理速度交给httpc的响应速度。</p>
-
-<h3>erlang httpc ssl</h3>
-
-<p>ibrowse处理https请求时，默认和erlang自带的httpc使用相同的SSL实现。这经常导致出现<code>tls_connection</code>进程挂掉的错误，具体原因不明。</p>
-
-<h3>erlang调试</h3>
-
-<p>首先合理的日志是任何系统调试的必备。</p>
-
-<p>我面临的大部分问题都是内存泄漏相关，所以依赖的erlang工具也是和内存相关的：</p>
-
-<ul>
-<li><p>使用<code>etop</code>，可以检查内存占用多的进程、消息队列大的进程、CPU消耗多的进程等等：</p>
-
-<pre><code>  spawn(fun() -&gt; etop:start([{output, text}, {interval, 10}, {lines, 20}, {sort, msg_q }]) end).
-</code></pre></li>
-<li><p>使用<code>erlang:system_info(allocated_areas).</code>检查内存使用情况，其中会输出系统<code>timer</code>数量</p></li>
-<li>使用<code>erlang:process_info</code>查看某个具体的进程，这个甚至会输出消息队列里的消息</li>
-</ul>
-
-
-<h3>hash_writer/crawler</h3>
-
-<p>crawler本身仅收集hash，然后写入数据库，所以可以称crawler为hash_writer。这些hash里存在大量的重复。hash_reader从数据库里取出这些hash然后做处理。处理过程会首先判定该hash对应的资源是否被收录，没有收录就先通过http获取种子。</p>
-
-<p>在某个版本之后，crawler会简单地预先处理这些hash。它缓存一定数量的hash，接收到新hash时，就合并到hash缓存里，以保证缓存里没有重复的hash。这个重复率经过实际数据分析，大概是50%左右，即收到的100个请求里，有50个是重复的。这样的优化，不仅会降低hash数据库的压力，hash_reader处理的hash数量少了，也会对torrent数据库有很大提升。</p>
-
-<p>当然进一步的方案可以将crawler和hash_reader之间交互的这些hash直接放在内存中处理，省去中间数据库。但是由于mongodb大量使用虚拟内存的缘故（内存映射文件），经常导致服务器内存不够（4G），内存也就成了珍稀资源。当然这个方案还有个弊端是难以权衡hash缓存的管理。crawler收到hash是一个不稳定的过程，在某些时间点这些hash可能爆多，而hash_reader处理hash的速度也会不太稳定，受限于收到的hash类别（是新增资源还是已存在资源）、种子请求速度、是否有效等。</p>
-
-<p>当然，也可以限制缓存大小，以及对hash_reader/crawler处理速度建立关系来解决这些问题。但另一方面，这里的优化是否对目前的系统有提升，是否是目前系统面临的最大问题，却是需要考究的事情。</p>
-
-<h3>cache indexer</h3>
-
-<p>dht_crawler是从torrage.com等网站获取种子文件，这些网站看起来都是使用了相同的接口，其都有一个sync目录，里面存放了每天每个月索引的种子hash，例如 <a href="http://torrage.com/sync/%E3%80%82%E8%BF%99%E4%B8%AA%E7%BD%91%E7%AB%99%E4%B8%8A%E6%98%AF%E5%90%A6%E6%9C%89%E6%9F%90%E4%B8%AAhash%E5%AF%B9%E5%BA%94%E7%9A%84%E7%A7%8D%E5%AD%90%EF%BC%8C%E5%B0%B1%E5%8F%AF%E4%BB%A5%E4%BB%8E%E8%BF%99%E4%BA%9B%E7%B4%A2%E5%BC%95%E4%B8%AD%E6%A3%80%E6%9F%A5%E3%80%82">http://torrage.com/sync/%E3%80%82%E8%BF%99%E4%B8%AA%E7%BD%91%E7%AB%99%E4%B8%8A%E6%98%AF%E5%90%A6%E6%9C%89%E6%9F%90%E4%B8%AAhash%E5%AF%B9%E5%BA%94%E7%9A%84%E7%A7%8D%E5%AD%90%EF%BC%8C%E5%B0%B1%E5%8F%AF%E4%BB%A5%E4%BB%8E%E8%BF%99%E4%BA%9B%E7%B4%A2%E5%BC%95%E4%B8%AD%E6%A3%80%E6%9F%A5%E3%80%82</a></p>
-
-<p>hash_reader在处理新资源时，请求种子的过程中发现大部分在这些服务器上都没有找到，也就是发起的很多http请求都是404回应，这不但降低了系统的处理能力、带宽，也降低了索引速度。所以我写了一个工具，先手工将sync目录下的所有文件下载到本地，然后通过这个工具 (cache indexer) 将这些索引文件里的hash全部导入数据库。在以后的运行过程中，该工具仅下载当天的索引文件，以更新数据库。 hash_reader 根据配置，会首先检查某个hash是否存在该数据库中，存在的hash才可能在torrage.com上下载得到。</p>
-
-<h3>种子缓存</h3>
-
-<p>hash_reader可以通过配置，将下载得到的种子保存在本地文件系统或数据库中。这可以建立自己的种子缓存，但保存在数据库中会对数据库造成压力，尤其在当前测试服务器硬件环境下；而保存为本地文件，又特别占用硬盘空间。</p>
-
-<h3>基于BT协议的种子下载</h3>
-
-<p>通过http从种子缓存里取种子文件，可能会没有直接从P2P网络里取更实时。目前还没来得及查看这些种子缓存网站的实现原理。但是通过BT协议获取种子会有点麻烦，因为dht_crawler是根据<code>get_peer</code>请求索引资源的，所以如果要通过BT协议取种子，那么这里还得去DHT网络里查询该种子，这个查询过程可能会较长，相比之下会没有http下载快。而如果通过<code>announce_peer</code>来索引新资源的话，其索引速度会大大降低，因为<code>announce_peer</code>请求比<code>get_peer</code>请求少很多，几乎10倍。</p>
-
-<p>所以，这里的方案可能会结合两者，新开一个服务，建立自己的种子缓存。</p>
-
-<h3>中文分词</h3>
-
-<p>mongodb的全文索引是不支持中文的。我在之前提到，为了支持搜索中文，我将字符串拆成了若干子串。这样的后果就是字符串索引会稍稍偏大，而且目前这一块的代码还特别简单，会将很多非文字字符也算在内。后来我加了个中文分词库，使用的是rmmseg-cpp。我将其C++部分抽离出来编译成erlang nif，这可以在我的github上找到。</p>
-
-<p>但是这个库拆分中文句子依赖于词库，而这个词库不太新，dhtcrawler爬到的大部分资源类型你们也懂，那些词汇拆出来的比率不太高，这会导致搜索出来的结果没你想的那么直白。当然更新词库应该是可以解决这个问题的，目前还没有时间顾这一块。</p>
-
-<h2>总结</h2>
-
-<p>一个老外对我说过，&#8221;i have 2 children to feed, so i will not do this only for fun&#8221;。</p>
-
-<p>你的大部分编程知识来源于网络，所以稍稍回馈一下不会让你丢了饭碗。</p>
-
-<p>我很穷，如果你能让我收获金钱和编程成就，还不会嫌我穿得太邋遢，that&rsquo;s really kind of you。</p>
+<p>{% highlight erlang %}
+strip_invalid_unicode(&lt;&lt;>>) ->
+    &lt;&lt;>>;
+strip_invalid_unicode(&lt;&lt;C/utf8, R/binary>>) ->
+    case is_valid_unicode&copy; of
+        true ->
+            RR = strip_invalid_unicode&reg;,
+            &lt;&lt;C/utf8, RR/binary>>;
+        false ->
+            strip_invalid_unicode&reg;
+    end;
+strip_invalid_unicode(&lt;&lt;_, R/binary>>) ->
+    strip_invalid_unicode&reg;.</p>
+
+<p>is_valid_unicode&copy; when C &lt; 16#20 ->
+    false;
+is_valid_unicode&copy; when C >= 16#7f, C =&lt; 16#ff ->
+    false;
+is_valid_unicode(_) ->
+    true.
+{% endhighlight %}</p>
 ]]></content>
   </entry>
   

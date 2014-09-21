@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="概述 scala语言包含了函数式语言和面向对象语言的语法特性，从我目前的感受来看，这不是一门简单的语言。同Ruby/Erlang相比，其语法集大多了。scala基于JVM或.NET平台，其可以几乎无缝地使用Java库（不但使用上没有负担，其运行效率上也不会增加负担），配合其强大的语言表达能力， &hellip;">
+  <meta name="description" content="技术 这一年里个人的技术感觉进步不是那么大。一方面技术之外的事情多了起来，另一方面由于工作原因接触的技术也较为杂乱，没有机会专注。技术的提升还是得靠业余时间。 系统分析设计 学了些RUP的方法，对规范化的系统分析设计算是有了一定认识。但这个东西在实践的过程中往往较难运用， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,46 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2014/02/02/2013/">my 2013</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-02-02T00:00:00+08:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>2</span><span class='date-suffix'>nd</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>技术</h2>
+
+<p>这一年里个人的技术感觉进步不是那么大。一方面技术之外的事情多了起来，另一方面由于工作原因接触的技术也较为杂乱，没有机会专注。技术的提升还是得靠业余时间。</p>
+
+<h3>系统分析设计</h3>
+
+<p>学了些RUP的方法，对规范化的系统分析设计算是有了一定认识。但这个东西在实践的过程中往往较难运用，好的方法学还是得看项目的实际情况而定。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/02/02/2013/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -568,54 +608,6 @@ $str
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2013/05/19/crawl-dht/">P2P中DHT网络爬虫</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2013-05-19T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>19</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>DHT网络爬虫基于DHT网络构建了一个P2P资源搜索引擎。这个搜索引擎不但可以用于构建DHT网络中活跃的资源索引（活跃的资源意味着该网络中肯定有人至少持有该资源的部分数据），还可以分析出该网络中的热门分享资源。<a href="http://xiaoxia.org/">小虾</a>不久前发布了一个这样的搜索引擎：<a href="http://bt.shousibaocai.com/">磁力搜索</a>。他也写博客对此稍作了介绍：<a href="http://xiaoxia.org/2013/05/11/magnet-search-engine/">写了个磁力搜索的网页 － 收录最近热门分享的资源</a>。网络上其实也有其他人做了类似的应用：<a href="http://pacsec.jp/psj11/PacSec2011_Massive-Monitoring_en.pdf">DHT monitoring</a>，<a href="https://www.defcon.org/images/defcon-18/dc-18-presentations/Wolchok/DEFCON-18-Wolchok-Crawling-Bittorrent-DHTS.pdf">Crawling Bittorrent DHT</a></p>
-
-<p>但是他的这篇文章仅介绍了DHT网络的大致工作原理，并且这个爬虫的具体工作原理也没有提到。对此我查阅了些文章及代码，虽然从原理上梳理出了整个实现方案，但很多细节还是不甚清楚。所以本文仅作概要介绍。</p>
-
-<h2>DHT/Magnet/Torrent</h2>
-
-<p>在P2P网络中，要通过种子文件下载一个资源，需要知道整个P2P网络中有哪些计算机正在下载/上传该资源。这里将这些提供某个资源下载的计算机定义为<code>peer</code>。传统的P2P网络中，存在一些<code>tracker</code>服务器，这些服务器的作用主要用于跟踪某个资源有哪些关联的peer。下载这个资源当然得首先取得这些peer。</p>
-
-<p>DHT的出现用于解决当tracker服务器不可用时，P2P客户端依然可以取得某个资源的peer。DHT解决这个问题，是因为它将原来tracker上的资源peer信息分散到了整个网络中。这里将实现了DHT协议的计算机定义为节点(node)。通常一个P2P客户端程序既是peer也是节点。DHT网络有多种实现算法，例如Kademlia。</p>
-
-<p>当某个P2P客户端通过种子文件下载资源时，如果没有tracker服务器，它就会向DHT网络查询这个资源对应的peer列表。资源的标识在DHT网络中称为<code>infohash</code>，是一个20字节长的字符串，一般通过sha1算法获得，也就是一个类似UUID的东西。</p>
-
-<p>实际上，种子文件本身就对应着一个infohash，这个infohash是通过种子文件的文件描述信息动态计算得到。一个种子文件包含了对应资源的描述信息，例如文件名、文件大小等。Magnet，这里指的是磁力链接，它是一个类似URL的字符串地址。P2P软件通过磁力链接，会下载到一个种子文件，然后根据该种子文件继续真实资源的下载。</p>
-
-<p>磁力链接中包含的最重要的信息就是infohash。这个infohash一般为40字节或32字节，它其实只是资源infohash（20字节）的一种编码形式。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2013/05/19/crawl-dht/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/3">&larr; Older</a>
@@ -630,11 +622,15 @@ $str
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (18)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (8)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (18)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (9)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/09/21/zk-watch-benchmark/">zookeeper节点数与watch的性能测试</a>
+      </li>
     
       <li class="post">
         <a href="/2014/09/15/inside-static-library/">浅析静态库链接原理</a>
@@ -652,10 +648,6 @@ $str
         <a href="/2014/09/02/stack-frame/">C/C++中手动获取调用堆栈</a>
       </li>
     
-      <li class="post">
-        <a href="/2014/08/31/protobuf-rpc/">基于protobuf的RPC实现</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -667,7 +659,7 @@ $str
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 151.42857142857144%'>c/c++(18)</a> <a href='/categories/clang' style='font-size: 102.85714285714286%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 122.85714285714286%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.42857142857143%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.71428571428571%'>ice(2)</a> <a href='/categories/javascript' style='font-size: 102.85714285714286%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 114.28571428571429%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 114.28571428571429%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.57142857142857%'>module(3)</a> <a href='/categories/network' style='font-size: 122.85714285714286%'>network(8)</a> <a href='/categories/other' style='font-size: 120.0%'>other(7)</a> <a href='/categories/ruby' style='font-size: 111.42857142857143%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.85714285714286%'>scala(1)</a> <a href='/categories/tips' style='font-size: 160.0%'>tips(21)</a> <a href='/categories/web' style='font-size: 111.42857142857143%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 151.42857142857144%'>c/c++(18)</a> <a href='/categories/clang' style='font-size: 102.85714285714286%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 122.85714285714286%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.42857142857143%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.71428571428571%'>ice(2)</a> <a href='/categories/javascript' style='font-size: 102.85714285714286%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 114.28571428571429%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 114.28571428571429%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.57142857142857%'>module(3)</a> <a href='/categories/network' style='font-size: 125.71428571428572%'>network(9)</a> <a href='/categories/other' style='font-size: 120.0%'>other(7)</a> <a href='/categories/ruby' style='font-size: 111.42857142857143%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.85714285714286%'>scala(1)</a> <a href='/categories/tips' style='font-size: 160.0%'>tips(21)</a> <a href='/categories/web' style='font-size: 111.42857142857143%'>web(4)</a> </span>
 </section>
 
   
