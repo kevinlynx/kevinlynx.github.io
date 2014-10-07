@@ -1,0 +1,511 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>浅析glibc中thread tls的一处bug - loop in codes</title>
+  <meta name="author" content="Kevin Lynx">
+
+  
+  <meta name="description" content="最早的时候是在程序初始化过程中开启了一个timer(timer_create)，这个timer第一次触发的时间较短时就会引起程序core掉，core的位置也是不定的。使用valgrind可以发现有错误的内存写入： ==31676== Invalid write of size 8
+==31676 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://codemacro.com/2014/10/07/pthread-tls-bug">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <!--script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script-->
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<!--link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css"-->
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">loop in codes</a></h1>
+  
+    <h2>Kevin Lynx BLOG</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:codemacro.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about.html">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">浅析glibc中thread tls的一处bug</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-10-07T00:00:00+08:00'><span class='date'><span class='date-month'>Oct</span> <span class='date-day'>7</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>最早的时候是在程序初始化过程中开启了一个timer(<code>timer_create</code>)，这个timer第一次触发的时间较短时就会引起程序core掉，core的位置也是不定的。使用valgrind可以发现有错误的内存写入：</p>
+
+<pre><code>==31676== Invalid write of size 8
+==31676==    at 0x37A540F852: _dl_allocate_tls_init (in /lib64/ld-2.5.so)
+==31676==    by 0x4E26BD3: pthread_create@@GLIBC_2.2.5 (in /lib64/libpthread-2.5.so)
+==31676==    by 0x76E0B00: timer_helper_thread (in /lib64/librt-2.5.so)
+==31676==    by 0x4E2673C: start_thread (in /lib64/libpthread-2.5.so)
+==31676==    by 0x58974BC: clone (in /lib64/libc-2.5.so)
+==31676==  Address 0xf84dbd0 is 0 bytes after a block of size 336 alloc'd
+==31676==    at 0x4A05430: calloc (vg_replace_malloc.c:418)
+==31676==    by 0x37A5410082: _dl_allocate_tls (in /lib64/ld-2.5.so)
+==31676==    by 0x4E26EB8: pthread_create@@GLIBC_2.2.5 (in /lib64/libpthread-2.5.so)
+==31676==    by 0x76E0B00: timer_helper_thread (in /lib64/librt-2.5.so)
+==31676==    by 0x4E2673C: start_thread (in /lib64/libpthread-2.5.so)
+==31676==    by 0x58974BC: clone (in /lib64/libc-2.5.so)
+</code></pre>
+
+<p>google <code>_dl_allocate_tls_init</code> 相关发现一个glibc的bug <a href="https://sourceware.org/bugzilla/show_bug.cgi?id=13862">Bug 13862</a> 和我的情况有点类似。本文就此bug及tls相关实现做一定阐述。</p>
+
+<p>需要查看glibc的源码，如何确认使用的glibc的版本，可以这样：</p>
+
+<pre><code>$ /lib/libc.so.6
+GNU C Library stable release version 2.5, by Roland McGrath et al.
+...
+</code></pre>
+
+<p>为了方便，还可以直接在(glibc Cross Reference)[<a href="http://osxr.org/glibc/source/?v=glibc-2.17">http://osxr.org/glibc/source/?v=glibc-2.17</a>]网页上进行查看，版本不同，但影响不大。</p>
+
+<!-- more -->
+
+
+<h2>BUG描述</h2>
+
+<p>要重现13862 BUG作者提到要满足以下条件：</p>
+
+<blockquote><p>The use of a relatively large number of dynamic libraries, loaded at runtime using dlopen.</p>
+
+<p>The use of thread-local-storage within those libraries.</p>
+
+<p>A thread exiting prior to the number of loaded libraries increasing a significant amount, followed by a new thread being created after the number of libraries has increased.</p></blockquote>
+
+<p>简单来说，就是在加载一大堆包含TLS变量的动态库的过程中，开启了一个线程，这个线程退出后又开启了另一个线程。</p>
+
+<p>这和我们的问题场景很相似。不同的是我们使用的是timer，但timer在触发时也是开启新的线程，并且这个线程会立刻退出：</p>
+
+<p><code>/nptl/sysdeps/unix/sysv/linux/timer_routines.c</code></p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">timer_helper_thread</span><span class="p">(...)</span>  <span class="c1">// 用于检测定时器触发的辅助线程</span>
+<span class="p">{</span>
+    <span class="p">...</span>
+      <span class="kt">pthread_t</span> <span class="n">th</span><span class="p">;</span>
+      <span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="n">pthread_create</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">th</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">tk</span><span class="o">-&gt;</span><span class="n">attr</span><span class="p">,</span> <span class="n">timer_sigev_thread</span><span class="p">,</span> <span class="c1">// 开启一个新线程调用用户注册的定时器函数</span>
+                 <span class="n">td</span><span class="p">);</span>
+    <span class="p">...</span>
+<span class="p">}</span></code></pre></div>
+
+
+<p>要重现此BUG可以使用我的实验代码 <a href="https://gist.github.com/kevinlynx/69435e718785a0ad12c4">thread-tls</a>，或者使用<a href="https://sourceware.org/bugzilla/attachment.cgi?id=6290">Bug 13862 中的附件</a></p>
+
+<h2>TLS相关实现</h2>
+
+<p>可以顺着<code>_dl_allocate_tls_init</code>函数的实现查看相关联的部分代码。该函数遍历所有加载的包含TLS变量的模块，初始化一个线程的TLS数据结构。</p>
+
+<p>每一个线程都有自己的堆栈空间，其中单独存储了各个模块的TLS变量，从而实现TLS变量在每一个线程中都有单独的拷贝。TLS与线程的关联关系可以查看下图：</p>
+
+<p><img src="/assets/res/pthread-tls.png" alt="" /></p>
+
+<p>应用层使用的<code>pthread_t</code>实际是个<code>pthread</code>对象的地址。创建线程时线程的堆栈空间和<code>pthread</code>结构是一块连续的内存。但这个地址并不指向这块内存的首地址。相关代码：/nptl/allocatestack.c <code>allocate_stack</code>，该函数分配线程的堆栈内存。</p>
+
+<p><code>pthread</code>第一个成员是<code>tcbhead_t</code>，<code>tcbhead_t</code>中<code>dtv</code>指向了一个<code>dtv_t</code>数组，该数组的大小随着当前程序载入的模块多少而动态变化。每一个模块被载入时，都有一个<code>l_tls_modid</code>，其直接作为<code>dtv_t</code>数组的下标索引。<code>tcbhead_t</code>中的<code>dtv</code>实际指向的是<code>dtv_t</code>第二个元素，第一个元素用于记录整个<code>dtv_t</code>数组有多少元素，第二个元素也做特殊使用，从第三个元素开始，才是用于存储TLS变量。</p>
+
+<p>一个<code>dtv_t</code>存储的是一个模块中所有TLS变量的地址，当然这些TLS变量都会被放在连续的内存空间里。<code>dtv_t::pointer::val</code>正是用于指向这块内存的指针。对于非动态加载的模块它指向的是线程堆栈的位置；否则指向动态分配的内存位置。</p>
+
+<p>以上结构用代码描述为，</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">union</span> <span class="kt">dtv_t</span> <span class="p">{</span>
+    <span class="kt">size_t</span> <span class="n">counter</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="p">{</span>
+        <span class="kt">void</span> <span class="o">*</span><span class="n">val</span><span class="p">;</span> <span class="cm">/* point to tls variable memory */</span>
+        <span class="kt">bool</span> <span class="n">is_static</span><span class="p">;</span>
+    <span class="p">}</span> <span class="n">pointer</span><span class="p">;</span>
+<span class="p">};</span>
+ 
+<span class="k">struct</span> <span class="kt">tcbhead_t</span> <span class="p">{</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">tcb</span><span class="p">;</span>
+    <span class="kt">dtv_t</span> <span class="o">*</span><span class="n">dtv</span><span class="p">;</span> <span class="cm">/* point to a dtv_t array */</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">padding</span><span class="p">[</span><span class="mi">22</span><span class="p">];</span> <span class="cm">/* other members i don&#39;t care */</span>
+<span class="p">};</span>
+
+<span class="k">struct</span> <span class="n">pthread</span> <span class="p">{</span>
+    <span class="kt">tcbhead_t</span> <span class="n">tcb</span><span class="p">;</span>
+    <span class="cm">/* more members i don&#39;t care */</span>
+<span class="p">};</span></code></pre></div>
+
+
+<p><strong>dtv是一个用于以模块为单位存储TLS变量的数组</strong>。</p>
+
+<p>实际代码参看 /nptl/descr.h 及 nptl/sysdeps/x86_64/tls.h。</p>
+
+<h3>实验</h3>
+
+<p>使用<code>g++ -o thread -g -Wall -lpthread -ldl thread.cpp</code>编译<a href="https://gist.github.com/kevinlynx/69435e718785a0ad12c4">代码</a>，即在创建线程前加载了一个.so：</p>
+
+<pre><code>Breakpoint 1, dump_pthread (id=1084229952) at thread.cpp:40
+40          printf("pthread %p, dtv %p\n", pd, dtv);
+(gdb) set $dtv=pd-&gt;tcb.dtv
+(gdb) p $dtv[-1]
+$1 = {counter = 17, pointer = {val = 0x11, is_static = false}}
+(gdb) p $dtv[3]
+$2 = {counter = 18446744073709551615, pointer = {val = 0xffffffffffffffff, is_static = false}}
+</code></pre>
+
+<p><code>dtv[3]</code>对应着动态加载的模块，<code>is_static=false</code>，<code>val</code>被初始化为-1：</p>
+
+<p>/elf/dl-tls.c <code>_dl_allocate_tls_init</code></p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">if</span> <span class="p">(</span><span class="n">map</span><span class="o">-&gt;</span><span class="n">l_tls_offset</span> <span class="o">==</span> <span class="n">NO_TLS_OFFSET</span>
+   <span class="o">||</span> <span class="n">map</span><span class="o">-&gt;</span><span class="n">l_tls_offset</span> <span class="o">==</span> <span class="n">FORCED_DYNAMIC_TLS_OFFSET</span><span class="p">)</span>
+ <span class="p">{</span>
+   <span class="cm">/* For dynamically loaded modules we simply store</span>
+<span class="cm">      the value indicating deferred allocation.  */</span>
+   <span class="n">dtv</span><span class="p">[</span><span class="n">map</span><span class="o">-&gt;</span><span class="n">l_tls_modid</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">val</span> <span class="o">=</span> <span class="n">TLS_DTV_UNALLOCATED</span><span class="p">;</span>
+   <span class="n">dtv</span><span class="p">[</span><span class="n">map</span><span class="o">-&gt;</span><span class="n">l_tls_modid</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">is_static</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+   <span class="k">continue</span><span class="p">;</span>
+ <span class="p">}</span></code></pre></div>
+
+
+<p><code>dtv</code>数组大小之所以为17，可以参看代码 /elf/dl-tls.c <code>allocate_dtv</code>：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// dl_tls_max_dtv_idx 随着载入模块的增加而增加，载入1个.so则是1 </span>
+
+<span class="n">dtv_length</span> <span class="o">=</span> <span class="n">GL</span><span class="p">(</span><span class="n">dl_tls_max_dtv_idx</span><span class="p">)</span> <span class="o">+</span> <span class="n">DTV_SURPLUS</span><span class="p">;</span> <span class="c1">// DTV_SURPLUS 14</span>
+<span class="n">dtv</span> <span class="o">=</span> <span class="n">calloc</span> <span class="p">(</span><span class="n">dtv_length</span> <span class="o">+</span> <span class="mi">2</span><span class="p">,</span> <span class="k">sizeof</span> <span class="p">(</span><span class="kt">dtv_t</span><span class="p">));</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">dtv</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span>
+ <span class="p">{</span>
+   <span class="cm">/* This is the initial length of the dtv.  */</span>
+   <span class="n">dtv</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">counter</span> <span class="o">=</span> <span class="n">dtv_length</span><span class="p">;</span></code></pre></div>
+
+
+<p>继续上面的实验，当调用到.so中的<code>function</code>时，其TLS被初始化，此时<code>dtv[3]</code>中<code>val</code>指向初始化后的TLS变量地址：</p>
+
+<pre><code>68          fn();
+(gdb)
+0x601808, 0x601804, 0x601800
+72          return 0;
+(gdb) p $dtv[3]
+$3 = {counter = 6297600, pointer = {val = 0x601800, is_static = false}}
+(gdb) x/3xw 0x601800
+0x601800:       0x55667788      0xaabbccdd      0x11223344
+</code></pre>
+
+<p>这个时候还可以看看<code>dtv[1]</code>中的内容，正是指向了<code>pthread</code>前面的内存位置：</p>
+
+<pre><code>(gdb) p $dtv[1]
+$5 = {counter = 1084229936, pointer = {val = 0x40a00930, is_static = true}}
+(gdb) p/x tid
+$7 = 0x40a00940
+</code></pre>
+
+<p><strong>结论</strong>:</p>
+
+<ul>
+<li>线程中TLS变量的存储是以模块为单位的</li>
+</ul>
+
+
+<h2>so模块加载</h2>
+
+<p>这里也并不太需要查看<code>dlopen</code>等具体实现，由于使用<code>__thread</code>来定义TLS变量，整个实现涉及到ELF加载器的一些细节，深入下去内容较多。这里直接通过实验的手段来了解一些实现即可。</p>
+
+<p>上文已经看到，<strong>在创建线程前如果动态加载了.so，dtv数组的大小是会随之增加的</strong>。如果是在线程创建后再载入.so呢？</p>
+
+<p>使用<code>g++ -o thread -g -Wall -lpthread -ldl thread.cpp -DTEST_DTV_EXPAND -DSO_CNT=1</code>编译程序，调试得到：</p>
+
+<pre><code>73          load_sos();
+(gdb)
+0x601e78, 0x601e74, 0x601e70
+
+Breakpoint 1, dump_pthread (id=1084229952) at thread.cpp:44
+44          printf("pthread %p, dtv %p\n", pd, dtv);
+(gdb) p $dtv[-1]
+$3 = {counter = 17, pointer = {val = 0x11, is_static = false}}
+(gdb) p $dtv[4]
+$4 = {counter = 6299248, pointer = {val = 0x601e70, is_static = false}}
+</code></pre>
+
+<p>在新载入了.so时，<code>dtv</code>数组大小并没有新增，<code>dtv[4]</code>直接被拿来使用。</p>
+
+<p>因为<code>dtv</code>初始大小为16，那么当载入的.so超过这个数字的时候会怎样？</p>
+
+<p>使用<code>g++ -o thread -g -Wall -lpthread -ldl thread.cpp -DTEST_DTV_EXPAND</code>编译程序：</p>
+
+<pre><code>...
+pthread 0x40a00940, dtv 0x6016a0
+...
+Breakpoint 1, dump_pthread (id=1084229952) at thread.cpp:44
+44          printf("pthread %p, dtv %p\n", pd, dtv);
+(gdb) p dtv
+$2 = (dtv_t *) 0x6078a0
+(gdb) p dtv[-1]
+$3 = {counter = 32, pointer = {val = 0x20, is_static = false}}
+(gdb) p dtv[5]
+$4 = {counter = 6300896, pointer = {val = 0x6024e0, is_static = false}}
+</code></pre>
+
+<p>可以看出，<code>dtv</code>被重新分配了内存(0x6016a0 -> 0x6078a0)并做了扩大。</p>
+
+<p>以上得出结论：</p>
+
+<ul>
+<li>创建线程前dtv的大小会根据载入模块数量决定</li>
+<li>创建线程后新载入的模块会动态扩展dtv的大小(必要的时候)</li>
+</ul>
+
+
+<h2>pthread堆栈重用</h2>
+
+<p>在<code>allocate_stack</code>中分配线程堆栈时，有一个从缓存中取的操作：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">allocate_stack</span><span class="p">(..)</span> <span class="p">{</span>
+    <span class="p">...</span>
+    <span class="n">pd</span> <span class="o">=</span> <span class="n">get_cached_stack</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">size</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">mem</span><span class="p">);</span>
+    <span class="p">...</span>
+<span class="p">}</span>
+<span class="cm">/* Get a stack frame from the cache.  We have to match by size since</span>
+<span class="cm">   some blocks might be too small or far too large.  */</span>
+<span class="n">get_cached_stack</span><span class="p">(...)</span> <span class="p">{</span>
+    <span class="p">...</span>
+    <span class="n">list_for_each</span> <span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">stack_cache</span><span class="p">)</span> <span class="c1">// 根据size从stack_cache中取</span>
+    <span class="p">{</span> <span class="p">...</span> <span class="p">}</span>
+    <span class="p">...</span>
+    <span class="cm">/* Clear the DTV.  */</span>
+    <span class="kt">dtv_t</span> <span class="o">*</span><span class="n">dtv</span> <span class="o">=</span> <span class="n">GET_DTV</span> <span class="p">(</span><span class="n">TLS_TPADJ</span> <span class="p">(</span><span class="n">result</span><span class="p">));</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">cnt</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">cnt</span> <span class="o">&lt;</span> <span class="n">dtv</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">].</span><span class="n">counter</span><span class="p">;</span> <span class="o">++</span><span class="n">cnt</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span> <span class="n">dtv</span><span class="p">[</span><span class="mi">1</span> <span class="o">+</span> <span class="n">cnt</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">is_static</span>
+                <span class="o">&amp;&amp;</span> <span class="n">dtv</span><span class="p">[</span><span class="mi">1</span> <span class="o">+</span> <span class="n">cnt</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">val</span> <span class="o">!=</span> <span class="n">TLS_DTV_UNALLOCATED</span><span class="p">)</span>
+            <span class="n">free</span> <span class="p">(</span><span class="n">dtv</span><span class="p">[</span><span class="mi">1</span> <span class="o">+</span> <span class="n">cnt</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">val</span><span class="p">);</span>
+    <span class="n">memset</span> <span class="p">(</span><span class="n">dtv</span><span class="p">,</span> <span class="sc">&#39;\0&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">dtv</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">].</span><span class="n">counter</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="k">sizeof</span> <span class="p">(</span><span class="kt">dtv_t</span><span class="p">));</span>
+
+    <span class="cm">/* Re-initialize the TLS.  */</span>
+    <span class="n">_dl_allocate_tls_init</span> <span class="p">(</span><span class="n">TLS_TPADJ</span> <span class="p">(</span><span class="n">result</span><span class="p">));</span>
+<span class="p">}</span></code></pre></div>
+
+
+<p><code>get_cached_stack</code>会把取出的<code>pthread</code>中的dtv重新初始化。<strong>注意 <code>_dl_allocate_tls_init</code> 中是根据模块列表来初始化dtv数组的。</strong></p>
+
+<h3>实验</h3>
+
+<p>当一个线程退出后，它就可能被当做cache被<code>get_cached_stack</code>取出复用。</p>
+
+<p>使用<code>g++ -o thread -g -Wall -lpthread -ldl thread.cpp -DTEST_CACHE_STACK</code>编译程序，运行：</p>
+
+<pre><code>$ ./thread
+..
+pthread 0x413c9940, dtv 0x1be46a0
+... 
+pthread 0x413c9940, dtv 0x1be46a0
+</code></pre>
+
+<h2>回顾BUG</h2>
+
+<p>当新创建的线程复用了之前退出的线程堆栈时，由于在<code>_dl_allocate_tls_init</code>中初始化dtv数组时是根据当前载入的模块数量而定。如果在这个时候模块数已经超过了这个复用的dtv数组大小，那么就会出现写入非法的内存。使用valgrind检测就会得到本文开头提到的结果。</p>
+
+<p>由于dtv数组大小通常会稍微大点，所以在新加载的模块数量不够多时程序还不会有问题。可以通过控制测试程序中<code>SO_CNT</code>的大小看看dtv中内容的变化。</p>
+
+<p>另外，我查看了下glibc的更新历史，到目前为止(2.20)这个BUG还没有修复。</p>
+
+<h2>参考文档</h2>
+
+<ul>
+<li><a href="https://sourceware.org/bugzilla/show_bug.cgi?id=13862">glibc Bug 13862 - Reuse of cached stack can cause bounds overrun of thread DTV</a></li>
+<li><a href="http://tsecer.blog.163.com/blog/static/1501817201172883556743/">gLibc TLS实现</a></li>
+<li><a href="http://blog.chinaunix.net/uid-24774106-id-3651266.html">Linux线程之线程栈</a></li>
+<li><a href="http://www.longene.org/forum/viewtopic.php?f=17&amp;t=429">Linux用户空间线程管理介绍之二：创建线程堆栈</a></li>
+</ul>
+
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2014/10/07/pthread-tls-bug/'>http://codemacro.com/2014/10/07/pthread-tls-bug/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2014-10-07T00:00:00+08:00'><span class='date'><span class='date-month'>Oct</span> <span class='date-day'>7</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/categories/c-slash-c-plus-plus/'>c/c++</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/2014/09/21/zk-watch-benchmark/" title="Previous Post: zookeeper节点数与watch的性能测试">&laquo; zookeeper节点数与watch的性能测试</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (19)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (9)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/10/07/pthread-tls-bug/">浅析glibc中thread tls的一处bug</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2014/09/21/zk-watch-benchmark/">zookeeper节点数与watch的性能测试</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2014/09/15/inside-static-library/">浅析静态库链接原理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2014/09/09/understand-git/">理解git常用命令原理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2014/09/06/necessary-dtor/">C++构造/析构函数中的多态(二)</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+<div id="recentcomments" class="dsq-widget">
+<h1 class="dsq-widget-title">Recent Comments</h1>
+<script type="text/javascript" src="http://loopincodes.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
+</div>
+<a href="http://disqus.com/">Powered by Disqus</a>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 154.28571428571428%'>c/c++(19)</a> <a href='/categories/clang' style='font-size: 102.85714285714286%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 122.85714285714286%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.42857142857143%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.71428571428571%'>ice(2)</a> <a href='/categories/javascript' style='font-size: 102.85714285714286%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 114.28571428571429%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 114.28571428571429%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.57142857142857%'>module(3)</a> <a href='/categories/network' style='font-size: 125.71428571428572%'>network(9)</a> <a href='/categories/other' style='font-size: 120.0%'>other(7)</a> <a href='/categories/ruby' style='font-size: 111.42857142857143%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.85714285714286%'>scala(1)</a> <a href='/categories/tips' style='font-size: 160.0%'>tips(21)</a> <a href='/categories/web' style='font-size: 111.42857142857143%'>web(4)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - Kevin Lynx -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
+<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
+
+
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'loopincodes';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://codemacro.com/2014/10/07/pthread-tls-bug/';
+        var disqus_url = 'http://codemacro.com/2014/10/07/pthread-tls-bug/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

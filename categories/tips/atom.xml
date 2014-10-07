@@ -4,7 +4,7 @@
   <title><![CDATA[Category: tips | loop in codes]]></title>
   <link href="http://codemacro.com/categories/tips/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-09-21T20:53:27+08:00</updated>
+  <updated>2014-10-07T21:35:40+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -22,16 +22,12 @@
 
 <p>guard可以以逗号或者分号分隔，以逗号分隔表示最终的结果为各个guard的and结果，以分号则是只要任意一个guard为true则最终结果为true。</p>
 
-<p>{% highlight erlang %}
-guard(X, Y) when not(X>Y), is_atom(X) ->
-    X + Y.
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nf">guard</span><span class="p">(</span><span class="nv">X</span><span class="p">,</span> <span class="nv">Y</span><span class="p">)</span> <span class="k">when</span> <span class="ow">not</span><span class="p">(</span><span class="nv">X</span><span class="o">&gt;</span><span class="nv">Y</span><span class="p">),</span> <span class="nb">is_atom</span><span class="p">(</span><span class="nv">X</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nv">X</span> <span class="o">+</span> <span class="nv">Y</span><span class="p">.</span></code></pre></div></p>
 
 <p>guard在list comprehension中可以筛选元素：</p>
 
-<p>{% highlight erlang %}
-NewNodes  = [Node || Node &lt;- AllNodes, not gb_sets:is_member(Node, NewQueried)],
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nv">NewNodes</span>  <span class="o">=</span> <span class="p">[</span><span class="nv">Node</span> <span class="p">||</span> <span class="nv">Node</span> <span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">-</span> <span class="nv">AllNodes</span><span class="p">,</span> <span class="ow">not</span> <span class="nn">gb_sets</span><span class="p">:</span><span class="nf">is_member</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="nv">NewQueried</span><span class="p">)],</span></code></pre></div></p>
 
 <p>guard中不能使用自定义函数，因为guard应该保证没有副作用，但自定义函数无法保证这一点，所以erlang禁止在guard中使用自定义函数。</p>
 
@@ -49,17 +45,11 @@ NewNodes  = [Node || Node &lt;- AllNodes, not gb_sets:is_member(Node, NewQueried
 
 <p>一定时间后向进程发送消息：</p>
 
-<p>{% highlight erlang %}
-erlang:send_after(token_lifetime(), self(), renew_token),
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nn">erlang</span><span class="p">:</span><span class="nb">send_after</span><span class="p">(</span><span class="n">token_lifetime</span><span class="p">(),</span> <span class="n">self</span><span class="p">(),</span> <span class="n">renew_token</span><span class="p">),</span></code></pre></div></p>
 
 <p>一段时间后执行某个函数：</p>
 
-<p>{% highlight erlang %}
-{% raw %}
-{ok, TRef} = timer:apply_interval(Interval, ?MODULE, announce, [self()]),
-{% endraw %}
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">TRef</span><span class="p">}</span> <span class="o">=</span> <span class="nn">timer</span><span class="p">:</span><span class="nf">apply_interval</span><span class="p">(</span><span class="nv">Interval</span><span class="p">,</span> <span class="o">?</span><span class="nv">MODULE</span><span class="p">,</span> <span class="n">announce</span><span class="p">,</span> <span class="p">[</span><span class="n">self</span><span class="p">()]),</span></code></pre></div></p>
 
 <h2>gb_trees/gb_set</h2>
 
@@ -71,25 +61,19 @@ erlang:send_after(token_lifetime(), self(), renew_token),
 
 <p>case中判定多个值，比其使用逻辑运算符简洁多了：</p>
 
-<p>{% highlight erlang %}
-{% raw %}
-A = 1, B = 2,
-case {A, B} of
-    {<em>C, </em>C} -> true;
-    {<em>, </em>} -> false
-end
-{% endraw %}
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nv">A</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="nv">B</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+<span class="k">case</span> <span class="p">{</span><span class="nv">A</span><span class="p">,</span> <span class="nv">B</span><span class="p">}</span> <span class="k">of</span>
+    <span class="p">{</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="nv">C</span><span class="p">,</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="nv">C</span><span class="p">}</span> <span class="o">-&gt;</span> <span class="n">true</span><span class="p">;</span>
+    <span class="p">{</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">}</span> <span class="o">-&gt;</span> <span class="n">false</span>
+<span class="k">end</span></code></pre></div></p>
 
 <h3>pattern match to check data type</h3>
 
 <p>pattern match可以用于检测变量的类型，可以用于检测函数的返回值，就像C/C++中的assert一样，可以用于尽早检测出异常状态：</p>
 
-<p>{% highlight erlang %}
-ping({<em>, </em>, <em>, </em>} = IP, Port) ->
-    ok.
-{ok, Ret} = call().
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nf">ping</span><span class="p">({</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">}</span> <span class="o">=</span> <span class="nv">IP</span><span class="p">,</span> <span class="nv">Port</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="n">ok</span><span class="p">.</span>
+<span class="p">{</span><span class="n">ok</span><span class="p">,</span> <span class="nv">Ret</span><span class="p">}</span> <span class="o">=</span> <span class="n">call</span><span class="p">().</span></code></pre></div></p>
 
 <h2>list操作</h2>
 
@@ -97,18 +81,14 @@ ping({<em>, </em>, <em>, </em>} = IP, Port) ->
 
 <p>添加元素进list有很多方式：</p>
 
-<p>{% highlight erlang %}
-[2]++[3, 4].
-[2|[3,4]].
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">++</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">].</span>
+<span class="p">[</span><span class="mi">2</span><span class="p">|[</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">]].</span></code></pre></div></p>
 
 <h3>foldl/foldr</h3>
 
 <p>用于遍历list计算出一个“累加值“。</p>
 
-<p>{% highlight erlang %}
-lists:foldl(fun(X, Sum) -> X + Sum end, 0, [1,2,3,4,5]).
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nn">lists</span><span class="p">:</span><span class="nf">foldl</span><span class="p">(</span><span class="k">fun</span><span class="p">(</span><span class="nv">X</span><span class="p">,</span> <span class="nv">Sum</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nv">X</span> <span class="o">+</span> <span class="nv">Sum</span> <span class="k">end</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">]).</span></code></pre></div></p>
 
 <p>也就是遍历一个list，将每个元素传递给fun，将fun的返回值继续传递给下一个元素。</p>
 
@@ -116,10 +96,8 @@ lists:foldl(fun(X, Sum) -> X + Sum end, 0, [1,2,3,4,5]).
 
 <p>将两个list一一对应构造出一个tuple，作为新的list里的元素。</p>
 
-<p>{% highlight erlang %}
-lists:zip([1, 2, 3], [4, 5, 6]).
-    => [{1,4},{2,5},{3,6}]
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nn">lists</span><span class="p">:</span><span class="nf">zip</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]).</span>
+    <span class="o">=&gt;</span> <span class="p">[{</span><span class="mi">1</span><span class="p">,</span><span class="mi">4</span><span class="p">},{</span><span class="mi">2</span><span class="p">,</span><span class="mi">5</span><span class="p">},{</span><span class="mi">3</span><span class="p">,</span><span class="mi">6</span><span class="p">}]</span></code></pre></div></p>
 
 <h3>数字进制</h3>
 
@@ -143,54 +121,41 @@ lists:zip([1, 2, 3], [4, 5, 6]).
 
 <p>就像我的这篇博客，这下文章头得填很多数据了，有点麻烦：</p>
 
-<p>{% highlight yaml %}</p>
+<p><div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="l-Scalar-Plain">&lt;/p&gt;</span>
 
-<h2>{% raw %}</h2>
+<span class="l-Scalar-Plain">&lt;h2&gt;&lt;/h2&gt;</span>
 
-<p>layout: post
-title: &ldquo;Octopress中的SEO&rdquo;
-date: 2012-09-06 19:02
-comments: true
-categories: tips
-tags: [tips, octopress]
-keywords: seo, octopress</p>
+<span class="l-Scalar-Plain">&lt;p&gt;layout</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">post</span>
+<span class="l-Scalar-Plain">title</span><span class="p-Indicator">:</span> <span class="nl">&amp;ldquo</span><span class="l-Scalar-Plain">;Octopress中的SEO&amp;rdquo;</span>
+<span class="l-Scalar-Plain">date</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">2012-09-06 19:02</span>
+<span class="l-Scalar-Plain">comments</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">true</span>
+<span class="l-Scalar-Plain">categories</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">tips</span>
+<span class="l-Scalar-Plain">tags</span><span class="p-Indicator">:</span> <span class="p-Indicator">[</span><span class="nv">tips</span><span class="p-Indicator">,</span> <span class="nv">octopress</span><span class="p-Indicator">]</span>
+<span class="l-Scalar-Plain">keywords</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">seo, octopress&lt;/p&gt;</span>
 
-<h2>description: Octopress默认为每个页面添加<code>meta description</code>，其内容为当前文章的前150个字符，如果是首页就会是第一篇文章的前150个字符。这里主要通过增加<code>meta keywords</code>来提高SEO。</h2>
+<span class="l-Scalar-Plain">&lt;h2&gt;description</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">Octopress默认为每个页面添加&lt;code&gt;meta description&lt;/code&gt;，其内容为当前文章的前150个字符，如果是首页就会是第一篇文章的前150个字符。这里主要通过增加&lt;code&gt;meta keywords&lt;/code&gt;来提高SEO。&lt;/h2&gt;</span>
 
-<p>{% endraw %}
-{% endhighlight %}</p>
+<span class="l-Scalar-Plain">&lt;p&gt;</span></code></pre></div></p>
 
 <p>这样，每篇文章页面头就会自动增加<code>meta keywords</code>项，<code>description</code>也会使用这里填的，而不是自动为文章前若干个字符。这个功能的实现在<code>_includes/head.html</code>中。</p>
 
-<p>{% highlight html %}
-{% raw %}
-<meta name="author" content="Kevin Lynx">
-<meta name="description" content=" Octopress默认为每个页面添加`meta description`，其内容为当前文章的前150个字符，如果是首页就会是第一篇文章的前150个字符。这里主要通过增加`meta keywords`来提高SEO。 ">
-<meta name="keywords" content="seo, octopress">
-{% endraw %}
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-html" data-lang="html"><span class="nt">&lt;meta</span> <span class="na">name=</span><span class="s">&quot;author&quot;</span> <span class="na">content=</span><span class="s">&quot;Kevin Lynx&quot;</span><span class="nt">&gt;</span>
+<span class="nt">&lt;meta</span> <span class="na">name=</span><span class="s">&quot;description&quot;</span> <span class="na">content=</span><span class="s">&quot; Octopress默认为每个页面添加`meta description`，其内容为当前文章的前150个字符，如果是首页就会是第一篇文章的前150个字符。这里主要通过增加`meta keywords`来提高SEO。 &quot;</span><span class="nt">&gt;</span>
+<span class="nt">&lt;meta</span> <span class="na">name=</span><span class="s">&quot;keywords&quot;</span> <span class="na">content=</span><span class="s">&quot;seo, octopress&quot;</span><span class="nt">&gt;</span></code></pre></div></p>
 
 <h2>为页面(Page)增加keywords</h2>
 
 <p>上面只是修正了每篇博客页面的<code>meta</code>信息，octopress中还有几个页面需要修正，例如首页，这个可以通过修改<code>_includes/head.html</code>来完成。替换相关内容为以下：</p>
 
-<p>{% highlight html %}
-{% raw %}
-<meta name="author" content="{{ site.author }}">
+<p><div class="highlight"><pre><code class="language-html" data-lang="html"><span class="nt">&lt;meta</span> <span class="na">name=</span><span class="s">&quot;author&quot;</span> <span class="na">content=</span><span class="s">&quot;{{ site.author }}&quot;</span><span class="nt">&gt;</span>
 {% capture description %}{% if page.description %}{{ page.description }}{% elsif site.description %}{{ site.description }}{%else%}{{ content | raw_content }}{% endif %}{% endcapture %}
-<meta name="description" content="{{ description | strip_html | condense_spaces | truncate:150 }}">
-{% if page.keywords %}<meta name="keywords" content="{{ page.keywords }}">{%else%}<meta name="keywords" content="{{ site.keywords }}">{% endif %}
-{% endraw %}
-{% endhighlight %}</p>
+<span class="nt">&lt;meta</span> <span class="na">name=</span><span class="s">&quot;description&quot;</span> <span class="na">content=</span><span class="s">&quot;{{ description | strip_html | condense_spaces | truncate:150 }}&quot;</span><span class="nt">&gt;</span>
+{% if page.keywords %}<span class="nt">&lt;meta</span> <span class="na">name=</span><span class="s">&quot;keywords&quot;</span> <span class="na">content=</span><span class="s">&quot;{{ page.keywords }}&quot;</span><span class="nt">&gt;</span>{%else%}<span class="nt">&lt;meta</span> <span class="na">name=</span><span class="s">&quot;keywords&quot;</span> <span class="na">content=</span><span class="s">&quot;{{ site.keywords }}&quot;</span><span class="nt">&gt;</span>{% endif %}</code></pre></div></p>
 
 <p>如果页面没有提供<code>keywords</code>或者<code>description</code>的话，就使用<code>site</code>里的设置，也就需要修改<code>_config.yml</code>：</p>
 
-<p>{% highlight yaml %}
-{% raw %}
-description: loop in codes, Kevin Lynx blog
-keywords: c/c++, mmo, game develop, lisp, ruby, lua, web development
-{% endraw %}
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="l-Scalar-Plain">description</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">loop in codes, Kevin Lynx blog</span>
+<span class="l-Scalar-Plain">keywords</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">c/c++, mmo, game develop, lisp, ruby, lua, web development</span></code></pre></div></p>
 ]]></content>
   </entry>
   
@@ -210,9 +175,7 @@ keywords: c/c++, mmo, game develop, lisp, ruby, lua, web development
 </ul>
 
 
-<p>{% highlight c++ %}
-number |= 1 &lt;&lt; x; // 设置第x位为1
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">number</span> <span class="o">|=</span> <span class="mi">1</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">x</span><span class="p">;</span> <span class="c1">// 设置第x位为1</span></code></pre></div></p>
 
 <!-- more -->
 
@@ -222,80 +185,70 @@ number |= 1 &lt;&lt; x; // 设置第x位为1
 </ul>
 
 
-<p>{% highlight c++ %}
-number &amp;= ~(1 &lt;&lt; x); // 置第x位为0
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">number</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">=</span> <span class="o">~</span><span class="p">(</span><span class="mi">1</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">x</span><span class="p">);</span> <span class="c1">// 置第x位为0</span></code></pre></div></p>
 
 <ul>
 <li>开关某位</li>
 </ul>
 
 
-<p>{% highlight c++ %}
-number ^= 1 &lt;&lt; x;
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">number</span> <span class="o">^=</span> <span class="mi">1</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">x</span><span class="p">;</span></code></pre></div></p>
 
 <ul>
 <li>检查某位</li>
 </ul>
 
 
-<p>{% highlight c++ %}
-if (number &amp; (1 &lt;&lt; x))
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">if</span> <span class="p">(</span><span class="n">number</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">x</span><span class="p">))</span></code></pre></div></p>
 
 <p>相应地我们可以将其封装起来，简便的方法是使用宏来封装：</p>
 
-<p>{% highlight c++ %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<h1>define BIT_SET(a,b) ((a) |= (1&lt;&lt;(b)))</h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">define</span> <span class="n">BIT_SET</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)</span> <span class="p">((</span><span class="n">a</span><span class="p">)</span> <span class="o">|=</span> <span class="p">(</span><span class="mi">1</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;(</span><span class="n">b</span><span class="p">)))</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<h1>define BIT_CLEAR(a,b) ((a) &amp;= ~(1&lt;&lt;(b)))</h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">define</span> <span class="n">BIT_CLEAR</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)</span> <span class="p">((</span><span class="n">a</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">=</span> <span class="o">~</span><span class="p">(</span><span class="mi">1</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;(</span><span class="n">b</span><span class="p">)))</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<h1>define BIT_FLIP(a,b) ((a) ^= (1&lt;&lt;(b)))</h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">define</span> <span class="n">BIT_FLIP</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)</span> <span class="p">((</span><span class="n">a</span><span class="p">)</span> <span class="o">^=</span> <span class="p">(</span><span class="mi">1</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;(</span><span class="n">b</span><span class="p">)))</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<h1>define BIT_CHECK(a,b) ((a) &amp; (1&lt;&lt;(b)))</h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">define</span> <span class="n">BIT_CHECK</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)</span> <span class="p">((</span><span class="n">a</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="p">(</span><span class="mi">1</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;(</span><span class="n">b</span><span class="p">)))</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <h2>使用位结构操作</h2>
 
 <p>这个使用起来简单很多：</p>
 
-<p>{% highlight c++ %}
-struct bits {
-    unsigned int a:1;
-    unsigned int b:1;
-    unsigned int c:1;
-};</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">struct</span> <span class="n">bits</span> <span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="nl">a</span><span class="p">:</span><span class="mi">1</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="nl">b</span><span class="p">:</span><span class="mi">1</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="nl">c</span><span class="p">:</span><span class="mi">1</span><span class="p">;</span>
+<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>struct bits mybits;</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">struct</span> <span class="n">bits</span> <span class="n">mybits</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>// set/clear a bit
-mybits.b = 1;
-mybits.c = 0;</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// set/clear a bit</span>
+<span class="n">mybits</span><span class="p">.</span><span class="n">b</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="n">mybits</span><span class="p">.</span><span class="n">c</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>// toggle a bit
-mybits.a = !mybits.a;
-mybits.b = ~mybits.b;
-mybits.c ^= 1;</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// toggle a bit</span>
+<span class="n">mybits</span><span class="p">.</span><span class="n">a</span> <span class="o">=</span> <span class="o">!</span><span class="n">mybits</span><span class="p">.</span><span class="n">a</span><span class="p">;</span>
+<span class="n">mybits</span><span class="p">.</span><span class="n">b</span> <span class="o">=</span> <span class="o">~</span><span class="n">mybits</span><span class="p">.</span><span class="n">b</span><span class="p">;</span>
+<span class="n">mybits</span><span class="p">.</span><span class="n">c</span> <span class="o">^=</span> <span class="mi">1</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>// check a bit
-if (mybits.c)
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// check a bit</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">mybits</span><span class="p">.</span><span class="n">c</span><span class="p">)</span></code></pre></div></p>
 
 <h2>使用STL的std::bitset<N></h2>
 
 <p>这个方法其实类似于使用位结构，只不过STL包装了这个结构定义，当然还提供了很多便捷的接口：</p>
 
-<p>{% highlight c++ %}
-std::bitset<5> bits;
-bits[0] = true;
-bits[1] = false;
-bits.set(2);
-bits.flip(3);
-bits.reset(2);
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">std</span><span class="o">::</span><span class="n">bitset</span><span class="o">&lt;</span><span class="mi">5</span><span class="o">&gt;</span> <span class="n">bits</span><span class="p">;</span>
+<span class="n">bits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+<span class="n">bits</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+<span class="n">bits</span><span class="p">.</span><span class="n">set</span><span class="p">(</span><span class="mi">2</span><span class="p">);</span>
+<span class="n">bits</span><span class="p">.</span><span class="n">flip</span><span class="p">(</span><span class="mi">3</span><span class="p">);</span>
+<span class="n">bits</span><span class="p">.</span><span class="n">reset</span><span class="p">(</span><span class="mi">2</span><span class="p">);</span></code></pre></div></p>
 ]]></content>
   </entry>
   
@@ -308,19 +261,18 @@ bits.reset(2);
 
 <p>c/c++中以下代码是合法的：</p>
 
-<p>{% highlight c++ %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<h1>include &lt;stdio.h></h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<p>int main()
-{
-     int x = 10;
-     while( x &ndash;> 0 ) // x goes to 0
-     {
-        printf(&ldquo;%d &rdquo;, x);
-     }
-}
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">()</span>
+<span class="p">{</span>
+     <span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+     <span class="k">while</span><span class="p">(</span> <span class="n">x</span> <span class="o">&amp;</span><span class="n">ndash</span><span class="p">;</span><span class="o">&gt;</span> <span class="mi">0</span> <span class="p">)</span> <span class="c1">// x goes to 0</span>
+     <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">%</span><span class="n">d</span> <span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="n">x</span><span class="p">);</span>
+     <span class="p">}</span>
+<span class="p">}</span></code></pre></div></p>
 
 <!-- more -->
 
@@ -329,21 +281,17 @@ bits.reset(2);
 
 <p><strong>其实我在忽悠你们。</strong> 并且我相信有很多人对此把戏相当熟悉。没错，<code>--&gt;</code>只是两个操作符恰好遇在了一起，他们是自减运算符<code>--</code>和大于比较运算符<code>&gt;</code>：</p>
 
-<p>{% highlight c++ %}
-while (x&ndash; > 0)
-    &hellip;
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">while</span> <span class="p">(</span><span class="n">x</span><span class="o">&amp;</span><span class="n">ndash</span><span class="p">;</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span></code></pre></div></p>
 
 <p>类似的把戏还有：</p>
 
-<p>{% highlight c++ %}
-while (x &ndash; \
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">while</span> <span class="p">(</span><span class="n">x</span> <span class="o">&amp;</span><span class="n">ndash</span><span class="p">;</span> \
              \
               \
                \
-                > 0)
-    printf(&ldquo;%d &rdquo;, x);
-{% endhighlight %}</p>
+                <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">%</span><span class="n">d</span> <span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="n">x</span><span class="p">);</span></code></pre></div></p>
 ]]></content>
   </entry>
   
@@ -354,33 +302,30 @@ while (x &ndash; \
     <id>http://codemacro.com/2012/08/29/null-object-pattern</id>
     <content type="html"><![CDATA[<p>Null Object模式用于代替空指针（C++中），以避免上层模块对返回值做空值判定。Null Object模式返回的不是一个空指针，而是一个空对象，上层模块对返回值做操作时，不需要做空判定，而是按正常逻辑调用这个对象的某个接口，只不过对于空对象而言，这个接口什么事也没做，例如：</p>
 
-<p>{% highlight c++ %}
-class animal {
-public:
-  virtual void make_sound() = 0;
-};</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">class</span> <span class="nc">animal</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+  <span class="k">virtual</span> <span class="kt">void</span> <span class="n">make_sound</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>class dog : public animal {
-  void make_sound() { cout &lt;&lt; &ldquo;woof!&rdquo; &lt;&lt; endl; }
-};</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">dog</span> <span class="o">:</span> <span class="k">public</span> <span class="n">animal</span> <span class="p">{</span>
+  <span class="kt">void</span> <span class="n">make_sound</span><span class="p">()</span> <span class="p">{</span> <span class="n">cout</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">woof</span><span class="o">!&amp;</span><span class="n">rdquo</span><span class="p">;</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">endl</span><span class="p">;</span> <span class="p">}</span>
+<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>class null_animal : public animal {
-  void make_sound() { }
-};</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">null_animal</span> <span class="o">:</span> <span class="k">public</span> <span class="n">animal</span> <span class="p">{</span>
+  <span class="kt">void</span> <span class="n">make_sound</span><span class="p">()</span> <span class="p">{</span> <span class="p">}</span>
+<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>在我看来这个模式在C++中其实挺扯淡的，因为去判断一个指针是否为NULL，远比创建一个空类，并且添加若干个空函数代价小更多。更何况，我们还不知道<code>null_animal</code>的生命周期如何管理。</p>
 
 <p>但是在我以往写的代码中，我也写过一些避免空指针判定的代码，例如我会使用引用。注意，引用肯定不能保证所对应的对象是合法的，这就像无法确定一个指针是不是野指针一样：</p>
 
-<p>{% highlight c++ %}
-const Item &amp;Container::FindItem(int id) const {
-    static Item null_item;
-    Table::const_iterator it = m_items.find(id);
-    return it == m_items.end() ? null_item : it->second;
-}
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">const</span> <span class="n">Item</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">Container</span><span class="o">::</span><span class="n">FindItem</span><span class="p">(</span><span class="kt">int</span> <span class="n">id</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+    <span class="k">static</span> <span class="n">Item</span> <span class="n">null_item</span><span class="p">;</span>
+    <span class="n">Table</span><span class="o">::</span><span class="n">const_iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">m_items</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">id</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">it</span> <span class="o">==</span> <span class="n">m_items</span><span class="p">.</span><span class="n">end</span><span class="p">()</span> <span class="o">?</span> <span class="nl">null_item</span> <span class="p">:</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">second</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div></p>
 
 <p>参考<a href="http://en.wikipedia.org/wiki/Null_Object_pattern">http://en.wikipedia.org/wiki/Null_Object_pattern</a></p>
 ]]></content>
