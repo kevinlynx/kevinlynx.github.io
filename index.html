@@ -88,7 +88,7 @@
 
   <div class="entry-content"><p>在一个分布式环境中，同类型的服务往往会部署很多实例。这些实例使用了一些配置，为了更好地维护这些配置就产生了配置管理服务。通过这个服务可以轻松地管理这些应用服务的配置问题。应用场景可概括为：</p>
 
-<p><img src="/assets/res/diamond/disconf.png" alt="" /></p>
+<p><img src="/assets/res/diamond/disconf.PNG" alt="" /></p>
 
 <p>zookeeper的一种应用就是分布式配置管理(<a href="http://wenku.baidu.com/view/ee86ca90daef5ef7ba0d3c7d.html">基于ZooKeeper的配置信息存储方案的设计与实现</a>)。百度也有类似的实现：<a href="https://github.com/knightliao/disconf">disconf</a>。</p>
 
@@ -98,7 +98,7 @@
 
 <p>分布式配置管理的本质基本上就是一种<strong><a href="http://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern">推送-订阅</a></strong>模式的运用。配置的应用方是订阅者，配置管理服务则是推送方。概括为下图：</p>
 
-<p><img src="/assets/res/diamond/pubsub.png" alt="" /></p>
+<p><img src="/assets/res/diamond/pubsub.PNG" alt="" /></p>
 
 <p>其中，客户端包括管理人员publish数据到配置管理服务，可以理解为添加/更新数据；配置管理服务notify数据到订阅者，可以理解为推送。</p>
 
