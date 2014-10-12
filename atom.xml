@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-10-07T21:35:40+08:00</updated>
+  <updated>2014-10-12T12:43:18+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,122 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[淘宝分布式配置管理服务Diamond]]></title>
+    <link href="http://codemacro.com/2014/10/12/diamond/"/>
+    <updated>2014-10-12T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2014/10/12/diamond</id>
+    <content type="html"><![CDATA[<p>在一个分布式环境中，同类型的服务往往会部署很多实例。这些实例使用了一些配置，为了更好地维护这些配置就产生了配置管理服务。通过这个服务可以轻松地管理这些应用服务的配置问题。应用场景可概括为：</p>
+
+<p><img src="http://codemacro.com/assets/res/diamond/disconf.png" alt="" /></p>
+
+<p>zookeeper的一种应用就是分布式配置管理(<a href="http://wenku.baidu.com/view/ee86ca90daef5ef7ba0d3c7d.html">基于ZooKeeper的配置信息存储方案的设计与实现</a>)。百度也有类似的实现：<a href="https://github.com/knightliao/disconf">disconf</a>。</p>
+
+<p><a href="http://code.taobao.org/p/diamond/src/">Diamond</a>则是淘宝开源的一种分布式配置管理服务的实现。Diamond本质上是一个Java写的Web应用，其对外提供接口都是基于HTTP协议的，在阅读代码时可以从实现各个接口的controller入手。</p>
+
+<h2>分布式配置管理</h2>
+
+<p>分布式配置管理的本质基本上就是一种<strong><a href="http://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern">推送-订阅</a></strong>模式的运用。配置的应用方是订阅者，配置管理服务则是推送方。概括为下图：</p>
+
+<p><img src="http://codemacro.com/assets/res/diamond/pubsub.png" alt="" /></p>
+
+<p>其中，客户端包括管理人员publish数据到配置管理服务，可以理解为添加/更新数据；配置管理服务notify数据到订阅者，可以理解为推送。</p>
+
+<!-- more -->
+
+
+<p>配置管理服务往往会封装一个客户端库，应用方则是基于该库与配置管理服务进行交互。在实际实现时，客户端库可能是主动拉取(pull)数据，但对于应用方而言，一般是一种事件通知方式。</p>
+
+<p>Diamond中的数据是简单的key-value结构。应用方订阅数据则是基于key来订阅，未订阅的数据当然不会被推送。数据从类型上又划分为聚合和非聚合。因为数据推送者可能很多，在整个分布式环境中，可能有多个推送者在推送相同key的数据，这些数据如果是聚合的，那么所有这些推送者推送的数据会被合并在一起；反之如果是非聚合的，则会出现覆盖。</p>
+
+<p>数据的来源可能是人工通过管理端录入，也可能是其他服务通过配置管理服务的推送接口自动录入。</p>
+
+<h2>架构及实现</h2>
+
+<p>Diamond服务是一个集群，是一个去除了单点的协作集群。如图：</p>
+
+<p><img src="http://codemacro.com/assets/res/diamond/arch.png" alt="" /></p>
+
+<p>图中可分为以下部分讲解：</p>
+
+<h3>服务之间同步</h3>
+
+<p>Diamond服务集群每一个实例都可以对外完整地提供服务，那么意味着每个实例上都有整个集群维护的数据。Diamond有两种方式保证这一点：</p>
+
+<ul>
+<li>任何一个实例都有其他实例的地址；任何一个实例上的数据变更时，都会将改变的数据同步到mysql上，然后通知其他所有实例从mysql上进行一次数据拉取(<code>DumpService::dump</code>)，这个过程只拉取改变了的数据</li>
+<li>任何一个实例启动后都会以较长的时间间隔（几小时），从mysql进行一次全量的数据拉取(<code>DumpAllProcessor</code>)</li>
+</ul>
+
+
+<p>实现上为了一致性，通知其他实例实际上也包含自己。以服务器收到添加聚合数据为例，处理过程大致为：</p>
+
+<pre><code>DatumController::addDatum // /datum.do?method=addDatum
+    PersistService::addAggrConfigInfo 
+    MergeDatumService::addMergeTask // 添加一个MergeDataTask，异步处理
+
+MergeTaskProcessor::process
+    PersistService::insertOrUpdate
+        EventDispatcher.fireEvent(new ConfigDataChangeEvent // 派发一个ConfigDataChangeEvent事件
+
+NotifyService::onEvent // 接收事件并处理
+    TaskManager::addTask(..., new NotifyTask // 由此，当数据发生变动，则最终创建了一个NoticyTask
+
+// NotifyTask同样异步处理
+NotifyTaskProcessor::process
+    foreach server in serverList // 包含自己
+        notifyToDump // 调用 /notify.do?method=notifyConfigInfo 从mysql更新变动的数据
+</code></pre>
+
+<p>虽然Diamond去除了单点问题，不过问题都下降到了mysql上。但由于其作为配置管理的定位，其数据量就mysql的应用而言算小的了，所以可以一定程度上保证整个服务的可用性。</p>
+
+<h3>数据一致性</h3>
+
+<p>由于Diamond服务器没有master，任何一个实例都可以读写数据，那么针对同一个key的数据则可能面临冲突。这里应该是通过mysql来保证数据的一致性。每一次客户端请求写数据时，Diamond都将写请求投递给mysql，然后通知集群内所有Diamond实例（包括自己）从mysql拉取数据。当然，拉取数据则可能不是每一次写入都能拉出来，也就是最终一致性。</p>
+
+<p>Diamond中没有把数据放入内存，但会放到本地文件。对于客户端的读操作而言，则是直接返回本地文件里的数据。</p>
+
+<h3>服务实例列表</h3>
+
+<p>Diamond服务实例列表是一份静态数据，直接将每个实例的地址存放在一个web server上。无论是Diamond服务还是客户端都从该web server上取出实例列表。</p>
+
+<p>对于客户端而言，当其取出了该列表后，则是随机选择一个节点(<code>ServerListManager.java</code>)，以后的请求都会发往该节点。</p>
+
+<h3>数据同步</h3>
+
+<p>客户端库中以固定时间间隔从服务器拉取数据(<code>ClientWorker::ClientWorker</code>，<code>ClientWorker::checkServerConfigInfo</code>)。只有应用方关心的数据才可能被拉取。另外，为了数据推送的及时，Diamond还使用了一种long polling的技术，其实也是为了突破HTTP协议的局限性。<em>如果整个服务是基于TCP的自定义协议，客户端与服务器保持长连接则没有这些问题</em>。</p>
+
+<h3>数据的变更</h3>
+
+<p>Diamond中很多操作都会检查数据是否发生了变化。标识数据变化则是基于数据对应的MD5值来实现的。</p>
+
+<h2>容灾</h2>
+
+<p>在整个Diamond系统中，几个角色为了提高容灾性，都有自己的缓存，概括为下图：</p>
+
+<p><img src="http://codemacro.com/assets/res/diamond/failover.png" alt="" /></p>
+
+<p>每一个角色出问题时，都可以尽量保证客户端对应用层提供服务。</p>
+
+<h2>参考文档</h2>
+
+<ul>
+<li><a href="http://code.taobao.org/p/diamond/src">diamond project</a></li>
+<li><a href="http://jm-blog.aliapp.com/?p=1588">diamond专题</a></li>
+<li><a href="http://jm-blog.aliapp.com/?p=3450">中间件技术及双十一实践·软负载篇</a></li>
+</ul>
+
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2014/10/12/diamond/'>http://codemacro.com/2014/10/12/diamond/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[浅析glibc中thread tls的一处bug]]></title>
@@ -3597,194 +3713,6 @@ a中文
 <p class='post-footer'>
             原文地址：
             <a href='http://codemacro.com/2013/06/20/magnet-search/'>http://codemacro.com/2013/06/20/magnet-search/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[使用ActionScript开发Ice Web客户端]]></title>
-    <link href="http://codemacro.com/2013/06/09/ice-web-client/"/>
-    <updated>2013-06-09T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2013/06/09/ice-web-client</id>
-    <content type="html"><![CDATA[<p>我们目前的项目服务器端使用了<a href="http://codemacro.com/2013/02/15/ice-overview/">Ice</a>来构建。Ice有一套自己的网络协议，客户端和服务器端可以基于此协议来交互。由于Ice使用Slice这种中间语言来描述服务器和客户端的交互接口，所以它可以做到极大限度地屏蔽网络协议这个细节。也就是说，我们只要借助Ice和Slice，我们可以轻松地编写网络程序。</p>
-
-<p>然后，我们的后端现在需要一个运行在Web浏览器上的客户端。要与Ice做交互，如果使用TCP协议的话，得保证是长连接的。但HTTP是短连接的。而另一方面，我们还需要选择一个Ice支持的和Web相关的语言来做这件事情。如果要在浏览器端直接与Ice服务建立连接，可供选择的语言/平台包括：</p>
-
-<ul>
-<li>Flash</li>
-<li>Silverlight</li>
-</ul>
-
-
-<p>因为我之前用erlang简单写了个Ice的客户端库，所以我对Ice底层协议有一定了解，可以不一定使用Ice支持的语言，所以HTML5其实也是个选择。此外，如果在浏览器端使用Applet，Java可能也是个选择。</p>
-
-<p>其实几个月前在这块的技术选择问题上我就做过简单的研究，当时确定的方案是使用Flash。但是，后来人员招聘上遇到了问题，看起来要招一个会ActionScript和前端页面技术的程序员来做我们这种项目，似乎大材小用，成本显高了。</p>
-
-<p>那么，考虑到团队里有现成的Java程序员，而且看起来招一个会用Java写网站的程序员简单又便宜，似乎是排除技术原因的最好选择。但是，如果不在浏览器端直接连接服务器来做交互，而是让Web服务器端来做中转的话，会面临不少问题：</p>
-
-<ul>
-<li>浏览器端操作结果的获取问题，说白了就是非实时了，得用Ajax等等技术去模拟实时，代价就是不断轮训，也就是通常说的poll</li>
-<li>Web服务器端需要编写大量代码：对用户操作的映射，结果缓存等等</li>
-</ul>
-
-
-<p>如果能用Flash包装与服务器交互的部分，而把UI相关的东西留给HTML/JS/CSS去做，那是不是可行一点？如果只是用ActionScript编写与服务器端的交互逻辑代码，我就不需要花时间去系统学习ActionScript，甚至如何用Flash做界面，我甚至不用搞懂这些技术之间的关系。基本上看些Ice for ActionScript的例子代码，就可以完成这件事情。</p>
-
-<p>以下记录一些主要的过程/方法：</p>
-
-<!-- more -->
-
-
-<h2>ActionScript程序的开发</h2>
-
-<p>开发一个嵌入到网页中的FLASH，只需要Flex SDK。SDK里自带了一些编译器相关工具。我不打算使用IDE，因为看起来IDE更复杂。简单的google之后，基本就可以构建出一个Flash文件：</p>
-
-<ul>
-<li>构建基本的程序需要一个mxml文件，这个文件里主要用来捕获Flash在页面上初始化完成这个事件，以初始化内部逻辑</li>
-<li>编写ActionScript源码，看起来其文件、类的组织方式很像Java</li>
-<li><p>使用Flex SDK中的mxmlc程序来编译，生成swf文件，例如：</p>
-
-<p>  mxmlc myflexapp.mxml -library-path+=xxx.swc</p></li>
-<li><p>嵌入到网页中，简单的做法可以借助swfobject.js这个库，嵌入的方式：</p></li>
-</ul>
-
-
-<div class="highlight"><pre><code class="language-html" data-lang="html"><span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span> <span class="na">src=</span><span class="s">&quot;swfobject.js&quot;</span><span class="nt">&gt;&lt;/script&gt;</span>
-    <span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span><span class="nt">&gt;</span>
-        <span class="kd">var</span> <span class="nx">flashvars</span> <span class="o">=</span> <span class="p">{};</span>
-        <span class="kd">var</span> <span class="nx">params</span> <span class="o">=</span> <span class="p">{};</span>
-      <span class="nx">params</span><span class="p">.</span><span class="nx">play</span> <span class="o">=</span> <span class="s2">&quot;true&quot;</span><span class="p">;</span>
-        <span class="nx">params</span><span class="p">.</span><span class="nx">quality</span> <span class="o">=</span> <span class="s2">&quot;high&quot;</span><span class="p">;</span>
-        <span class="nx">params</span><span class="p">.</span><span class="nx">bgcolor</span> <span class="o">=</span> <span class="s2">&quot;white&quot;</span><span class="p">;</span>
-        <span class="nx">params</span><span class="p">.</span><span class="nx">allowscriptaccess</span> <span class="o">=</span> <span class="s2">&quot;always&quot;</span><span class="p">;</span>
-        <span class="nx">params</span><span class="p">.</span><span class="nx">allowfullscreen</span> <span class="o">=</span> <span class="s2">&quot;true&quot;</span><span class="p">;</span>
-        <span class="kd">var</span> <span class="nx">attributes</span> <span class="o">=</span> <span class="p">{};</span>
-        <span class="nx">attributes</span><span class="p">.</span><span class="nx">id</span> <span class="o">=</span> <span class="s2">&quot;asclient&quot;</span><span class="p">;</span>
-        <span class="nx">attributes</span><span class="p">.</span><span class="nx">name</span> <span class="o">=</span> <span class="s2">&quot;asclient&quot;</span><span class="p">;</span>
-        <span class="nx">attributes</span><span class="p">.</span><span class="nx">align</span> <span class="o">=</span> <span class="s2">&quot;middle&quot;</span><span class="p">;</span>
-        <span class="nx">swfobject</span><span class="p">.</span><span class="nx">embedSWF</span><span class="p">(</span><span class="s2">&quot;asclient.swf&quot;</span><span class="p">,</span> <span class="s2">&quot;flashContent&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> 
-            <span class="nx">flashvars</span><span class="p">,</span> <span class="nx">params</span><span class="p">,</span> <span class="nx">attributes</span><span class="p">);</span>
-        <span class="nx">swfobject</span><span class="p">.</span><span class="nx">createCSS</span><span class="p">(</span><span class="s2">&quot;#flashContent&quot;</span><span class="p">,</span> <span class="s2">&quot;display:none;&quot;</span><span class="p">);</span>
-    <span class="nt">&lt;/script&gt;</span></code></pre></div>
-
-
-<p>自然，页面中需加入flashContent这个div：</p>
-
-<div class="highlight"><pre><code class="language-html" data-lang="html"><span class="nt">&lt;div</span> <span class="na">id=</span><span class="s">&quot;flashContent&quot;</span><span class="nt">&gt;</span>
-        <span class="nt">&lt;p&gt;</span>no flash<span class="nt">&lt;/p&gt;</span>
-    <span class="nt">&lt;/div&gt;</span></code></pre></div>
-
-
-<p>我的mxml文件也很简单：</p>
-
-<div class="highlight"><pre><code class="language-xml" data-lang="xml"><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</span>
-<span class="nt">&lt;s:Application</span> 
-    <span class="na">xmlns:fx=</span><span class="s">&quot;http://ns.adobe.com/mxml/2009&quot;</span> 
-    <span class="na">xmlns:s=</span><span class="s">&quot;library://ns.adobe.com/flex/spark&quot;</span> 
-    <span class="na">xmlns:mx=</span><span class="s">&quot;library://ns.adobe.com/flex/mx&quot;</span>
-    <span class="na">applicationComplete=</span><span class="s">&quot;doApplicationComplete()&quot;</span> <span class="nt">&gt;</span>
-    <span class="nt">&lt;fx:Script&gt;</span>
-    <span class="cp">&lt;![CDATA[</span>
-<span class="cp">       import ASClient.Coordinator;</span>
-<span class="cp">       import flash.external.ExternalInterface;</span>
-
-<span class="cp">       private var _coordinator:Coordinator;</span>
-
-<span class="cp">       public function doApplicationComplete():void</span>
-<span class="cp">       {</span>
-<span class="cp">            trace(&quot;doApplicationComplete&quot;);</span>
-<span class="cp">            _coordinator = new Coordinator();</span>
-<span class="cp">            _coordinator.reg_methods();</span>
-<span class="cp">            ExternalInterface.call(&quot;as_ready&quot;); </span>
-<span class="cp">       } </span>
-<span class="cp">     ]]&gt;</span>
-    <span class="nt">&lt;/fx:Script&gt;</span>
-<span class="nt">&lt;/s:Application&gt;</span></code></pre></div>
-
-
-<h2>ActionScript日志</h2>
-
-<p>我通过日志来调试ActionScript代码。最简单的方式就是通过trace函数来输出日志。要成功输出日志包含以下步骤：</p>
-
-<ul>
-<li>给浏览器安装调试版本的Flash Player</li>
-<li><p>日志是输出到用户目录下的，并且需要手动创建日志目录(Administrator替换为用户名)：</p>
-
-<pre><code>  C:\Users\Administrator\AppData\Roaming\Macromedia\Flash Player\Logs
-</code></pre></li>
-<li><p>用户目录下新建配置文件mm.cfg：</p>
-
-<pre><code>  AS3StaticProfile=0
-  AS3Verbose=0
-  TraceOutputFileEnable=1 
-  TraceOutputBuffered=0
-  ErrorReportingEnable=1  
-  AS3Trace=0
-</code></pre></li>
-<li><p>编译DEBUG版本的Flash文件，可以修改flex sdk下的flex-config.xml文件，里面增加debug=true配置即可</p></li>
-</ul>
-
-
-<p>在开发过程中需要注意浏览器缓存问题，当编译出新的Flash文件后，浏览器即使页面刷新也可能使用的是缓存里的Flash。当然，最重要的，是通过浏览器来访问这个包含了Flash的网页，Web服务器随意。</p>
-
-<h2>Flash Policy文件</h2>
-
-<p>在Flash的某个版本后，Flash中如果要向外建立socket连接，是首先要取得目标主机返回的policy文件的。也就是在建立连接前，Flash底层会先向目标主机询问得到一个描述访问权限的文件。</p>
-
-<p>简单来说，目标主机需要在843端口上建立TCP监听，一旦有网络连接，就发送以下内容，内容后需添加0x00用于标示结束。（当然，具体细节还挺多，自行google）</p>
-
-<pre><code>&lt;cross-domain-policy&gt;
-     &lt;allow-access-from domain="*" to-ports="*" /&gt;
-&lt;/cross-domain-policy&gt;
-</code></pre>
-
-<p>最开始我使用的是朋友给的现成的Policy服务，虽然我写的Flash可以成功连接我的Ice服务，但始终要等待2秒以上的时间。google Flash Policy相关内容，可以发现确实存在一个延时，但那是因为目标主机没有在843端口服务。后来我自己用erlang写了个Policy服务，延时就没有了。猜测可能是他的Policy服务没有添加0x00作为结束导致。</p>
-
-<h2>ActionScript与JavaScript的交互</h2>
-
-<p>既然我使用ActionScript来包装与服务器的交互，那么JavaScript就必然需要和ActionScript通信。这个通信过程也就是在JavaScript中调用ActionScript中的函数，反过来亦然。这个过程很简单：</p>
-
-<p>在JavaScript中调用ActionScript函数：</p>
-
-<p>首先是ActionScript需要注册哪些函数可以被调用：</p>
-
-<pre><code>ExternalInterface.addCallback("service_loadall", loadAll);
-</code></pre>
-
-<p>通过<code>ExternalInterface.addCallback</code>注册的函数，其实是个closure，所以在类中注册自己的成员函数都可以（因为成员函数会使用this，形成了一个closure）。</p>
-
-<p>然后在JavaScript中调用：</p>
-
-<div class="highlight"><pre><code class="language-javascript" data-lang="javascript"><span class="kd">function</span> <span class="nx">asObject</span><span class="p">()</span> <span class="p">{</span>
-        <span class="c1">// asclient是嵌入Flash时填入的name和(或?)id</span>
-        <span class="k">return</span> <span class="nb">window</span><span class="p">.</span><span class="nb">document</span><span class="p">.</span><span class="nx">asclient</span><span class="p">;</span>
-    <span class="p">}</span>
-    <span class="kd">var</span> <span class="nx">as</span> <span class="o">=</span> <span class="nx">asObject</span><span class="p">();</span>
-    <span class="nx">as</span><span class="p">.</span><span class="nx">service_loadall</span><span class="p">();</span></code></pre></div>
-
-
-<p>在ActionScript中调用JavaScript中调用则更简单，一句话：</p>
-
-<pre><code>ExternalInterface.call("service_load_done", args);
-</code></pre>
-
-<p>至于在两者之间的函数参数传递，其类型都可以自动映射。但因为我的应用里数据较为复杂，我就将数据转换为JSON格式，在JavaScript这边操作较为简单。</p>
-
-<h2>页面切换</h2>
-
-<p>这里我们需要的Web前端页面，更像是一个管理系统，所以页面切换是很有可能的。问题在于，当出现页面跳转时，Flash对象会重新初始化，新的页面无法使用前一个页面建立好的网络连接（或者能？）。为了解决这个问题，服务器当然可以设计一种重登录机制，方便客户端以一种特殊的方式进入系统，绕过正常的登录环节。但是我们使用了Glacier2这个网关，在这个网关上有针对连接的超时管理，这样反复建立新的连接对资源太浪费了。</p>
-
-<p>综上，我想只能通过前端去规避这个问题。例如，前端开发人员依然可以分开设计很多页面，页面里也可以使用正常的链接。我们编写一些JavaScript代码，将页面里的链接替换成对应的JavaScript代码，动态载入新的页面内容，然后对页面内的部分内容进行替换，从而尽可能让页面设计人员编写正常的网页，同时也解决页面切换问题。</p>
-
-<p>这是个蹩脚的方法，但在我有限的前端知识体系下，似乎也只能这样干了。</p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2013/06/09/ice-web-client/'>http://codemacro.com/2013/06/09/ice-web-client/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>

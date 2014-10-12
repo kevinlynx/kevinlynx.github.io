@@ -3,6 +3,12 @@
   
   
   <url>
+    <loc>http://codemacro.com/2014/10/12/diamond/</loc>
+    <lastmod>2014-10-12T00:00:00+08:00</lastmod>
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
     <loc>http://codemacro.com/2014/10/07/pthread-tls-bug/</loc>
     <lastmod>2014-10-07T00:00:00+08:00</lastmod>
     <priority>0.8</priority>
@@ -401,28 +407,28 @@
   
   <url>
     <loc>http://codemacro.com/about.html</loc>
-    <lastmod>2014-10-07T21:35:40+08:00</lastmod>
+    <lastmod>2014-10-12T12:43:18+08:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   
   <url>
     <loc>http://codemacro.com/</loc>
-    <lastmod>2014-10-07T21:35:40+08:00</lastmod>
+    <lastmod>2014-10-12T12:43:18+08:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   
   <url>
     <loc>http://codemacro.com/blog/archives/</loc>
-    <lastmod>2014-10-07T21:35:40+08:00</lastmod>
+    <lastmod>2014-10-12T12:43:18+08:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   
   <url>
     <loc>http://codemacro.com/tips/</loc>
-    <lastmod>2014-10-07T21:35:40+08:00</lastmod>
+    <lastmod>2014-10-12T12:43:18+08:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
