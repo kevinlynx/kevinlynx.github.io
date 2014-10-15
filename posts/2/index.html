@@ -9,11 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="最近简单读了下muduo的源码，本文对其主要实现/结构简单总结下。 muduo的主要源码位于net文件夹下，base文件夹是一些基础代码，不影响理解网络部分的实现。muduo主要类包括： EventLoop
-Channel
-Poller
-TcpConnection
-TcpClient &hellip;">
+  <meta name="description" content="在刚开始学习网络编程时，似乎莫名其妙地就会被某人/某资料告诉select函数是有fd(file descriptor)数量限制的。在最近的一次记忆里还有个人笑说select只支持64个fd。我甚至还写过一篇不负责任甚至错误的博客(突破select的FD_SETSIZE限制)。有人说， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -68,6 +64,63 @@ TcpClient &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2014/06/01/select-limit/">select真的有限制吗</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-06-01T00:00:00+08:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>1</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>在刚开始学习网络编程时，似乎莫名其妙地就会被某人/某资料告诉<code>select</code>函数是有fd(file descriptor)数量限制的。在最近的一次记忆里还有个人笑说<code>select</code>只支持64个fd。我甚至还写过一篇不负责任甚至错误的博客(<a href="http://www.cppblog.com/kevinlynx/archive/2008/05/20/50500.html">突破select的FD_SETSIZE限制</a>)。有人说，直接重新定义<code>FD_SETSIZE</code>就可以突破这个<code>select</code>的限制，也有人说除了重定义这个宏之外还的重新编译内核。</p>
+
+<p>事实具体是怎样的？实际上，造成这些混乱的原因恰好是不同平台对<code>select</code>的实现不一样。</p>
+
+<h2>Windows的实现</h2>
+
+<p><a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms740141(v=vs.85">MSDN</a>.aspx)上对<code>select</code>的说明：</p>
+
+<pre><code>int select(
+  _In_     int nfds,
+  _Inout_  fd_set *readfds,
+  _Inout_  fd_set *writefds,
+  _Inout_  fd_set *exceptfds,
+  _In_     const struct timeval *timeout
+);
+
+nfds [in] Ignored. The nfds parameter is included only for compatibility with Berkeley sockets.
+</code></pre>
+
+<p>第一个参数MSDN只说没有使用，其存在仅仅是为了保持与Berkeley Socket的兼容。</p>
+
+<blockquote><p>The variable FD_SETSIZE determines the maximum number of descriptors in a set. (The default value of FD_SETSIZE is 64, which can be modified by defining FD_SETSIZE to another value before including Winsock2.h.) Internally, socket handles in an fd_set structure are not represented as bit flags as in Berkeley Unix.</p></blockquote>
+
+<p>Windows上<code>select</code>的实现不同于Berkeley Unix，<strong>后者使用位标志来表示socket</strong>。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/06/01/select-limit/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -565,44 +618,6 @@ $str
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2013/06/20/magnet-search/">使用erlang实现P2P磁力搜索(开源)</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2013-06-20T00:00:00+08:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>20</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>接上回对<a href="http://codemacro.com/2013/05/19/crawl-dht/">DHT网络的研究</a>，我用erlang克隆了一个<a href="http://bt.shousibaocai.com/">磁力搜索引擎</a>。我这个实现包含了完整的功能，DHT网络的加入、infohash的接收、种子的获取、资源信息的索引、搜索。</p>
-
-<p>如下图：</p>
-
-<p><img src="https://raw.github.com/kevinlynx/dhtcrawler/master/screenshot.png" alt="screenshot" /></p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2013/06/20/magnet-search/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/3">&larr; Older</a>
@@ -617,11 +632,15 @@ $str
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (19)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (10)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (19)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (11)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/10/15/explain-poxos/">图解分布式一致性协议Paxos</a>
+      </li>
     
       <li class="post">
         <a href="/2014/10/12/diamond/">淘宝分布式配置管理服务Diamond</a>
@@ -639,10 +658,6 @@ $str
         <a href="/2014/09/15/inside-static-library/">浅析静态库链接原理</a>
       </li>
     
-      <li class="post">
-        <a href="/2014/09/09/understand-git/">理解git常用命令原理</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -654,7 +669,7 @@ $str
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 154.28571428571428%'>c/c++(19)</a> <a href='/categories/clang' style='font-size: 102.85714285714286%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 122.85714285714286%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.42857142857143%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.71428571428571%'>ice(2)</a> <a href='/categories/javascript' style='font-size: 102.85714285714286%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 114.28571428571429%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 114.28571428571429%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.57142857142857%'>module(3)</a> <a href='/categories/network' style='font-size: 128.57142857142858%'>network(10)</a> <a href='/categories/other' style='font-size: 120.0%'>other(7)</a> <a href='/categories/ruby' style='font-size: 111.42857142857143%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.85714285714286%'>scala(1)</a> <a href='/categories/tips' style='font-size: 160.0%'>tips(21)</a> <a href='/categories/web' style='font-size: 111.42857142857143%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 154.28571428571428%'>c/c++(19)</a> <a href='/categories/clang' style='font-size: 102.85714285714286%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 122.85714285714286%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.42857142857143%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.71428571428571%'>ice(2)</a> <a href='/categories/javascript' style='font-size: 102.85714285714286%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 114.28571428571429%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 114.28571428571429%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.57142857142857%'>module(3)</a> <a href='/categories/network' style='font-size: 131.42857142857142%'>network(11)</a> <a href='/categories/other' style='font-size: 120.0%'>other(7)</a> <a href='/categories/ruby' style='font-size: 111.42857142857143%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.85714285714286%'>scala(1)</a> <a href='/categories/tips' style='font-size: 160.0%'>tips(21)</a> <a href='/categories/web' style='font-size: 111.42857142857143%'>web(4)</a> </span>
 </section>
 
   

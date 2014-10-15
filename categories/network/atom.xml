@@ -4,7 +4,7 @@
   <title><![CDATA[Category: network | loop in codes]]></title>
   <link href="http://codemacro.com/categories/network/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-10-12T12:55:36+08:00</updated>
+  <updated>2014-10-15T22:43:59+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,133 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[图解分布式一致性协议Paxos]]></title>
+    <link href="http://codemacro.com/2014/10/15/explain-poxos/"/>
+    <updated>2014-10-15T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2014/10/15/explain-poxos</id>
+    <content type="html"><![CDATA[<p>Paxos协议/算法是分布式系统中比较重要的协议，它有多重要呢？</p>
+
+<p><a href="http://coolshell.cn/articles/10910.html">&lt;分布式系统的事务处理></a>：</p>
+
+<blockquote><p>Google Chubby的作者Mike Burrows说过这个世界上只有一种一致性算法，那就是Paxos，其它的算法都是残次品。</p></blockquote>
+
+<p><a href="http://book.douban.com/subject/25723658/">&lt;大规模分布式存储系统></a>：</p>
+
+<blockquote><p>理解了这两个分布式协议之后(Paxos/2PC)，学习其他分布式协议会变得相当容易。</p></blockquote>
+
+<p>学习Paxos算法有两部分：a) 算法的原理/证明；b) 算法的理解/运作。</p>
+
+<p>理解这个算法的运作过程其实基本就可以用于工程实践。而且理解这个过程相对来说也容易得多。</p>
+
+<p>网上我觉得讲Paxos讲的好的属于这篇：<a href="http://coderxy.com/archives/121">paxos图解</a>及<a href="http://coderxy.com/archives/136">Paxos算法详解</a>，我这里就结合<a href="http://zh.wikipedia.org/zh-cn/Paxos%E7%AE%97%E6%B3%95#.E5.AE.9E.E4.BE.8B">wiki上的实例</a>进一步阐述。一些paxos基础通过这里提到的两篇文章，以及wiki上的内容基本可以理解。</p>
+
+<!-- more -->
+
+
+<h2>算法内容</h2>
+
+<p>Paxos在原作者的《Paxos Made Simple》中内容是比较精简的：</p>
+
+<blockquote><p>Phase  1</p>
+
+<p>  (a) A proposer selects a proposal number n  and sends a prepare request with number  n to a majority of acceptors.</p>
+
+<p>  (b)  If  an  acceptor  receives  a prepare  request  with  number  n  greater than  that  of  any  prepare  request  to  which  it  has  already  responded, then it responds to the request with a promise not to accept any more proposals numbered less than  n  and with the highest-numbered pro-posal (if any) that it has accepted.</p>
+
+<p>  Phase  2</p>
+
+<p>  (a)  If  the  proposer  receives  a  response  to  its  prepare requests (numbered  n)  from  a  majority  of  acceptors,  then  it  sends  an  accept request to each of those acceptors for a proposal numbered  n  with a value v , where v is the value of the highest-numbered proposal among the responses, or is any value if the responses reported no proposals.</p>
+
+<p>  (b) If an acceptor receives an accept request for a proposal numbered n, it accepts the proposal unless it has already responded to a prepare request having a number greater than  n.</p></blockquote>
+
+<p>借用<a href="http://coderxy.com/archives/121">paxos图解</a>文中的流程图可概括为：</p>
+
+<p><img src="/assets/res/paxos/paxos-flow.png" alt="" /></p>
+
+<h2>实例及详解</h2>
+
+<p>Paxos中有三类角色<code>Proposer</code>、<code>Acceptor</code>及<code>Learner</code>，主要交互过程在<code>Proposer</code>和<code>Acceptor</code>之间。</p>
+
+<p><code>Proposer</code>与<code>Acceptor</code>之间的交互主要有4类消息通信，如下图：</p>
+
+<p><img src="/assets/res/paxos/paxos-messages.png" alt="" /></p>
+
+<p>这4类消息对应于paxos算法的两个阶段4个过程：</p>
+
+<ul>
+<li>phase 1
+
+<ul>
+<li>a) proposer向网络内超过半数的acceptor发送prepare消息</li>
+<li>b) acceptor正常情况下回复promise消息</li>
+</ul>
+</li>
+<li>phase 2
+
+<ul>
+<li>a) 在有足够多acceptor回复promise消息时，proposer发送accept消息</li>
+<li>b) 正常情况下acceptor回复accepted消息</li>
+</ul>
+</li>
+</ul>
+
+
+<p>因为在整个过程中可能有其他proposer针对同一件事情发出以上请求，所以在每个过程中都会有些特殊情况处理，这也是为了达成一致性所做的事情。如果在整个过程中没有其他proposer来竞争，那么这个操作的结果就是确定无异议的。但是如果有其他proposer的话，情况就不一样了。</p>
+
+<p>以<a href="http://zh.wikipedia.org/zh-cn/Paxos%E7%AE%97%E6%B3%95#.E5.AE.9E.E4.BE.8B">paxos中文wiki上的例子</a>为例。简单来说该例子以若干个议员提议税收，确定最终通过的法案税收比例。</p>
+
+<p>以下图中基本只画出proposer与一个acceptor的交互。时间标志T2总是在T1后面。propose number简称N。</p>
+
+<p>情况之一如下图：</p>
+
+<p><img src="/assets/res/paxos/paxos-e1.png" alt="" /></p>
+
+<p>A3在T1发出accepted给A1，然后在T2收到A5的prepare，在T3的时候A1才通知A5最终结果(税率10%)。这里会有两种情况：</p>
+
+<ul>
+<li>A5发来的N5小于A1发出去的N1，那么A3直接拒绝(reject)A5</li>
+<li>A5发来的N5大于A1发出去的N1，那么A3回复promise，但带上A1的(N1, 10%)</li>
+</ul>
+
+
+<p>这里可以与paxos流程图对应起来，更好理解。<strong>acceptor会记录(MaxN, AcceptN, AcceptV)</strong>。</p>
+
+<p>A5在收到promise后，后续的流程可以顺利进行。但是发出accept时，因为收到了(AcceptN, AcceptV)，所以会取最大的AcceptN对应的AcceptV，例子中也就是A1的10%作为AcceptV。如果在收到promise时没有发现有其他已记录的AcceptV，则其值可以由自己决定。</p>
+
+<p>针对以上A1和A5冲突的情况，最终A1和A5都会广播接受的值为10%。</p>
+
+<p>其实4个过程中对于acceptor而言，在回复promise和accepted时由于都可能因为其他proposer的介入而导致特殊处理。所以基本上看在这两个时间点收到其他proposer的请求时就可以了解整个算法了。例如在回复promise时则可能因为proposer发来的N不够大而reject：</p>
+
+<p><img src="/assets/res/paxos/paxos-e2.png" alt="" /></p>
+
+<p>如果在发accepted消息时，对其他更大N的proposer发出过promise，那么也会reject该proposer发出的accept，如图：</p>
+
+<p><img src="/assets/res/paxos/paxos-e3.png" alt="" /></p>
+
+<p>这个对应于Phase 2 b)：</p>
+
+<blockquote><p>it accepts the proposal unless it has already responded to a prepare request having a number greater than  n.</p></blockquote>
+
+<h2>总结</h2>
+
+<p>Leslie Lamport没有用数学描述Paxos，但是他用英文阐述得很清晰。将Paxos的两个Phase的内容理解清楚，整个算法过程还是不复杂的。</p>
+
+<p>至于Paxos中一直提到的一个全局唯一且递增的proposer number，其如何实现，引用如下：</p>
+
+<blockquote><p>如何产生唯一的编号呢？在《Paxos made simple》中提到的是让所有的Proposer都从不相交的数据集合中进行选择，例如系统有5个Proposer，则可为每一个Proposer分配一个标识j(0~4)，则每一个proposer每次提出决议的编号可以为5*i + j(i可以用来表示提出议案的次数)</p></blockquote>
+
+<h2>参考文档</h2>
+
+<ul>
+<li>paxos图解, <a href="http://coderxy.com/archives/121">http://coderxy.com/archives/121</a></li>
+<li>Paxos算法详解, <a href="http://coderxy.com/archives/136">http://coderxy.com/archives/136</a></li>
+<li>Paxos算法 wiki, <a href="http://zh.wikipedia.org/zh-cn/Paxos%E7%AE%97%E6%B3%95#.E5.AE.9E.E4.BE.8B">http://zh.wikipedia.org/zh-cn/Paxos%E7%AE%97%E6%B3%95#.E5.AE.9E.E4.BE.8B</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[淘宝分布式配置管理服务Diamond]]></title>
@@ -510,250 +637,6 @@ typedef struct fd_set {
 <li>Linux上<code>select</code>有<code>FD_SETSIZE</code>的限制，但其相对效率较高</li>
 </ul>
 
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[muduo源码阅读]]></title>
-    <link href="http://codemacro.com/2014/05/04/muduo-source/"/>
-    <updated>2014-05-04T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2014/05/04/muduo-source</id>
-    <content type="html"><![CDATA[<p>最近简单读了下<a href="http://blog.csdn.net/solstice/article/details/5848547">muduo</a>的源码，本文对其主要实现/结构简单总结下。</p>
-
-<p>muduo的主要源码位于net文件夹下，base文件夹是一些基础代码，不影响理解网络部分的实现。muduo主要类包括：</p>
-
-<ul>
-<li>EventLoop</li>
-<li>Channel</li>
-<li>Poller</li>
-<li>TcpConnection</li>
-<li>TcpClient</li>
-<li>TcpServer</li>
-<li>Connector</li>
-<li>Acceptor</li>
-<li>EventLoopThread</li>
-<li>EventLoopThreadPool</li>
-</ul>
-
-
-<p>其中，Poller（及其实现类）包装了Poll/EPoll，封装了OS针对设备(fd)的操作；Channel是设备fd的包装，在muduo中主要包装socket；TcpConnection抽象一个TCP连接，无论是客户端还是服务器只要建立了网络连接就会使用TcpConnection；TcpClient/TcpServer分别抽象TCP客户端和服务器；Connector/Acceptor分别包装TCP客户端和服务器的建立连接/接受连接；EventLoop是一个主控类，是一个事件发生器，它驱动Poller产生/发现事件，然后将事件派发到Channel处理；EventLoopThread是一个带有EventLoop的线程；EventLoopThreadPool自然是一个EventLoopThread的资源池，维护一堆EventLoopThread。</p>
-
-<p>阅读库源码时可以从库的接口层着手，看看关键功能是如何实现的。对于muduo而言，可以从TcpServer/TcpClient/EventLoop/TcpConnection这几个类着手。接下来看看主要功能的实现：</p>
-
-<!-- more -->
-
-
-<h2>建立连接</h2>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">TcpClient</span><span class="o">::</span><span class="n">connect</span>
-        <span class="o">-&gt;</span> <span class="n">Connector</span><span class="o">::</span><span class="n">start</span>
-            <span class="o">-&gt;</span> <span class="n">EventLoop</span><span class="o">::</span><span class="n">runInLoop</span><span class="p">(</span><span class="n">Connector</span><span class="o">::</span><span class="n">startInLoop</span><span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-            <span class="o">-&gt;</span> <span class="n">Connector</span><span class="o">::</span><span class="n">connect</span>           <span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span></code></pre></div></p>
-
-<p>EventLoop::runInLoop接口用于在this所在的线程运行某个函数，这个后面看下EventLoop的实现就可以了解。 网络连接的最终建立是在Connector::connect中实现，建立连接之后会创建一个Channel来代表这个socket，并且绑定事件监听接口。最后最重要的是，调用<code>Channel::enableWriting</code>。<code>Channel</code>有一系列的enableXX接口，这些接口用于标识自己关心某IO事件。后面会看到他们的实现。</p>
-
-<p>Connector监听的主要事件无非就是连接已建立，用它监听读数据/写数据事件也不符合设计。TcpConnection才是做这种事的。</p>
-
-<h2>客户端收发数据</h2>
-
-<p>当Connector发现连接真正建立好后，会回调到<code>TcpClient::newConnection</code>，在TcpClient构造函数中：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">connector</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">setNewConnectionCallback</span><span class="p">(</span>
-      <span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">TcpClient</span><span class="o">::</span><span class="n">newConnection</span><span class="p">,</span> <span class="k">this</span><span class="p">,</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="mi">1</span><span class="p">));</span></code></pre></div></p>
-
-<p><code>TcpClient::newConnection</code>中创建一个TcpConnection来代表这个连接：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">TcpConnectionPtr</span> <span class="nf">conn</span><span class="p">(</span><span class="k">new</span> <span class="n">TcpConnection</span><span class="p">(</span><span class="n">loop_</span><span class="p">,</span>
-                                            <span class="n">connName</span><span class="p">,</span>
-                                            <span class="n">sockfd</span><span class="p">,</span>
-                                            <span class="n">localAddr</span><span class="p">,</span>
-                                            <span class="n">peerAddr</span><span class="p">));</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">conn</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">setConnectionCallback</span><span class="p">(</span><span class="n">connectionCallback_</span><span class="p">);</span>
-<span class="n">conn</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">setMessageCallback</span><span class="p">(</span><span class="n">messageCallback_</span><span class="p">);</span>
-<span class="n">conn</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">setWriteCompleteCallback</span><span class="p">(</span><span class="n">writeCompleteCallback_</span><span class="p">);</span>
-<span class="p">...</span>
-<span class="n">conn</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">connectEstablished</span><span class="p">();</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
-
-<p>并同时设置事件回调，以上设置的回调都是应用层（即库的使用者）的接口。每一个TcpConnection都有一个Channel，毕竟每一个网络连接都对应了一个socket fd。在TcpConnection构造函数中创建了一个Channel，并设置事件回调函数。</p>
-
-<p><code>TcpConnection::connectEstablished</code>函数最主要的是通知Channel自己开始关心IO读取事件：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">TcpConnection</span><span class="o">::</span><span class="n">connectEstablished</span><span class="p">()</span>
-    <span class="p">{</span>
-        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-        <span class="n">channel_</span><span class="o">-&gt;</span><span class="n">enableReading</span><span class="p">();</span></code></pre></div></p>
-
-<p>这是自此我们看到的第二个<code>Channel::enableXXX</code>接口，这些接口是如何实现关心IO事件的呢？这个后面讲到。</p>
-
-<p>muduo的数据发送都是通过<code>TcpConnection::send</code>完成，这个就是一般网络库中在不使用OS的异步IO情况下的实现：缓存应用层传递过来的数据，在IO设备可写的情况下尽量写入数据。这个主要实现在<code>TcpConnection::sendInLoop</code>中。</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">TcpConnection</span><span class="o">::</span><span class="n">sendInLoop</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hellip</span><span class="p">;.)</span> <span class="p">{</span>
-        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-        <span class="c1">// if no thing in output queue, try writing directly</span>
-        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">channel</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">isWriting</span><span class="p">()</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">outputBuffer</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">readableBytes</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1">// 设备可写且没有缓存时立即写入</span>
-        <span class="p">{</span>
-            <span class="n">nwrote</span> <span class="o">=</span> <span class="n">sockets</span><span class="o">::</span><span class="n">write</span><span class="p">(</span><span class="n">channel</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">fd</span><span class="p">(),</span> <span class="n">data</span><span class="p">,</span> <span class="n">len</span><span class="p">);</span>
-        <span class="p">}</span>
-        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-        <span class="c1">// 否则加入数据到缓存，等待IO可写时再写</span>
-        <span class="n">outputBuffer</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="k">const</span> <span class="kt">char</span><span class="o">*&gt;</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">+</span><span class="n">nwrote</span><span class="p">,</span> <span class="n">remaining</span><span class="p">);</span>
-        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">channel</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">isWriting</span><span class="p">())</span>
-        <span class="p">{</span>
-            <span class="c1">// 注册关心IO写事件，Poller就会对写做检测</span>
-            <span class="n">channel</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">enableWriting</span><span class="p">();</span>
-        <span class="p">}</span>
-        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>   <span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
-    <span class="p">}</span></code></pre></div></p>
-
-<p>当IO可写时，Channel就会回调<code>TcpConnection::handleWrite</code>（构造函数中注册）</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">TcpConnection</span><span class="o">::</span><span class="n">handleWrite</span><span class="p">()</span>
-    <span class="p">{</span>
-        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">channel</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">isWriting</span><span class="p">())</span>
-        <span class="p">{</span>
-            <span class="kt">ssize_t</span> <span class="n">n</span> <span class="o">=</span> <span class="n">sockets</span><span class="o">::</span><span class="n">write</span><span class="p">(</span><span class="n">channel</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">fd</span><span class="p">(),</span>
-                               <span class="n">outputBuffer</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">peek</span><span class="p">(),</span>
-                               <span class="n">outputBuffer</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">readableBytes</span><span class="p">());</span></code></pre></div></p>
-
-<p>服务器端的数据收发同客户端机制一致，不同的是连接(TcpConnection)的建立方式不同。</p>
-
-<h2>服务器接收连接</h2>
-
-<p>服务器接收连接的实现在一个网络库中比较重要。muduo中通过Acceptor类来接收连接。在TcpClient中，其Connector通过一个关心Channel可写的事件来通过连接已建立；在Acceptor中则是通过一个Channel可读的事件来表示有新的连接到来：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">Acceptor</span><span class="o">::</span><span class="n">Acceptor</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hellip</span><span class="p">;.)</span> <span class="p">{</span>
-        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-        <span class="n">acceptChannel_</span><span class="p">.</span><span class="n">setReadCallback</span><span class="p">(</span>
-            <span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">Acceptor</span><span class="o">::</span><span class="n">handleRead</span><span class="p">,</span> <span class="k">this</span><span class="p">));</span>
-        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-    <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">Acceptor</span><span class="o">::</span><span class="n">handleRead</span><span class="p">()</span>
-<span class="p">{</span>
-    <span class="p">...</span>
-    <span class="kt">int</span> <span class="n">connfd</span> <span class="o">=</span> <span class="n">acceptSocket_</span><span class="p">.</span><span class="n">accept</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">peerAddr</span><span class="p">);</span> <span class="c1">// 接收连接获得一个新的socket</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">connfd</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
-    <span class="p">{</span>
-        <span class="p">...</span>
-        <span class="n">newConnectionCallback_</span><span class="p">(</span><span class="n">connfd</span><span class="p">,</span> <span class="n">peerAddr</span><span class="p">);</span> <span class="c1">// 回调到TcpServer::newConnection</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
-
-<p><code>TcpServer::newConnection</code>中建立一个TcpConnection，并将其附加到一个EventLoopThread中，简单来说就是给其配置一个线程：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">TcpServer</span><span class="o">::</span><span class="n">newConnection</span><span class="p">(</span><span class="kt">int</span> <span class="n">sockfd</span><span class="p">,</span> <span class="k">const</span> <span class="n">InetAddress</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">peerAddr</span><span class="p">)</span>
-    <span class="p">{</span>
-        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-        <span class="n">EventLoop</span><span class="o">*</span> <span class="n">ioLoop</span> <span class="o">=</span> <span class="n">threadPool</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">getNextLoop</span><span class="p">();</span>
-        <span class="n">TcpConnectionPtr</span> <span class="nf">conn</span><span class="p">(</span><span class="k">new</span> <span class="n">TcpConnection</span><span class="p">(</span><span class="n">ioLoop</span><span class="p">,</span>
-                                                <span class="n">connName</span><span class="p">,</span>
-                                                <span class="n">sockfd</span><span class="p">,</span>
-                                                <span class="n">localAddr</span><span class="p">,</span>
-                                                <span class="n">peerAddr</span><span class="p">));</span>
-        <span class="n">connections</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">[</span><span class="n">connName</span><span class="p">]</span> <span class="o">=</span> <span class="n">conn</span><span class="p">;</span>
-        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-        <span class="n">ioLoop</span><span class="o">-&gt;</span><span class="n">runInLoop</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">TcpConnection</span><span class="o">::</span><span class="n">connectEstablished</span><span class="p">,</span> <span class="n">conn</span><span class="p">));</span></code></pre></div></p>
-
-<h2>IO的驱动</h2>
-
-<p>之前提到，一旦要关心某IO事件了，就调用<code>Channel::enableXXX</code>，这个如何实现的呢？</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">class</span> <span class="nc">Channel</span> <span class="p">{</span>
-        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-        <span class="kt">void</span> <span class="nf">enableReading</span><span class="p">()</span> <span class="p">{</span> <span class="n">events</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="o">|=</span> <span class="n">kReadEvent</span><span class="p">;</span> <span class="n">update</span><span class="p">();</span> <span class="p">}</span>
-        <span class="kt">void</span> <span class="nf">enableWriting</span><span class="p">()</span> <span class="p">{</span> <span class="n">events</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="o">|=</span> <span class="n">kWriteEvent</span><span class="p">;</span> <span class="n">update</span><span class="p">();</span> <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">Channel</span><span class="o">::</span><span class="n">update</span><span class="p">()</span>
-<span class="p">{</span>
-    <span class="n">loop_</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">updateChannel</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
-<span class="p">}</span>
-
-<span class="kt">void</span> <span class="n">EventLoop</span><span class="o">::</span><span class="n">updateChannel</span><span class="p">(</span><span class="n">Channel</span><span class="o">*</span> <span class="n">channel</span><span class="p">)</span>
-<span class="p">{</span>
-    <span class="p">...</span>
-    <span class="n">poller_</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">updateChannel</span><span class="p">(</span><span class="n">channel</span><span class="p">);</span>
-<span class="p">}</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
-
-<p>最终调用到<code>Poller::upateChannel</code>。muduo中有两个Poller的实现，分别是Poll和EPoll，可以选择简单的Poll来看：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">PollPoller</span><span class="o">::</span><span class="n">updateChannel</span><span class="p">(</span><span class="n">Channel</span><span class="o">*</span> <span class="n">channel</span><span class="p">)</span>
-    <span class="p">{</span>
-      <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-      <span class="k">if</span> <span class="p">(</span><span class="n">channel</span><span class="o">-&gt;</span><span class="n">index</span><span class="p">()</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="mi">0</span><span class="p">)</span>
-      <span class="p">{</span>
-        <span class="c1">// a new one, add to pollfds&lt;em&gt;</span>
-        <span class="n">assert</span><span class="p">(</span><span class="n">channels</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">channel</span><span class="o">-&gt;</span><span class="n">fd</span><span class="p">())</span> <span class="o">==</span> <span class="n">channels</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
-        <span class="k">struct</span> <span class="n">pollfd</span> <span class="n">pfd</span><span class="p">;</span>
-        <span class="n">pfd</span><span class="p">.</span><span class="n">fd</span> <span class="o">=</span> <span class="n">channel</span><span class="o">-&gt;</span><span class="n">fd</span><span class="p">();</span>
-        <span class="n">pfd</span><span class="p">.</span><span class="n">events</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">short</span><span class="o">&gt;</span><span class="p">(</span><span class="n">channel</span><span class="o">-&gt;</span><span class="n">events</span><span class="p">());</span> <span class="c1">// 也就是Channel::enableXXX操作的那个events&lt;/em&gt;</span>
-        <span class="n">pfd</span><span class="p">.</span><span class="n">revents</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-        <span class="n">pollfds</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">pfd</span><span class="p">);</span> <span class="c1">// 加入一个新的pollfd</span>
-        <span class="kt">int</span> <span class="n">idx</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">pollfds</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">size</span><span class="p">())</span><span class="o">-</span><span class="mi">1</span><span class="p">;</span>
-        <span class="n">channel</span><span class="o">-&gt;</span><span class="n">set_index</span><span class="p">(</span><span class="n">idx</span><span class="p">);</span>
-        <span class="n">channels_</span><span class="p">[</span><span class="n">pfd</span><span class="p">.</span><span class="n">fd</span><span class="p">]</span> <span class="o">=</span> <span class="n">channel</span><span class="p">;</span></code></pre></div></p>
-
-<p>可见Poller就是把Channel关心的IO事件转换为OS提供的IO模型数据结构上。通过查看关键的<code>pollfds_</code>的使用，可以发现其主要是在Poller::poll接口里。这个接口会在EventLoop的主循环中不断调用：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">EventLoop</span><span class="o">::</span><span class="n">loop</span><span class="p">()</span>
-    <span class="p">{</span>
-      <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-      <span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">quit</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span>
-      <span class="p">{</span>
-        <span class="n">activeChannels</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">clear</span><span class="p">();</span>
-        <span class="n">pollReturnTime</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="o">=</span> <span class="n">poller</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">poll</span><span class="p">(</span><span class="n">kPollTimeMs</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">activeChannels</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">);</span>
-        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-        <span class="k">for</span> <span class="p">(</span><span class="n">ChannelList</span><span class="o">::</span><span class="n">iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">activeChannels</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span>
-            <span class="n">it</span> <span class="o">!=</span> <span class="n">activeChannels</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">.</span><span class="n">end</span><span class="p">();</span> <span class="o">++</span><span class="n">it</span><span class="p">)</span>
-        <span class="p">{</span>
-          <span class="n">currentActiveChannel</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="o">=</span> <span class="o">*</span><span class="n">it</span><span class="p">;</span>
-          <span class="n">currentActiveChannel</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;-&gt;</span><span class="n">handleEvent</span><span class="p">(</span><span class="n">pollReturnTime</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">);</span> <span class="c1">// 获得IO事件，通知各注册回调</span>
-        <span class="p">}</span></code></pre></div></p>
-
-<p>整个流程可总结为：各Channel内部会把自己关心的事件告诉给Poller，Poller由EventLoop驱动检测IO，然后返回哪些Channel发生了事件，EventLoop再驱动这些Channel调用各注册回调。</p>
-
-<p>从这个过程中可以看出，EventLoop就是一个事件产生器。</p>
-
-<h2>线程模型</h2>
-
-<p>在muduo的服务器中，muduo的线程模型是怎样的呢？它如何通过线程来支撑高并发呢？其实很简单，它为每一个线程配置了一个EventLoop，这个线程同时被附加了若干个网络连接，这个EventLoop服务于这些网络连接，为这些连接收集并派发IO事件。</p>
-
-<p>回到<code>TcpServer::newConnection</code>中：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">TcpServer</span><span class="o">::</span><span class="n">newConnection</span><span class="p">(</span><span class="kt">int</span> <span class="n">sockfd</span><span class="p">,</span> <span class="k">const</span> <span class="n">InetAddress</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">peerAddr</span><span class="p">)</span>
-    <span class="p">{</span>
-      <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-      <span class="n">EventLoop</span><span class="o">*</span> <span class="n">ioLoop</span> <span class="o">=</span> <span class="n">threadPool_</span><span class="o">-&gt;</span><span class="n">getNextLoop</span><span class="p">();</span>
-      <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-      <span class="n">TcpConnectionPtr</span> <span class="nf">conn</span><span class="p">(</span><span class="k">new</span> <span class="n">TcpConnection</span><span class="p">(</span><span class="n">ioLoop</span><span class="p">,</span> <span class="c1">// 使用这个选择到的线程中的EventLoop</span>
-                                              <span class="n">connName</span><span class="p">,</span>
-                                              <span class="n">sockfd</span><span class="p">,</span>
-                                              <span class="n">localAddr</span><span class="p">,</span>
-                                              <span class="n">peerAddr</span><span class="p">));</span>
-      <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-      <span class="n">ioLoop</span><span class="o">-&gt;</span><span class="n">runInLoop</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">TcpConnection</span><span class="o">::</span><span class="n">connectEstablished</span><span class="p">,</span> <span class="n">conn</span><span class="p">));</span></code></pre></div></p>
-
-<p>注意<code>TcpConnection::connectEstablished</code>是如何通过Channel注册关心的IO事件到<code>ioLoop</code>的。</p>
-
-<p>极端来说，muduo的每一个连接线程可以只为一个网络连接服务，这就有点类似于thread per connection模型了。</p>
-
-<h2>网络模型</h2>
-
-<p>传说中的Reactor模式，以及one loop per thread，基于EventLoop的作用，以及线程池与TcpConnection的关系，可以醍醐灌顶般理解以下这张muduo的网络模型图了：</p>
-
-<p><img src="/assets/res/muduo-model.png" alt="muduo-model" /></p>
-
-<h2>总结</h2>
-
-<p>本文主要对muduo的主要结构及主要机制的实现做了描述，其他如Buffer的实现、定时器的实现大家都可以自行研究。muduo的源码很清晰，通过源码及配合<a href="http://blog.csdn.net/solstice">陈硕博客</a>上的内容可以学到一些网络编程方面的经验。</p>
 ]]></content>
   </entry>
   

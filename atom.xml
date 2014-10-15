@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-10-12T12:55:36+08:00</updated>
+  <updated>2014-10-15T22:40:05+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,141 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[图解分布式一致性协议Paxos]]></title>
+    <link href="http://codemacro.com/2014/10/15/explain-poxos/"/>
+    <updated>2014-10-15T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2014/10/15/explain-poxos</id>
+    <content type="html"><![CDATA[<p>Paxos协议/算法是分布式系统中比较重要的协议，它有多重要呢？</p>
+
+<p><a href="http://coolshell.cn/articles/10910.html">&lt;分布式系统的事务处理></a>：</p>
+
+<blockquote><p>Google Chubby的作者Mike Burrows说过这个世界上只有一种一致性算法，那就是Paxos，其它的算法都是残次品。</p></blockquote>
+
+<p><a href="http://book.douban.com/subject/25723658/">&lt;大规模分布式存储系统></a>：</p>
+
+<blockquote><p>理解了这两个分布式协议之后(Paxos/2PC)，学习其他分布式协议会变得相当容易。</p></blockquote>
+
+<p>学习Paxos算法有两部分：a) 算法的原理/证明；b) 算法的理解/运作。</p>
+
+<p>理解这个算法的运作过程其实基本就可以用于工程实践。而且理解这个过程相对来说也容易得多。</p>
+
+<p>网上我觉得讲Paxos讲的好的属于这篇：<a href="http://coderxy.com/archives/121">paxos图解</a>及<a href="http://coderxy.com/archives/136">Paxos算法详解</a>，我这里就结合<a href="http://zh.wikipedia.org/zh-cn/Paxos%E7%AE%97%E6%B3%95#.E5.AE.9E.E4.BE.8B">wiki上的实例</a>进一步阐述。一些paxos基础通过这里提到的两篇文章，以及wiki上的内容基本可以理解。</p>
+
+<!-- more -->
+
+
+<h2>算法内容</h2>
+
+<p>Paxos在原作者的《Paxos Made Simple》中内容是比较精简的：</p>
+
+<blockquote><p>Phase  1</p>
+
+<p>  (a) A proposer selects a proposal number n  and sends a prepare request with number  n to a majority of acceptors.</p>
+
+<p>  (b)  If  an  acceptor  receives  a prepare  request  with  number  n  greater than  that  of  any  prepare  request  to  which  it  has  already  responded, then it responds to the request with a promise not to accept any more proposals numbered less than  n  and with the highest-numbered pro-posal (if any) that it has accepted.</p>
+
+<p>  Phase  2</p>
+
+<p>  (a)  If  the  proposer  receives  a  response  to  its  prepare requests (numbered  n)  from  a  majority  of  acceptors,  then  it  sends  an  accept request to each of those acceptors for a proposal numbered  n  with a value v , where v is the value of the highest-numbered proposal among the responses, or is any value if the responses reported no proposals.</p>
+
+<p>  (b) If an acceptor receives an accept request for a proposal numbered n, it accepts the proposal unless it has already responded to a prepare request having a number greater than  n.</p></blockquote>
+
+<p>借用<a href="http://coderxy.com/archives/121">paxos图解</a>文中的流程图可概括为：</p>
+
+<p><img src="http://codemacro.com/assets/res/paxos/paxos-flow.png" alt="" /></p>
+
+<h2>实例及详解</h2>
+
+<p>Paxos中有三类角色<code>Proposer</code>、<code>Acceptor</code>及<code>Learner</code>，主要交互过程在<code>Proposer</code>和<code>Acceptor</code>之间。</p>
+
+<p><code>Proposer</code>与<code>Acceptor</code>之间的交互主要有4类消息通信，如下图：</p>
+
+<p><img src="http://codemacro.com/assets/res/paxos/paxos-messages.png" alt="" /></p>
+
+<p>这4类消息对应于paxos算法的两个阶段4个过程：</p>
+
+<ul>
+<li>phase 1
+
+<ul>
+<li>a) proposer向网络内超过半数的acceptor发送prepare消息</li>
+<li>b) acceptor正常情况下回复promise消息</li>
+</ul>
+</li>
+<li>phase 2
+
+<ul>
+<li>a) 在有足够多acceptor回复promise消息时，proposer发送accept消息</li>
+<li>b) 正常情况下acceptor回复accepted消息</li>
+</ul>
+</li>
+</ul>
+
+
+<p>因为在整个过程中可能有其他proposer针对同一件事情发出以上请求，所以在每个过程中都会有些特殊情况处理，这也是为了达成一致性所做的事情。如果在整个过程中没有其他proposer来竞争，那么这个操作的结果就是确定无异议的。但是如果有其他proposer的话，情况就不一样了。</p>
+
+<p>以<a href="http://zh.wikipedia.org/zh-cn/Paxos%E7%AE%97%E6%B3%95#.E5.AE.9E.E4.BE.8B">paxos中文wiki上的例子</a>为例。简单来说该例子以若干个议员提议税收，确定最终通过的法案税收比例。</p>
+
+<p>以下图中基本只画出proposer与一个acceptor的交互。时间标志T2总是在T1后面。propose number简称N。</p>
+
+<p>情况之一如下图：</p>
+
+<p><img src="http://codemacro.com/assets/res/paxos/paxos-e1.png" alt="" /></p>
+
+<p>A3在T1发出accepted给A1，然后在T2收到A5的prepare，在T3的时候A1才通知A5最终结果(税率10%)。这里会有两种情况：</p>
+
+<ul>
+<li>A5发来的N5小于A1发出去的N1，那么A3直接拒绝(reject)A5</li>
+<li>A5发来的N5大于A1发出去的N1，那么A3回复promise，但带上A1的(N1, 10%)</li>
+</ul>
+
+
+<p>这里可以与paxos流程图对应起来，更好理解。<strong>acceptor会记录(MaxN, AcceptN, AcceptV)</strong>。</p>
+
+<p>A5在收到promise后，后续的流程可以顺利进行。但是发出accept时，因为收到了(AcceptN, AcceptV)，所以会取最大的AcceptN对应的AcceptV，例子中也就是A1的10%作为AcceptV。如果在收到promise时没有发现有其他已记录的AcceptV，则其值可以由自己决定。</p>
+
+<p>针对以上A1和A5冲突的情况，最终A1和A5都会广播接受的值为10%。</p>
+
+<p>其实4个过程中对于acceptor而言，在回复promise和accepted时由于都可能因为其他proposer的介入而导致特殊处理。所以基本上看在这两个时间点收到其他proposer的请求时就可以了解整个算法了。例如在回复promise时则可能因为proposer发来的N不够大而reject：</p>
+
+<p><img src="http://codemacro.com/assets/res/paxos/paxos-e2.png" alt="" /></p>
+
+<p>如果在发accepted消息时，对其他更大N的proposer发出过promise，那么也会reject该proposer发出的accept，如图：</p>
+
+<p><img src="http://codemacro.com/assets/res/paxos/paxos-e3.png" alt="" /></p>
+
+<p>这个对应于Phase 2 b)：</p>
+
+<blockquote><p>it accepts the proposal unless it has already responded to a prepare request having a number greater than  n.</p></blockquote>
+
+<h2>总结</h2>
+
+<p>Leslie Lamport没有用数学描述Paxos，但是他用英文阐述得很清晰。将Paxos的两个Phase的内容理解清楚，整个算法过程还是不复杂的。</p>
+
+<p>至于Paxos中一直提到的一个全局唯一且递增的proposer number，其如何实现，引用如下：</p>
+
+<blockquote><p>如何产生唯一的编号呢？在《Paxos made simple》中提到的是让所有的Proposer都从不相交的数据集合中进行选择，例如系统有5个Proposer，则可为每一个Proposer分配一个标识j(0~4)，则每一个proposer每次提出决议的编号可以为5*i + j(i可以用来表示提出议案的次数)</p></blockquote>
+
+<h2>参考文档</h2>
+
+<ul>
+<li>paxos图解, <a href="http://coderxy.com/archives/121">http://coderxy.com/archives/121</a></li>
+<li>Paxos算法详解, <a href="http://coderxy.com/archives/136">http://coderxy.com/archives/136</a></li>
+<li>Paxos算法 wiki, <a href="http://zh.wikipedia.org/zh-cn/Paxos%E7%AE%97%E6%B3%95#.E5.AE.9E.E4.BE.8B">http://zh.wikipedia.org/zh-cn/Paxos%E7%AE%97%E6%B3%95#.E5.AE.9E.E4.BE.8B</a></li>
+</ul>
+
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2014/10/15/explain-poxos/'>http://codemacro.com/2014/10/15/explain-poxos/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[淘宝分布式配置管理服务Diamond]]></title>
@@ -3634,85 +3769,6 @@ a中文
 <p class='post-footer'>
             原文地址：
             <a href='http://codemacro.com/2013/06/21/magnet-search-impl/'>http://codemacro.com/2013/06/21/magnet-search-impl/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[使用erlang实现P2P磁力搜索(开源)]]></title>
-    <link href="http://codemacro.com/2013/06/20/magnet-search/"/>
-    <updated>2013-06-20T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2013/06/20/magnet-search</id>
-    <content type="html"><![CDATA[<p>接上回对<a href="http://codemacro.com/2013/05/19/crawl-dht/">DHT网络的研究</a>，我用erlang克隆了一个<a href="http://bt.shousibaocai.com/">磁力搜索引擎</a>。我这个实现包含了完整的功能，DHT网络的加入、infohash的接收、种子的获取、资源信息的索引、搜索。</p>
-
-<p>如下图：</p>
-
-<p><img src="https://raw.github.com/kevinlynx/dhtcrawler/master/screenshot.png" alt="screenshot" /></p>
-
-<!-- more -->
-
-
-<p>在我的笔记本上，我开启了100个DHT节点，大致均匀地分布在DHT网络里，资源索引速度大概在1小时一万个左右（包含重复资源）。</p>
-
-<p>这个程序包含三大部分：</p>
-
-<ul>
-<li>DHT实现，kdht，<a href="https://github.com/kevinlynx/kdht">https://github.com/kevinlynx/kdht</a></li>
-<li>基于该DHT实现的搜索引擎，dhtcrawler，<a href="https://github.com/kevinlynx/dhtcrawler">https://github.com/kevinlynx/dhtcrawler</a>，该项目包含爬虫部分和一个简单的WEB端</li>
-</ul>
-
-
-<p>这两个项目总共包含大概2500行的erlang代码。其中，DHT实现部分将DHT网络的加入包装成一个库，爬虫部分在搜索种子时，暂时没有使用P2P里的种子下载方式，而是使用现成的磁力链转种子的网站服务，这样我只需要使用erlang自带的HTTP客户端就可以获取种子信息。爬虫在获取到种子信息后，将数据存储到mongodb里。WEB端我为了尽量少用第三方库，我只好使用erlang自带的HTTP服务器，因此网页内容的创建没有模板系统可用，只好通过字符串构建，编写起来不太方便。</p>
-
-<h2>使用</h2>
-
-<p>整个程序依赖了两个库：bson-erlang和mongodb-erlang，但下载依赖库的事都可以通过rebar解决，项目文件里我已经包含了rebar的执行程序。我仅在Windows7上测试过，但理论上在所有erlang支持的系统上都可以。</p>
-
-<ul>
-<li>下载安装<a href="http://www.mongodb.org/downloads">mongodb</a></li>
-<li><p>进入mongodb bin目录启动mongodb，数据库目录保存在db下，需手动建立该目录</p>
-
-<pre><code>  mongod --dbpath db --setParameter textSearchEnabled=true
-</code></pre></li>
-<li><p>下载<a href="http://www.erlang.org/download.html">erlang</a>，我使用的是R16B版本</p></li>
-<li><p>下载dhtcrawler，不需要单独下载kdht，待会下载依赖项的时候会自动下载</p>
-
-<pre><code>  git clone git@github.com:kevinlynx/dhtcrawler.git
-</code></pre></li>
-<li><p>cmd进入dhtcrawler目录，下载依赖项前需保证环境变量里有git，例如<code>D:\Program Files (x86)\Git\cmd</code>，需注意不要将bash的目录加入进来，使用以下命令下载依赖项</p>
-
-<pre><code>  rebar get-deps
-</code></pre></li>
-<li><p>编译</p>
-
-<pre><code>  rebar compile
-</code></pre></li>
-<li><p>在dhtcrawler目录下，启动erlang</p>
-
-<pre><code>  erl -pa ebin
-</code></pre></li>
-<li><p>在erlang shell里运行爬虫，<strong>erlang语句以点号(.)作为结束</strong></p>
-
-<pre><code>  crawler_app:start().
-</code></pre></li>
-<li><p>erlang shell里运行HTTP服务器</p>
-
-<pre><code>  crawler_http:start().
-</code></pre></li>
-<li><p>浏览器里输入<code>localhost:8000/index.html</code>，这个时候还没有索引到资源，建议监视网络流量以观察爬虫程序是否正确工作</p></li>
-</ul>
-
-
-<p>爬虫程序启动时会读取<code>priv/dhtcrawler.config</code>配置文件，该文件里配置了DHT节点的UDP监听端口、节点数量、数据库地址等，可自行配置。</p>
-
-<p>接下来我会谈谈各部分的实现方法。</p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2013/06/20/magnet-search/'>http://codemacro.com/2013/06/20/magnet-search/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
