@@ -4,7 +4,7 @@
   <title><![CDATA[Category: network | loop in codes]]></title>
   <link href="http://codemacro.com/categories/network/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-10-15T22:43:59+08:00</updated>
+  <updated>2014-10-19T15:57:42+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,86 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[图解zookeeper FastLeader选举算法]]></title>
+    <link href="http://codemacro.com/2014/10/19/zk-fastleaderelection/"/>
+    <updated>2014-10-19T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2014/10/19/zk-fastleaderelection</id>
+    <content type="html"><![CDATA[<p>zookeeper配置为集群模式时，在启动或异常情况时会选举出一个实例作为Leader。其默认选举算法为<code>FastLeaderElection</code>。</p>
+
+<p>不知道zookeeper的可以考虑这样一个问题：某个服务可以配置为多个实例共同构成一个集群对外提供服务。其每一个实例本地都存有冗余数据，每一个实例都可以直接对外提供读写服务。在这个集群中为了保证数据的一致性，需要有一个Leader来协调一些事务。那么问题来了：如何确定哪一个实例是Leader呢？</p>
+
+<p>问题的难点在于：</p>
+
+<ul>
+<li>没有一个仲裁者来选定Leader</li>
+<li>每一个实例本地可能已经存在数据，不确定哪个实例上的数据是最新的</li>
+</ul>
+
+
+<p>分布式选举算法正是用来解决这个问题的。</p>
+
+<p>本文基于zookeeper 3.4.6 的源码进行分析。FastLeaderElection算法的源码全部位于<code>FastLeaderElection.java</code>文件中，其对外接口为<code>FastLeaderElection.lookForLeader</code>，该接口是一个同步接口，直到选举结束才会返回。同样由于网上已有类似文章，所以我就从图示的角度来阐述。阅读一些其他文章有利于获得初步印象：</p>
+
+<ul>
+<li><a href="http://iwinit.iteye.com/blog/1773531">深入浅出Zookeeper之五 Leader选举</a>，代码导读</li>
+<li><a href="http://blog.csdn.net/xhh198781/article/details/6619203">zookeeper3.3.3源码分析(二)FastLeader选举算法</a>，文字描述较细</li>
+</ul>
+
+
+<h2>主要流程</h2>
+
+<p>阅读代码和以上推荐文章可以把整个流程梳理清楚。实现上，包括了一个消息处理主循环，也是选举的主要逻辑，以及一个消息发送队列处理线程和消息解码线程。主要流程可概括为下图：</p>
+
+<!-- more -->
+
+
+<p><img src="/assets/res/zk/fle-flow.png" alt="fle-flow.png" /></p>
+
+<p>推荐对照着推荐的文章及代码理解，不赘述。</p>
+
+<p>我们从感性上来理解这个算法。</p>
+
+<p>每一个节点，相当于一个选民，他们都有自己的推荐人，最开始他们都推荐自己。谁更适合成为Leader有一个简单的规则，例如sid够大（配置）、持有的数据够新(zxid够大)。每个选民都告诉其他选民自己目前的推荐人是谁，类似于出去搞宣传拉拢其他选民。每一个选民发现有比自己更适合的人时就转而推荐这个更适合的人。最后，大部分人意见一致时，就可以结束选举。</p>
+
+<p>就这么简单。总体上有一种不断演化逼近结果的感觉。</p>
+
+<p>当然，会有些特殊情况的处理。例如总共3个选民，1和2已经确定3是Leader，但3还不知情，此时就走入<code>LEADING/FOLLOWING</code>的分支，选民3只是接收结果。</p>
+
+<p>代码中不是所有逻辑都在这个大流程中完成的。在接收消息线程中，还可能单独地回应某个节点(<code>WorkerReceiver.run</code>)：</p>
+
+<p><img src="/assets/res/zk/recv.png" alt="recv.png" /></p>
+
+<p>从这里可以看出，当某个节点已经确定选举结果不再处于<code>LOOKING</code>状态时，其收到<code>LOOKING</code>消息时都会直接回应选举的最终结果。结合上面那个比方，相当于某次选举结束了，这个时候来了选民4又发起一次新的选举，那么其他选民就直接告诉它当前的Leader情况。相当于，在这个集群主从已经就绪的情况下，又开启了一个实例，这个实例就会直接使用当前的选举结果。</p>
+
+<h2>状态转换</h2>
+
+<p>每个节点上有一些关键的数据结构：</p>
+
+<ul>
+<li>当前推荐人，初始推荐自己，每次收到其他更好的推荐人时就更新</li>
+<li>其他人的投票集合，用于确定何时选举结束</li>
+</ul>
+
+
+<p>每次推荐人更新时就会进行广播，正是这个不断地广播驱动整个算法趋向于结果。假设有3个节点A/B/C，其都还没有数据，按照sid关系为C>B>A，那么按照规则，C更可能成为Leader，其各个节点的状态转换为：</p>
+
+<p><img src="/assets/res/zk/state.png" alt="state.png" /></p>
+
+<p>图中，v(A)表示当前推荐人为A；r[]表示收到的投票集合。</p>
+
+<p>可以看看当其他节点已经确定投票结果时，即不再是<code>LOOKING</code>时的状态：</p>
+
+<p><img src="/assets/res/zk/state-ret.png" alt="state-ret.png" /></p>
+
+<p>代码中有一个特殊的投票集合<code>outofelection</code>，我理解为选举已结束的那些投票，这些投票仅用于表征选举结果。</p>
+
+<p>当一个新启动的节点加入集群时，它对集群内其他节点发出投票请求，而其他节点已不处于<code>LOOKING</code>状态，此时其他节点回应选举结果，该节点收集这些结果到<code>outofelection</code>中，最终在收到合法LEADER消息且这些选票也构成选举结束条件时，该节点就结束自己的选举行为。<em>注意到代码中会<code>logicalclock = n.electionEpoch;</code>更新选举轮数</em></p>
+
+<p><em>完</em></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[图解分布式一致性协议Paxos]]></title>
@@ -463,180 +543,6 @@ const Node&amp; HashRing&lt;Node, Data, Hash&gt;::GetNode(const Data&amp; data) 
 </code></pre>
 
 <p>参考<a href="http://blog.csdn.net/sparkliang/article/details/5279393">一致性 hash 算法(consistent hashing)</a>，<a href="http://www.martinbroadhurst.com/Consistent-Hash-Ring.html">Consistent Hash Ring</a></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[select真的有限制吗]]></title>
-    <link href="http://codemacro.com/2014/06/01/select-limit/"/>
-    <updated>2014-06-01T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2014/06/01/select-limit</id>
-    <content type="html"><![CDATA[<p>在刚开始学习网络编程时，似乎莫名其妙地就会被某人/某资料告诉<code>select</code>函数是有fd(file descriptor)数量限制的。在最近的一次记忆里还有个人笑说<code>select</code>只支持64个fd。我甚至还写过一篇不负责任甚至错误的博客(<a href="http://www.cppblog.com/kevinlynx/archive/2008/05/20/50500.html">突破select的FD_SETSIZE限制</a>)。有人说，直接重新定义<code>FD_SETSIZE</code>就可以突破这个<code>select</code>的限制，也有人说除了重定义这个宏之外还的重新编译内核。</p>
-
-<p>事实具体是怎样的？实际上，造成这些混乱的原因恰好是不同平台对<code>select</code>的实现不一样。</p>
-
-<h2>Windows的实现</h2>
-
-<p><a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms740141(v=vs.85">MSDN</a>.aspx)上对<code>select</code>的说明：</p>
-
-<pre><code>int select(
-  _In_     int nfds,
-  _Inout_  fd_set *readfds,
-  _Inout_  fd_set *writefds,
-  _Inout_  fd_set *exceptfds,
-  _In_     const struct timeval *timeout
-);
-
-nfds [in] Ignored. The nfds parameter is included only for compatibility with Berkeley sockets.
-</code></pre>
-
-<p>第一个参数MSDN只说没有使用，其存在仅仅是为了保持与Berkeley Socket的兼容。</p>
-
-<blockquote><p>The variable FD_SETSIZE determines the maximum number of descriptors in a set. (The default value of FD_SETSIZE is 64, which can be modified by defining FD_SETSIZE to another value before including Winsock2.h.) Internally, socket handles in an fd_set structure are not represented as bit flags as in Berkeley Unix.</p></blockquote>
-
-<p>Windows上<code>select</code>的实现不同于Berkeley Unix，<strong>后者使用位标志来表示socket</strong>。</p>
-
-<!-- more -->
-
-
-<p>在MSDN的评论中有人提到：</p>
-
-<blockquote><p>Unlike the Linux versions of these macros which use a single calculation to set/check the fd, the Winsock versions use a loop which goes through the entire set of fds each time you call FD_SET or FD_ISSET (check out winsock2.h and you&rsquo;ll see). So you might want to consider an alternative if you have thousands of sockets!</p></blockquote>
-
-<p>不同于Linux下处理<code>fd_set</code>的那些宏(FD_CLR/FD_SET之类)，Windows上这些宏的实现都使用了一个循环，看看这些宏的大致实现(Winsock2.h)：</p>
-
-<pre><code>#define FD_SET(fd, set) do { \
-    u_int __i; \
-    for (__i = 0; __i &lt; ((fd_set FAR *)(set))-&gt;fd_count; __i++) { \
-        if (((fd_set FAR *)(set))-&gt;fd_array[__i] == (fd)) { \
-            break; \
-        } \
-    } \
-    if (__i == ((fd_set FAR *)(set))-&gt;fd_count) { \
-        if (((fd_set FAR *)(set))-&gt;fd_count &lt; FD_SETSIZE) { \
-            ((fd_set FAR *)(set))-&gt;fd_array[__i] = (fd); \
-            ((fd_set FAR *)(set))-&gt;fd_count++; \
-        } \
-    } \
-} while(0)
-</code></pre>
-
-<p>看下Winsock2.h中关于<code>fd_set</code>的定义：</p>
-
-<pre><code>typedef struct fd_set {
-    u_int fd_count;
-    SOCKET fd_array[FD_SETSIZE];
-} fd_set;
-</code></pre>
-
-<p>再看一篇更重要的MSDN <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms739169(v=vs.85">Maximum Number of Sockets Supported</a>.aspx)：</p>
-
-<blockquote><p>The Microsoft Winsock provider limits the maximum number of sockets supported only by available memory on the local computer.
-The maximum number of sockets that a Windows Sockets application can use is not affected by the manifest constant FD_SETSIZE.
-If an application is designed to be capable of working with more than 64 sockets using the select and WSAPoll functions, the implementor should define the manifest FD_SETSIZE in every source file before including the Winsock2.h header file.</p></blockquote>
-
-<p>Windows上<code>select</code>支持的socket数量并不受宏<code>FD_SETSIZE</code>的影响，而仅仅受内存的影响。如果应用程序想使用超过<code>FD_SETSIZE</code>的socket，仅需要重新定义<code>FD_SETSIZE</code>即可。</p>
-
-<p>实际上稍微想想就可以明白，既然<code>fd_set</code>里面已经有一个socket的数量计数，那么<code>select</code>的实现完全可以使用这个计数，而不是<code>FD_SETSIZE</code>这个宏。那么结论是，<strong><code>select</code>至少在Windows上并没有socket支持数量的限制。</strong>当然效率问题这里不谈。</p>
-
-<p>这看起来推翻了我们一直以来没有深究的一个事实。</p>
-
-<h2>Linux的实现</h2>
-
-<p>在上面提到的MSDN中，其实已经提到了Windows与Berkeley Unix实现的不同。在<code>select</code>的API文档中也看到了第一个参数并没有说明其作用。看下Linux的<a href="http://linux.die.net/man/2/select">man</a>：</p>
-
-<blockquote><p>nfds is the highest-numbered file descriptor in any of the three sets, plus 1.</p></blockquote>
-
-<p>第一个参数简单来说就是最大描述符+1。</p>
-
-<blockquote><p>An fd_set is a fixed size buffer. Executing FD_CLR() or FD_SET() with a value of fd that is negative or is equal to or larger than FD_SETSIZE will result in undefined behavior.</p></blockquote>
-
-<p>明确说了，如果调用<code>FD_SET</code>之类的宏fd超过了<code>FD_SETSIZE</code>将导致<code>undefined behavior</code>。也有人专门做了测试：<a href="http://www.moythreads.com/wordpress/2009/12/22/select-system-call-limitation/">select system call limitation in Linux</a>。也有现实遇到的问题：<a href="http://serverfault.com/questions/497086/socket-file-descriptor-1063-is-larger-than-fd-setsize-1024-you-probably-nee">socket file descriptor (1063) is larger than FD_SETSIZE (1024), you probably need to rebuild Apache with a larger FD_SETSIZE</a></p>
-
-<p>看起来在Linux上使用<code>select</code>确实有<code>FD_SETSIZE</code>的限制。有必要看下相关的实现 <a href="http://fxr.watson.org/fxr/source/sys/fd_set.h?v=NETBSD">fd_set.h</a>：</p>
-
-<pre><code>typedef __uint32_t      __fd_mask;
-
-/* 32 = 2 ^ 5 */
-#define __NFDBITS       (32)
-#define __NFDSHIFT      (5)
-#define __NFDMASK       (__NFDBITS - 1)
-
-/*
- * Select uses bit fields of file descriptors.  These macros manipulate
- * such bit fields.  Note: FD_SETSIZE may be defined by the user.
- */
-
-#ifndef FD_SETSIZE
-#define FD_SETSIZE      256
-#endif
-
-#define __NFD_SIZE      (((FD_SETSIZE) + (__NFDBITS - 1)) / __NFDBITS)
-
-typedef struct fd_set {
-    __fd_mask       fds_bits[__NFD_SIZE];
-} fd_set;
-</code></pre>
-
-<p>在这份实现中不同于Windows实现，它使用了位来表示fd。看下<code>FD_SET</code>系列宏的大致实现：</p>
-
-<pre><code>#define FD_SET(n, p)    \
-   ((p)-&gt;fds_bits[(unsigned)(n) &gt;&gt; __NFDSHIFT] |= (1 &lt;&lt; ((n) &amp; __NFDMASK)))
-</code></pre>
-
-<p>添加一个fd到<code>fd_set</code>中也不是Windows的遍历，而是直接位运算。这里也有人对另一份类似实现做了剖析：<a href="http://my.oschina.net/u/870054/blog/212063">linux的I/O多路转接select的fd_set数据结构和相应FD_宏的实现分析</a>。在APUE中也提到<code>fd_set</code>：</p>
-
-<blockquote><p>这种数据类型(fd_set)为每一可能的描述符保持了一位。</p></blockquote>
-
-<p>既然<code>fd_set</code>中不包含其保存了多少个fd的计数，那么<code>select</code>的实现里要知道自己要处理多少个fd，那只能使用FD_SETSIZE宏去做判定，但Linux的实现选用了更好的方式，即通过第一个参数让应用层告诉<code>select</code>需要处理的最大fd（这里不是数量）。那么其实现大概为：</p>
-
-<pre><code>for (int i = 0; i &lt; nfds; ++i) {
-    if (FD_ISSET...
-       ...
-}
-</code></pre>
-
-<p>如此看来，<strong>Linux的<code>select</code>实现则是受限于<code>FD_SETSIZE</code>的大小</strong>。这里也看到，<code>fd_set</code>使用位数组来保存fd，那么fd本身作为一个int数，其值就不能超过<code>FD_SETSIZE</code>。<strong>这不仅仅是数量的限制，还是其取值的限制</strong>。实际上，Linux上fd的取值是保证了小于<code>FD_SETSIZE</code>的（但不是不变的）<a href="http://stackoverflow.com/questions/12583927/is-the-value-of-a-linux-file-descriptor-always-smaller-than-the-open-file-limits">Is the value of a Linux file descriptor always smaller than the open file limits?</a>：</p>
-
-<blockquote><p>Each process is further limited via the setrlimit(2) RLIMIT_NOFILE per-process limit on the number of open files. 1024 is a common RLIMIT_NOFILE limit. (It&rsquo;s very easy to change this limit via /etc/security/limits.conf.)</p></blockquote>
-
-<p>fd的取值会小于<code>RLIMIT_NOFILE</code>，有很多方法可以改变这个值。这个值默认情况下和<code>FD_SETSIZE</code>应该是一样的。这个信息告诉我们，<strong>Linux下fd的取值应该是从0开始递增的</strong>（理论上，实际上还有stdin/stdout/stderr之类的fd）。这才能保证<code>select</code>的那些宏可以工作。</p>
-
-<h2>应用层使用</h2>
-
-<p>标准的<code>select</code>用法应该大致如下：</p>
-
-<pre><code>while (true) {
-    ...
-    select(...)
-    for-each socket {
-        if (FD_ISSET(fd, set))
-            ...
-    }
-
-    ...
-}
-</code></pre>
-
-<p>即遍历目前管理的fd，通过<code>FD_ISSET</code>去判定当前fd是否有IO事件。因为Windows的实现<code>FD_ISSET</code>都是一个循环，所以有了另一种不跨平台的用法：</p>
-
-<pre><code>while (true) {
-    ...
-    select(. &amp;read_sockets, &amp;write_sockets..)
-    for-each read_socket {
-        use fd.fd_array[i)
-    }
-    ...
-}
-</code></pre>
-
-<h2>总结</h2>
-
-<ul>
-<li>Windows上<code>select</code>没有fd数量的限制，但因为使用了循环来检查，所以效率相对较低</li>
-<li>Linux上<code>select</code>有<code>FD_SETSIZE</code>的限制，但其相对效率较高</li>
-</ul>
-
 ]]></content>
   </entry>
   

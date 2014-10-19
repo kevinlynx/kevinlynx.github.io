@@ -5,12 +5,12 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Null Object模式 - loop in codes</title>
+  <title>图解zookeeper FastLeader选举算法 - loop in codes</title>
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="Null Object模式用于代替空指针（C++中），以避免上层模块对返回值做空值判定。Null Object模式返回的不是一个空指针，而是一个空对象，上层模块对返回值做操作时，不需要做空判定，而是按正常逻辑调用这个对象的某个接口，只不过对于空对象而言，这个接口什么事也没做">
-  <meta name="keywords" content="null object, pattern, c/c++">
+  <meta name="description" content="">
+  
 
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -18,7 +18,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://codemacro.com/2012/08/29/null-object-pattern">
+  <link rel="canonical" href="http://codemacro.com/2014/10/19/zk-fastleaderelection">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
@@ -67,7 +67,7 @@
   
   <header>
     
-      <h1 class="entry-title">Null Object模式</h1>
+      <h1 class="entry-title">图解zookeeper FastLeader选举算法</h1>
     
     
       <p class="meta">
@@ -76,45 +76,89 @@
 
 
 
-<time class='entry-date' datetime='2012-08-29T15:57:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>29</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>3:57 pm</span></time>
+<time class='entry-date' datetime='2014-10-19T00:00:00+08:00'><span class='date'><span class='date-month'>Oct</span> <span class='date-day'>19</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
         
       </p>
     
   </header>
 
 
-<div class="entry-content"><p>Null Object模式用于代替空指针（C++中），以避免上层模块对返回值做空值判定。Null Object模式返回的不是一个空指针，而是一个空对象，上层模块对返回值做操作时，不需要做空判定，而是按正常逻辑调用这个对象的某个接口，只不过对于空对象而言，这个接口什么事也没做，例如：</p>
+<div class="entry-content"><p>zookeeper配置为集群模式时，在启动或异常情况时会选举出一个实例作为Leader。其默认选举算法为<code>FastLeaderElection</code>。</p>
 
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">class</span> <span class="nc">animal</span> <span class="p">{</span>
-<span class="k">public</span><span class="o">:</span>
-  <span class="k">virtual</span> <span class="kt">void</span> <span class="n">make_sound</span><span class="p">()</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">};</span>
- 
-<span class="k">class</span> <span class="nc">dog</span> <span class="o">:</span> <span class="k">public</span> <span class="n">animal</span> <span class="p">{</span>
-  <span class="kt">void</span> <span class="n">make_sound</span><span class="p">()</span> <span class="p">{</span> <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;woof!&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span> <span class="p">}</span>
-<span class="p">};</span>
- 
-<span class="k">class</span> <span class="nc">null_animal</span> <span class="o">:</span> <span class="k">public</span> <span class="n">animal</span> <span class="p">{</span>
-  <span class="kt">void</span> <span class="n">make_sound</span><span class="p">()</span> <span class="p">{</span> <span class="p">}</span>
-<span class="p">};</span></code></pre></div>
+<p>不知道zookeeper的可以考虑这样一个问题：某个服务可以配置为多个实例共同构成一个集群对外提供服务。其每一个实例本地都存有冗余数据，每一个实例都可以直接对外提供读写服务。在这个集群中为了保证数据的一致性，需要有一个Leader来协调一些事务。那么问题来了：如何确定哪一个实例是Leader呢？</p>
+
+<p>问题的难点在于：</p>
+
+<ul>
+<li>没有一个仲裁者来选定Leader</li>
+<li>每一个实例本地可能已经存在数据，不确定哪个实例上的数据是最新的</li>
+</ul>
 
 
-<p>在我看来这个模式在C++中其实挺扯淡的，因为去判断一个指针是否为NULL，远比创建一个空类，并且添加若干个空函数代价小更多。更何况，我们还不知道<code>null_animal</code>的生命周期如何管理。</p>
+<p>分布式选举算法正是用来解决这个问题的。</p>
 
-<p>但是在我以往写的代码中，我也写过一些避免空指针判定的代码，例如我会使用引用。注意，引用肯定不能保证所对应的对象是合法的，这就像无法确定一个指针是不是野指针一样：</p>
+<p>本文基于zookeeper 3.4.6 的源码进行分析。FastLeaderElection算法的源码全部位于<code>FastLeaderElection.java</code>文件中，其对外接口为<code>FastLeaderElection.lookForLeader</code>，该接口是一个同步接口，直到选举结束才会返回。同样由于网上已有类似文章，所以我就从图示的角度来阐述。阅读一些其他文章有利于获得初步印象：</p>
 
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">const</span> <span class="n">Item</span> <span class="o">&amp;</span><span class="n">Container</span><span class="o">::</span><span class="n">FindItem</span><span class="p">(</span><span class="kt">int</span> <span class="n">id</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
-    <span class="k">static</span> <span class="n">Item</span> <span class="n">null_item</span><span class="p">;</span>
-    <span class="n">Table</span><span class="o">::</span><span class="n">const_iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">m_items</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">id</span><span class="p">);</span>
-    <span class="k">return</span> <span class="n">it</span> <span class="o">==</span> <span class="n">m_items</span><span class="p">.</span><span class="n">end</span><span class="p">()</span> <span class="o">?</span> <span class="nl">null_item</span> <span class="p">:</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">second</span><span class="p">;</span>
-<span class="p">}</span></code></pre></div>
+<ul>
+<li><a href="http://iwinit.iteye.com/blog/1773531">深入浅出Zookeeper之五 Leader选举</a>，代码导读</li>
+<li><a href="http://blog.csdn.net/xhh198781/article/details/6619203">zookeeper3.3.3源码分析(二)FastLeader选举算法</a>，文字描述较细</li>
+</ul>
 
 
-<p>参考<a href="http://en.wikipedia.org/wiki/Null_Object_pattern">http://en.wikipedia.org/wiki/Null_Object_pattern</a></p>
+<h2>主要流程</h2>
+
+<p>阅读代码和以上推荐文章可以把整个流程梳理清楚。实现上，包括了一个消息处理主循环，也是选举的主要逻辑，以及一个消息发送队列处理线程和消息解码线程。主要流程可概括为下图：</p>
+
+<!-- more -->
+
+
+<p><img src="/assets/res/zk/fle-flow.png" alt="fle-flow.png" /></p>
+
+<p>推荐对照着推荐的文章及代码理解，不赘述。</p>
+
+<p>我们从感性上来理解这个算法。</p>
+
+<p>每一个节点，相当于一个选民，他们都有自己的推荐人，最开始他们都推荐自己。谁更适合成为Leader有一个简单的规则，例如sid够大（配置）、持有的数据够新(zxid够大)。每个选民都告诉其他选民自己目前的推荐人是谁，类似于出去搞宣传拉拢其他选民。每一个选民发现有比自己更适合的人时就转而推荐这个更适合的人。最后，大部分人意见一致时，就可以结束选举。</p>
+
+<p>就这么简单。总体上有一种不断演化逼近结果的感觉。</p>
+
+<p>当然，会有些特殊情况的处理。例如总共3个选民，1和2已经确定3是Leader，但3还不知情，此时就走入<code>LEADING/FOLLOWING</code>的分支，选民3只是接收结果。</p>
+
+<p>代码中不是所有逻辑都在这个大流程中完成的。在接收消息线程中，还可能单独地回应某个节点(<code>WorkerReceiver.run</code>)：</p>
+
+<p><img src="/assets/res/zk/recv.png" alt="recv.png" /></p>
+
+<p>从这里可以看出，当某个节点已经确定选举结果不再处于<code>LOOKING</code>状态时，其收到<code>LOOKING</code>消息时都会直接回应选举的最终结果。结合上面那个比方，相当于某次选举结束了，这个时候来了选民4又发起一次新的选举，那么其他选民就直接告诉它当前的Leader情况。相当于，在这个集群主从已经就绪的情况下，又开启了一个实例，这个实例就会直接使用当前的选举结果。</p>
+
+<h2>状态转换</h2>
+
+<p>每个节点上有一些关键的数据结构：</p>
+
+<ul>
+<li>当前推荐人，初始推荐自己，每次收到其他更好的推荐人时就更新</li>
+<li>其他人的投票集合，用于确定何时选举结束</li>
+</ul>
+
+
+<p>每次推荐人更新时就会进行广播，正是这个不断地广播驱动整个算法趋向于结果。假设有3个节点A/B/C，其都还没有数据，按照sid关系为C>B>A，那么按照规则，C更可能成为Leader，其各个节点的状态转换为：</p>
+
+<p><img src="/assets/res/zk/state.png" alt="state.png" /></p>
+
+<p>图中，v(A)表示当前推荐人为A；r[]表示收到的投票集合。</p>
+
+<p>可以看看当其他节点已经确定投票结果时，即不再是<code>LOOKING</code>时的状态：</p>
+
+<p><img src="/assets/res/zk/state-ret.png" alt="state-ret.png" /></p>
+
+<p>代码中有一个特殊的投票集合<code>outofelection</code>，我理解为选举已结束的那些投票，这些投票仅用于表征选举结果。</p>
+
+<p>当一个新启动的节点加入集群时，它对集群内其他节点发出投票请求，而其他节点已不处于<code>LOOKING</code>状态，此时其他节点回应选举结果，该节点收集这些结果到<code>outofelection</code>中，最终在收到合法LEADER消息且这些选票也构成选举结束条件时，该节点就结束自己的选举行为。<em>注意到代码中会<code>logicalclock = n.electionEpoch;</code>更新选举轮数</em></p>
+
+<p><em>完</em></p>
 
 <p class='post-footer'>
             原文地址：
-            <a href='http://codemacro.com/2012/08/29/null-object-pattern/'>http://codemacro.com/2012/08/29/null-object-pattern/</a><br/>
+            <a href='http://codemacro.com/2014/10/19/zk-fastleaderelection/'>http://codemacro.com/2014/10/19/zk-fastleaderelection/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
@@ -134,12 +178,12 @@
 
 
 
-<time class='entry-date' datetime='2012-08-29T15:57:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>29</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>3:57 pm</span></time>
+<time class='entry-date' datetime='2014-10-19T00:00:00+08:00'><span class='date'><span class='date-month'>Oct</span> <span class='date-day'>19</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/categories/c-slash-c-plus-plus/'>c/c++</a>, <a class='category' href='/categories/tips/'>tips</a>
+    <a class='category' href='/categories/network/'>network</a>
   
 </span>
 
@@ -155,10 +199,8 @@
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/2012/08/29/mmo-chat-server/" title="Previous Post: MMO聊天服务器设计">&laquo; MMO聊天服务器设计</a>
+        <a class="basic-alignment left" href="/2014/10/15/explain-poxos/" title="Previous Post: 图解分布式一致性协议Paxos">&laquo; 图解分布式一致性协议Paxos</a>
       
-      
-        <a class="basic-alignment right" href="/2012/08/29/branch-predictor/" title="Next Post: 为什么处理排序的数组要比非排序的快？">为什么处理排序的数组要比非排序的快？ &raquo;</a>
       
     </p>
   </footer>
@@ -239,8 +281,8 @@
       
         
         // var disqus_developer = 1;
-        var disqus_identifier = 'http://codemacro.com/2012/08/29/null-object-pattern/';
-        var disqus_url = 'http://codemacro.com/2012/08/29/null-object-pattern/';
+        var disqus_identifier = 'http://codemacro.com/2014/10/19/zk-fastleaderelection/';
+        var disqus_url = 'http://codemacro.com/2014/10/19/zk-fastleaderelection/';
         var disqus_script = 'embed.js';
       
     (function () {

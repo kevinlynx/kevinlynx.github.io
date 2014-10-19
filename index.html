@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="Paxos协议/算法是分布式系统中比较重要的协议，它有多重要呢？ &lt;分布式系统的事务处理>： Google Chubby的作者Mike Burrows说过这个世界上只有一种一致性算法，那就是Paxos，其它的算法都是残次品。 &lt;大规模分布式存储系统>： 理解了这两个分布式协议之后( &hellip;">
+  <meta name="description" content="zookeeper配置为集群模式时，在启动或异常情况时会选举出一个实例作为Leader。其默认选举算法为FastLeaderElection。 不知道zookeeper的可以考虑这样一个问题：某个服务可以配置为多个实例共同构成一个集群对外提供服务。其每一个实例本地都存有冗余数据， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,64 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2014/10/19/zk-fastleaderelection/">图解zookeeper FastLeader选举算法</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-10-19T00:00:00+08:00'><span class='date'><span class='date-month'>Oct</span> <span class='date-day'>19</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>zookeeper配置为集群模式时，在启动或异常情况时会选举出一个实例作为Leader。其默认选举算法为<code>FastLeaderElection</code>。</p>
+
+<p>不知道zookeeper的可以考虑这样一个问题：某个服务可以配置为多个实例共同构成一个集群对外提供服务。其每一个实例本地都存有冗余数据，每一个实例都可以直接对外提供读写服务。在这个集群中为了保证数据的一致性，需要有一个Leader来协调一些事务。那么问题来了：如何确定哪一个实例是Leader呢？</p>
+
+<p>问题的难点在于：</p>
+
+<ul>
+<li>没有一个仲裁者来选定Leader</li>
+<li>每一个实例本地可能已经存在数据，不确定哪个实例上的数据是最新的</li>
+</ul>
+
+
+<p>分布式选举算法正是用来解决这个问题的。</p>
+
+<p>本文基于zookeeper 3.4.6 的源码进行分析。FastLeaderElection算法的源码全部位于<code>FastLeaderElection.java</code>文件中，其对外接口为<code>FastLeaderElection.lookForLeader</code>，该接口是一个同步接口，直到选举结束才会返回。同样由于网上已有类似文章，所以我就从图示的角度来阐述。阅读一些其他文章有利于获得初步印象：</p>
+
+<ul>
+<li><a href="http://iwinit.iteye.com/blog/1773531">深入浅出Zookeeper之五 Leader选举</a>，代码导读</li>
+<li><a href="http://blog.csdn.net/xhh198781/article/details/6619203">zookeeper3.3.3源码分析(二)FastLeader选举算法</a>，文字描述较细</li>
+</ul>
+
+
+<h2>主要流程</h2>
+
+<p>阅读代码和以上推荐文章可以把整个流程梳理清楚。实现上，包括了一个消息处理主循环，也是选举的主要逻辑，以及一个消息发送队列处理线程和消息解码线程。主要流程可概括为下图：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/10/19/zk-fastleaderelection/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -566,65 +624,6 @@ FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2014/08/25/lb-policy/">分布式环境中的负载均衡策略</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2014-08-25T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>25</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>在分布式系统中相同的服务常常会部署很多台，每一台被称为一个服务节点（实例）。通过一些负载均衡策略将服务请求均匀地分布到各个节点，以实现整个系统支撑海量请求的需求。本文描述一些简单的负载均衡策略。</p>
-
-<h2>Round-robin</h2>
-
-<p>简单地轮询。记录一个选择位置，每次请求来时调整该位置到下一个节点：</p>
-
-<pre><code>curId = ++curId % nodeCnt
-</code></pre>
-
-<h2>随机选择</h2>
-
-<p>随机地在所有节点中选择：</p>
-
-<pre><code>id = random(nodeCnt);
-</code></pre>
-
-<h2>本机优先</h2>
-
-<p>访问后台服务的访问者可能本身是一个整合服务，或者是一个proxy，如果后台服务节点恰好有节点部署在本机的，则可以优先使用。在未找到本机节点时则可以继续走Round-robin策略：</p>
-
-<pre><code>if (node-&gt;ip() == local_ip) {
-    return node;
-} else {
-    return roundRobin();
-}
-</code></pre>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2014/08/25/lb-policy/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/2">&larr; Older</a>
@@ -637,11 +636,15 @@ FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (19)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (11)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (19)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/10/19/zk-fastleaderelection/">图解zookeeper FastLeader选举算法</a>
+      </li>
     
       <li class="post">
         <a href="/2014/10/15/explain-poxos/">图解分布式一致性协议Paxos</a>
@@ -659,10 +662,6 @@ FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
         <a href="/2014/09/21/zk-watch-benchmark/">zookeeper节点数与watch的性能测试</a>
       </li>
     
-      <li class="post">
-        <a href="/2014/09/15/inside-static-library/">浅析静态库链接原理</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -674,7 +673,7 @@ FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 154.28571428571428%'>c/c++(19)</a> <a href='/categories/clang' style='font-size: 102.85714285714286%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 122.85714285714286%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.42857142857143%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.71428571428571%'>ice(2)</a> <a href='/categories/javascript' style='font-size: 102.85714285714286%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 114.28571428571429%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 114.28571428571429%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.57142857142857%'>module(3)</a> <a href='/categories/network' style='font-size: 131.42857142857142%'>network(11)</a> <a href='/categories/other' style='font-size: 120.0%'>other(7)</a> <a href='/categories/ruby' style='font-size: 111.42857142857143%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.85714285714286%'>scala(1)</a> <a href='/categories/tips' style='font-size: 160.0%'>tips(21)</a> <a href='/categories/web' style='font-size: 111.42857142857143%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 154.28571428571428%'>c/c++(19)</a> <a href='/categories/clang' style='font-size: 102.85714285714286%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 122.85714285714286%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.42857142857143%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.71428571428571%'>ice(2)</a> <a href='/categories/javascript' style='font-size: 102.85714285714286%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 114.28571428571429%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 114.28571428571429%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.57142857142857%'>module(3)</a> <a href='/categories/network' style='font-size: 134.28571428571428%'>network(12)</a> <a href='/categories/other' style='font-size: 120.0%'>other(7)</a> <a href='/categories/ruby' style='font-size: 111.42857142857143%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.85714285714286%'>scala(1)</a> <a href='/categories/tips' style='font-size: 160.0%'>tips(21)</a> <a href='/categories/web' style='font-size: 111.42857142857143%'>web(4)</a> </span>
 </section>
 
   
@@ -685,10 +684,10 @@ FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
   <footer role="contentinfo"><p>
   Copyright &copy; 2014 - Kevin Lynx -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
-</p>
 <script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
 <noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
 
+</p>
 
 
 </footer>

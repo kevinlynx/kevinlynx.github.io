@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="在刚开始学习网络编程时，似乎莫名其妙地就会被某人/某资料告诉select函数是有fd(file descriptor)数量限制的。在最近的一次记忆里还有个人笑说select只支持64个fd。我甚至还写过一篇不负责任甚至错误的博客(突破select的FD_SETSIZE限制)。有人说， &hellip;">
+  <meta name="description" content="在分布式系统中相同的服务常常会部署很多台，每一台被称为一个服务节点（实例）。通过一些负载均衡策略将服务请求均匀地分布到各个节点，以实现整个系统支撑海量请求的需求。本文描述一些简单的负载均衡策略。 Round-robin 简单地轮询。记录一个选择位置，每次请求来时调整该位置到下一个节点： curId &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,65 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2014/08/25/lb-policy/">分布式环境中的负载均衡策略</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-08-25T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>25</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>在分布式系统中相同的服务常常会部署很多台，每一台被称为一个服务节点（实例）。通过一些负载均衡策略将服务请求均匀地分布到各个节点，以实现整个系统支撑海量请求的需求。本文描述一些简单的负载均衡策略。</p>
+
+<h2>Round-robin</h2>
+
+<p>简单地轮询。记录一个选择位置，每次请求来时调整该位置到下一个节点：</p>
+
+<pre><code>curId = ++curId % nodeCnt
+</code></pre>
+
+<h2>随机选择</h2>
+
+<p>随机地在所有节点中选择：</p>
+
+<pre><code>id = random(nodeCnt);
+</code></pre>
+
+<h2>本机优先</h2>
+
+<p>访问后台服务的访问者可能本身是一个整合服务，或者是一个proxy，如果后台服务节点恰好有节点部署在本机的，则可以优先使用。在未找到本机节点时则可以继续走Round-robin策略：</p>
+
+<pre><code>if (node-&gt;ip() == local_ip) {
+    return node;
+} else {
+    return roundRobin();
+}
+</code></pre>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/08/25/lb-policy/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -574,50 +633,6 @@ $str
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2013/06/21/magnet-search-impl/">使用erlang实现P2P磁力搜索-实现</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2013-06-21T00:00:00+08:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>接<a href="http://codemacro.com/2013/06/20/magnet-search/">上篇</a>，本篇谈谈一些实现细节。</p>
-
-<p>这个爬虫程序主要的问题在于如何获取P2P网络中分享的资源，获取到资源后索引到数据库中，搜索就是自然而然的事情。</p>
-
-<h2>DHT</h2>
-
-<p>DHT网络本质上是一个用于查询的网络，其用于查询一个资源有哪些计算机正在下载。每个资源都有一个20字节长度的ID用于标示，称为infohash。当一个程序作为DHT节点加入这个网络时，就会有其他节点来向你查询，当你做出回应后，对方就会记录下你。对方还会询问其他节点，当对方开始下载这个infohash对应的资源时，他就会告诉所有曾经询问过的节点，包括你。这个时候就可以确定，这个infohash对应的资源在这个网络中是有效的。</p>
-
-<p>关于这个网络的工作原理，参看：<a href="http://codemacro.com/2013/05/19/crawl-dht/">P2P中DHT网络爬虫</a>以及<a href="http://xiaoxia.org/2013/05/11/magnet-search-engine/">写了个磁力搜索的网页</a>。</p>
-
-<p>获取到infohash后能做什么？关键点在于，我们现在使用的磁力链接(magnet url)，是和infohash对应起来的。也就是拿到infohash，就等于拿到一个磁力链接。但是这个爬虫还需要建立资源的信息，这些信息来源于种子文件。种子文件其实也是对应到一个资源，种子文件包含资源名、描述、文件列表、文件大小等信息。获取到infohash时，其实也获取到了对应的计算机地址，我们可以在这些计算机上下载到对应的种子文件。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2013/06/21/magnet-search-impl/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/3">&larr; Older</a>
@@ -632,11 +647,15 @@ $str
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (19)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (11)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (19)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/10/19/zk-fastleaderelection/">图解zookeeper FastLeader选举算法</a>
+      </li>
     
       <li class="post">
         <a href="/2014/10/15/explain-poxos/">图解分布式一致性协议Paxos</a>
@@ -654,10 +673,6 @@ $str
         <a href="/2014/09/21/zk-watch-benchmark/">zookeeper节点数与watch的性能测试</a>
       </li>
     
-      <li class="post">
-        <a href="/2014/09/15/inside-static-library/">浅析静态库链接原理</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -669,7 +684,7 @@ $str
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 154.28571428571428%'>c/c++(19)</a> <a href='/categories/clang' style='font-size: 102.85714285714286%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 122.85714285714286%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.42857142857143%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.71428571428571%'>ice(2)</a> <a href='/categories/javascript' style='font-size: 102.85714285714286%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 114.28571428571429%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 114.28571428571429%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.57142857142857%'>module(3)</a> <a href='/categories/network' style='font-size: 131.42857142857142%'>network(11)</a> <a href='/categories/other' style='font-size: 120.0%'>other(7)</a> <a href='/categories/ruby' style='font-size: 111.42857142857143%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.85714285714286%'>scala(1)</a> <a href='/categories/tips' style='font-size: 160.0%'>tips(21)</a> <a href='/categories/web' style='font-size: 111.42857142857143%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 154.28571428571428%'>c/c++(19)</a> <a href='/categories/clang' style='font-size: 102.85714285714286%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 122.85714285714286%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.42857142857143%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.71428571428571%'>ice(2)</a> <a href='/categories/javascript' style='font-size: 102.85714285714286%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 114.28571428571429%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 114.28571428571429%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.57142857142857%'>module(3)</a> <a href='/categories/network' style='font-size: 134.28571428571428%'>network(12)</a> <a href='/categories/other' style='font-size: 120.0%'>other(7)</a> <a href='/categories/ruby' style='font-size: 111.42857142857143%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.85714285714286%'>scala(1)</a> <a href='/categories/tips' style='font-size: 160.0%'>tips(21)</a> <a href='/categories/web' style='font-size: 111.42857142857143%'>web(4)</a> </span>
 </section>
 
   
@@ -680,10 +695,10 @@ $str
   <footer role="contentinfo"><p>
   Copyright &copy; 2014 - Kevin Lynx -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
-</p>
 <script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
 <noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
 
+</p>
 
 
 </footer>
