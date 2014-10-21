@@ -4,7 +4,7 @@
   <title><![CDATA[Category: game develop | loop in codes]]></title>
   <link href="http://codemacro.com/categories/game-develop/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-10-19T15:57:42+08:00</updated>
+  <updated>2014-10-21T21:10:56+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -29,43 +29,42 @@
 <!-- more -->
 
 
-<p>{% highlight c++ %}
-class Entity {
-public:
-    // send text to this entity
-    virtual bool Send(Entity *sender, const std::string &amp;text) = 0;</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">class</span> <span class="nc">Entity</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="c1">// send text to this entity</span>
+    <span class="k">virtual</span> <span class="kt">bool</span> <span class="n">Send</span><span class="p">(</span><span class="n">Entity</span> <span class="o">*</span><span class="n">sender</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">text</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>protected:
-    GUID m_id;
-    int m_type;
-};</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">protected</span><span class="o">:</span>
+    <span class="n">GUID</span> <span class="n">m_id</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">m_type</span><span class="p">;</span>
+<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>class SockEntity : pubilc Entity {
-public:
-    virtual bool Send(Entity *sender, const std::string &amp;text) {
-        // find the map socket and send text to the socket
-        long socket = FindSocket(this);
-        Message msg(MSG_CS2E_SENDTEXT);
-        msg.Add(sender->ID());
-        msg.Add(text);
-        msg.SendToSocket(socket);
-        return true;
-    }
-};</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">SockEntity</span> <span class="o">:</span> <span class="n">pubilc</span> <span class="n">Entity</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="k">virtual</span> <span class="kt">bool</span> <span class="n">Send</span><span class="p">(</span><span class="n">Entity</span> <span class="o">*</span><span class="n">sender</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">text</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// find the map socket and send text to the socket</span>
+        <span class="kt">long</span> <span class="n">socket</span> <span class="o">=</span> <span class="n">FindSocket</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
+        <span class="n">Message</span> <span class="nf">msg</span><span class="p">(</span><span class="n">MSG_CS2E_SENDTEXT</span><span class="p">);</span>
+        <span class="n">msg</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="n">sender</span><span class="o">-&gt;</span><span class="n">ID</span><span class="p">());</span>
+        <span class="n">msg</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="n">text</span><span class="p">);</span>
+        <span class="n">msg</span><span class="p">.</span><span class="n">SendToSocket</span><span class="p">(</span><span class="n">socket</span><span class="p">);</span>
+        <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>class GroupEntity : public Entity {
-public:
-    virtual bool Send(Entity <em>sender, const std::string &amp;text) {
-        for (std::list&lt;Entity</em>>::const_iterator it = m_mems.begin(); it != m_mems.end(); ++it) {
-            (<em>it)->Send(sender, text);
-        }
-        return true;
-    }
-private:
-    std::list&lt;Entity</em>> m_mems;
-};</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">GroupEntity</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Entity</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="k">virtual</span> <span class="kt">bool</span> <span class="n">Send</span><span class="p">(</span><span class="n">Entity</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">sender</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">text</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">list</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">Entity</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;&gt;::</span><span class="n">const_iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">m_mems</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span> <span class="n">it</span> <span class="o">!=</span> <span class="n">m_mems</span><span class="p">.</span><span class="n">end</span><span class="p">();</span> <span class="o">++</span><span class="n">it</span><span class="p">)</span> <span class="p">{</span>
+            <span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">it</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">Send</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">text</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="k">private</span><span class="o">:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">list</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">Entity</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;&gt;</span> <span class="n">m_mems</span><span class="p">;</span>
+<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p><code>SockEntity</code>用于表示物理上聊天服务器的客户端，例如游戏客户端。</p>
 
@@ -84,16 +83,14 @@ private:
 
 <p>基于此，我们扩充了Entity的类体系：</p>
 
-<p>{% highlight c++ %}
-class ClientEntity : public SockEntity {</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">class</span> <span class="nc">ClientEntity</span> <span class="o">:</span> <span class="k">public</span> <span class="n">SockEntity</span> <span class="p">{</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>private:
-    GUID m_gsEntity; // 标示该客户端实体位于哪个逻辑服务器实体上
-};</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">private</span><span class="o">:</span>
+    <span class="n">GUID</span> <span class="n">m_gsEntity</span><span class="p">;</span> <span class="c1">// 标示该客户端实体位于哪个逻辑服务器实体上</span>
+<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>class GSEntity : public SockEntity {
-};
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">GSEntity</span> <span class="o">:</span> <span class="k">public</span> <span class="n">SockEntity</span> <span class="p">{</span>
+<span class="p">};</span></code></pre></div></p>
 
 <h3>消息协议</h3>
 

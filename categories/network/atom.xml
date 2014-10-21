@@ -4,7 +4,7 @@
   <title><![CDATA[Category: network | loop in codes]]></title>
   <link href="http://codemacro.com/categories/network/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-10-19T15:57:42+08:00</updated>
+  <updated>2014-10-21T21:10:56+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -79,7 +79,7 @@
 
 <p><img src="/assets/res/zk/state.png" alt="state.png" /></p>
 
-<p>图中，v(A)表示当前推荐人为A；r[]表示收到的投票集合。</p>
+<p>图中，v(A)表示当前推荐人为A；r[]表示收到的投票集合。需要注意一个细节，初始投票集合里包含了自己的投票，代码中自己会将推荐人推荐给自己，网络模块(<code>QuorumCnxManager</code>)直接将该消息放入接收队列。</p>
 
 <p>可以看看当其他节点已经确定投票结果时，即不再是<code>LOOKING</code>时的状态：</p>
 

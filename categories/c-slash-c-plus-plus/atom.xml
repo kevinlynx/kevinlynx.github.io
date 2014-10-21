@@ -4,7 +4,7 @@
   <title><![CDATA[Category: c/c++ | loop in codes]]></title>
   <link href="http://codemacro.com/categories/c-slash-c-plus-plus/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-10-19T15:57:42+08:00</updated>
+  <updated>2014-10-21T21:10:56+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -65,16 +65,14 @@ GNU C Library stable release version 2.5, by Roland McGrath et al.
 
 <p><code>/nptl/sysdeps/unix/sysv/linux/timer_routines.c</code></p>
 
-<p>{% highlight c++ %}
-timer_helper_thread(&hellip;)  // 用于检测定时器触发的辅助线程
-{
-    &hellip;
-      pthread_t th;
-      (void) pthread_create (&amp;th, &amp;tk->attr, timer_sigev_thread, // 开启一个新线程调用用户注册的定时器函数
-                 td);
-    &hellip;
-}
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">timer_helper_thread</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hellip</span><span class="p">;)</span>  <span class="c1">// 用于检测定时器触发的辅助线程</span>
+<span class="p">{</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+      <span class="kt">pthread_t</span> <span class="n">th</span><span class="p">;</span>
+      <span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="n">pthread_create</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">th</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">tk</span><span class="o">-&gt;</span><span class="n">attr</span><span class="p">,</span> <span class="n">timer_sigev_thread</span><span class="p">,</span> <span class="c1">// 开启一个新线程调用用户注册的定时器函数</span>
+                 <span class="n">td</span><span class="p">);</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div></p>
 
 <p>要重现此BUG可以使用我的实验代码 <a href="https://gist.github.com/kevinlynx/69435e718785a0ad12c4">thread-tls</a>，或者使用<a href="https://sourceware.org/bugzilla/attachment.cgi?id=6290">Bug 13862 中的附件</a></p>
 
@@ -94,26 +92,24 @@ timer_helper_thread(&hellip;)  // 用于检测定时器触发的辅助线程
 
 <p>以上结构用代码描述为，</p>
 
-<p>{% highlight c++ %}
-union dtv_t {
-    size_t counter;
-    struct {
-        void <em>val; /</em> point to tls variable memory */
-        bool is_static;
-    } pointer;
-};</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">union</span> <span class="kt">dtv_t</span> <span class="p">{</span>
+    <span class="kt">size_t</span> <span class="n">counter</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="p">{</span>
+        <span class="kt">void</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">val</span><span class="p">;</span> <span class="o">/&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">point</span> <span class="n">to</span> <span class="n">tls</span> <span class="n">variable</span> <span class="n">memory</span> <span class="err">*/</span>
+        <span class="kt">bool</span> <span class="n">is_static</span><span class="p">;</span>
+    <span class="p">}</span> <span class="n">pointer</span><span class="p">;</span>
+<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>struct tcbhead_t {
-    void <em>tcb;
-    dtv_t </em>dtv; /<em> point to a dtv_t array </em>/
-    void <em>padding[22]; /</em> other members i don&rsquo;t care */
-};</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">struct</span> <span class="kt">tcbhead_t</span> <span class="p">{</span>
+    <span class="kt">void</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tcb</span><span class="p">;</span>
+    <span class="kt">dtv_t</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">dtv</span><span class="p">;</span> <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">point</span> <span class="n">to</span> <span class="n">a</span> <span class="kt">dtv_t</span> <span class="n">array</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
+    <span class="kt">void</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">padding</span><span class="p">[</span><span class="mi">22</span><span class="p">];</span> <span class="o">/&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">other</span> <span class="n">members</span> <span class="n">i</span> <span class="n">don</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="n">t</span> <span class="n">care</span> <span class="err">*/</span>
+<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>struct pthread {
-    tcbhead_t tcb;
-    /<em> more members i don&rsquo;t care </em>/
-};
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">struct</span> <span class="n">pthread</span> <span class="p">{</span>
+    <span class="kt">tcbhead_t</span> <span class="n">tcb</span><span class="p">;</span>
+    <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">more</span> <span class="n">members</span> <span class="n">i</span> <span class="n">don</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="n">t</span> <span class="n">care</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
+<span class="p">};</span></code></pre></div></p>
 
 <p><strong>dtv是一个用于以模块为单位存储TLS变量的数组</strong>。</p>
 
@@ -136,30 +132,26 @@ $2 = {counter = 18446744073709551615, pointer = {val = 0xffffffffffffffff, is_st
 
 <p>/elf/dl-tls.c <code>_dl_allocate_tls_init</code></p>
 
-<p>{% highlight c++ %}
-if (map->l_tls_offset == NO_TLS_OFFSET
-   || map->l_tls_offset == FORCED_DYNAMIC_TLS_OFFSET)
- {
-   /<em> For dynamically loaded modules we simply store
-      the value indicating deferred allocation.  </em>/
-   dtv[map->l_tls_modid].pointer.val = TLS_DTV_UNALLOCATED;
-   dtv[map->l_tls_modid].pointer.is_static = false;
-   continue;
- }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">if</span> <span class="p">(</span><span class="n">map</span><span class="o">-&gt;</span><span class="n">l_tls_offset</span> <span class="o">==</span> <span class="n">NO_TLS_OFFSET</span>
+   <span class="o">||</span> <span class="n">map</span><span class="o">-&gt;</span><span class="n">l_tls_offset</span> <span class="o">==</span> <span class="n">FORCED_DYNAMIC_TLS_OFFSET</span><span class="p">)</span>
+ <span class="p">{</span>
+   <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">For</span> <span class="n">dynamically</span> <span class="n">loaded</span> <span class="n">modules</span> <span class="n">we</span> <span class="n">simply</span> <span class="n">store</span>
+      <span class="n">the</span> <span class="n">value</span> <span class="n">indicating</span> <span class="n">deferred</span> <span class="n">allocation</span><span class="p">.</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
+   <span class="n">dtv</span><span class="p">[</span><span class="n">map</span><span class="o">-&gt;</span><span class="n">l_tls_modid</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">val</span> <span class="o">=</span> <span class="n">TLS_DTV_UNALLOCATED</span><span class="p">;</span>
+   <span class="n">dtv</span><span class="p">[</span><span class="n">map</span><span class="o">-&gt;</span><span class="n">l_tls_modid</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">is_static</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+   <span class="k">continue</span><span class="p">;</span>
+ <span class="p">}</span></code></pre></div></p>
 
 <p><code>dtv</code>数组大小之所以为17，可以参看代码 /elf/dl-tls.c <code>allocate_dtv</code>：</p>
 
-<p>{% highlight c++ %}
-// dl_tls_max_dtv_idx 随着载入模块的增加而增加，载入1个.so则是1</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// dl_tls_max_dtv_idx 随着载入模块的增加而增加，载入1个.so则是1&lt;/p&gt;</span>
 
-<p>dtv_length = GL(dl_tls_max_dtv_idx) + DTV_SURPLUS; // DTV_SURPLUS 14
-dtv = calloc (dtv_length + 2, sizeof (dtv_t));
-if (dtv != NULL)
- {
-   /<em> This is the initial length of the dtv.  </em>/
-   dtv[0].counter = dtv_length;
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">dtv_length</span> <span class="o">=</span> <span class="n">GL</span><span class="p">(</span><span class="n">dl_tls_max_dtv_idx</span><span class="p">)</span> <span class="o">+</span> <span class="n">DTV_SURPLUS</span><span class="p">;</span> <span class="c1">// DTV_SURPLUS 14</span>
+<span class="n">dtv</span> <span class="o">=</span> <span class="n">calloc</span> <span class="p">(</span><span class="n">dtv_length</span> <span class="o">+</span> <span class="mi">2</span><span class="p">,</span> <span class="k">sizeof</span> <span class="p">(</span><span class="kt">dtv_t</span><span class="p">));</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">dtv</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span>
+ <span class="p">{</span>
+   <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">This</span> <span class="n">is</span> <span class="n">the</span> <span class="n">initial</span> <span class="n">length</span> <span class="n">of</span> <span class="n">the</span> <span class="n">dtv</span><span class="p">.</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
+   <span class="n">dtv</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">counter</span> <span class="o">=</span> <span class="n">dtv_length</span><span class="p">;</span></code></pre></div></p>
 
 <p>继续上面的实验，当调用到.so中的<code>function</code>时，其TLS被初始化，此时<code>dtv[3]</code>中<code>val</code>指向初始化后的TLS变量地址：</p>
 
@@ -241,33 +233,31 @@ $4 = {counter = 6300896, pointer = {val = 0x6024e0, is_static = false}}
 
 <p>在<code>allocate_stack</code>中分配线程堆栈时，有一个从缓存中取的操作：</p>
 
-<p>{% highlight c++ %}
-allocate_stack(..) {
-    &hellip;
-    pd = get_cached_stack (&amp;size, &amp;mem);
-    &hellip;
-}
-/<em> Get a stack frame from the cache.  We have to match by size since
-   some blocks might be too small or far too large.  </em>/
-get_cached_stack(&hellip;) {
-    &hellip;
-    list_for_each (entry, &amp;stack_cache) // 根据size从stack_cache中取
-    { &hellip; }
-    &hellip;
-    /<em> Clear the DTV.  </em>/
-    dtv_t *dtv = GET_DTV (TLS_TPADJ (result));
-    for (size_t cnt = 0; cnt &lt; dtv[-1].counter; ++cnt)
-        if (! dtv[1 + cnt].pointer.is_static
-                &amp;&amp; dtv[1 + cnt].pointer.val != TLS_DTV_UNALLOCATED)
-            free (dtv[1 + cnt].pointer.val);
-    memset (dtv, &lsquo;\0&rsquo;, (dtv[-1].counter + 1) * sizeof (dtv_t));</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">allocate_stack</span><span class="p">(..)</span> <span class="p">{</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+    <span class="n">pd</span> <span class="o">=</span> <span class="n">get_cached_stack</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">size</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">mem</span><span class="p">);</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">Get</span> <span class="n">a</span> <span class="n">stack</span> <span class="n">frame</span> <span class="n">from</span> <span class="n">the</span> <span class="n">cache</span><span class="p">.</span>  <span class="n">We</span> <span class="n">have</span> <span class="n">to</span> <span class="n">match</span> <span class="n">by</span> <span class="n">size</span> <span class="n">since</span>
+   <span class="n">some</span> <span class="n">blocks</span> <span class="n">might</span> <span class="n">be</span> <span class="n">too</span> <span class="n">small</span> <span class="n">or</span> <span class="n">far</span> <span class="n">too</span> <span class="n">large</span><span class="p">.</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
+<span class="n">get_cached_stack</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hellip</span><span class="p">;)</span> <span class="p">{</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+    <span class="n">list_for_each</span> <span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">stack_cache</span><span class="p">)</span> <span class="c1">// 根据size从stack_cache中取</span>
+    <span class="p">{</span> <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span> <span class="p">}</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+    <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">Clear</span> <span class="n">the</span> <span class="n">DTV</span><span class="p">.</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
+    <span class="kt">dtv_t</span> <span class="o">*</span><span class="n">dtv</span> <span class="o">=</span> <span class="n">GET_DTV</span> <span class="p">(</span><span class="n">TLS_TPADJ</span> <span class="p">(</span><span class="n">result</span><span class="p">));</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">cnt</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">cnt</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">dtv</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">].</span><span class="n">counter</span><span class="p">;</span> <span class="o">++</span><span class="n">cnt</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span> <span class="n">dtv</span><span class="p">[</span><span class="mi">1</span> <span class="o">+</span> <span class="n">cnt</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">is_static</span>
+                <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">dtv</span><span class="p">[</span><span class="mi">1</span> <span class="o">+</span> <span class="n">cnt</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">val</span> <span class="o">!=</span> <span class="n">TLS_DTV_UNALLOCATED</span><span class="p">)</span>
+            <span class="n">free</span> <span class="p">(</span><span class="n">dtv</span><span class="p">[</span><span class="mi">1</span> <span class="o">+</span> <span class="n">cnt</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">val</span><span class="p">);</span>
+    <span class="n">memset</span> <span class="p">(</span><span class="n">dtv</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="err">\</span><span class="mi">0</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="p">(</span><span class="n">dtv</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">].</span><span class="n">counter</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="k">sizeof</span> <span class="p">(</span><span class="kt">dtv_t</span><span class="p">));</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>/* Re-initialize the TLS.  */
-_dl_allocate_tls_init (TLS_TPADJ (result));
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="cm">/* Re-initialize the TLS.  */</span>
+<span class="n">_dl_allocate_tls_init</span> <span class="p">(</span><span class="n">TLS_TPADJ</span> <span class="p">(</span><span class="n">result</span><span class="p">));</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>}
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span></code></pre></div></p>
 
 <p><code>get_cached_stack</code>会把取出的<code>pthread</code>中的dtv重新初始化。<strong>注意 <code>_dl_allocate_tls_init</code> 中是根据模块列表来初始化dtv数组的。</strong></p>
 
@@ -362,42 +352,40 @@ world
 
 <p>可以通过一些代码来展示以上过程。在开发C++程序时，可以利用文件静态变量会先于<code>main</code>之前执行做一些可能利于程序结构的事情。如果某个<code>.o</code>（包含静态库中打包的<code>.o</code>）被链接进程序，那么其文件静态变量就会先于<code>main</code>初始化。</p>
 
-<p>{% highlight c++ %}
-// test.cpp</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// test.cpp&lt;/p&gt;</span>
 
-<h1>include &lt;stdio.h></h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<p>class Test {
-public:
-    Test() {
-        printf(&ldquo;Test ctor\n&rdquo;);
-    }
-};</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">Test</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="n">Test</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Test</span> <span class="n">ctor</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+    <span class="p">}</span>
+<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>static Test s_test;</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">static</span> <span class="n">Test</span> <span class="n">s_test</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>// lib.cpp</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// lib.cpp&lt;/p&gt;</span>
 
-<h1>include &lt;stdio.h></h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<p>class Lib {
-public:
-    Lib() {
-        printf(&ldquo;Lib ctor\n&rdquo;);
-    }
-};</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">Lib</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="n">Lib</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Lib</span> <span class="n">ctor</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+    <span class="p">}</span>
+<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>static Lib s_lib;</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">static</span> <span class="n">Lib</span> <span class="n">s_lib</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>// main.cpp</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// main.cpp&lt;/p&gt;</span>
 
-<h1>include &lt;stdio.h></h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<p>int main() {
-    printf(&ldquo;main\n&rdquo;);
-    return 0;
-}
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">main</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div></p>
 
 <p>以上代码<code>main.cpp</code>中未引用任何<code>test.cpp``lib.cpp</code>中的符号：</p>
 
@@ -410,23 +398,21 @@ main
 
 <p>生成的可执行程序执行如预期，其链接了<code>test.o``lib.o</code>。但是如果把<code>lib.o</code>以静态库的形式进行链接，情况就不一样了：为了做对比，基于以上的代码再加一个文件，及修改<code>main.cpp</code>：</p>
 
-<p>{% highlight c++ %}
-// libfn.cpp
-int sum(int a, int b) {
-    return a + b;
-}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// libfn.cpp</span>
+<span class="kt">int</span> <span class="nf">sum</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">,</span> <span class="kt">int</span> <span class="n">b</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">;</span>
+<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>// main.cpp</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// main.cpp&lt;/p&gt;</span>
 
-<h1>include &lt;stdio.h></h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<p>int main() {
-    printf(&ldquo;main\n&rdquo;);
-    extern int sum(int, int);
-    printf(&ldquo;sum: %d\n&rdquo;, sum(2, 3));
-    return 0;
-}
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">main</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+    <span class="k">extern</span> <span class="kt">int</span> <span class="nf">sum</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="nl">sum</span><span class="p">:</span> <span class="o">%</span><span class="n">d</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="n">sum</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">));</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div></p>
 
 <p>将<code>libfn.o</code>和<code>lib.o</code>创建为静态库：</p>
 
@@ -563,58 +549,57 @@ rw-r--r-- 60833/100   2448 Sep 14 02:16 2014 lib.o
 
 <p>实验代码如下：</p>
 
-<p>{% highlight c++ %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<h1>include &lt;stdio.h></h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<p>class Base {
-public:
-    Base() {
-        Init();
-    }</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">Base</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="n">Base</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">Init</span><span class="p">();</span>
+    <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>//virtual
- ~Base() {
-    printf("Base dtor\n");
-    Release();
-}
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="c1">//virtual</span>
+ <span class="o">~</span><span class="n">Base</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Base dtor</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="n">Release</span><span class="p">();</span>
+<span class="p">}</span>
 
-virtual void Init() {
-    printf("Base::Init\n");
-}
+<span class="k">virtual</span> <span class="kt">void</span> <span class="n">Init</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Base::Init</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
 
-virtual void Release() {
-    printf("Base::Release\n");
-}
-</code></pre>
+<span class="k">virtual</span> <span class="kt">void</span> <span class="n">Release</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Base::Release</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>};</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>class Derived : public Base {
-public:
-    /<em>
-    ~Derived() {
-        printf(&ldquo;Derived dtor\n&rdquo;);
-    } // </em>/</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">Derived</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Base</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span>
+    <span class="o">~</span><span class="n">Derived</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Derived</span> <span class="n">dtor</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+    <span class="p">}</span> <span class="c1">// &lt;/em&gt;/&lt;/p&gt;</span>
 
-<pre><code>virtual void Init() {
-    printf("Derived::Init\n");
-}
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">virtual</span> <span class="kt">void</span> <span class="n">Init</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Derived::Init</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
 
-virtual void Release() {
-    printf("Derived:Release\n");
-}
-</code></pre>
+<span class="k">virtual</span> <span class="kt">void</span> <span class="n">Release</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Derived:Release</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>};</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>int main()
-{
-    Base *obj = new Derived();
-    delete obj;
-    return 0;
-}
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="n">Base</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Derived</span><span class="p">();</span>
+    <span class="k">delete</span> <span class="n">obj</span><span class="p">;</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div></p>
 
 <p>去掉<code>Derived</code>的析构函数，去掉<code>Base</code>析构函数的<code>virtual</code>：</p>
 
@@ -820,26 +805,24 @@ Dump of assembler code for function Derived::~Derived():
 
 <p>将代码对应起来：</p>
 
-<p>{% highlight c++ %}
-void g() {
-    int <em>p = 0;
-    long a = 0x1234;
-    printf(&ldquo;%p %x\n&rdquo;, &amp;a, a);
-    printf(&ldquo;%p %x\n&rdquo;, &amp;p, p);
-    f();
-    </em>p = 1;
-}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">g</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">p</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="kt">long</span> <span class="n">a</span> <span class="o">=</span> <span class="mh">0x1234</span><span class="p">;</span>
+    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">%</span><span class="n">p</span> <span class="o">%</span><span class="n">x</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">a</span><span class="p">,</span> <span class="n">a</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">%</span><span class="n">p</span> <span class="o">%</span><span class="n">x</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="p">);</span>
+    <span class="n">f</span><span class="p">();</span>
+    <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">p</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>void b(int argc, char **argv) {
-    printf(&ldquo;%p %p\n&rdquo;, &amp;argc, &amp;argv);
-    g();
-}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">b</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">%</span><span class="n">p</span> <span class="o">%</span><span class="n">p</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">argc</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">argv</span><span class="p">);</span>
+    <span class="n">g</span><span class="p">();</span>
+<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>int main(int argc, char **argv) {
-    b(argc, argv);
-    return 0;
-}
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">b</span><span class="p">(</span><span class="n">argc</span><span class="p">,</span> <span class="n">argv</span><span class="p">);</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div></p>
 
 <p>在函数<code>g()</code>中断点，看看堆栈中的内容(64位机器)：</p>
 
@@ -895,32 +878,30 @@ $4 = (void *) 0x7fffffffe360
 
 <p>由此我们可以自己构建一个导致gdb无法取得调用堆栈的例子：</p>
 
-<p>{% highlight c++ %}
-void f() {
-    long <em>p = 0;
-    p = (long</em>) (&amp;p + 1); // 取得g()的RBP
-    *p = 0;  // 破坏g()的RBP
-}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">f</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kt">long</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">p</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="p">(</span><span class="kt">long</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">p</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span> <span class="c1">// 取得g()的RBP</span>
+    <span class="o">*</span><span class="n">p</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>  <span class="c1">// 破坏g()的RBP</span>
+<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>void g() {
-    int <em>p = 0;
-    long a = 0x1234;
-    printf(&ldquo;%p %x\n&rdquo;, &amp;a, a);
-    printf(&ldquo;%p %x\n&rdquo;, &amp;p, p);
-    f();
-    </em>p = 1; // 写0地址导致一次core
-}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">g</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">p</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="kt">long</span> <span class="n">a</span> <span class="o">=</span> <span class="mh">0x1234</span><span class="p">;</span>
+    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">%</span><span class="n">p</span> <span class="o">%</span><span class="n">x</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">a</span><span class="p">,</span> <span class="n">a</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">%</span><span class="n">p</span> <span class="o">%</span><span class="n">x</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="p">);</span>
+    <span class="n">f</span><span class="p">();</span>
+    <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">p</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="c1">// 写0地址导致一次core</span>
+<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>void b(int argc, char **argv) {
-    printf(&ldquo;%p %p\n&rdquo;, &amp;argc, &amp;argv);
-    g();
-}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">b</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">%</span><span class="n">p</span> <span class="o">%</span><span class="n">p</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">argc</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">argv</span><span class="p">);</span>
+    <span class="n">g</span><span class="p">();</span>
+<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>int main(int argc, char **argv) {
-    b(argc, argv);
-    return 0;
-}
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">b</span><span class="p">(</span><span class="n">argc</span><span class="p">,</span> <span class="n">argv</span><span class="p">);</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div></p>
 
 <p>使用gdb运行该程序：</p>
 
@@ -963,15 +944,13 @@ $2 = (void *) 0x7fffffffe360
 
 <p>例如：</p>
 
-<p>{% highlight c++ %}
-void f2() {
-    int a = 0x1234;
-    if (a > 0) {
-        int b = 0xff;
-        b = a;
-    }
-}
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">f2</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mh">0x1234</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">a</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="mh">0xff</span><span class="p">;</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span></code></pre></div></p>
 
 <p>gcc中使用<code>-fomit-frame-pointer</code>生成的代码为：</p>
 
@@ -999,11 +978,9 @@ Dump of assembler code for function f2:
 
 <p>google protobuf只负责消息的打包和解包，并不包含RPC的实现，但其包含了RPC的定义。假设有下面的RPC定义：</p>
 
-<p>{% highlight c++ %}
-    service MyService {
-        rpc Echo(EchoReqMsg) returns(EchoRespMsg)
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">service</span> <span class="n">MyService</span> <span class="p">{</span>
+        <span class="n">rpc</span> <span class="n">Echo</span><span class="p">(</span><span class="n">EchoReqMsg</span><span class="p">)</span> <span class="n">returns</span><span class="p">(</span><span class="n">EchoRespMsg</span><span class="p">)</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <p>那么要实现这个RPC需要最少做哪些事？总结起来需要完成以下几步：</p>
 
@@ -1011,19 +988,17 @@ Dump of assembler code for function f2:
 
 <p>RPC客户端需要实现<code>google::protobuf::RpcChannel</code>。主要实现<code>RpcChannel::CallMethod</code>接口。客户端调用任何一个RPC接口，最终都是调用到<code>CallMethod</code>。这个函数的典型实现就是将RPC调用参数序列化，然后投递给网络模块进行发送。</p>
 
-<p>{% highlight c++ %}
-    void CallMethod(const ::google::protobuf::MethodDescriptor<em> method,
-                  ::google::protobuf::RpcController</em> controller,
-                  const ::google::protobuf::Message<em> request,
-                  ::google::protobuf::Message</em> response,
-                  ::google::protobuf::Closure* done) {
-        &hellip;
-        DataBufferOutputStream outputStream(&hellip;) // 取决于你使用的网络实现
-        request->SerializeToZeroCopyStream(&amp;outputStream);
-        _connection->postData(outputStream.getData(), &hellip;
-        &hellip;
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">CallMethod</span><span class="p">(</span><span class="k">const</span> <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">MethodDescriptor</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">method</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">RpcController</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">controller</span><span class="p">,</span>
+                  <span class="k">const</span> <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Message</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">request</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Message</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">response</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Closure</span><span class="o">*</span> <span class="n">done</span><span class="p">)</span> <span class="p">{</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="n">DataBufferOutputStream</span> <span class="n">outputStream</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hellip</span><span class="p">;)</span> <span class="c1">// 取决于你使用的网络实现</span>
+        <span class="n">request</span><span class="o">-&gt;</span><span class="n">SerializeToZeroCopyStream</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">outputStream</span><span class="p">);</span>
+        <span class="n">_connection</span><span class="o">-&gt;</span><span class="n">postData</span><span class="p">(</span><span class="n">outputStream</span><span class="p">.</span><span class="n">getData</span><span class="p">(),</span> <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <!-- more -->
 
@@ -1032,17 +1007,15 @@ Dump of assembler code for function f2:
 
 <p>服务端首先需要实现RPC接口，直接实现<code>MyService</code>中定义的接口：</p>
 
-<p>{% highlight c++ %}
-    class MyServiceImpl : public MyService {
-        virtual void Echo(::google::protobuf::RpcController<em> controller,
-            const EchoReqMsg</em> request,
-            EchoRespMsg<em> response,
-            ::google::protobuf::Closure</em> done) {
-            &hellip;
-            done->Run();
-        }
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">class</span> <span class="nc">MyServiceImpl</span> <span class="o">:</span> <span class="k">public</span> <span class="n">MyService</span> <span class="p">{</span>
+        <span class="k">virtual</span> <span class="kt">void</span> <span class="n">Echo</span><span class="p">(</span><span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">RpcController</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">controller</span><span class="p">,</span>
+            <span class="k">const</span> <span class="n">EchoReqMsg</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">request</span><span class="p">,</span>
+            <span class="n">EchoRespMsg</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">response</span><span class="p">,</span>
+            <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Closure</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">done</span><span class="p">)</span> <span class="p">{</span>
+            <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+            <span class="n">done</span><span class="o">-&gt;</span><span class="n">Run</span><span class="p">();</span>
+        <span class="p">}</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <h2>标示service&amp;method</h2>
 
@@ -1058,53 +1031,48 @@ Dump of assembler code for function f2:
 
 <p>首先扩展service&amp;method的属性，以下定义这些属性的key：</p>
 
-<p>{% highlight c++ %}
-    extend google.protobuf.ServiceOptions {
-      required uint32 global_service_id = 1000;
-    }
-    extend google.protobuf.MethodOptions {
-      required uint32 local_method_id = 1000;
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">extend</span> <span class="n">google</span><span class="p">.</span><span class="n">protobuf</span><span class="p">.</span><span class="n">ServiceOptions</span> <span class="p">{</span>
+      <span class="n">required</span> <span class="n">uint32</span> <span class="n">global_service_id</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">extend</span> <span class="n">google</span><span class="p">.</span><span class="n">protobuf</span><span class="p">.</span><span class="n">MethodOptions</span> <span class="p">{</span>
+      <span class="n">required</span> <span class="n">uint32</span> <span class="n">local_method_id</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">;</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <p>应用层定义service&amp;method时可以指定以上key的值：</p>
 
-<p>{% highlight c++ %}
-    service MyService
-    {
-        option (arpc.global_service_id) = 2302;</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">service</span> <span class="n">MyService</span>
+    <span class="p">{</span>
+        <span class="n">option</span> <span class="p">(</span><span class="n">arpc</span><span class="p">.</span><span class="n">global_service_id</span><span class="p">)</span> <span class="o">=</span> <span class="mi">2302</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>    rpc Echo(EchoReqMsg) returns(EchoRespMsg) 
-    {
-        option (arpc.local_method_id) = 1;
-    }
-    rpc Echo_2(EchoReqMsg) returns(EchoRespMsg) 
-    {
-        option (arpc.local_method_id) = 2;
-    }
-    ...
-}
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="n">rpc</span> <span class="n">Echo</span><span class="p">(</span><span class="n">EchoReqMsg</span><span class="p">)</span> <span class="n">returns</span><span class="p">(</span><span class="n">EchoRespMsg</span><span class="p">)</span> 
+    <span class="p">{</span>
+        <span class="n">option</span> <span class="p">(</span><span class="n">arpc</span><span class="p">.</span><span class="n">local_method_id</span><span class="p">)</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">rpc</span> <span class="n">Echo_2</span><span class="p">(</span><span class="n">EchoReqMsg</span><span class="p">)</span> <span class="n">returns</span><span class="p">(</span><span class="n">EchoRespMsg</span><span class="p">)</span> 
+    <span class="p">{</span>
+        <span class="n">option</span> <span class="p">(</span><span class="n">arpc</span><span class="p">.</span><span class="n">local_method_id</span><span class="p">)</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="p">...</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>以上相当于在整个应用中，每个service都被赋予了唯一的id，单个service中的method也有唯一的id。</p>
 
 <p>然后可以通过protobuf取出以上属性值：</p>
 
-<p>{% highlight c++ %}
-    void CallMethod(const ::google::protobuf::MethodDescriptor<em> method,
-                  ::google::protobuf::RpcController</em> controller,
-                  const ::google::protobuf::Message<em> request,
-                  ::google::protobuf::Message</em> response,
-                  ::google::protobuf::Closure<em> done) {
-        &hellip;
-        google::protobuf::ServiceDescriptor </em>service = method->service();
-        uint32_t serviceId = (uint32_t)(service->options().GetExtension(global_service_id));
-        uint32_t methodId = (uint32_t)(method->options().GetExtension(local_method_id));
-        &hellip;
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">CallMethod</span><span class="p">(</span><span class="k">const</span> <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">MethodDescriptor</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">method</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">RpcController</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">controller</span><span class="p">,</span>
+                  <span class="k">const</span> <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Message</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">request</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Message</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">response</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Closure</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">done</span><span class="p">)</span> <span class="p">{</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">ServiceDescriptor</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">service</span> <span class="o">=</span> <span class="n">method</span><span class="o">-&gt;</span><span class="n">service</span><span class="p">();</span>
+        <span class="kt">uint32_t</span> <span class="n">serviceId</span> <span class="o">=</span> <span class="p">(</span><span class="kt">uint32_t</span><span class="p">)(</span><span class="n">service</span><span class="o">-&gt;</span><span class="n">options</span><span class="p">().</span><span class="n">GetExtension</span><span class="p">(</span><span class="n">global_service_id</span><span class="p">));</span>
+        <span class="kt">uint32_t</span> <span class="n">methodId</span> <span class="o">=</span> <span class="p">(</span><span class="kt">uint32_t</span><span class="p">)(</span><span class="n">method</span><span class="o">-&gt;</span><span class="n">options</span><span class="p">().</span><span class="n">GetExtension</span><span class="p">(</span><span class="n">local_method_id</span><span class="p">));</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <p>考虑到<code>serviceId</code> <code>methodId</code>的范围，可以直接打包到一个32位整数里：</p>
 
@@ -1115,34 +1083,31 @@ Dump of assembler code for function f2:
 
 <p>当然服务器端是需要建立这个标识值到service的映射的：</p>
 
-<p>{% highlight c++ %}
-    bool MyRPCServer::registerService(google::protobuf::Service *rpcService) {
-        const google::protobuf::ServiceDescriptor = rpcService->GetDescriptor();
-        int methodCnt = pSerDes->method_count();</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">bool</span> <span class="n">MyRPCServer</span><span class="o">::</span><span class="n">registerService</span><span class="p">(</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Service</span> <span class="o">*</span><span class="n">rpcService</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">const</span> <span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">ServiceDescriptor</span> <span class="o">=</span> <span class="n">rpcService</span><span class="o">-&gt;</span><span class="n">GetDescriptor</span><span class="p">();</span>
+        <span class="kt">int</span> <span class="n">methodCnt</span> <span class="o">=</span> <span class="n">pSerDes</span><span class="o">-&gt;</span><span class="n">method_count</span><span class="p">();</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>    for (int i = 0; i &lt; methodCnt; i++) {
-        google::protobuf::MethodDescriptor *pMethodDes = pSerDes-&gt;method(i);
-        uint32_t rpcCode = PacketCodeBuilder()(pMethodDes); // 计算出映射值
-        _rpcCallMap[rpcCode] = make_pair(rpcService, pMethodDes); // 建立映射
-    }
-    return true;
-}
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">methodCnt</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">MethodDescriptor</span> <span class="o">*</span><span class="n">pMethodDes</span> <span class="o">=</span> <span class="n">pSerDes</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">method</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+        <span class="kt">uint32_t</span> <span class="n">rpcCode</span> <span class="o">=</span> <span class="n">PacketCodeBuilder</span><span class="p">()(</span><span class="n">pMethodDes</span><span class="p">);</span> <span class="c1">// 计算出映射值</span>
+        <span class="n">_rpcCallMap</span><span class="p">[</span><span class="n">rpcCode</span><span class="p">]</span> <span class="o">=</span> <span class="n">make_pair</span><span class="p">(</span><span class="n">rpcService</span><span class="p">,</span> <span class="n">pMethodDes</span><span class="p">);</span> <span class="c1">// 建立映射</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>服务端收到RPC调用后，取出这个标识值，然后再从<code>_rpcCallMap</code>中取出对应的service和method，最后进行调用：</p>
 
-<p>{% highlight c++ %}
-    google::protobuf::Message<em> response = <em>pService->GetResponsePrototype(</em>pMethodDes).New();
-    // 用于回应的closure
-    RPCServerClosure </em>pClosure = new (nothrow) RPCServerClosure(
-            <em>channelId, </em>pConnection, <em>pReqMsg, pResMsg, </em>messageCodec, <em>version);
-    RPCController *pController = pClosure->GetRpcController();
-    &hellip;
-    // protobuf 生成的CallMethod，会自动调用到Echo接口
-    </em>pService->CallMethod(<em>pMethodDes, pController, </em>pReqMsg, pResMsg, pClosure);
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Message</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">response</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pService</span><span class="o">-&gt;</span><span class="n">GetResponsePrototype</span><span class="p">(</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pMethodDes</span><span class="p">).</span><span class="n">New</span><span class="p">();</span>
+    <span class="c1">// 用于回应的closure</span>
+    <span class="n">RPCServerClosure</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pClosure</span> <span class="o">=</span> <span class="k">new</span> <span class="p">(</span><span class="n">nothrow</span><span class="p">)</span> <span class="n">RPCServerClosure</span><span class="p">(</span>
+            <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">channelId</span><span class="p">,</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pConnection</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pReqMsg</span><span class="p">,</span> <span class="n">pResMsg</span><span class="p">,</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">messageCodec</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">version</span><span class="p">);</span>
+    <span class="n">RPCController</span> <span class="o">*</span><span class="n">pController</span> <span class="o">=</span> <span class="n">pClosure</span><span class="o">-&gt;</span><span class="n">GetRpcController</span><span class="p">();</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+    <span class="c1">// protobuf 生成的CallMethod，会自动调用到Echo接口</span>
+    <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pService</span><span class="o">-&gt;</span><span class="n">CallMethod</span><span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pMethodDes</span><span class="p">,</span> <span class="n">pController</span><span class="p">,</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pReqMsg</span><span class="p">,</span> <span class="n">pResMsg</span><span class="p">,</span> <span class="n">pClosure</span><span class="p">);</span></code></pre></div></p>
 
 <h2>参考</h2>
 

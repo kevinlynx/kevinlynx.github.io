@@ -144,7 +144,7 @@
 
 <p><img src="/assets/res/zk/state.png" alt="state.png" /></p>
 
-<p>图中，v(A)表示当前推荐人为A；r[]表示收到的投票集合。</p>
+<p>图中，v(A)表示当前推荐人为A；r[]表示收到的投票集合。需要注意一个细节，初始投票集合里包含了自己的投票，代码中自己会将推荐人推荐给自己，网络模块(<code>QuorumCnxManager</code>)直接将该消息放入接收队列。</p>
 
 <p>可以看看当其他节点已经确定投票结果时，即不再是<code>LOOKING</code>时的状态：</p>
 

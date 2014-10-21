@@ -4,7 +4,7 @@
   <title><![CDATA[Category: other | loop in codes]]></title>
   <link href="http://codemacro.com/categories/other/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-10-19T15:57:42+08:00</updated>
+  <updated>2014-10-21T21:10:56+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -352,51 +352,51 @@ $ git cat-file -p 45cf0bd049d7eea4558b14f33a894db27c7c1130
 
 <p>看以下代码：</p>
 
-<p>{% highlight c++ %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<h1>include <algorithm></h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&lt;</span><span class="n">algorithm</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<h1>include <ctime></h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&lt;</span><span class="n">ctime</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<h1>include <iostream></h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&lt;</span><span class="n">iostream</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<p>int main()
-{
-    // generate data
-    const unsigned arraySize = 32768;
-    int data[arraySize];</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="c1">// generate data</span>
+    <span class="k">const</span> <span class="kt">unsigned</span> <span class="n">arraySize</span> <span class="o">=</span> <span class="mi">32768</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">data</span><span class="p">[</span><span class="n">arraySize</span><span class="p">];</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>for (unsigned c = 0; c &lt; arraySize; ++c)
-    data[c] = std::rand() % 256;
-
-
-// !!! with this, the next loop runs faster
-std::sort(data, data + arraySize);
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">for</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="n">c</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">c</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">arraySize</span><span class="p">;</span> <span class="o">++</span><span class="n">c</span><span class="p">)</span>
+    <span class="n">data</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">rand</span><span class="p">()</span> <span class="o">%</span> <span class="mi">256</span><span class="p">;</span>
 
 
-// test
-clock_t start = clock();
-long long sum = 0;
+<span class="c1">// !!! with this, the next loop runs faster</span>
+<span class="n">std</span><span class="o">::</span><span class="n">sort</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">data</span> <span class="o">+</span> <span class="n">arraySize</span><span class="p">);</span>
 
-for (unsigned i = 0; i &lt; 100000; ++i)
-{
-    // primary loop
-    for (unsigned c = 0; c &lt; arraySize; ++c)
-    {
-        if (data[c] &gt;= 128)
-            sum += data[c];
-    }
-}
 
-double elapsedTime = static_cast&lt;double&gt;(clock() - start) / CLOCKS_PER_SEC;
+<span class="c1">// test</span>
+<span class="kt">clock_t</span> <span class="n">start</span> <span class="o">=</span> <span class="n">clock</span><span class="p">();</span>
+<span class="kt">long</span> <span class="kt">long</span> <span class="n">sum</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
 
-std::cout &lt;&lt; elapsedTime &lt;&lt; std::endl;
-std::cout &lt;&lt; "sum = " &lt;&lt; sum &lt;&lt; std::endl;
-</code></pre>
+<span class="k">for</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="mi">100000</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="c1">// primary loop</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="n">c</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">c</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">arraySize</span><span class="p">;</span> <span class="o">++</span><span class="n">c</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">=</span> <span class="mi">128</span><span class="p">)</span>
+            <span class="n">sum</span> <span class="o">+=</span> <span class="n">data</span><span class="p">[</span><span class="n">c</span><span class="p">];</span>
+    <span class="p">}</span>
+<span class="p">}</span>
 
-<p>}</p>
+<span class="kt">double</span> <span class="n">elapsedTime</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="kt">double</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;(</span><span class="n">clock</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span> <span class="o">/</span> <span class="n">CLOCKS_PER_SEC</span><span class="p">;</span>
 
-<p>{% endhighlight %}</p>
+<span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">elapsedTime</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="s">&quot;sum = &quot;</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">sum</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>问题就在于，去掉<code>std::sort</code>那一行，以上代码将运行更长的时间。在我的机器上未去掉<code>std::sort</code>耗时8.99s，去掉后耗时24.78s。编译器使用的是gcc4.4.3。事实上，以上代码跟编译器没有关系，甚至跟语言没有关系。那这是为什么呢？</p>
 
@@ -405,9 +405,7 @@ std::cout &lt;&lt; "sum = " &lt;&lt; sum &lt;&lt; std::endl;
 
 <p>这跟处理这个数组的逻辑有非常大的关系。如以上代码所示，这个循环里有个条件判断。条件判断被编译成二进制代码后，就是一个跳转指令，类似：</p>
 
-<p>{% highlight asm %}
-jl SHORT $LN3@main
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-asm" data-lang="asm"><span class="nf">jl</span> <span class="no">SHORT</span> <span class="no">$LN3@main</span></code></pre></div></p>
 
 <p>具体为什么会不同，这涉及到计算机CPU执行指令时的行为。</p>
 
@@ -460,47 +458,43 @@ jl SHORT $LN3@main
 
 <p>后来发现了一篇文章<a href="http://xoyo.name/2012/04/auto-spacing-for-octopress/">\&lt;给中英文间加个空格></a>，这人写的插件从流程上大致是我需要的，模仿如下：</p>
 
-<p>{% highlight ruby %}
-{% raw %}
-#</p>
+<p><div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="c1">#&lt;/p&gt;</span>
 
-<h1>post_footer_filter.rb</h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">post_footer_filter</span><span class="o">.</span><span class="n">rb</span><span class="o">&lt;</span><span class="sr">/h1&gt;</span>
 
-<h1>Append every post some footer infomation like original url</h1>
+<span class="sr">&lt;h1&gt;Append every post some footer infomation like original url&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<h1>Kevin Lynx</h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="no">Kevin</span> <span class="no">Lynx</span><span class="o">&lt;</span><span class="sr">/h1&gt;</span>
 
-<h1>7.26.2012</h1>
+<span class="sr">&lt;h1&gt;7.26.2012&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<p>#
-require &lsquo;./plugins/post_filters&rsquo;</p>
+<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span><span class="c1">#</span>
+<span class="nb">require</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="o">.</span><span class="n">/plugins</span><span class="o">/</span><span class="n">post_filters</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
 
-<p>module AppendFooterFilter
-  def append(post)
-     author = post.site.config[&lsquo;author&rsquo;]
-     url = post.site.config[&lsquo;url&rsquo;]
-     pre = post.site.config[&lsquo;original_url_pre&rsquo;]
-     post.content + %Q[<p class='post-footer'>
-            #{pre or &ldquo;original link:&rdquo;}
-            <a href='#{post.full_url}'>#{post.full_url}</a><br/>
-            &nbsp;written by <a href='#{url}'>#{author}</a>
-            &nbsp;posted at <a href='#{url}'>#{url}</a>
-            </p>]
-  end
-end</p>
+<span class="sr">&lt;p&gt;module AppendFooterFilter</span>
+<span class="sr">  def append(post)</span>
+<span class="sr">     author = post.site.config[&amp;lsquo;author&amp;rsquo;]</span>
+<span class="sr">     url = post.site.config[&amp;lsquo;url&amp;rsquo;]</span>
+<span class="sr">     pre = post.site.config[&amp;lsquo;original_url_pre&amp;rsquo;]</span>
+<span class="sr">     post.content + %Q[&lt;p class=&#39;post-footer&#39;&gt;</span>
+<span class="sr">            </span><span class="si">#{</span><span class="n">pre</span> <span class="ow">or</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">original</span> <span class="ss">link</span><span class="p">:</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span><span class="si">}</span><span class="sr"></span>
+<span class="sr">            &lt;a href=&#39;</span><span class="si">#{</span><span class="n">post</span><span class="o">.</span><span class="n">full_url</span><span class="si">}</span><span class="sr">&#39;&gt;</span><span class="si">#{</span><span class="n">post</span><span class="o">.</span><span class="n">full_url</span><span class="si">}</span><span class="sr">&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
+            <span class="o">&amp;</span><span class="n">nbsp</span><span class="p">;</span><span class="n">written</span> <span class="n">by</span> <span class="o">&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s1">&#39;#{url}&#39;</span><span class="o">&gt;</span><span class="c1">#{author}&lt;/a&gt;</span>
+            <span class="o">&amp;</span><span class="n">nbsp</span><span class="p">;</span><span class="n">posted</span> <span class="n">at</span> <span class="o">&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s1">&#39;#{url}&#39;</span><span class="o">&gt;</span><span class="c1">#{url}&lt;/a&gt;</span>
+            <span class="o">&lt;</span><span class="sr">/p&gt;]</span>
+<span class="sr">  end</span>
+<span class="sr">end&lt;/</span><span class="nb">p</span><span class="o">&gt;</span>
 
-<p>module Jekyll
-  class AppendFooter &lt; PostFilter
-    include AppendFooterFilter
-    def pre_render(post)
-      post.content = append(post) if post.is_post?
-    end
-  end
-end</p>
+<span class="o">&lt;</span><span class="nb">p</span><span class="o">&gt;</span><span class="k">module</span> <span class="nn">Jekyll</span>
+  <span class="k">class</span> <span class="nc">AppendFooter</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="no">PostFilter</span>
+    <span class="kp">include</span> <span class="no">AppendFooterFilter</span>
+    <span class="k">def</span> <span class="nf">pre_render</span><span class="p">(</span><span class="n">post</span><span class="p">)</span>
+      <span class="n">post</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="n">append</span><span class="p">(</span><span class="n">post</span><span class="p">)</span> <span class="k">if</span> <span class="n">post</span><span class="o">.</span><span class="n">is_post?</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
+<span class="k">end</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
 
-<p>Liquid::Template.register_filter AppendFooterFilter
-{% endraw %}
-{% endhighlight %}</p>
+<span class="sr">&lt;p&gt;Liquid::Template.register_filter AppendFooterFilter</span></code></pre></div></p>
 
 <p>大概就是当传入的页面是post时，就添加页脚信息，我这里主要添加了原始地址和作者信息，并且留了个post-footer作为这个段落的样式定制。附加的信息对于RSS输出同样有效。</p>
 
