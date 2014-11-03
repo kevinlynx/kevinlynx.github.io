@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="在分布式系统中相同的服务常常会部署很多台，每一台被称为一个服务节点（实例）。通过一些负载均衡策略将服务请求均匀地分布到各个节点，以实现整个系统支撑海量请求的需求。本文描述一些简单的负载均衡策略。 Round-robin 简单地轮询。记录一个选择位置，每次请求来时调整该位置到下一个节点： curId &hellip;">
+  <meta name="description" content="可以对照使用google protobuf RPC实现echo service一文看，细节本文不再描述。 google protobuf只负责消息的打包和解包，并不包含RPC的实现，但其包含了RPC的定义。假设有下面的RPC定义： service MyService { rpc Echo( &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,68 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2014/08/31/protobuf-rpc/">基于protobuf的RPC实现</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-08-31T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>31</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>可以对照<a href="http://www.codedump.info/?p=169">使用google protobuf RPC实现echo service</a>一文看，细节本文不再描述。</p>
+
+<p>google protobuf只负责消息的打包和解包，并不包含RPC的实现，但其包含了RPC的定义。假设有下面的RPC定义：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">service</span> <span class="n">MyService</span> <span class="p">{</span>
+        <span class="n">rpc</span> <span class="n">Echo</span><span class="p">(</span><span class="n">EchoReqMsg</span><span class="p">)</span> <span class="n">returns</span><span class="p">(</span><span class="n">EchoRespMsg</span><span class="p">)</span> 
+    <span class="p">}</span></code></pre></div>
+
+
+<p>那么要实现这个RPC需要最少做哪些事？总结起来需要完成以下几步：</p>
+
+<h2>客户端</h2>
+
+<p>RPC客户端需要实现<code>google::protobuf::RpcChannel</code>。主要实现<code>RpcChannel::CallMethod</code>接口。客户端调用任何一个RPC接口，最终都是调用到<code>CallMethod</code>。这个函数的典型实现就是将RPC调用参数序列化，然后投递给网络模块进行发送。</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">CallMethod</span><span class="p">(</span><span class="k">const</span> <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">MethodDescriptor</span><span class="o">*</span> <span class="n">method</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">RpcController</span><span class="o">*</span> <span class="n">controller</span><span class="p">,</span>
+                  <span class="k">const</span> <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Message</span><span class="o">*</span> <span class="n">request</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Message</span><span class="o">*</span> <span class="n">response</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Closure</span><span class="o">*</span> <span class="n">done</span><span class="p">)</span> <span class="p">{</span>
+        <span class="p">...</span>
+        <span class="n">DataBufferOutputStream</span> <span class="n">outputStream</span><span class="p">(...)</span> <span class="c1">// 取决于你使用的网络实现</span>
+        <span class="n">request</span><span class="o">-&gt;</span><span class="n">SerializeToZeroCopyStream</span><span class="p">(</span><span class="o">&amp;</span><span class="n">outputStream</span><span class="p">);</span>
+        <span class="n">_connection</span><span class="o">-&gt;</span><span class="n">postData</span><span class="p">(</span><span class="n">outputStream</span><span class="p">.</span><span class="n">getData</span><span class="p">(),</span> <span class="p">...</span>
+        <span class="p">...</span>
+    <span class="p">}</span></code></pre></div>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/08/31/protobuf-rpc/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -563,76 +625,6 @@ $str
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2013/07/02/dhtcrawler2/">磁力搜索第二版-dhtcrawler2</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2013-07-02T00:00:00+08:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>2</span><span class='date-suffix'>nd</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>接<a href="http://codemacro.com/2013/06/21/magnet-search-impl/">上篇</a>。</p>
-
-<h2>下载使用</h2>
-
-<p>目前为止dhtcrawler2相对dhtcrawler而言，数据库部分调整很大，DHT部分基本沿用之前。但单纯作为一个爬资源的程序而言，DHT部分可以进行大幅削减，这个以后再说。这个版本更快、更稳定。为了方便，我将编译好的erlang二进制文件作为git的主分支，我还添加了一些Windows下的批处理脚本，总之基本上下载源码以后即可运行。</p>
-
-<p>项目地址：<a href="https://github.com/kevinlynx/dhtcrawler2">https://github.com/kevinlynx/dhtcrawler2</a></p>
-
-<h3>使用方法</h3>
-
-<ul>
-<li>下载erlang，我测试的是R16B版本，确保erl等程序被加入<code>Path</code>环境变量</li>
-<li><p>下载mongodb，解压即用：</p>
-
-<pre><code>  mongod --dbpath xxx --setParameter textSearchEnabled=true
-</code></pre></li>
-<li><p>下载dhtcrawler2</p>
-
-<pre><code>  git clone https://github.com/kevinlynx/dhtcrawler2.git
-</code></pre></li>
-<li><p>运行<code>win_start_crawler.bat</code></p></li>
-<li>运行<code>win_start_hash.bat</code></li>
-<li>运行<code>win_start_http.bat</code></li>
-<li>打开<code>localhost:8000</code>查看<code>stats</code></li>
-</ul>
-
-
-<p>爬虫每次运行都会保存DHT节点状态，早期运行的时候收集速度会不够。dhtcrawler2将程序分为3部分：</p>
-
-<ul>
-<li>crawler，即DHT爬虫部分，仅负责收集hash</li>
-<li>hash，准确来讲叫<code>hash reader</code>，处理爬虫收集的hash，处理过程主要涉及到下载种子文件</li>
-<li>http，使用hash处理出来的数据库，以作为Web端接口</li>
-</ul>
-
-
-<p>我没有服务器，但程序有被部署在别人的服务器上：<a href="http://bt.cm">bt.cm</a>，<a href="http://222.175.114.126:8000/">http://222.175.114.126:8000/</a>。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2013/07/02/dhtcrawler2/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/3">&larr; Older</a>
@@ -647,11 +639,15 @@ $str
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (19)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (20)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/11/04/linux-dynamic-library/">linux动态库的种种要点</a>
+      </li>
     
       <li class="post">
         <a href="/2014/10/19/zk-fastleaderelection/">图解zookeeper FastLeader选举算法</a>
@@ -669,10 +665,6 @@ $str
         <a href="/2014/10/07/pthread-tls-bug/">浅析glibc中thread tls的一处bug</a>
       </li>
     
-      <li class="post">
-        <a href="/2014/09/21/zk-watch-benchmark/">zookeeper节点数与watch的性能测试</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -684,7 +676,7 @@ $str
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 154.28571428571428%'>c/c++(19)</a> <a href='/categories/clang' style='font-size: 102.85714285714286%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 122.85714285714286%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.42857142857143%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.71428571428571%'>ice(2)</a> <a href='/categories/javascript' style='font-size: 102.85714285714286%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 114.28571428571429%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 114.28571428571429%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.57142857142857%'>module(3)</a> <a href='/categories/network' style='font-size: 134.28571428571428%'>network(12)</a> <a href='/categories/other' style='font-size: 120.0%'>other(7)</a> <a href='/categories/ruby' style='font-size: 111.42857142857143%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.85714285714286%'>scala(1)</a> <a href='/categories/tips' style='font-size: 160.0%'>tips(21)</a> <a href='/categories/web' style='font-size: 111.42857142857143%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 157.14285714285714%'>c/c++(20)</a> <a href='/categories/clang' style='font-size: 102.85714285714286%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 122.85714285714286%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.42857142857143%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.71428571428571%'>ice(2)</a> <a href='/categories/javascript' style='font-size: 102.85714285714286%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 114.28571428571429%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 114.28571428571429%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.57142857142857%'>module(3)</a> <a href='/categories/network' style='font-size: 134.28571428571428%'>network(12)</a> <a href='/categories/other' style='font-size: 120.0%'>other(7)</a> <a href='/categories/ruby' style='font-size: 111.42857142857143%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.85714285714286%'>scala(1)</a> <a href='/categories/tips' style='font-size: 160.0%'>tips(21)</a> <a href='/categories/web' style='font-size: 111.42857142857143%'>web(4)</a> </span>
 </section>
 
   

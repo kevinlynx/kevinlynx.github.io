@@ -1,0 +1,516 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>linux动态库的种种要点 - loop in codes</title>
+  <meta name="author" content="Kevin Lynx">
+
+  
+  <meta name="description" content="linux下使用动态库，基本用起来还是很容易。但如果我们的程序中大量使用动态库来实现各种框架/插件，那么就会遇到一些坑，掌握这些坑才有利于程序更稳健地运行。 本篇先谈谈动态库符号方面的问题。 测试代码可以在github上找到 符号查找 一个应用程序test会链接一个动态库libdy.so， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://codemacro.com/2014/11/04/linux-dynamic-library">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <!--script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script-->
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<!--link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css"-->
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">loop in codes</a></h1>
+  
+    <h2>Kevin Lynx BLOG</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:codemacro.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about.html">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">linux动态库的种种要点</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-11-04T00:00:00+08:00'><span class='date'><span class='date-month'>Nov</span> <span class='date-day'>4</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>linux下使用动态库，基本用起来还是很容易。但如果我们的程序中大量使用动态库来实现各种框架/插件，那么就会遇到一些坑，掌握这些坑才有利于程序更稳健地运行。</p>
+
+<p>本篇先谈谈动态库符号方面的问题。</p>
+
+<p>测试代码可以在<a href="https://github.com/kevinlynx/test/tree/master/dytest">github上找到</a></p>
+
+<h2>符号查找</h2>
+
+<p>一个应用程序<code>test</code>会链接一个动态库<code>libdy.so</code>，如果一个符号，例如函数<code>callfn</code>定义于libdy.so中，test要使用该函数，简单地声明即可：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// dy.cpp libdy.so</span>
+<span class="kt">void</span> <span class="nf">callfn</span><span class="p">()</span> <span class="p">{</span>
+    <span class="p">...</span>
+<span class="p">}</span>
+
+<span class="c1">// main.cpp test</span>
+<span class="k">extern</span> <span class="kt">void</span> <span class="nf">callfn</span><span class="p">();</span>
+
+<span class="n">callfn</span><span class="p">();</span></code></pre></div>
+
+
+<p>在链接test的时候，链接器会统一进行检查。</p>
+
+<p>同样，在libdy.so中有相同的规则，它可以使用一个外部的符号，<strong>在它被链接/载入进一个可执行程序时才会进行符号存在与否的检查</strong>。这个符号甚至可以定义在test中，形成一种双向依赖，或定义在其他动态库中：</p>
+
+<!-- more -->
+
+
+
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// dy.cpp libdy.so</span>
+<span class="k">extern</span> <span class="kt">void</span> <span class="nf">mfunc</span><span class="p">();</span>
+
+<span class="n">mfunc</span><span class="p">();</span>
+
+<span class="c1">// main.cpp test</span>
+<span class="kt">void</span> <span class="nf">mfunc</span><span class="p">()</span> <span class="p">{</span>
+    <span class="p">...</span>
+<span class="p">}</span></code></pre></div>
+
+
+<p>在生成libdy.so时<code>mfunc</code>可以找不到，此时<code>mfunc</code>为未定义：</p>
+
+<pre><code>$ nm libdy.so | grep mfun
+U _Z5mfuncv
+</code></pre>
+
+<p>但在libdy.so被链接进test时则会进行检查，试着把<code>mfunc</code>函数的定义去掉，就会得到一个链接错误：</p>
+
+<pre><code>./libdy.so: undefined reference to `mfunc()'
+</code></pre>
+
+<p>同样，如果我们动态载入libdy.so，此时当然可以链接通过，但是在载入时同样得到找不到符号的错误：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="cp">#ifdef DY_LOAD</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">dp</span> <span class="o">=</span> <span class="n">dlopen</span><span class="p">(</span><span class="s">&quot;./libdy.so&quot;</span><span class="p">,</span> <span class="n">RTLD_LAZY</span><span class="p">);</span>
+    <span class="k">typedef</span> <span class="nf">void</span> <span class="p">(</span><span class="o">*</span><span class="n">callfn</span><span class="p">)();</span>
+    <span class="n">callfn</span> <span class="n">f</span> <span class="o">=</span> <span class="p">(</span><span class="n">callfn</span><span class="p">)</span> <span class="n">dlsym</span><span class="p">(</span><span class="n">dp</span><span class="p">,</span> <span class="s">&quot;callfn&quot;</span><span class="p">);</span>
+    <span class="n">f</span><span class="p">();</span>
+    <span class="n">dlclose</span><span class="p">(</span><span class="n">dp</span><span class="p">);</span>
+<span class="cp">#else</span>
+    <span class="n">callfn</span><span class="p">();</span>
+<span class="cp">#endif</span></code></pre></div>
+
+
+<p>得到错误：</p>
+
+<pre><code>./test: symbol lookup error: ./libdy.so: undefined symbol: _Z5mfuncv
+</code></pre>
+
+<p><strong>结论：</strong>基于以上，我们知道，如果一个动态库依赖了一些外部符号，这些外部符号可以位于其他动态库甚至应用程序中。我们可以再链接这个动态库的时候就把依赖的其他库也链接上，或者推迟到链接应用程序时再链接。而动态加载的库，则要保证在加载该库时，进程中加载的其他动态库里已经存在该符号。</p>
+
+<p>例如，通过<code>LD_PRELOAD</code>环境变量可以让一个进程先加载指定的动态库，上面那个动态加载启动失败的例子，可以通过预先加载包含<code>mfunc</code>符号的动态库解决：</p>
+
+<pre><code>$ LD_PRELOAD=libmfun.so ./test
+...
+</code></pre>
+
+<p>但是如果这个符号存在于可执行程序中则不行：</p>
+
+<pre><code>$ nm test | grep mfunc
+0000000000400a00 T _Z5mfuncv
+$ nm test | grep mfunc
+0000000000400a00 T _Z5mfuncv
+$ ./test
+...
+./test: symbol lookup error: ./libdy.so: undefined symbol: _Z5mfuncv
+</code></pre>
+
+<h2>符号覆盖</h2>
+
+<p>前面主要讲的是符号缺少的情况，如果同一个符号存在多分，则更能引发问题。这里谈到的符号都是全局符号，一个进程中某个全局符号始终是全局唯一的。为了保证这一点，在链接或动态载入动态库时，就会出现忽略重复符号的情况。</p>
+
+<p><em>这里就不提同一个链接单位（如可执行程序、动态库）里符号重复的问题了</em></p>
+
+<h3>函数</h3>
+
+<p>当动态库和libdy.so可执行程序test中包含同名的函数时会怎样？根据是否动态加载情况还有所不同。</p>
+
+<p>当直接链接动态库时，libdy.so和test都会链接包含<code>func</code>函数的fun.o，为了区分，我把<code>func</code>按照条件编译得到不同的版本：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// fun.cpp</span>
+<span class="cp">#ifdef V2</span>
+<span class="k">extern</span> <span class="s">&quot;C&quot;</span> <span class="kt">void</span> <span class="n">func</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;func v2</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="cp">#else</span>
+<span class="k">extern</span> <span class="s">&quot;C&quot;</span> <span class="kt">void</span> <span class="n">func</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;func v1</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="cp">#endif</span>
+
+<span class="c1">// Makefile</span>
+<span class="nl">test</span><span class="p">:</span> <span class="n">libdy</span> <span class="n">obj</span><span class="p">.</span><span class="n">o</span> <span class="n">mainfn</span>
+    <span class="n">g</span><span class="o">++</span> <span class="o">-</span><span class="n">g</span> <span class="o">-</span><span class="n">Wall</span> <span class="o">-</span><span class="n">c</span> <span class="n">fun</span><span class="p">.</span><span class="n">cpp</span> <span class="o">-</span><span class="n">o</span> <span class="n">fun</span><span class="p">.</span><span class="n">o</span> <span class="err">#</span> <span class="err">编译为</span><span class="n">fun</span><span class="p">.</span><span class="n">o</span>
+    <span class="n">g</span><span class="o">++</span> <span class="o">-</span><span class="n">g</span> <span class="o">-</span><span class="n">Wall</span> <span class="o">-</span><span class="n">c</span> <span class="n">main</span><span class="p">.</span><span class="n">cpp</span> <span class="err">#</span><span class="o">-</span><span class="n">DDY_LOAD</span>
+    <span class="n">g</span><span class="o">++</span> <span class="o">-</span><span class="n">g</span> <span class="o">-</span><span class="n">Wall</span> <span class="o">-</span><span class="n">o</span> <span class="n">test</span> <span class="n">main</span><span class="p">.</span><span class="n">o</span> <span class="n">obj</span><span class="p">.</span><span class="n">o</span> <span class="n">fun</span><span class="p">.</span><span class="n">o</span> <span class="o">-</span><span class="n">ldl</span> <span class="n">mfun</span><span class="p">.</span><span class="n">o</span> <span class="o">-</span><span class="n">ldy</span> <span class="o">-</span><span class="n">L</span><span class="p">.</span>
+
+<span class="nl">libdy</span><span class="p">:</span> <span class="n">obj</span>
+    <span class="n">g</span><span class="o">++</span> <span class="o">-</span><span class="n">Wall</span> <span class="o">-</span><span class="n">fPIC</span> <span class="o">-</span><span class="n">c</span> <span class="n">fun</span><span class="p">.</span><span class="n">cpp</span> <span class="o">-</span><span class="n">DV2</span> <span class="o">-</span><span class="n">o</span> <span class="n">fun</span><span class="o">-</span><span class="n">dy</span><span class="p">.</span><span class="n">o</span>  <span class="err">#</span> <span class="err">定义</span><span class="n">V2</span><span class="err">宏，编译为</span><span class="n">fun</span><span class="o">-</span><span class="n">dy</span><span class="p">.</span><span class="n">o</span>
+    <span class="n">g</span><span class="o">++</span> <span class="o">-</span><span class="n">Wall</span> <span class="o">-</span><span class="n">fPIC</span> <span class="o">-</span><span class="n">shared</span> <span class="o">-</span><span class="n">o</span> <span class="n">libdy</span><span class="p">.</span><span class="n">so</span> <span class="n">dy</span><span class="p">.</span><span class="n">cpp</span> <span class="o">-</span><span class="n">g</span> <span class="n">obj</span><span class="p">.</span><span class="n">o</span> <span class="n">fun</span><span class="o">-</span><span class="n">dy</span><span class="p">.</span><span class="n">o</span></code></pre></div>
+
+
+<p>这样，test中的<code>func</code>就会输出<code>func v1</code>；libdy.so中的<code>func</code>就会输出<code>func v2</code>。test和libdy.o确实都有<code>func</code>符号：</p>
+
+<pre><code>$ nm libdy.so | grep func
+0000000000000a60 T func
+
+$nm test | grep func
+0000000000400a80 T func
+</code></pre>
+
+<p>在test和libdy.so中都会调用<code>func</code>函数：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// main.cpp test</span>
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">func</span><span class="p">();</span>
+    <span class="p">...</span>
+    <span class="n">callfn</span><span class="p">();</span> <span class="c1">// 调用libdy.so中的函数</span>
+    <span class="p">...</span>
+<span class="p">}</span>
+
+<span class="c1">// dy.cpp libdy.so</span>
+<span class="k">extern</span> <span class="s">&quot;C&quot;</span> <span class="kt">void</span> <span class="n">callfn</span><span class="p">()</span> <span class="p">{</span>
+    <span class="p">...</span> 
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;callfn</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="n">func</span><span class="p">();</span>
+    <span class="p">...</span>
+<span class="p">}</span></code></pre></div>
+
+
+<p>运行后发现，都<strong>调用的是同一个<code>func</code></strong>：</p>
+
+<pre><code>$ ./test
+...
+func v1
+...
+callfn
+func v1
+</code></pre>
+
+<p><strong>结论</strong>，直接链接动态库时，整个程序运行的时候符号会发生覆盖，只有一个符号被使用。<strong>在实践中</strong>，如果程序和链接的动态库都依赖了一个静态库，而后他们链接的这个静态库版本不同，则很有可能因为符号发生了覆盖而导致问题。(静态库同普通的.o性质一样，参考<a href="http://codemacro.com/2014/09/15/inside-static-library/">浅析静态库链接原理</a>)</p>
+
+<p>更复杂的情况中，多个动态库和程序都有相同的符号，情况也是一样，会发生符号覆盖。如果程序里没有这个符号，而多个动态库里有相同的符号，也会覆盖。</p>
+
+<p>但是对于动态载入的情况则不同，同样的libdy.so我们在test中不链接，而是动态载入：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">func</span><span class="p">();</span>
+<span class="cp">#ifdef DY_LOAD</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">dp</span> <span class="o">=</span> <span class="n">dlopen</span><span class="p">(</span><span class="s">&quot;./libdy.so&quot;</span><span class="p">,</span> <span class="n">RTLD_LAZY</span><span class="p">);</span>
+    <span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">callfn</span><span class="p">)();</span>
+    <span class="n">callfn</span> <span class="n">f</span> <span class="o">=</span> <span class="p">(</span><span class="n">callfn</span><span class="p">)</span> <span class="n">dlsym</span><span class="p">(</span><span class="n">dp</span><span class="p">,</span> <span class="s">&quot;callfn&quot;</span><span class="p">);</span>
+    <span class="n">f</span><span class="p">();</span>
+    <span class="n">func</span><span class="p">();</span>
+    <span class="n">dlclose</span><span class="p">(</span><span class="n">dp</span><span class="p">);</span>
+<span class="cp">#else</span>
+    <span class="n">callfn</span><span class="p">();</span>
+<span class="cp">#endif</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div>
+
+
+<p>运行得到：</p>
+
+<pre><code>$ ./test
+func v1
+...
+callfn
+func v2
+func v1
+</code></pre>
+
+<p>都正确地调用到各自链接的<code>func</code>。</p>
+
+<p><strong>结论</strong>，实践中，动态载入的动态库一般会作为插件使用，那么其同程序链接不同版本的静态库（相同符号不同实现），是没有问题的。</p>
+
+<h3>变量</h3>
+
+<p>变量本质上也是符号(symbol)，但其处理规则和函数还有点不一样(<em>是不是有点想吐槽了</em>)。</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// object.h</span>
+<span class="k">class</span> <span class="nc">Object</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="n">Object</span><span class="p">()</span> <span class="p">{</span>
+<span class="cp">#ifdef DF</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="mi">32</span><span class="p">);</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;s addr %p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">s</span><span class="p">);</span>
+<span class="cp">#endif</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;ctor %p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="k">this</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="o">~</span><span class="n">Object</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;dtor %p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="k">this</span><span class="p">);</span>
+<span class="cp">#ifdef DF</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;s addr %p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">s</span><span class="p">);</span>
+        <span class="n">free</span><span class="p">(</span><span class="n">s</span><span class="p">);</span>
+<span class="cp">#endif</span>
+    <span class="p">}</span>
+
+    <span class="kt">void</span> <span class="o">*</span><span class="n">s</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="k">extern</span> <span class="n">Object</span> <span class="n">g_obj</span><span class="p">;</span></code></pre></div>
+
+
+<p>我们的程序test和动态库libdy.so都会链接object.o。首先测试test链接libdy.so，test和libdy.so中都会有<code>g_obj</code>这个符号：</p>
+
+<pre><code>// B g_obj 表示g_obj位于BSS段，未初始化段
+
+$ nm test | grep g_obj
+0000000000400a14 t _GLOBAL__I_g_obj
+00000000006012c8 B g_obj
+$ nm libdy.so | grep g_obj
+000000000000097c t _GLOBAL__I_g_obj
+0000000000200f30 B g_obj
+</code></pre>
+
+<p>运行：</p>
+
+<pre><code>$ ./test
+ctor 0x6012c8
+ctor 0x6012c8
+...
+dtor 0x6012c8
+dtor 0x6012c8
+</code></pre>
+
+<p><strong><code>g_obj</code>被构造了两次，但地址一样</strong>。全局变量只有一个实例，似乎在情理之中。</p>
+
+<p>动态载入libdy.so，变量地址还是相同的：</p>
+
+<pre><code>$ ./test
+ctor 0x6012a8
+...
+ctor 0x6012a8
+...
+dtor 0x6012a8
+dtor 0x6012a8
+</code></pre>
+
+<p><strong>结论</strong>，不同于函数，全局变量符号重复时，不论动态库是动态载入还是直接链接，变量始终只有一个。</p>
+
+<p>但诡异的情况是，对象被构造和析构了两次。构造两次倒无所谓，浪费点空间，但是析构两次就有问题。因为析构时都操作的是同一个对象，那么如果这个对象内部有分配的内存，那就会对这块内存造成double free，因为指针相同。打开<code>DF</code>宏实验下：</p>
+
+<pre><code>$ ./test
+s addr 0x20de010
+ctor 0x6012b8
+s addr 0x20de040
+ctor 0x6012b8
+...
+dtor 0x6012b8
+s addr 0x20de040
+dtor 0x6012b8
+s addr 0x20de040
+</code></pre>
+
+<p>因为析构的两次都是同一个对象，所以其成员<code>s</code>指向的内存被释放了两次，从而产生了double free，让程序coredump了。</p>
+
+<p><strong>总结</strong>，全局变量符号重复时，始终会只使用一个，并且会被初始化/释放两次，是一种较危险的情况，应当避免在使用动态库的过程中使用全局变量。</p>
+
+<p><em>完</em></p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2014/11/04/linux-dynamic-library/'>http://codemacro.com/2014/11/04/linux-dynamic-library/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2014-11-04T00:00:00+08:00'><span class='date'><span class='date-month'>Nov</span> <span class='date-day'>4</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/categories/c-slash-c-plus-plus/'>c/c++</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/2014/10/19/zk-fastleaderelection/" title="Previous Post: 图解zookeeper FastLeader选举算法">&laquo; 图解zookeeper FastLeader选举算法</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (20)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/11/04/linux-dynamic-library/">linux动态库的种种要点</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2014/10/19/zk-fastleaderelection/">图解zookeeper FastLeader选举算法</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2014/10/15/explain-poxos/">图解分布式一致性协议Paxos</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2014/10/12/diamond/">淘宝分布式配置管理服务Diamond</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2014/10/07/pthread-tls-bug/">浅析glibc中thread tls的一处bug</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+<div id="recentcomments" class="dsq-widget">
+<h1 class="dsq-widget-title">Recent Comments</h1>
+<script type="text/javascript" src="http://loopincodes.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
+</div>
+<a href="http://disqus.com/">Powered by Disqus</a>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 157.14285714285714%'>c/c++(20)</a> <a href='/categories/clang' style='font-size: 102.85714285714286%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 122.85714285714286%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.42857142857143%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.71428571428571%'>ice(2)</a> <a href='/categories/javascript' style='font-size: 102.85714285714286%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 114.28571428571429%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 114.28571428571429%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.57142857142857%'>module(3)</a> <a href='/categories/network' style='font-size: 134.28571428571428%'>network(12)</a> <a href='/categories/other' style='font-size: 120.0%'>other(7)</a> <a href='/categories/ruby' style='font-size: 111.42857142857143%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.85714285714286%'>scala(1)</a> <a href='/categories/tips' style='font-size: 160.0%'>tips(21)</a> <a href='/categories/web' style='font-size: 111.42857142857143%'>web(4)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - Kevin Lynx -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
+<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
+
+</p>
+
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'loopincodes';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://codemacro.com/2014/11/04/linux-dynamic-library/';
+        var disqus_url = 'http://codemacro.com/2014/11/04/linux-dynamic-library/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>
