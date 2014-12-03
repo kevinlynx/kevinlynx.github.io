@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="可以对照使用google protobuf RPC实现echo service一文看，细节本文不再描述。 google protobuf只负责消息的打包和解包，并不包含RPC的实现，但其包含了RPC的定义。假设有下面的RPC定义： service MyService { rpc Echo( &hellip;">
+  <meta name="description" content="当我们的程序core掉之后，如果能获取到core时的函数调用堆栈将非常有利于定位问题。在Windows下可以使用SEH机制；在Linux下通过gdb使用coredump文件即可。 但有时候由于某些错误导致堆栈被破坏，发生拿不到调用堆栈的情况。 一些基础预备知识本文不再详述，可以参考以下文章： &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,63 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2014/09/02/stack-frame/">C/C++中手动获取调用堆栈</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-09-02T00:00:00+08:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>2</span><span class='date-suffix'>nd</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>当我们的程序core掉之后，如果能获取到core时的函数调用堆栈将非常有利于定位问题。在Windows下可以使用<a href="http://blog.csdn.net/starlee/article/details/6630816">SEH机制</a>；在Linux下通过gdb使用coredump文件即可。</p>
+
+<p>但有时候由于某些错误导致堆栈被破坏，发生拿不到调用堆栈的情况。</p>
+
+<p>一些基础预备知识本文不再详述，可以参考以下文章：</p>
+
+<ul>
+<li><a href="http://hutaow.com/blog/2013/10/15/dump-stack/">函数调用栈的获取原理分析</a></li>
+<li><a href="http://www.findfunaax.com/notes/file/262">寄存器、函数调用与栈帧</a></li>
+</ul>
+
+
+<p>需要知道的信息：</p>
+
+<ul>
+<li>函数调用对应的<code>call</code>指令本质上是先压入下一条指令的地址到堆栈，然后跳转到目标函数地址</li>
+<li>函数返回指令<code>ret</code>则是从堆栈取出一个地址，然后跳转到该地址</li>
+<li>EBP寄存器始终指向当前执行函数相关信息（局部变量）所在栈中的位置，ESP则始终指向栈顶</li>
+<li>每一个函数入口都会保存调用者的EBP值，在出口处都会重设EBP值，从而实现函数调用的现场保存及现场恢复</li>
+<li>64位机器增加了不少寄存器，从而使得函数调用的参数大部分时候可以通过寄存器传递；同时寄存器名字发生改变，例如EBP变为RBP</li>
+</ul>
+
+
+<p>在函数调用中堆栈的情况可用下图说明：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/09/02/stack-frame/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -579,52 +636,6 @@ $str
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2013/08/08/sphinx-dhtcrawler/">dhtcrawler2换用sphinx搜索</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2013-08-08T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>8</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>dhtcrawler2最开始使用mongodb自带的全文搜索引擎搜索资源。搜索一些短关键字时很容易导致erlang进程call timeout，也就是查询时间太长。对于像<code>avi</code>这种关键字，搜索时间长达十几秒。搜索的资源数量200万左右。这其中大部分资源只是对root文件名进行了索引，即对于多文件资源而言没有索引单个文件名。索引方式有部分资源是按照字符串子串的形式，没有拆词，非常占用存储空间；有部分是使用了rmmseg（我编译了rmmseg-cpp作为erlang nif库调用 <a href="https://github.com/kevinlynx/erl-rmmseg">erl-rmmseg</a>）进行了拆词，占用空间小了很多，但由于词库问题很多片里的词汇没拆出来。</p>
-
-<p>很早以前我以为搜索耗时的原因是因为数据库太忙，想部署个mongodb集群出来。后来发现数据库没有任何读写的状态下，查询依然慢。终于只好放弃mongodb自带的文本搜索。于是我改用sphinx。简单起见，我直接下载了<a href="http://www.coreseek.cn/">coreseek4.1</a>（sphinx的一个支持中文拆词的包装）。</p>
-
-<p>现在，已经导入了200多万的资源进sphinx，并且索引了所有文件名，索引文件达800M。对于<code>avi</code>关键字的搜索大概消耗0.2秒的时间。<a href="http://bt.cm/e/http_handler:search?q=avi">搜索试试</a>。</p>
-
-<p>以下记录下sphinx在dhtcrawler的应用</p>
-
-<h3>sphinx简介</h3>
-
-<p>sphinx包含两个主要的程序：indexer和searchd。indexer用于建立文本内容的索引，然后searchd基于这些索引提供文本搜索功能，而要使用该功能，可以遵循searchd的网络协议连接searchd这个服务来使用。</p>
-
-<p>indexer可以通过多种方式来获取这些文本内容，文本内容的来源称为数据源。sphinx内置mysql这种数据源，意思是可以直接从mysql数据库中取得数据。sphinx还支持xmlpipe2这种数据源，其数据以xml格式提供给indexer。要导入mongodb数据库里的内容，可以选择使用xmlpipe2这种方式。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2013/08/08/sphinx-dhtcrawler/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/3">&larr; Older</a>
@@ -639,11 +650,15 @@ $str
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (20)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (21)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2014/12/03/gdb_stl/">基于内存查看STL常用容器内容</a>
+      </li>
     
       <li class="post">
         <a href="/2014/11/04/linux-dynamic-library/">linux动态库的种种要点</a>
@@ -661,10 +676,6 @@ $str
         <a href="/2014/10/12/diamond/">淘宝分布式配置管理服务Diamond</a>
       </li>
     
-      <li class="post">
-        <a href="/2014/10/07/pthread-tls-bug/">浅析glibc中thread tls的一处bug</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -676,7 +687,7 @@ $str
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 157.14285714285714%'>c/c++(20)</a> <a href='/categories/clang' style='font-size: 102.85714285714286%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 122.85714285714286%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.42857142857143%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.71428571428571%'>ice(2)</a> <a href='/categories/javascript' style='font-size: 102.85714285714286%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 114.28571428571429%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 114.28571428571429%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.57142857142857%'>module(3)</a> <a href='/categories/network' style='font-size: 134.28571428571428%'>network(12)</a> <a href='/categories/other' style='font-size: 120.0%'>other(7)</a> <a href='/categories/ruby' style='font-size: 111.42857142857143%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.85714285714286%'>scala(1)</a> <a href='/categories/tips' style='font-size: 160.0%'>tips(21)</a> <a href='/categories/web' style='font-size: 111.42857142857143%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(21)</a> <a href='/categories/clang' style='font-size: 102.85714285714286%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 122.85714285714286%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.42857142857143%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.71428571428571%'>ice(2)</a> <a href='/categories/javascript' style='font-size: 102.85714285714286%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 114.28571428571429%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 114.28571428571429%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.57142857142857%'>module(3)</a> <a href='/categories/network' style='font-size: 134.28571428571428%'>network(12)</a> <a href='/categories/other' style='font-size: 120.0%'>other(7)</a> <a href='/categories/ruby' style='font-size: 111.42857142857143%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.85714285714286%'>scala(1)</a> <a href='/categories/tips' style='font-size: 160.0%'>tips(21)</a> <a href='/categories/web' style='font-size: 111.42857142857143%'>web(4)</a> </span>
 </section>
 
   

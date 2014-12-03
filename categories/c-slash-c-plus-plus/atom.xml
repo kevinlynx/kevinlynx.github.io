@@ -4,7 +4,7 @@
   <title><![CDATA[Category: c/c++ | loop in codes]]></title>
   <link href="http://codemacro.com/categories/c-slash-c-plus-plus/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-11-04T00:52:37+08:00</updated>
+  <updated>2014-12-03T22:05:50+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,379 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[基于内存查看STL常用容器内容]]></title>
+    <link href="http://codemacro.com/2014/12/03/gdb_stl/"/>
+    <updated>2014-12-03T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2014/12/03/gdb_stl</id>
+    <content type="html"><![CDATA[<p>有时候在线上使用gdb调试程序core问题时，可能没有符号文件，拿到的仅是一个内存地址，如果这个指向的是一个STL对象，那么如何查看这个对象的内容呢？</p>
+
+<p>只需要知道STL各个容器的数据结构实现，就可以查看其内容。本文描述了SGI STL实现中常用容器的数据结构，以及如何在gdb中查看其内容。</p>
+
+<h2>string</h2>
+
+<p>string，即<code>basic_string</code> <code>bits/basic_string.h</code>：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">mutable</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Alloc_hider</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_dataplus</span><span class="p">;</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+      <span class="k">const</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">CharT</span><span class="o">*</span>
+      <span class="n">c_str</span><span class="p">()</span> <span class="k">const</span>
+      <span class="p">{</span> <span class="k">return</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_data</span><span class="p">();</span> <span class="p">}</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>  <span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
+      <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">CharT</span><span class="o">*</span>
+      <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_data</span><span class="p">()</span> <span class="k">const</span>
+      <span class="p">{</span> <span class="k">return</span>  <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_dataplus</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_p</span><span class="p">;</span> <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="p">...</span>
+  <span class="k">struct</span> <span class="nl">_Alloc_hider</span> <span class="p">:</span> <span class="n">_Alloc</span>
+  <span class="p">{</span>
+<span class="n">_Alloc_hider</span><span class="p">(</span><span class="n">_CharT</span><span class="o">*</span> <span class="n">__dat</span><span class="p">,</span> <span class="k">const</span> <span class="n">_Alloc</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">__a</span><span class="p">)</span>
+<span class="o">:</span> <span class="n">_Alloc</span><span class="p">(</span><span class="n">__a</span><span class="p">),</span> <span class="n">_M_p</span><span class="p">(</span><span class="n">__dat</span><span class="p">)</span> <span class="p">{</span> <span class="p">}</span>
+
+<span class="n">_CharT</span><span class="o">*</span> <span class="n">_M_p</span><span class="p">;</span> <span class="c1">// The actual data.</span>
+  <span class="p">};</span>
+
+  <span class="n">size_type</span>
+  <span class="n">length</span><span class="p">()</span> <span class="k">const</span>
+  <span class="p">{</span> <span class="k">return</span> <span class="n">_M_rep</span><span class="p">()</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">_M_length</span><span class="p">;</span> <span class="p">}</span>
+
+  <span class="n">_Rep</span><span class="o">*</span>
+  <span class="n">_M_rep</span><span class="p">()</span> <span class="k">const</span>
+  <span class="p">{</span> <span class="k">return</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;((</span><span class="k">reinterpret_cast</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Rep</span><span class="o">*&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="p">(</span><span class="n">_M_data</span><span class="p">()))[</span><span class="o">-</span><span class="mi">1</span><span class="p">]);</span> <span class="p">}</span>
+
+  <span class="p">...</span>
+   <span class="k">struct</span> <span class="n">_Rep_base</span>
+  <span class="p">{</span>
+<span class="n">size_type</span>       <span class="n">_M_length</span><span class="p">;</span>
+<span class="n">size_type</span>       <span class="n">_M_capacity</span><span class="p">;</span>
+<span class="n">_Atomic_word</span>        <span class="n">_M_refcount</span><span class="p">;</span>
+  <span class="p">};</span>
+
+  <span class="k">struct</span> <span class="nl">_Rep</span> <span class="p">:</span> <span class="n">_Rep_base</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p>即，string内有一个指针，指向实际的字符串位置，这个位置前面有一个<code>_Rep</code>结构，其内保存了字符串的长度、可用内存以及引用计数。当我们拿到一个string对象的地址时，可以通过以下代码获取相关值：</p>
+
+<!-- more -->
+
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">ds_str_i</span><span class="p">(</span><span class="kt">void</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">p</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">char</span> <span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">raw</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span><span class="p">)</span><span class="n">p</span><span class="p">;</span>
+        <span class="kt">char</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">s</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">raw</span><span class="p">;</span>
+        <span class="kt">size_t</span> <span class="n">len</span> <span class="o">=</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">(</span><span class="kt">size_t</span><span class="o">*</span><span class="p">)(</span><span class="n">s</span> <span class="o">-</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">size_t</span><span class="p">)</span> <span class="o">*</span> <span class="mi">3</span><span class="p">);</span>
+        <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="nl">str</span><span class="p">:</span> <span class="o">%</span><span class="n">s</span> <span class="p">(</span><span class="o">%</span><span class="n">zd</span><span class="p">)</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="n">s</span><span class="p">,</span> <span class="n">len</span><span class="p">);</span>
+    <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">size_t</span> <span class="n">ds_str</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">s</span> <span class="o">=</span> <span class="s">&quot;hello&quot;</span><span class="p">;</span>
+    <span class="n">ds_str_i</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">s</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">s</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p>在gdb中拿到一个string的地址时，可以以下打印出该字符串及长度：</p>
+
+<pre><code>(gdb) x/1a p
+0x7fffffffe3a0: 0x606028
+(gdb) p (char*)0x606028
+$2 = 0x606028 "hello"
+(gdb) x/1dg 0x606028-24
+0x606010:       5
+</code></pre>
+
+<h2>vector</h2>
+
+<p>众所周知vector实现就是一块连续的内存，<code>bits/stl_vector.h</code>。</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">_Tp</span><span class="p">,</span> <span class="k">typename</span> <span class="n">_Alloc</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">allocator</span><span class="o">&lt;</span><span class="n">_Tp</span><span class="o">&gt;</span> <span class="o">&gt;</span>
+    <span class="k">class</span> <span class="nc">vector</span> <span class="o">:</span> <span class="k">protected</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Vector_base</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Tp</span><span class="p">,</span> <span class="n">_Alloc</span><span class="o">&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="p">...</span>
+<span class="k">template</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="k">typename</span> <span class="n">_Tp</span><span class="p">,</span> <span class="k">typename</span> <span class="n">_Alloc</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
+<span class="k">struct</span> <span class="n">_Vector_base</span>
+<span class="p">{</span>
+  <span class="k">typedef</span> <span class="k">typename</span> <span class="n">_Alloc</span><span class="o">::</span><span class="k">template</span> <span class="n">rebind</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Tp</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">::</span><span class="n">other</span> <span class="n">_Tp_alloc_type</span><span class="p">;</span>
+
+  <span class="k">struct</span> <span class="nl">_Vector_impl</span>
+  <span class="p">:</span> <span class="k">public</span> <span class="n">_Tp_alloc_type</span>
+  <span class="p">{</span>
+<span class="n">_Tp</span><span class="o">*</span>           <span class="n">_M_start</span><span class="p">;</span>
+<span class="n">_Tp</span><span class="o">*</span>           <span class="n">_M_finish</span><span class="p">;</span>
+<span class="n">_Tp</span><span class="o">*</span>           <span class="n">_M_end_of_storage</span><span class="p">;</span>
+<span class="n">_Vector_impl</span><span class="p">(</span><span class="n">_Tp_alloc_type</span> <span class="k">const</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">__a</span><span class="p">)</span>
+<span class="o">:</span> <span class="n">_Tp_alloc_type</span><span class="p">(</span><span class="n">__a</span><span class="p">),</span> <span class="n">_M_start</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">_M_finish</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">_M_end_of_storage</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="p">{</span> <span class="p">}</span>
+  <span class="p">};</span>
+
+
+  <span class="n">_Vector_impl</span> <span class="n">_M_impl</span><span class="p">;</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p>可以看出<code>sizeof(vector&lt;xxx&gt;)=24</code>，其内也就是3个指针，<code>_M_start</code>指向首元素地址，<code>_M_finish</code>指向最后一个节点+1，<code>_M_end_of_storage</code>是可用空间最后的位置。</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">iterator</span>
+      <span class="nf">end</span><span class="p">()</span>
+      <span class="p">{</span> <span class="k">return</span> <span class="n">iterator</span> <span class="p">(</span><span class="k">this</span><span class="o">-&gt;&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_impl</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_finish</span><span class="p">);</span> <span class="p">}</span>
+      <span class="n">const_iterator</span>
+      <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+      <span class="n">begin</span><span class="p">()</span> <span class="k">const</span>
+      <span class="p">{</span> <span class="k">return</span> <span class="n">const_iterator</span> <span class="p">(</span><span class="k">this</span><span class="o">-&gt;&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_impl</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_start</span><span class="p">);</span> <span class="p">}</span>
+      <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+      <span class="n">size_type</span>
+      <span class="nf">capacity</span><span class="p">()</span> <span class="k">const</span>
+      <span class="p">{</span> <span class="k">return</span> <span class="n">size_type</span><span class="p">(</span><span class="n">const_iterator</span><span class="p">(</span><span class="k">this</span><span class="o">-&gt;&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_impl</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_end_of_storage</span><span class="p">)</span>
+             <span class="o">-</span> <span class="n">begin</span><span class="p">());</span> <span class="p">}</span></code></pre></div></p>
+
+<p>可以通过代码从一个vector对象地址输出其信息：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span>
+    <span class="kt">void</span> <span class="n">ds_vec_i</span><span class="p">(</span><span class="kt">void</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">p</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">T</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">start</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">(</span><span class="n">T</span><span class="o">**</span><span class="p">)</span><span class="n">p</span><span class="p">;</span>
+        <span class="n">T</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">finish</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">(</span><span class="n">T</span><span class="o">**</span><span class="p">)((</span><span class="kt">char</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span><span class="n">p</span> <span class="o">+</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">void</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">));</span>
+        <span class="n">T</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">end_storage</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">(</span><span class="n">T</span><span class="o">**</span><span class="p">)((</span><span class="kt">char</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span><span class="n">p</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="p">));</span>
+        <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">vec</span> <span class="nl">size</span><span class="p">:</span> <span class="o">%</span><span class="n">ld</span><span class="p">,</span> <span class="n">avaiable</span> <span class="nl">size</span><span class="p">:</span> <span class="o">%</span><span class="n">ld</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="n">finish</span> <span class="o">-</span> <span class="n">start</span><span class="p">,</span> <span class="n">end_storage</span> <span class="o">-</span> <span class="n">start</span><span class="p">);</span>
+    <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">size_t</span> <span class="n">ds_vec</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="kt">int</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="n">vec</span><span class="p">;</span>
+    <span class="n">vec</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x11</span><span class="p">);</span>
+    <span class="n">vec</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x22</span><span class="p">);</span>
+    <span class="n">vec</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x33</span><span class="p">);</span>
+    <span class="n">ds_vec_i</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="kt">int</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">vec</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">vec</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p>使用gdb输出一个vector中的内容：</p>
+
+<pre><code>(gdb) p p
+$3 = (void *) 0x7fffffffe380
+(gdb) x/1a p
+0x7fffffffe380: 0x606080
+(gdb) x/3xw 0x606080
+0x606080:       0x00000011      0x00000022      0x00000033
+</code></pre>
+
+<h2>list</h2>
+
+<p>众所周知list被实现为一个链表。准确来说是一个双向链表。list本身是一个特殊节点，其代表end，其指向的下一个元素才是list真正的第一个节点：</p>
+
+<p><code>bits/stl_list.h</code></p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">bool</span>
+      <span class="n">empty</span><span class="p">()</span> <span class="k">const</span>
+      <span class="p">{</span> <span class="k">return</span> <span class="k">this</span><span class="o">-&gt;&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_impl</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_node</span><span class="p">.</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_next</span> <span class="o">==</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="k">this</span><span class="o">-&gt;&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_impl</span><span class="p">.</span><span class="n">_M_node</span><span class="p">;</span> <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>  <span class="n">const_iterator</span>
+  <span class="n">begin</span><span class="p">()</span> <span class="k">const</span>
+  <span class="p">{</span> <span class="k">return</span> <span class="n">const_iterator</span><span class="p">(</span><span class="k">this</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">_M_impl</span><span class="p">.</span><span class="n">_M_node</span><span class="p">.</span><span class="n">_M_next</span><span class="p">);</span> <span class="p">}</span>
+
+  <span class="n">iterator</span>
+  <span class="n">end</span><span class="p">()</span>
+  <span class="p">{</span> <span class="k">return</span> <span class="n">iterator</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="k">this</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">_M_impl</span><span class="p">.</span><span class="n">_M_node</span><span class="p">);</span> <span class="p">}</span>
+
+  <span class="p">...</span>
+
+<span class="k">struct</span> <span class="n">_List_node_base</span>
+<span class="p">{</span>
+    <span class="n">_List_node_base</span><span class="o">*</span> <span class="n">_M_next</span><span class="p">;</span>   <span class="c1">///&amp;lt; Self-explanatory</span>
+    <span class="n">_List_node_base</span><span class="o">*</span> <span class="n">_M_prev</span><span class="p">;</span>   <span class="c1">///&amp;lt; Self-explanatory</span>
+    <span class="p">...</span>
+<span class="p">};</span>
+
+<span class="k">template</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="k">typename</span> <span class="n">_Tp</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
+<span class="k">struct</span> <span class="nl">_List_node</span> <span class="p">:</span> <span class="k">public</span> <span class="n">_List_node_base</span>
+<span class="p">{</span>
+  <span class="n">_Tp</span> <span class="n">_M_data</span><span class="p">;</span>                <span class="c1">///&amp;lt; User&#39;s data.</span>
+<span class="p">};</span>
+
+<span class="k">template</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="k">typename</span> <span class="n">_Tp</span><span class="p">,</span> <span class="k">typename</span> <span class="n">_Alloc</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
+<span class="k">class</span> <span class="nc">_List_base</span>
+<span class="p">{</span>
+    <span class="p">...</span>
+  <span class="k">struct</span> <span class="nl">_List_impl</span>
+  <span class="p">:</span> <span class="k">public</span> <span class="n">_Node_alloc_type</span>
+  <span class="p">{</span>
+<span class="n">_List_node_base</span> <span class="n">_M_node</span><span class="p">;</span>
+    <span class="p">...</span>
+  <span class="p">};</span>
+
+  <span class="n">_List_impl</span> <span class="n">_M_impl</span><span class="p">;</span>
+
+
+<span class="k">template</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="k">typename</span> <span class="n">_Tp</span><span class="p">,</span> <span class="k">typename</span> <span class="n">_Alloc</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">allocator</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Tp</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
+<span class="k">class</span> <span class="nc">list</span> <span class="o">:</span> <span class="k">protected</span> <span class="n">_List_base</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Tp</span><span class="p">,</span> <span class="n">_Alloc</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p>所以<code>sizeof(list&lt;xx&gt;)=16</code>，两个指针。每一个真正的节点首先是包含两个指针，然后是元素内容(<code>_List_node</code>)。</p>
+
+<p>通过代码输出list的内容：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="cp">#define NEXT(ptr, T) do { \</span>
+<span class="cp">        void &lt;em&gt;n = &lt;/em&gt;(char&lt;strong&gt;)ptr; \</span>
+<span class="cp">        T val = &lt;em&gt;(T&lt;/em&gt;)((char&lt;/strong&gt;)ptr + 2); \</span>
+<span class="cp">        printf(&amp;ldquo;list item %p val: 0x%x\n&amp;rdquo;, ptr, val); \</span>
+<span class="cp">        ptr = n; \</span>
+<span class="cp">    } while (0)&lt;/p&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">template</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
+<span class="kt">void</span> <span class="nf">ds_list_i</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">p</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="kt">char</span><span class="o">**</span><span class="p">)</span><span class="n">p</span><span class="p">;</span>
+
+    <span class="n">NEXT</span><span class="p">(</span><span class="n">ptr</span><span class="p">,</span> <span class="n">T</span><span class="p">);</span>
+    <span class="n">NEXT</span><span class="p">(</span><span class="n">ptr</span><span class="p">,</span> <span class="n">T</span><span class="p">);</span>
+    <span class="n">NEXT</span><span class="p">(</span><span class="n">ptr</span><span class="p">,</span> <span class="n">T</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">size_t</span> <span class="nf">ds_list</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">list</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="kt">int</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="n">lst</span><span class="p">;</span>
+    <span class="n">lst</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x11</span><span class="p">);</span>
+    <span class="n">lst</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x22</span><span class="p">);</span>
+    <span class="n">lst</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x33</span><span class="p">);</span>
+    <span class="n">ds_list_i</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="kt">int</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">lst</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">lst</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p>在gdb中可以以下方式遍历该list：</p>
+
+<pre><code>(gdb) p p
+$4 = (void *) 0x7fffffffe390
+(gdb) x/1a p
+0x7fffffffe390: 0x606080
+(gdb) x/1xw 0x606080+16         # 元素1 
+0x606090:       0x00000011
+(gdb) x/1a 0x606080
+0x606080:       0x6060a0
+(gdb) x/1xw 0x6060a0+16         # 元素2
+0x6060b0:       0x00000022
+</code></pre>
+
+<h2>map</h2>
+
+<p>map使用的是红黑树实现，实际使用的是<code>stl_tree.h</code>实现：</p>
+
+<p><code>bits/stl_map.h</code></p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">typedef</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Rb_tree</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">key_type</span><span class="p">,</span> <span class="n">value_type</span><span class="p">,</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Select1st</span><span class="o">&lt;</span><span class="n">value_type</span><span class="o">&gt;</span><span class="p">,</span>
+               <span class="n">key_compare</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Pair_alloc_type</span><span class="o">&gt;</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Rep_type</span><span class="p">;</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+     <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Rep_type</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_t</span><span class="p">;</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>  <span class="n">iterator</span>
+  <span class="n">begin</span><span class="p">()</span>
+  <span class="p">{</span> <span class="k">return</span> <span class="n">_M_t</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span> <span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p><code>bits/stl_tree.h</code></p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">struct</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Rb_tree_node_base</span>
+      <span class="p">{</span>
+        <span class="k">typedef</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Rb_tree_node_base</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Base_ptr</span><span class="p">;</span>
+        <span class="k">typedef</span> <span class="k">const</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Rb_tree_node_base</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">_Const_Base_ptr</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="n">_Rb_tree_color</span>  <span class="n">_M_color</span><span class="p">;</span>
+    <span class="n">_Base_ptr</span>       <span class="n">_M_parent</span><span class="p">;</span>
+    <span class="n">_Base_ptr</span>       <span class="n">_M_left</span><span class="p">;</span>
+    <span class="n">_Base_ptr</span>       <span class="n">_M_right</span><span class="p">;</span>
+
+    <span class="p">...</span>
+  <span class="p">};</span>
+
+<span class="k">template</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="k">typename</span> <span class="n">_Val</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
+<span class="k">struct</span> <span class="nl">_Rb_tree_node</span> <span class="p">:</span> <span class="k">public</span> <span class="n">_Rb_tree_node_base</span>
+<span class="p">{</span>
+  <span class="k">typedef</span> <span class="n">_Rb_tree_node</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Val</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">*</span> <span class="n">_Link_type</span><span class="p">;</span>
+  <span class="n">_Val</span> <span class="n">_M_value_field</span><span class="p">;</span>
+<span class="p">};</span>
+
+
+<span class="k">template</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="k">typename</span> <span class="n">_Key_compare</span><span class="p">,</span>
+       <span class="kt">bool</span> <span class="n">_Is_pod_comparator</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">__is_pod</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Key_compare</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">::</span><span class="n">__value</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="nl">_Rb_tree_impl</span> <span class="p">:</span> <span class="k">public</span> <span class="n">_Node_allocator</span>
+    <span class="p">{</span>
+  <span class="n">_Key_compare</span>      <span class="n">_M_key_compare</span><span class="p">;</span>
+  <span class="n">_Rb_tree_node_base</span>    <span class="n">_M_header</span><span class="p">;</span>
+  <span class="n">size_type</span>         <span class="n">_M_node_count</span><span class="p">;</span> <span class="c1">// Keeps track of size of tree.</span>
+  <span class="p">...</span>
+    <span class="p">}</span>
+
+<span class="n">_Rb_tree_impl</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Compare</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="n">_M_impl</span><span class="p">;</span>
+<span class="p">...</span>
+
+  <span class="n">iterator</span>
+  <span class="n">begin</span><span class="p">()</span>
+  <span class="p">{</span>
+<span class="k">return</span> <span class="n">iterator</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Link_type</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
+        <span class="p">(</span><span class="k">this</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">_M_impl</span><span class="p">.</span><span class="n">_M_header</span><span class="p">.</span><span class="n">_M_left</span><span class="p">));</span>
+  <span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p>所以可以看出，大部分时候(取决于<code>_M_key_compare</code>) <code>sizeof(map&lt;xx&gt;)=48</code>，主要的元素是：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Rb_tree_color</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_color</span><span class="p">;</span> <span class="c1">// 节点颜色</span>
+        <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Base_ptr</span>       <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_parent</span><span class="p">;</span> <span class="c1">// 父节点</span>
+        <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Base_ptr</span>       <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_left</span><span class="p">;</span> <span class="c1">// 左节点</span>
+        <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Base_ptr</span>       <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_right</span><span class="p">;</span> <span class="c1">// 右节点</span>
+        <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Val</span>            <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_value_field</span> <span class="c1">// 同list中节点技巧一致，后面是实际的元素</span></code></pre></div></p>
+
+<p>同list中的实现一致，map本身作为一个节点，其不是一个存储数据的节点，</p>
+
+<p><code>_Rb_tree::end</code></p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">iterator</span>
+      <span class="nf">end</span><span class="p">()</span>
+      <span class="p">{</span> <span class="k">return</span> <span class="n">iterator</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="n">_Link_type</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="k">this</span><span class="o">-&gt;&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_impl</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_header</span><span class="p">));</span> <span class="p">}</span></code></pre></div></p>
+
+<p>由于节点值在<code>_Rb_tree_node_base</code>后，所以任意时候拿到节点就可以偏移这个结构体拿到节点值，节点的值是一个pair，包含了key和value。</p>
+
+<p>在gdb中打印以下map的内容：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">size_t</span> <span class="nf">ds_map</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span> <span class="kt">int</span><span class="o">&gt;</span> <span class="n">imap</span><span class="p">;</span>
+        <span class="n">imap</span><span class="p">[</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">abc</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;]</span> <span class="o">=</span> <span class="mh">0xbbb</span><span class="p">;</span>
+        <span class="k">return</span> <span class="n">imap</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+    <span class="p">}</span></code></pre></div></p>
+
+<pre><code>(gdb) p/x &amp;imap
+$7 = 0x7fffffffe370
+(gdb) x/1a (char*)&amp;imap+24       # _M_left 真正的节点
+0x7fffffffe388: 0x606040          
+(gdb) x/1xw 0x606040+32+8        # 偏移32字节是节点值的地址，再偏移8则是value的地址
+0x606068:       0x00000bbb
+(gdb) p *(char**)(0x606040+32)   # 偏移32字节是string的地址
+$8 = 0x606028 "abc"
+</code></pre>
+
+<p>或者很多时候没有必要这么装逼+蛋疼：</p>
+
+<pre><code>(gdb) p *(char**)(imap._M_t._M_impl._M_header._M_left+1)
+$9 = 0x606028 "abc"
+(gdb) x/1xw (char*)(imap._M_t._M_impl._M_header._M_left+1)+8
+0x606068:       0x00000bbb
+</code></pre>
+
+<p><em>完</em></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[linux动态库的种种要点]]></title>
@@ -1084,207 +1457,6 @@ Dump of assembler code for function Derived::~Derived():
 </code></pre>
 
 <p><em>END</em></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[C/C++中手动获取调用堆栈]]></title>
-    <link href="http://codemacro.com/2014/09/02/stack-frame/"/>
-    <updated>2014-09-02T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2014/09/02/stack-frame</id>
-    <content type="html"><![CDATA[<p>当我们的程序core掉之后，如果能获取到core时的函数调用堆栈将非常有利于定位问题。在Windows下可以使用<a href="http://blog.csdn.net/starlee/article/details/6630816">SEH机制</a>；在Linux下通过gdb使用coredump文件即可。</p>
-
-<p>但有时候由于某些错误导致堆栈被破坏，发生拿不到调用堆栈的情况。</p>
-
-<p>一些基础预备知识本文不再详述，可以参考以下文章：</p>
-
-<ul>
-<li><a href="http://hutaow.com/blog/2013/10/15/dump-stack/">函数调用栈的获取原理分析</a></li>
-<li><a href="http://www.findfunaax.com/notes/file/262">寄存器、函数调用与栈帧</a></li>
-</ul>
-
-
-<p>需要知道的信息：</p>
-
-<ul>
-<li>函数调用对应的<code>call</code>指令本质上是先压入下一条指令的地址到堆栈，然后跳转到目标函数地址</li>
-<li>函数返回指令<code>ret</code>则是从堆栈取出一个地址，然后跳转到该地址</li>
-<li>EBP寄存器始终指向当前执行函数相关信息（局部变量）所在栈中的位置，ESP则始终指向栈顶</li>
-<li>每一个函数入口都会保存调用者的EBP值，在出口处都会重设EBP值，从而实现函数调用的现场保存及现场恢复</li>
-<li>64位机器增加了不少寄存器，从而使得函数调用的参数大部分时候可以通过寄存器传递；同时寄存器名字发生改变，例如EBP变为RBP</li>
-</ul>
-
-
-<p>在函数调用中堆栈的情况可用下图说明：</p>
-
-<!-- more -->
-
-
-<p><img src="/assets/res/stack_frame/stack_frame.png" alt="" /></p>
-
-<p>将代码对应起来：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">g</span><span class="p">()</span> <span class="p">{</span>
-    <span class="kt">int</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">p</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-    <span class="kt">long</span> <span class="n">a</span> <span class="o">=</span> <span class="mh">0x1234</span><span class="p">;</span>
-    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">%</span><span class="n">p</span> <span class="o">%</span><span class="n">x</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">a</span><span class="p">,</span> <span class="n">a</span><span class="p">);</span>
-    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">%</span><span class="n">p</span> <span class="o">%</span><span class="n">x</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="p">);</span>
-    <span class="n">f</span><span class="p">();</span>
-    <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">p</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
-<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">b</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">%</span><span class="n">p</span> <span class="o">%</span><span class="n">p</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">argc</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">argv</span><span class="p">);</span>
-    <span class="n">g</span><span class="p">();</span>
-<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">b</span><span class="p">(</span><span class="n">argc</span><span class="p">,</span> <span class="n">argv</span><span class="p">);</span>
-    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span></code></pre></div></p>
-
-<p>在函数<code>g()</code>中断点，看看堆栈中的内容(64位机器)：</p>
-
-<pre><code>(gdb) p $rbp
-$2 = (void *) 0x7fffffffe370
-(gdb) p &amp;p
-$3 = (int **) 0x7fffffffe368
-(gdb) p $rsp
-$4 = (void *) 0x7fffffffe360
-(gdb) x/8ag $rbp-16
-0x7fffffffe360: 0x1234  0x0
-0x7fffffffe370: 0x7fffffffe390  0x400631 &lt;b(int, char**)+43&gt;
-0x7fffffffe380: 0x7fffffffe498  0x1a561cbc0
-0x7fffffffe390: 0x7fffffffe3b0  0x40064f &lt;main(int, char**)+27&gt;
-</code></pre>
-
-<p>对应的堆栈图：</p>
-
-<p><img src="/assets/res/stack_frame/stack_frame_ex.png" alt="" /></p>
-
-<p>可以看看例子中<code>0x400631 &lt;b(int, char**)+43&gt;</code>和<code>0x40064f &lt;main(int, char**)+27&gt;</code>中的代码：</p>
-
-<pre><code>(gdb) disassemble 0x400631
-...
-0x0000000000400627 &lt;b(int, char**)+33&gt;: callq  0x400468 &lt;printf@plt&gt;
-0x000000000040062c &lt;b(int, char**)+38&gt;: callq  0x4005ae &lt;g()&gt;
-0x0000000000400631 &lt;b(int, char**)+43&gt;: leaveq                           # call的下一条指令
-...
-
-(gdb) disassemble 0x40064f
-... 
-0x000000000040063f &lt;main(int, char**)+11&gt;:      mov    %rsi,-0x10(%rbp)
-0x0000000000400643 &lt;main(int, char**)+15&gt;:      mov    -0x10(%rbp),%rsi
-0x0000000000400647 &lt;main(int, char**)+19&gt;:      mov    -0x4(%rbp),%edi
-0x000000000040064a &lt;main(int, char**)+22&gt;:      callq  0x400606 &lt;b(int, char**)&gt;
-0x000000000040064f &lt;main(int, char**)+27&gt;:      mov    $0x0,%eax         # call的下一条指令
-...
-</code></pre>
-
-<p>顺带一提，每个函数入口和出口，对应的设置RBP代码为：</p>
-
-<pre><code>(gdb) disassemble g
-...
-0x00000000004005ae &lt;g()+0&gt;:     push   %rbp               # 保存调用者的RBP到堆栈
-0x00000000004005af &lt;g()+1&gt;:     mov    %rsp,%rbp          # 设置自己的RBP
-...
-0x0000000000400603 &lt;g()+85&gt;:    leaveq                    # 等同于：movq %rbp, %rsp
-                                                          #         popq %rbp
-0x0000000000400604 &lt;g()+86&gt;:    retq                      
-</code></pre>
-
-<p>由以上可见，<strong>通过当前的RSP或RBP就可以找到调用堆栈中所有函数的RBP；找到了RBP就可以找到函数地址</strong>。因为，任何时候的RBP指向的堆栈位置就是上一个函数的RBP；而任何时候RBP所在堆栈中的前一个位置就是函数返回地址。</p>
-
-<p>由此我们可以自己构建一个导致gdb无法取得调用堆栈的例子：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">f</span><span class="p">()</span> <span class="p">{</span>
-    <span class="kt">long</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">p</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-    <span class="n">p</span> <span class="o">=</span> <span class="p">(</span><span class="kt">long</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">p</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span> <span class="c1">// 取得g()的RBP</span>
-    <span class="o">*</span><span class="n">p</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>  <span class="c1">// 破坏g()的RBP</span>
-<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">g</span><span class="p">()</span> <span class="p">{</span>
-    <span class="kt">int</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">p</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-    <span class="kt">long</span> <span class="n">a</span> <span class="o">=</span> <span class="mh">0x1234</span><span class="p">;</span>
-    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">%</span><span class="n">p</span> <span class="o">%</span><span class="n">x</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">a</span><span class="p">,</span> <span class="n">a</span><span class="p">);</span>
-    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">%</span><span class="n">p</span> <span class="o">%</span><span class="n">x</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="p">);</span>
-    <span class="n">f</span><span class="p">();</span>
-    <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">p</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="c1">// 写0地址导致一次core</span>
-<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">b</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">%</span><span class="n">p</span> <span class="o">%</span><span class="n">p</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">argc</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">argv</span><span class="p">);</span>
-    <span class="n">g</span><span class="p">();</span>
-<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">b</span><span class="p">(</span><span class="n">argc</span><span class="p">,</span> <span class="n">argv</span><span class="p">);</span>
-    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span></code></pre></div></p>
-
-<p>使用gdb运行该程序：</p>
-
-<pre><code>Program received signal SIGSEGV, Segmentation fault.
-g () at ebp.c:37
-37          *p = 1;
-(gdb) bt
-Cannot access memory at address 0x8
-(gdb) p $rbp
-$1 = (void *) 0x0
-</code></pre>
-
-<p><code>bt</code>无法获取堆栈，在函数<code>g()</code>中RBP被改写为0，gdb从0偏移一个地址长度即0x8，尝试从0x8内存位置获取函数地址，然后提示<code>Cannot access memory at address 0x8</code>。</p>
-
-<p><strong>RBP出现了问题，我们就可以通过RSP来手动获取调用堆栈。</strong>因为RSP是不会被破坏的，要通过RSP获取调用堆栈则需要偏移一些局部变量所占的空间：</p>
-
-<pre><code>(gdb) p $rsp
-$2 = (void *) 0x7fffffffe360
-(gdb) x/8ag $rsp+16             # g()中局部变量占16字节
-0x7fffffffe370: 0x7fffffffe390  0x400631 &lt;b(int, char**)+43&gt;
-0x7fffffffe380: 0x7fffffffe498  0x1a561cbc0
-0x7fffffffe390: 0x7fffffffe3b0  0x40064f &lt;main(int, char**)+27&gt;
-0x7fffffffe3a0: 0x7fffffffe498  0x100000000
-</code></pre>
-
-<p>基于以上就可以手工找到调用堆栈：</p>
-
-<pre><code>g()
-0x400631 &lt;b(int, char**)+43&gt;
-0x40064f &lt;main(int, char**)+27&gt;
-</code></pre>
-
-<p>上面的例子本质上也是破坏堆栈，并且仅仅破坏了保存了的RBP。在实际情况中，堆栈可能会被破坏得更多，则可能导致手动定位也较困难。</p>
-
-<p>堆栈被破坏还可能导致更多的问题，例如覆盖了函数返回地址，则会导致RIP错误；例如堆栈的不平衡。导致堆栈被破坏的原因也有很多，例如局部数组越界；<a href="http://codemacro.com/2013/08/15/debug-esp-bug/">delete/free栈上对象等</a>。</p>
-
-<h2>omit-frame-pointer</h2>
-
-<p>使用RBP获取调用堆栈相对比较容易。但现在编译器都可以设置不使用RBP(gcc使用-fomit-frame-pointer，msvc使用/Oy)，对于函数而言不设置其RBP意味着可以节省若干条指令。在函数内部则完全使用RSP的偏移来定位局部变量，包括嵌套作用域里的局部变量，即使程序实际运行时不会进入这个作用域。</p>
-
-<p>例如：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">f2</span><span class="p">()</span> <span class="p">{</span>
-    <span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mh">0x1234</span><span class="p">;</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">a</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-        <span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="mh">0xff</span><span class="p">;</span>
-        <span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="p">;</span>
-    <span class="p">}</span>
-<span class="p">}</span></code></pre></div></p>
-
-<p>gcc中使用<code>-fomit-frame-pointer</code>生成的代码为：</p>
-
-<pre><code>(gdb) disassemble f2
-Dump of assembler code for function f2:
-0x00000000004004a5 &lt;f2+0&gt;:      movl   $0x1234,-0x8(%rsp)    # int a = 0x1234
-0x00000000004004ad &lt;f2+8&gt;:      cmpl   $0x0,-0x8(%rsp)       
-0x00000000004004b2 &lt;f2+13&gt;:     jle    0x4004c4 &lt;f2+31&gt;      
-0x00000000004004b4 &lt;f2+15&gt;:     movl   $0xff,-0x4(%rsp)      # int b = 0xff
-0x00000000004004bc &lt;f2+23&gt;:     mov    -0x8(%rsp),%eax
-0x00000000004004c0 &lt;f2+27&gt;:     mov    %eax,-0x4(%rsp)
-0x00000000004004c4 &lt;f2+31&gt;:     retq
-</code></pre>
-
-<p>可以发现<code>f2()</code>没有操作<code>RBP</code>之类的指令了。</p>
 ]]></content>
   </entry>
   
