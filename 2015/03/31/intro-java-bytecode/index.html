@@ -1,0 +1,388 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>初识JVM byte code - loop in codes</title>
+  <meta name="author" content="Kevin Lynx">
+
+  
+  <meta name="description" content="关于JVM和其上的byte code，网上其实有足够多的资料了，我这里就简单做个提纲和介绍，权当记录吧。 stack-based VM Java byte code运行在JVM上，就像机器指令运行在物理机上，是需要遵循这个机器的指令规范的。所以认识JVM byte code， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://codemacro.com/2015/03/31/intro-java-bytecode">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <!--script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script-->
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<!--link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css"-->
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">loop in codes</a></h1>
+  
+    <h2>Kevin Lynx BLOG</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:codemacro.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about.html">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">初识JVM byte code</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-03-31T00:00:00+08:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>31</span><span class='date-suffix'>st</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>关于JVM和其上的byte code，网上其实有足够多的资料了，我这里就简单做个提纲和介绍，权当记录吧。</p>
+
+<h2>stack-based VM</h2>
+
+<p>Java byte code运行在JVM上，就像机器指令运行在物理机上，是需要遵循这个机器的指令规范的。所以认识JVM byte code，是需要稍微了解下JVM的。JVM是一个基于栈(stack-based)的虚拟机。很久以前我还写过类似<a href="http://www.cppblog.com/kevinlynx/archive/2010/04/15/112704.html">简单的虚拟机</a>。</p>
+
+<p>基于栈的虚拟机其操作数和指令运算的中间结果全部都在一个虚拟栈中，与之对应的是基于寄存器(register-based)的虚拟机，其操作数和指令运算结果会存放在若干个寄存器（也就是存储单元）里。x86机器就可以理解为基于寄存器的机器。</p>
+
+<p>byte code其实和x86汇编代码本质一样，无非是对应机器制定的一堆指令，这里可以举例说明下两类虚拟机的不同：</p>
+
+<pre><code># stack-based 
+push 1       # 压立即数1到栈顶
+push 2       # 压立即数2到栈顶
+add          # 弹出栈顶2个数相加，将结果3压到栈顶
+
+# register-based
+mov ax, 1    # 写立即数到寄存器ax
+add ax, 2    # 取ax中的值1与立即数2进行相加，存放结果到ax
+</code></pre>
+
+<p>关于两类实现的比较，网上也有不少资料，例如<a href="http://www.zhihu.com/question/20207106">Dalvik 虚拟机和 Sun JVM 在架构和执行方面有什么本质区别？</a>。</p>
+
+<!-- more -->
+
+
+<p><em>至于有人说基于栈的虚拟机更利于移植，我不是很理解，因为即使是基于寄存器的实现，也不一定真的必须把这些寄存器映射到物理机CPU上的寄存器，使用内存来模拟性能上跟基于栈的方式不是八九不离十吗？</em></p>
+
+<p>了解了JVM的这个特点，JVM上的各种指令就可以更好地理解，如果要理解JVM如何运行byte code的，那还需要了解JVM内部的各种结构，例如符号解析、class loader、内存分配甚至垃圾回收等。这个以后再谈。</p>
+
+<h2>byte-code</h2>
+
+<p><code>*.class</code>文件就已经是编译好的byte code文件，就像C/C++编译出来的目标文件一样，已经是各种二进制指令了。这个时候可以通过JDK中带的<code>javap</code>工具来反汇编，以查看对应的byte code。</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="c1">// Test.java</span>
+    <span class="kd">public</span> <span class="kd">class</span> <span class="nc">Test</span> <span class="o">{</span>
+        <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+            <span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mh">0xae</span><span class="o">;</span>
+            <span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="mh">0x10</span><span class="o">;</span>
+            <span class="kt">int</span> <span class="n">c</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="o">;</span>
+            <span class="kt">int</span> <span class="n">d</span> <span class="o">=</span> <span class="n">c</span> <span class="o">+</span> <span class="mi">1</span><span class="o">;</span>
+            <span class="n">String</span> <span class="n">s</span><span class="o">;</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="s">&quot;hello&quot;</span><span class="o">;</span>
+        <span class="o">}</span>
+    <span class="o">}</span></code></pre></div>
+
+
+<p>编译该文件：<code>javac Test.java</code>得到<code>Test.class</code>，然后<code>javap -c Test</code>即得到：</p>
+
+<pre><code>Compiled from "Test.java"
+public class Test {
+  public Test();
+    Code:
+       0: aload_0
+       1: invokespecial #1                  // Method java/lang/Object."&lt;init&gt;":()V
+       4: return
+
+  public static void main(java.lang.String[]);
+    Code:
+       0: sipush        174           # push a short onto the stack 0xae=174
+       3: istore_1                    # store int value into variable 1: a = 0xae
+       4: bipush        16            # push a byte onto the stack 0x10=16
+       6: istore_2                    # store int value into variable 2: b = 0x10
+       7: iload_1                     # load value from variable 1 and push onto the stack
+       8: iload_2                   
+       9: iadd                        # add two ints: a + b
+      10: istore_3                    # c = a + b
+      11: iload_3                     
+      12: iconst_1                    # 1
+      13: iadd                        # c + 1
+      14: istore        4             # d = c + 1
+      16: ldc           #2                  // String hello
+      18: astore        5
+      20: return
+}
+</code></pre>
+
+<p>这个时候对照着JVM指令表看上面的代码，比起x86汇编浅显易懂多了，秒懂，参考<a href="http://en.wikipedia.org/wiki/Java_bytecode_instruction_listings">Java bytecode instruction listings</a>。JVM中每个指令只占一个字节，操作数是变长的，所以其一条完整的指令（操作码+操作数）也是变长的。上面每条指令前都有一个偏移，实际是按字节来偏移的。<em>想起Lua VM的指令竟然是以bit来干的</em></p>
+
+<p>从上面的byte code中，以x86汇编的角度来看会发现一些不同的东西：</p>
+
+<ul>
+<li>局部变量竟是以索引来区分：<code>istore_1</code> 写第一个局部变量，<code>istore_2</code>写第二个局部变量，第4个局部变量则需要用操作数来指定了：<code>istore 4</code></li>
+<li>函数调用<code>invokespecial #1</code>竟然也是类似的索引，这里调用的是<code>Object</code>基类构造函数</li>
+<li>常量字符串也是类似的索引：<code>ldc #2</code></li>
+<li><code>*.class</code>中是不是也分了常量数据段和代码段呢</li>
+</ul>
+
+
+<p>以上需要我们进一步了解<code>*.class</code>文件的格式。</p>
+
+<h2>class file format</h2>
+
+<p>class 文件格式网上也有讲得很详细的了，例如这篇<a href="http://www.importnew.com/15161.html">Java Class文件详解</a>。整个class文件完全可以用以下结构来描述：</p>
+
+<pre><code>ClassFile {
+    u4 magic;                                        //魔数
+    u2 minor_version;                                //次版本号
+    u2 major_version;                                //主版本号
+    u2 constant_pool_count;                          //常量池大小
+    cp_info constant_pool[constant_pool_count-1];    //常量池
+    u2 access_flags;                                 //类和接口层次的访问标志（通过|运算得到）
+    u2 this_class;                                   //类索引（指向常量池中的类常量）
+    u2 super_class;                                  //父类索引（指向常量池中的类常量）
+    u2 interfaces_count;                             //接口索引计数器
+    u2 interfaces[interfaces_count];                 //接口索引集合
+    u2 fields_count;                                 //字段数量计数器
+    field_info fields[fields_count];                 //字段表集合
+    u2 methods_count;                                //方法数量计数器
+    method_info methods[methods_count];              //方法表集合
+    u2 attributes_count;                             //属性个数
+    attribute_info attributes[attributes_count];     //属性表
+}
+</code></pre>
+
+<p>这明显已经不是以区段来分的格式了，上面提到的函数索引、常量字符串索引，都是保存在<code>constant_pool</code>常量池中。常量池中存储了很多信息，包括：</p>
+
+<ul>
+<li>各种字面常量，例如字符串</li>
+<li>类、数据成员、接口引用</li>
+</ul>
+
+
+<p>常量池的索引从1开始。对于上面例子<code>Test.java</code>，可以使用<code>javap -v Test</code>来查看其中的常量池，例如：</p>
+
+<pre><code>Constant pool:
+   #1 = Methodref          #4.#13         //  java/lang/Object."&lt;init&gt;":()V
+   #2 = String             #14            //  hello
+   #3 = Class              #15            //  Test
+   #4 = Class              #16            //  java/lang/Object
+   #5 = Utf8               &lt;init&gt;
+   #6 = Utf8               ()V
+   #7 = Utf8               Code
+   #8 = Utf8               LineNumberTable
+   #9 = Utf8               main
+  #10 = Utf8               ([Ljava/lang/String;)V
+  #11 = Utf8               SourceFile
+  #12 = Utf8               Test.java
+  #13 = NameAndType        #5:#6          //  "&lt;init&gt;":()V
+  #14 = Utf8               hello
+  #15 = Utf8               Test
+  #16 = Utf8               java/lang/Object
+</code></pre>
+
+<p>每一个类都会有一个常量池。</p>
+
+<h2>summary</h2>
+
+<p>要想了解JVM运行byte code，还需要了解更多JVM本身的东西，例如符号解析，内存管理等，可参考：</p>
+
+<ul>
+<li><a href="http://blog.jamesdbloom.com/JVMInternals.html">JVM Internals</a></li>
+<li><a href="http://www.cubrid.org/blog/dev-platform/understanding-jvm-internals/">Understanding JVM Internals</a></li>
+</ul>
+
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2015/03/31/intro-java-bytecode/'>http://codemacro.com/2015/03/31/intro-java-bytecode/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-03-31T00:00:00+08:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>31</span><span class='date-suffix'>st</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/categories/java/'>java</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/2014/12/03/gdb_stl/" title="Previous Post: 基于内存查看STL常用容器内容">&laquo; 基于内存查看STL常用容器内容</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (21)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (1)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2015/03/31/intro-java-bytecode/">初识JVM byte code</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2014/12/03/gdb_stl/">基于内存查看STL常用容器内容</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2014/11/04/linux-dynamic-library/">linux动态库的种种要点</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2014/10/19/zk-fastleaderelection/">图解zookeeper FastLeader选举算法</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2014/10/15/explain-poxos/">图解分布式一致性协议Paxos</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+<div id="recentcomments" class="dsq-widget">
+<h1 class="dsq-widget-title">Recent Comments</h1>
+<script type="text/javascript" src="http://loopincodes.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
+</div>
+<a href="http://disqus.com/">Powered by Disqus</a>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(21)</a> <a href='/categories/clang' style='font-size: 102.85714285714286%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 122.85714285714286%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.42857142857143%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.71428571428571%'>ice(2)</a> <a href='/categories/java' style='font-size: 102.85714285714286%'>java(1)</a> <a href='/categories/javascript' style='font-size: 102.85714285714286%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 114.28571428571429%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 114.28571428571429%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.57142857142857%'>module(3)</a> <a href='/categories/network' style='font-size: 134.28571428571428%'>network(12)</a> <a href='/categories/other' style='font-size: 120.0%'>other(7)</a> <a href='/categories/ruby' style='font-size: 111.42857142857143%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.85714285714286%'>scala(1)</a> <a href='/categories/tips' style='font-size: 160.0%'>tips(21)</a> <a href='/categories/web' style='font-size: 111.42857142857143%'>web(4)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - Kevin Lynx -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
+<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
+
+</p>
+
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'loopincodes';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://codemacro.com/2015/03/31/intro-java-bytecode/';
+        var disqus_url = 'http://codemacro.com/2015/03/31/intro-java-bytecode/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

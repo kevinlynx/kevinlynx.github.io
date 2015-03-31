@@ -4,7 +4,7 @@
   <title><![CDATA[Category: c/c++ | loop in codes]]></title>
   <link href="http://codemacro.com/categories/c-slash-c-plus-plus/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-12-03T22:05:50+08:00</updated>
+  <updated>2015-03-31T20:35:52+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -26,66 +26,68 @@
 
 <p>string，即<code>basic_string</code> <code>bits/basic_string.h</code>：</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">mutable</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Alloc_hider</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_dataplus</span><span class="p">;</span>
-    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-      <span class="k">const</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">CharT</span><span class="o">*</span>
-      <span class="n">c_str</span><span class="p">()</span> <span class="k">const</span>
-      <span class="p">{</span> <span class="k">return</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_data</span><span class="p">();</span> <span class="p">}</span>
-    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>  <span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
-      <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">CharT</span><span class="o">*</span>
-      <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_data</span><span class="p">()</span> <span class="k">const</span>
-      <span class="p">{</span> <span class="k">return</span>  <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_dataplus</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_p</span><span class="p">;</span> <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+    mutable <em>Alloc_hider  </em>M_dataplus;
+    &hellip;
+      const <em>CharT*
+      c_str() const
+      { return </em>M_data(); }
+    &hellip;  <br/>
+      <em>CharT*
+      </em>M_data() const
+      { return  <em>M_dataplus.</em>M_p; }</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="p">...</span>
-  <span class="k">struct</span> <span class="nl">_Alloc_hider</span> <span class="p">:</span> <span class="n">_Alloc</span>
-  <span class="p">{</span>
-<span class="n">_Alloc_hider</span><span class="p">(</span><span class="n">_CharT</span><span class="o">*</span> <span class="n">__dat</span><span class="p">,</span> <span class="k">const</span> <span class="n">_Alloc</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">__a</span><span class="p">)</span>
-<span class="o">:</span> <span class="n">_Alloc</span><span class="p">(</span><span class="n">__a</span><span class="p">),</span> <span class="n">_M_p</span><span class="p">(</span><span class="n">__dat</span><span class="p">)</span> <span class="p">{</span> <span class="p">}</span>
+<pre><code>...
+  struct _Alloc_hider : _Alloc
+  {
+_Alloc_hider(_CharT* __dat, const _Alloc&amp; __a)
+: _Alloc(__a), _M_p(__dat) { }
 
-<span class="n">_CharT</span><span class="o">*</span> <span class="n">_M_p</span><span class="p">;</span> <span class="c1">// The actual data.</span>
-  <span class="p">};</span>
+_CharT* _M_p; // The actual data.
+  };
 
-  <span class="n">size_type</span>
-  <span class="n">length</span><span class="p">()</span> <span class="k">const</span>
-  <span class="p">{</span> <span class="k">return</span> <span class="n">_M_rep</span><span class="p">()</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">_M_length</span><span class="p">;</span> <span class="p">}</span>
+  size_type
+  length() const
+  { return _M_rep()-&gt;_M_length; }
 
-  <span class="n">_Rep</span><span class="o">*</span>
-  <span class="n">_M_rep</span><span class="p">()</span> <span class="k">const</span>
-  <span class="p">{</span> <span class="k">return</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;((</span><span class="k">reinterpret_cast</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Rep</span><span class="o">*&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="p">(</span><span class="n">_M_data</span><span class="p">()))[</span><span class="o">-</span><span class="mi">1</span><span class="p">]);</span> <span class="p">}</span>
+  _Rep*
+  _M_rep() const
+  { return &amp;((reinterpret_cast&lt;_Rep*&gt; (_M_data()))[-1]); }
 
-  <span class="p">...</span>
-   <span class="k">struct</span> <span class="n">_Rep_base</span>
-  <span class="p">{</span>
-<span class="n">size_type</span>       <span class="n">_M_length</span><span class="p">;</span>
-<span class="n">size_type</span>       <span class="n">_M_capacity</span><span class="p">;</span>
-<span class="n">_Atomic_word</span>        <span class="n">_M_refcount</span><span class="p">;</span>
-  <span class="p">};</span>
+  ...
+   struct _Rep_base
+  {
+size_type       _M_length;
+size_type       _M_capacity;
+_Atomic_word        _M_refcount;
+  };
 
-  <span class="k">struct</span> <span class="nl">_Rep</span> <span class="p">:</span> <span class="n">_Rep_base</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+  struct _Rep : _Rep_base
+</code></pre>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+<p>{% endhighlight %}</p>
 
 <p>即，string内有一个指针，指向实际的字符串位置，这个位置前面有一个<code>_Rep</code>结构，其内保存了字符串的长度、可用内存以及引用计数。当我们拿到一个string对象的地址时，可以通过以下代码获取相关值：</p>
 
 <!-- more -->
 
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">ds_str_i</span><span class="p">(</span><span class="kt">void</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">p</span><span class="p">)</span> <span class="p">{</span>
-        <span class="kt">char</span> <span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">raw</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span><span class="p">)</span><span class="n">p</span><span class="p">;</span>
-        <span class="kt">char</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">s</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">raw</span><span class="p">;</span>
-        <span class="kt">size_t</span> <span class="n">len</span> <span class="o">=</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">(</span><span class="kt">size_t</span><span class="o">*</span><span class="p">)(</span><span class="n">s</span> <span class="o">-</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">size_t</span><span class="p">)</span> <span class="o">*</span> <span class="mi">3</span><span class="p">);</span>
-        <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="nl">str</span><span class="p">:</span> <span class="o">%</span><span class="n">s</span> <span class="p">(</span><span class="o">%</span><span class="n">zd</span><span class="p">)</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="n">s</span><span class="p">,</span> <span class="n">len</span><span class="p">);</span>
-    <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+    void ds_str_i(void <em>p) {
+        char <strong>raw = (char</strong>)p;
+        char </em>s = <em>raw;
+        size_t len = </em>(size_t*)(s - sizeof(size_t) * 3);
+        printf(&ldquo;str: %s (%zd)\n&rdquo;, s, len);
+    }</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">size_t</span> <span class="n">ds_str</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">s</span> <span class="o">=</span> <span class="s">&quot;hello&quot;</span><span class="p">;</span>
-    <span class="n">ds_str_i</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">s</span><span class="p">);</span>
-    <span class="k">return</span> <span class="n">s</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
-<span class="p">}</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+<pre><code>size_t ds_str() {
+    std::string s = "hello";
+    ds_str_i(&amp;s);
+    return s.size();
+}
+</code></pre>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+<p>{% endhighlight %}</p>
 
 <p>在gdb中拿到一个string的地址时，可以以下打印出该字符串及长度：</p>
 
@@ -101,68 +103,72 @@ $2 = 0x606028 "hello"
 
 <p>众所周知vector实现就是一块连续的内存，<code>bits/stl_vector.h</code>。</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">_Tp</span><span class="p">,</span> <span class="k">typename</span> <span class="n">_Alloc</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">allocator</span><span class="o">&lt;</span><span class="n">_Tp</span><span class="o">&gt;</span> <span class="o">&gt;</span>
-    <span class="k">class</span> <span class="nc">vector</span> <span class="o">:</span> <span class="k">protected</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Vector_base</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Tp</span><span class="p">,</span> <span class="n">_Alloc</span><span class="o">&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+    template<typename _Tp, typename _Alloc = std::allocator<_Tp> >
+    class vector : protected <em>Vector_base&lt;</em>Tp, _Alloc></p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="p">...</span>
-<span class="k">template</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="k">typename</span> <span class="n">_Tp</span><span class="p">,</span> <span class="k">typename</span> <span class="n">_Alloc</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
-<span class="k">struct</span> <span class="n">_Vector_base</span>
-<span class="p">{</span>
-  <span class="k">typedef</span> <span class="k">typename</span> <span class="n">_Alloc</span><span class="o">::</span><span class="k">template</span> <span class="n">rebind</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Tp</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">::</span><span class="n">other</span> <span class="n">_Tp_alloc_type</span><span class="p">;</span>
+<pre><code>...
+template&lt;typename _Tp, typename _Alloc&gt;
+struct _Vector_base
+{
+  typedef typename _Alloc::template rebind&lt;_Tp&gt;::other _Tp_alloc_type;
 
-  <span class="k">struct</span> <span class="nl">_Vector_impl</span>
-  <span class="p">:</span> <span class="k">public</span> <span class="n">_Tp_alloc_type</span>
-  <span class="p">{</span>
-<span class="n">_Tp</span><span class="o">*</span>           <span class="n">_M_start</span><span class="p">;</span>
-<span class="n">_Tp</span><span class="o">*</span>           <span class="n">_M_finish</span><span class="p">;</span>
-<span class="n">_Tp</span><span class="o">*</span>           <span class="n">_M_end_of_storage</span><span class="p">;</span>
-<span class="n">_Vector_impl</span><span class="p">(</span><span class="n">_Tp_alloc_type</span> <span class="k">const</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">__a</span><span class="p">)</span>
-<span class="o">:</span> <span class="n">_Tp_alloc_type</span><span class="p">(</span><span class="n">__a</span><span class="p">),</span> <span class="n">_M_start</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">_M_finish</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">_M_end_of_storage</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-<span class="p">{</span> <span class="p">}</span>
-  <span class="p">};</span>
+  struct _Vector_impl
+  : public _Tp_alloc_type
+  {
+_Tp*           _M_start;
+_Tp*           _M_finish;
+_Tp*           _M_end_of_storage;
+_Vector_impl(_Tp_alloc_type const&amp; __a)
+: _Tp_alloc_type(__a), _M_start(0), _M_finish(0), _M_end_of_storage(0)
+{ }
+  };
 
 
-  <span class="n">_Vector_impl</span> <span class="n">_M_impl</span><span class="p">;</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+  _Vector_impl _M_impl;
+</code></pre>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+<p>{% endhighlight %}</p>
 
 <p>可以看出<code>sizeof(vector&lt;xxx&gt;)=24</code>，其内也就是3个指针，<code>_M_start</code>指向首元素地址，<code>_M_finish</code>指向最后一个节点+1，<code>_M_end_of_storage</code>是可用空间最后的位置。</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">iterator</span>
-      <span class="nf">end</span><span class="p">()</span>
-      <span class="p">{</span> <span class="k">return</span> <span class="n">iterator</span> <span class="p">(</span><span class="k">this</span><span class="o">-&gt;&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_impl</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_finish</span><span class="p">);</span> <span class="p">}</span>
-      <span class="n">const_iterator</span>
-      <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-      <span class="n">begin</span><span class="p">()</span> <span class="k">const</span>
-      <span class="p">{</span> <span class="k">return</span> <span class="n">const_iterator</span> <span class="p">(</span><span class="k">this</span><span class="o">-&gt;&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_impl</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_start</span><span class="p">);</span> <span class="p">}</span>
-      <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-      <span class="n">size_type</span>
-      <span class="nf">capacity</span><span class="p">()</span> <span class="k">const</span>
-      <span class="p">{</span> <span class="k">return</span> <span class="n">size_type</span><span class="p">(</span><span class="n">const_iterator</span><span class="p">(</span><span class="k">this</span><span class="o">-&gt;&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_impl</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_end_of_storage</span><span class="p">)</span>
-             <span class="o">-</span> <span class="n">begin</span><span class="p">());</span> <span class="p">}</span></code></pre></div></p>
+<p>{% highlight c++ %}
+      iterator
+      end()
+      { return iterator (this-><em>M_impl.</em>M_finish); }
+      const_iterator
+      &hellip;
+      begin() const
+      { return const_iterator (this-><em>M_impl.</em>M_start); }
+      &hellip;
+      size_type
+      capacity() const
+      { return size_type(const_iterator(this-><em>M_impl.</em>M_end_of_storage)
+             - begin()); }
+{% endhighlight %}</p>
 
 <p>可以通过代码从一个vector对象地址输出其信息：</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span>
-    <span class="kt">void</span> <span class="n">ds_vec_i</span><span class="p">(</span><span class="kt">void</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">p</span><span class="p">)</span> <span class="p">{</span>
-        <span class="n">T</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">start</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">(</span><span class="n">T</span><span class="o">**</span><span class="p">)</span><span class="n">p</span><span class="p">;</span>
-        <span class="n">T</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">finish</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">(</span><span class="n">T</span><span class="o">**</span><span class="p">)((</span><span class="kt">char</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span><span class="n">p</span> <span class="o">+</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">void</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">));</span>
-        <span class="n">T</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">end_storage</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">(</span><span class="n">T</span><span class="o">**</span><span class="p">)((</span><span class="kt">char</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span><span class="n">p</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="p">));</span>
-        <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">vec</span> <span class="nl">size</span><span class="p">:</span> <span class="o">%</span><span class="n">ld</span><span class="p">,</span> <span class="n">avaiable</span> <span class="nl">size</span><span class="p">:</span> <span class="o">%</span><span class="n">ld</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="n">finish</span> <span class="o">-</span> <span class="n">start</span><span class="p">,</span> <span class="n">end_storage</span> <span class="o">-</span> <span class="n">start</span><span class="p">);</span>
-    <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+    template <typename T>
+    void ds_vec_i(void <em>p) {
+        T </em>start = <em>(T**)p;
+        T </em>finish = <em>(T**)((char</em>)p + sizeof(void<em>));
+        T </em>end_storage = <em>(T**)((char</em>)p + 2 * sizeof(void*));
+        printf(&ldquo;vec size: %ld, avaiable size: %ld\n&rdquo;, finish - start, end_storage - start);
+    }</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">size_t</span> <span class="n">ds_vec</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="kt">int</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="n">vec</span><span class="p">;</span>
-    <span class="n">vec</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x11</span><span class="p">);</span>
-    <span class="n">vec</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x22</span><span class="p">);</span>
-    <span class="n">vec</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x33</span><span class="p">);</span>
-    <span class="n">ds_vec_i</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="kt">int</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">vec</span><span class="p">);</span>
-    <span class="k">return</span> <span class="n">vec</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
-<span class="p">}</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+<pre><code>size_t ds_vec() {
+    std::vector&lt;int&gt; vec;
+    vec.push_back(0x11);
+    vec.push_back(0x22);
+    vec.push_back(0x33);
+    ds_vec_i&lt;int&gt;(&amp;vec);
+    return vec.size();
+}
+</code></pre>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+<p>{% endhighlight %}</p>
 
 <p>使用gdb输出一个vector中的内容：</p>
 
@@ -180,84 +186,86 @@ $3 = (void *) 0x7fffffffe380
 
 <p><code>bits/stl_list.h</code></p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">bool</span>
-      <span class="n">empty</span><span class="p">()</span> <span class="k">const</span>
-      <span class="p">{</span> <span class="k">return</span> <span class="k">this</span><span class="o">-&gt;&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_impl</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_node</span><span class="p">.</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_next</span> <span class="o">==</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="k">this</span><span class="o">-&gt;&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_impl</span><span class="p">.</span><span class="n">_M_node</span><span class="p">;</span> <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+      bool
+      empty() const
+      { return this-><em>M_impl.</em>M_node.<em>M_next == &amp;this-></em>M_impl._M_node; }</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>  <span class="n">const_iterator</span>
-  <span class="n">begin</span><span class="p">()</span> <span class="k">const</span>
-  <span class="p">{</span> <span class="k">return</span> <span class="n">const_iterator</span><span class="p">(</span><span class="k">this</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">_M_impl</span><span class="p">.</span><span class="n">_M_node</span><span class="p">.</span><span class="n">_M_next</span><span class="p">);</span> <span class="p">}</span>
+<pre><code>  const_iterator
+  begin() const
+  { return const_iterator(this-&gt;_M_impl._M_node._M_next); }
 
-  <span class="n">iterator</span>
-  <span class="n">end</span><span class="p">()</span>
-  <span class="p">{</span> <span class="k">return</span> <span class="n">iterator</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="k">this</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">_M_impl</span><span class="p">.</span><span class="n">_M_node</span><span class="p">);</span> <span class="p">}</span>
+  iterator
+  end()
+  { return iterator(&amp;this-&gt;_M_impl._M_node); }
 
-  <span class="p">...</span>
+  ...
 
-<span class="k">struct</span> <span class="n">_List_node_base</span>
-<span class="p">{</span>
-    <span class="n">_List_node_base</span><span class="o">*</span> <span class="n">_M_next</span><span class="p">;</span>   <span class="c1">///&amp;lt; Self-explanatory</span>
-    <span class="n">_List_node_base</span><span class="o">*</span> <span class="n">_M_prev</span><span class="p">;</span>   <span class="c1">///&amp;lt; Self-explanatory</span>
-    <span class="p">...</span>
-<span class="p">};</span>
+struct _List_node_base
+{
+    _List_node_base* _M_next;   ///&lt; Self-explanatory
+    _List_node_base* _M_prev;   ///&lt; Self-explanatory
+    ...
+};
 
-<span class="k">template</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="k">typename</span> <span class="n">_Tp</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
-<span class="k">struct</span> <span class="nl">_List_node</span> <span class="p">:</span> <span class="k">public</span> <span class="n">_List_node_base</span>
-<span class="p">{</span>
-  <span class="n">_Tp</span> <span class="n">_M_data</span><span class="p">;</span>                <span class="c1">///&amp;lt; User&#39;s data.</span>
-<span class="p">};</span>
+template&lt;typename _Tp&gt;
+struct _List_node : public _List_node_base
+{
+  _Tp _M_data;                ///&lt; User's data.
+};
 
-<span class="k">template</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="k">typename</span> <span class="n">_Tp</span><span class="p">,</span> <span class="k">typename</span> <span class="n">_Alloc</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
-<span class="k">class</span> <span class="nc">_List_base</span>
-<span class="p">{</span>
-    <span class="p">...</span>
-  <span class="k">struct</span> <span class="nl">_List_impl</span>
-  <span class="p">:</span> <span class="k">public</span> <span class="n">_Node_alloc_type</span>
-  <span class="p">{</span>
-<span class="n">_List_node_base</span> <span class="n">_M_node</span><span class="p">;</span>
-    <span class="p">...</span>
-  <span class="p">};</span>
+template&lt;typename _Tp, typename _Alloc&gt;
+class _List_base
+{
+    ...
+  struct _List_impl
+  : public _Node_alloc_type
+  {
+_List_node_base _M_node;
+    ...
+  };
 
-  <span class="n">_List_impl</span> <span class="n">_M_impl</span><span class="p">;</span>
+  _List_impl _M_impl;
 
 
-<span class="k">template</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="k">typename</span> <span class="n">_Tp</span><span class="p">,</span> <span class="k">typename</span> <span class="n">_Alloc</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">allocator</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Tp</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
-<span class="k">class</span> <span class="nc">list</span> <span class="o">:</span> <span class="k">protected</span> <span class="n">_List_base</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Tp</span><span class="p">,</span> <span class="n">_Alloc</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+template&lt;typename _Tp, typename _Alloc = std::allocator&lt;_Tp&gt; &gt;
+class list : protected _List_base&lt;_Tp, _Alloc&gt;
+</code></pre>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+<p>{% endhighlight %}</p>
 
 <p>所以<code>sizeof(list&lt;xx&gt;)=16</code>，两个指针。每一个真正的节点首先是包含两个指针，然后是元素内容(<code>_List_node</code>)。</p>
 
 <p>通过代码输出list的内容：</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="cp">#define NEXT(ptr, T) do { \</span>
-<span class="cp">        void &lt;em&gt;n = &lt;/em&gt;(char&lt;strong&gt;)ptr; \</span>
-<span class="cp">        T val = &lt;em&gt;(T&lt;/em&gt;)((char&lt;/strong&gt;)ptr + 2); \</span>
-<span class="cp">        printf(&amp;ldquo;list item %p val: 0x%x\n&amp;rdquo;, ptr, val); \</span>
-<span class="cp">        ptr = n; \</span>
-<span class="cp">    } while (0)&lt;/p&gt;</span>
+<p>{% highlight c++ %}
+    #define NEXT(ptr, T) do { \
+        void <em>n = </em>(char<strong>)ptr; \
+        T val = <em>(T</em>)((char</strong>)ptr + 2); \
+        printf(&ldquo;list item %p val: 0x%x\n&rdquo;, ptr, val); \
+        ptr = n; \
+    } while (0)</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">template</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
-<span class="kt">void</span> <span class="nf">ds_list_i</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">p</span><span class="p">)</span> <span class="p">{</span>
-    <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="kt">char</span><span class="o">**</span><span class="p">)</span><span class="n">p</span><span class="p">;</span>
+<pre><code>template &lt;typename T&gt;
+void ds_list_i(void *p) {
+    void *ptr = *(char**)p;
 
-    <span class="n">NEXT</span><span class="p">(</span><span class="n">ptr</span><span class="p">,</span> <span class="n">T</span><span class="p">);</span>
-    <span class="n">NEXT</span><span class="p">(</span><span class="n">ptr</span><span class="p">,</span> <span class="n">T</span><span class="p">);</span>
-    <span class="n">NEXT</span><span class="p">(</span><span class="n">ptr</span><span class="p">,</span> <span class="n">T</span><span class="p">);</span>
-<span class="p">}</span>
+    NEXT(ptr, T);
+    NEXT(ptr, T);
+    NEXT(ptr, T);
+}
 
-<span class="kt">size_t</span> <span class="nf">ds_list</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">list</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="kt">int</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="n">lst</span><span class="p">;</span>
-    <span class="n">lst</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x11</span><span class="p">);</span>
-    <span class="n">lst</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x22</span><span class="p">);</span>
-    <span class="n">lst</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x33</span><span class="p">);</span>
-    <span class="n">ds_list_i</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="kt">int</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">lst</span><span class="p">);</span>
-    <span class="k">return</span> <span class="n">lst</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
-<span class="p">}</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+size_t ds_list() {
+    std::list&lt;int&gt; lst;
+    lst.push_back(0x11);
+    lst.push_back(0x22);
+    lst.push_back(0x33);
+    ds_list_i&lt;int&gt;(&amp;lst);
+    return lst.size();
+}
+</code></pre>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+<p>{% endhighlight %}</p>
 
 <p>在gdb中可以以下方式遍历该list：</p>
 
@@ -279,90 +287,98 @@ $4 = (void *) 0x7fffffffe390
 
 <p><code>bits/stl_map.h</code></p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">typedef</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Rb_tree</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">key_type</span><span class="p">,</span> <span class="n">value_type</span><span class="p">,</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Select1st</span><span class="o">&lt;</span><span class="n">value_type</span><span class="o">&gt;</span><span class="p">,</span>
-               <span class="n">key_compare</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Pair_alloc_type</span><span class="o">&gt;</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Rep_type</span><span class="p">;</span>
-    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-     <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Rep_type</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_t</span><span class="p">;</span>
-    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+      typedef <em>Rb_tree&lt;key_type, value_type, </em>Select1st<value_type>,
+               key_compare, <em>Pair_alloc_type> </em>Rep_type;
+    &hellip;
+     <em>Rep_type </em>M_t;
+    &hellip;</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>  <span class="n">iterator</span>
-  <span class="n">begin</span><span class="p">()</span>
-  <span class="p">{</span> <span class="k">return</span> <span class="n">_M_t</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span> <span class="p">}</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+<pre><code>  iterator
+  begin()
+  { return _M_t.begin(); }
+</code></pre>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+<p>{% endhighlight %}</p>
 
 <p><code>bits/stl_tree.h</code></p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">struct</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Rb_tree_node_base</span>
-      <span class="p">{</span>
-        <span class="k">typedef</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Rb_tree_node_base</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Base_ptr</span><span class="p">;</span>
-        <span class="k">typedef</span> <span class="k">const</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Rb_tree_node_base</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">_Const_Base_ptr</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+     struct <em>Rb_tree_node_base
+      {
+        typedef </em>Rb_tree_node_base<em> <em>Base_ptr;
+        typedef const </em>Rb_tree_node_base</em> _Const_Base_ptr;</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="n">_Rb_tree_color</span>  <span class="n">_M_color</span><span class="p">;</span>
-    <span class="n">_Base_ptr</span>       <span class="n">_M_parent</span><span class="p">;</span>
-    <span class="n">_Base_ptr</span>       <span class="n">_M_left</span><span class="p">;</span>
-    <span class="n">_Base_ptr</span>       <span class="n">_M_right</span><span class="p">;</span>
+<pre><code>    _Rb_tree_color  _M_color;
+    _Base_ptr       _M_parent;
+    _Base_ptr       _M_left;
+    _Base_ptr       _M_right;
 
-    <span class="p">...</span>
-  <span class="p">};</span>
+    ...
+  };
 
-<span class="k">template</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="k">typename</span> <span class="n">_Val</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
-<span class="k">struct</span> <span class="nl">_Rb_tree_node</span> <span class="p">:</span> <span class="k">public</span> <span class="n">_Rb_tree_node_base</span>
-<span class="p">{</span>
-  <span class="k">typedef</span> <span class="n">_Rb_tree_node</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Val</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">*</span> <span class="n">_Link_type</span><span class="p">;</span>
-  <span class="n">_Val</span> <span class="n">_M_value_field</span><span class="p">;</span>
-<span class="p">};</span>
+template&lt;typename _Val&gt;
+struct _Rb_tree_node : public _Rb_tree_node_base
+{
+  typedef _Rb_tree_node&lt;_Val&gt;* _Link_type;
+  _Val _M_value_field;
+};
 
 
-<span class="k">template</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="k">typename</span> <span class="n">_Key_compare</span><span class="p">,</span>
-       <span class="kt">bool</span> <span class="n">_Is_pod_comparator</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">__is_pod</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Key_compare</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">::</span><span class="n">__value</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
-    <span class="k">struct</span> <span class="nl">_Rb_tree_impl</span> <span class="p">:</span> <span class="k">public</span> <span class="n">_Node_allocator</span>
-    <span class="p">{</span>
-  <span class="n">_Key_compare</span>      <span class="n">_M_key_compare</span><span class="p">;</span>
-  <span class="n">_Rb_tree_node_base</span>    <span class="n">_M_header</span><span class="p">;</span>
-  <span class="n">size_type</span>         <span class="n">_M_node_count</span><span class="p">;</span> <span class="c1">// Keeps track of size of tree.</span>
-  <span class="p">...</span>
-    <span class="p">}</span>
+template&lt;typename _Key_compare,
+       bool _Is_pod_comparator = std::__is_pod&lt;_Key_compare&gt;::__value&gt;
+    struct _Rb_tree_impl : public _Node_allocator
+    {
+  _Key_compare      _M_key_compare;
+  _Rb_tree_node_base    _M_header;
+  size_type         _M_node_count; // Keeps track of size of tree.
+  ...
+    }
 
-<span class="n">_Rb_tree_impl</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Compare</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="n">_M_impl</span><span class="p">;</span>
-<span class="p">...</span>
+_Rb_tree_impl&lt;_Compare&gt; _M_impl;
+...
 
-  <span class="n">iterator</span>
-  <span class="n">begin</span><span class="p">()</span>
-  <span class="p">{</span>
-<span class="k">return</span> <span class="n">iterator</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Link_type</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
-        <span class="p">(</span><span class="k">this</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">_M_impl</span><span class="p">.</span><span class="n">_M_header</span><span class="p">.</span><span class="n">_M_left</span><span class="p">));</span>
-  <span class="p">}</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+  iterator
+  begin()
+  {
+return iterator(static_cast&lt;_Link_type&gt;
+        (this-&gt;_M_impl._M_header._M_left));
+  }
+</code></pre>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+<p>{% endhighlight %}</p>
 
 <p>所以可以看出，大部分时候(取决于<code>_M_key_compare</code>) <code>sizeof(map&lt;xx&gt;)=48</code>，主要的元素是：</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Rb_tree_color</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_color</span><span class="p">;</span> <span class="c1">// 节点颜色</span>
-        <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Base_ptr</span>       <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_parent</span><span class="p">;</span> <span class="c1">// 父节点</span>
-        <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Base_ptr</span>       <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_left</span><span class="p">;</span> <span class="c1">// 左节点</span>
-        <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Base_ptr</span>       <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_right</span><span class="p">;</span> <span class="c1">// 右节点</span>
-        <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Val</span>            <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_value_field</span> <span class="c1">// 同list中节点技巧一致，后面是实际的元素</span></code></pre></div></p>
+<p>{% highlight c++ %}
+        <em>Rb_tree_color  </em>M_color; // 节点颜色
+        <em>Base_ptr       </em>M_parent; // 父节点
+        <em>Base_ptr       </em>M_left; // 左节点
+        <em>Base_ptr       </em>M_right; // 右节点
+        <em>Val            </em>M_value_field // 同list中节点技巧一致，后面是实际的元素
+{% endhighlight %}</p>
 
 <p>同list中的实现一致，map本身作为一个节点，其不是一个存储数据的节点，</p>
 
 <p><code>_Rb_tree::end</code></p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">iterator</span>
-      <span class="nf">end</span><span class="p">()</span>
-      <span class="p">{</span> <span class="k">return</span> <span class="n">iterator</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="n">_Link_type</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="k">this</span><span class="o">-&gt;&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_impl</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_header</span><span class="p">));</span> <span class="p">}</span></code></pre></div></p>
+<p>{% highlight c++ %}
+      iterator
+      end()
+      { return iterator(static_cast<_Link_type>(&amp;this-><em>M_impl.</em>M_header)); }
+{% endhighlight %}</p>
 
 <p>由于节点值在<code>_Rb_tree_node_base</code>后，所以任意时候拿到节点就可以偏移这个结构体拿到节点值，节点的值是一个pair，包含了key和value。</p>
 
 <p>在gdb中打印以下map的内容：</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">size_t</span> <span class="nf">ds_map</span><span class="p">()</span> <span class="p">{</span>
-        <span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span> <span class="kt">int</span><span class="o">&gt;</span> <span class="n">imap</span><span class="p">;</span>
-        <span class="n">imap</span><span class="p">[</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">abc</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;]</span> <span class="o">=</span> <span class="mh">0xbbb</span><span class="p">;</span>
-        <span class="k">return</span> <span class="n">imap</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
-    <span class="p">}</span></code></pre></div></p>
+<p>{% highlight c++ %}
+    size_t ds_map() {
+        std::map&lt;std::string, int> imap;
+        imap[&ldquo;abc&rdquo;] = 0xbbb;
+        return imap.size();
+    }
+{% endhighlight %}</p>
 
 <pre><code>(gdb) p/x &amp;imap
 $7 = 0x7fffffffe370
@@ -401,15 +417,17 @@ $9 = 0x606028 "abc"
 
 <p>一个应用程序<code>test</code>会链接一个动态库<code>libdy.so</code>，如果一个符号，例如函数<code>callfn</code>定义于libdy.so中，test要使用该函数，简单地声明即可：</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// dy.cpp libdy.so</span>
-<span class="kt">void</span> <span class="nf">callfn</span><span class="p">()</span> <span class="p">{</span>
-    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+// dy.cpp libdy.so
+void callfn() {
+    &hellip;
+}</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// main.cpp test</span>
-<span class="k">extern</span> <span class="kt">void</span> <span class="n">callfn</span><span class="p">();</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>// main.cpp test
+extern void callfn();</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">callfn</span><span class="p">();</span>  <span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span></code></pre></div></p>
+<p>callfn();  <br/>
+{% endhighlight %}</p>
 
 <p>在链接test的时候，链接器会统一进行检查。</p>
 
@@ -418,15 +436,17 @@ $9 = 0x606028 "abc"
 <!-- more -->
 
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// dy.cpp libdy.so</span>
-<span class="k">extern</span> <span class="kt">void</span> <span class="nf">mfunc</span><span class="p">();</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+// dy.cpp libdy.so
+extern void mfunc();</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">mfunc</span><span class="p">();</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>mfunc();</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// main.cpp test</span>
-<span class="kt">void</span> <span class="n">mfunc</span><span class="p">()</span> <span class="p">{</span>
-    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-<span class="p">}</span></code></pre></div></p>
+<p>// main.cpp test
+void mfunc() {
+    &hellip;
+}
+{% endhighlight %}</p>
 
 <p>在生成libdy.so时<code>mfunc</code>可以找不到，此时<code>mfunc</code>为未定义：</p>
 
@@ -441,25 +461,25 @@ U _Z5mfuncv
 
 <p>同样，如果我们动态载入libdy.so，此时当然可以链接通过，但是在载入时同样得到找不到符号的错误：</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">ifdef</span> <span class="n">DY_LOAD</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>ifdef DY_LOAD</h1>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">void</span> <span class="o">*</span><span class="n">dp</span> <span class="o">=</span> <span class="n">dlopen</span><span class="p">(</span><span class="s">&quot;./libdy.so&quot;</span><span class="p">,</span> <span class="n">RTLD_LAZY</span><span class="p">);</span>
-<span class="k">typedef</span> <span class="nf">void</span> <span class="p">(</span><span class="o">*</span><span class="n">callfn</span><span class="p">)();</span>
-<span class="n">callfn</span> <span class="n">f</span> <span class="o">=</span> <span class="p">(</span><span class="n">callfn</span><span class="p">)</span> <span class="n">dlsym</span><span class="p">(</span><span class="n">dp</span><span class="p">,</span> <span class="s">&quot;callfn&quot;</span><span class="p">);</span>
-<span class="n">f</span><span class="p">();</span>
-<span class="n">dlclose</span><span class="p">(</span><span class="n">dp</span><span class="p">);</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+<pre><code>void *dp = dlopen("./libdy.so", RTLD_LAZY);
+typedef void (*callfn)();
+callfn f = (callfn) dlsym(dp, "callfn");
+f();
+dlclose(dp);
+</code></pre>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="k">else</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>else</h1>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">callfn</span><span class="p">();</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+<pre><code>callfn();
+</code></pre>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">endif</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>endif</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+<p>{% endhighlight %}</p>
 
 <p>得到错误：</p>
 
@@ -497,31 +517,33 @@ $ ./test
 
 <p>当直接链接动态库时，libdy.so和test都会链接包含<code>func</code>函数的fun.o，为了区分，我把<code>func</code>按照条件编译得到不同的版本：</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// fun.cpp&lt;/p&gt;</span>
+<p>{% highlight c++ %}
+// fun.cpp</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">ifdef</span> <span class="n">V2</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>ifdef V2</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">extern</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">C</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span> <span class="kt">void</span> <span class="nf">func</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">func</span> <span class="n">v2</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
-<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>extern &ldquo;C&rdquo; void func() {
+    printf(&ldquo;func v2\n&rdquo;);
+}</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="k">else</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>else</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">extern</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">C</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span> <span class="kt">void</span> <span class="nf">func</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">func</span> <span class="n">v1</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
-<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>extern &ldquo;C&rdquo; void func() {
+    printf(&ldquo;func v1\n&rdquo;);
+}</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">endif</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>endif</h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// Makefile</span>
-<span class="nl">test</span><span class="p">:</span> <span class="n">libdy</span> <span class="n">obj</span><span class="p">.</span><span class="n">o</span> <span class="n">mainfn</span>
-    <span class="n">g</span><span class="o">++</span> <span class="o">-</span><span class="n">g</span> <span class="o">-</span><span class="n">Wall</span> <span class="o">-</span><span class="n">c</span> <span class="n">fun</span><span class="p">.</span><span class="n">cpp</span> <span class="o">-</span><span class="n">o</span> <span class="n">fun</span><span class="p">.</span><span class="n">o</span> <span class="err">#</span> <span class="err">编译为</span><span class="n">fun</span><span class="p">.</span><span class="n">o</span>
-    <span class="n">g</span><span class="o">++</span> <span class="o">-</span><span class="n">g</span> <span class="o">-</span><span class="n">Wall</span> <span class="o">-</span><span class="n">c</span> <span class="n">main</span><span class="p">.</span><span class="n">cpp</span> <span class="err">#</span><span class="o">-</span><span class="n">DDY_LOAD</span>
-    <span class="n">g</span><span class="o">++</span> <span class="o">-</span><span class="n">g</span> <span class="o">-</span><span class="n">Wall</span> <span class="o">-</span><span class="n">o</span> <span class="n">test</span> <span class="n">main</span><span class="p">.</span><span class="n">o</span> <span class="n">obj</span><span class="p">.</span><span class="n">o</span> <span class="n">fun</span><span class="p">.</span><span class="n">o</span> <span class="o">-</span><span class="n">ldl</span> <span class="n">mfun</span><span class="p">.</span><span class="n">o</span> <span class="o">-</span><span class="n">ldy</span> <span class="o">-</span><span class="n">L</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>// Makefile
+test: libdy obj.o mainfn
+    g++ -g -Wall -c fun.cpp -o fun.o # 编译为fun.o
+    g++ -g -Wall -c main.cpp #-DDY_LOAD
+    g++ -g -Wall -o test main.o obj.o fun.o -ldl mfun.o -ldy -L.</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="nl">libdy</span><span class="p">:</span> <span class="n">obj</span>
-    <span class="n">g</span><span class="o">++</span> <span class="o">-</span><span class="n">Wall</span> <span class="o">-</span><span class="n">fPIC</span> <span class="o">-</span><span class="n">c</span> <span class="n">fun</span><span class="p">.</span><span class="n">cpp</span> <span class="o">-</span><span class="n">DV2</span> <span class="o">-</span><span class="n">o</span> <span class="n">fun</span><span class="o">-</span><span class="n">dy</span><span class="p">.</span><span class="n">o</span>  <span class="err">#</span> <span class="err">定义</span><span class="n">V2</span><span class="err">宏，编译为</span><span class="n">fun</span><span class="o">-</span><span class="n">dy</span><span class="p">.</span><span class="n">o</span>
-    <span class="n">g</span><span class="o">++</span> <span class="o">-</span><span class="n">Wall</span> <span class="o">-</span><span class="n">fPIC</span> <span class="o">-</span><span class="n">shared</span> <span class="o">-</span><span class="n">o</span> <span class="n">libdy</span><span class="p">.</span><span class="n">so</span> <span class="n">dy</span><span class="p">.</span><span class="n">cpp</span> <span class="o">-</span><span class="n">g</span> <span class="n">obj</span><span class="p">.</span><span class="n">o</span> <span class="n">fun</span><span class="o">-</span><span class="n">dy</span><span class="p">.</span><span class="n">o</span></code></pre></div></p>
+<p>libdy: obj
+    g++ -Wall -fPIC -c fun.cpp -DV2 -o fun-dy.o  # 定义V2宏，编译为fun-dy.o
+    g++ -Wall -fPIC -shared -o libdy.so dy.cpp -g obj.o fun-dy.o
+{% endhighlight %}</p>
 
 <p>这样，test中的<code>func</code>就会输出<code>func v1</code>；libdy.so中的<code>func</code>就会输出<code>func v2</code>。test和libdy.o确实都有<code>func</code>符号：</p>
 
@@ -534,21 +556,23 @@ $nm test | grep func
 
 <p>在test和libdy.so中都会调用<code>func</code>函数：</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// main.cpp test</span>
-<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">func</span><span class="p">();</span>
-    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-    <span class="n">callfn</span><span class="p">();</span> <span class="c1">// 调用libdy.so中的函数</span>
-    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+// main.cpp test
+int main(int argc, char **argv) {
+    func();
+    &hellip;
+    callfn(); // 调用libdy.so中的函数
+    &hellip;
+}</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// dy.cpp libdy.so</span>
-<span class="k">extern</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">C</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span> <span class="kt">void</span> <span class="nf">callfn</span><span class="p">()</span> <span class="p">{</span>
-    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">callfn</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
-    <span class="n">func</span><span class="p">();</span>
-    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-<span class="p">}</span></code></pre></div></p>
+<p>// dy.cpp libdy.so
+extern &ldquo;C&rdquo; void callfn() {
+    &hellip;
+    printf(&ldquo;callfn\n&rdquo;);
+    func();
+    &hellip;
+}
+{% endhighlight %}</p>
 
 <p>运行后发现，都<strong>调用的是同一个<code>func</code></strong>：</p>
 
@@ -566,30 +590,32 @@ func v1
 
 <p>但是对于动态载入的情况则不同，同样的libdy.so我们在test中不链接，而是动态载入：</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">func</span><span class="p">();</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+int main(int argc, char **argv) {
+    func();</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">ifdef</span> <span class="n">DY_LOAD</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>ifdef DY_LOAD</h1>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">void</span> <span class="o">*</span><span class="n">dp</span> <span class="o">=</span> <span class="n">dlopen</span><span class="p">(</span><span class="s">&quot;./libdy.so&quot;</span><span class="p">,</span> <span class="n">RTLD_LAZY</span><span class="p">);</span>
-<span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">callfn</span><span class="p">)();</span>
-<span class="n">callfn</span> <span class="n">f</span> <span class="o">=</span> <span class="p">(</span><span class="n">callfn</span><span class="p">)</span> <span class="n">dlsym</span><span class="p">(</span><span class="n">dp</span><span class="p">,</span> <span class="s">&quot;callfn&quot;</span><span class="p">);</span>
-<span class="n">f</span><span class="p">();</span>
-<span class="n">func</span><span class="p">();</span>
-<span class="n">dlclose</span><span class="p">(</span><span class="n">dp</span><span class="p">);</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+<pre><code>void *dp = dlopen("./libdy.so", RTLD_LAZY);
+typedef void (*callfn)();
+callfn f = (callfn) dlsym(dp, "callfn");
+f();
+func();
+dlclose(dp);
+</code></pre>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="k">else</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>else</h1>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">callfn</span><span class="p">();</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+<pre><code>callfn();
+</code></pre>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">endif</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>endif</h1>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+<pre><code>return 0;
+</code></pre>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span></code></pre></div></p>
+<p>}
+{% endhighlight %}</p>
 
 <p>运行得到：</p>
 
@@ -609,42 +635,44 @@ func v1
 
 <p>变量本质上也是符号(symbol)，但其处理规则和函数还有点不一样(<em>是不是有点想吐槽了</em>)。</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// object.h</span>
-<span class="k">class</span> <span class="nc">Object</span> <span class="p">{</span>
-<span class="k">public</span><span class="o">:</span>
-    <span class="n">Object</span><span class="p">()</span> <span class="p">{</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+// object.h
+class Object {
+public:
+    Object() {</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">ifdef</span> <span class="n">DF</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>ifdef DF</h1>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="n">s</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="mi">32</span><span class="p">);</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;s addr %p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">s</span><span class="p">);</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+<pre><code>    s = malloc(32);
+    printf("s addr %p\n", s);
+</code></pre>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">endif</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>endif</h1>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;ctor %p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="k">this</span><span class="p">);</span>
-<span class="p">}</span>
+<pre><code>    printf("ctor %p\n", this);
+}
 
-<span class="o">~</span><span class="n">Object</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;dtor %p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="k">this</span><span class="p">);</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+~Object() {
+    printf("dtor %p\n", this);
+</code></pre>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">ifdef</span> <span class="n">DF</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>ifdef DF</h1>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;s addr %p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">s</span><span class="p">);</span>
-    <span class="n">free</span><span class="p">(</span><span class="n">s</span><span class="p">);</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+<pre><code>    printf("s addr %p\n", s);
+    free(s);
+</code></pre>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">endif</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>endif</h1>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="p">}</span>
+<pre><code>}
 
-<span class="kt">void</span> <span class="o">*</span><span class="n">s</span><span class="p">;</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+void *s;
+</code></pre>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>};</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">extern</span> <span class="n">Object</span> <span class="n">g_obj</span><span class="p">;</span></code></pre></div></p>
+<p>extern Object g_obj;
+{% endhighlight %}</p>
 
 <p>我们的程序test和动态库libdy.so都会链接object.o。首先测试test链接libdy.so，test和libdy.so中都会有<code>g_obj</code>这个符号：</p>
 
@@ -757,14 +785,16 @@ GNU C Library stable release version 2.5, by Roland McGrath et al.
 
 <p><code>/nptl/sysdeps/unix/sysv/linux/timer_routines.c</code></p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">timer_helper_thread</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hellip</span><span class="p">;)</span>  <span class="c1">// 用于检测定时器触发的辅助线程</span>
-<span class="p">{</span>
-    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-      <span class="kt">pthread_t</span> <span class="n">th</span><span class="p">;</span>
-      <span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="n">pthread_create</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">th</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">tk</span><span class="o">-&gt;</span><span class="n">attr</span><span class="p">,</span> <span class="n">timer_sigev_thread</span><span class="p">,</span> <span class="c1">// 开启一个新线程调用用户注册的定时器函数</span>
-                 <span class="n">td</span><span class="p">);</span>
-    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-<span class="p">}</span></code></pre></div></p>
+<p>{% highlight c++ %}
+timer_helper_thread(&hellip;)  // 用于检测定时器触发的辅助线程
+{
+    &hellip;
+      pthread_t th;
+      (void) pthread_create (&amp;th, &amp;tk->attr, timer_sigev_thread, // 开启一个新线程调用用户注册的定时器函数
+                 td);
+    &hellip;
+}
+{% endhighlight %}</p>
 
 <p>要重现此BUG可以使用我的实验代码 <a href="https://gist.github.com/kevinlynx/69435e718785a0ad12c4">thread-tls</a>，或者使用<a href="https://sourceware.org/bugzilla/attachment.cgi?id=6290">Bug 13862 中的附件</a></p>
 
@@ -784,24 +814,26 @@ GNU C Library stable release version 2.5, by Roland McGrath et al.
 
 <p>以上结构用代码描述为，</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">union</span> <span class="kt">dtv_t</span> <span class="p">{</span>
-    <span class="kt">size_t</span> <span class="n">counter</span><span class="p">;</span>
-    <span class="k">struct</span> <span class="p">{</span>
-        <span class="kt">void</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">val</span><span class="p">;</span> <span class="o">/&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">point</span> <span class="n">to</span> <span class="n">tls</span> <span class="n">variable</span> <span class="n">memory</span> <span class="err">*/</span>
-        <span class="kt">bool</span> <span class="n">is_static</span><span class="p">;</span>
-    <span class="p">}</span> <span class="n">pointer</span><span class="p">;</span>
-<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+union dtv_t {
+    size_t counter;
+    struct {
+        void <em>val; /</em> point to tls variable memory */
+        bool is_static;
+    } pointer;
+};</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">struct</span> <span class="kt">tcbhead_t</span> <span class="p">{</span>
-    <span class="kt">void</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tcb</span><span class="p">;</span>
-    <span class="kt">dtv_t</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">dtv</span><span class="p">;</span> <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">point</span> <span class="n">to</span> <span class="n">a</span> <span class="kt">dtv_t</span> <span class="n">array</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
-    <span class="kt">void</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">padding</span><span class="p">[</span><span class="mi">22</span><span class="p">];</span> <span class="o">/&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">other</span> <span class="n">members</span> <span class="n">i</span> <span class="n">don</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="n">t</span> <span class="n">care</span> <span class="err">*/</span>
-<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>struct tcbhead_t {
+    void <em>tcb;
+    dtv_t </em>dtv; /<em> point to a dtv_t array </em>/
+    void <em>padding[22]; /</em> other members i don&rsquo;t care */
+};</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">struct</span> <span class="n">pthread</span> <span class="p">{</span>
-    <span class="kt">tcbhead_t</span> <span class="n">tcb</span><span class="p">;</span>
-    <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">more</span> <span class="n">members</span> <span class="n">i</span> <span class="n">don</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="n">t</span> <span class="n">care</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
-<span class="p">};</span></code></pre></div></p>
+<p>struct pthread {
+    tcbhead_t tcb;
+    /<em> more members i don&rsquo;t care </em>/
+};
+{% endhighlight %}</p>
 
 <p><strong>dtv是一个用于以模块为单位存储TLS变量的数组</strong>。</p>
 
@@ -824,26 +856,30 @@ $2 = {counter = 18446744073709551615, pointer = {val = 0xffffffffffffffff, is_st
 
 <p>/elf/dl-tls.c <code>_dl_allocate_tls_init</code></p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">if</span> <span class="p">(</span><span class="n">map</span><span class="o">-&gt;</span><span class="n">l_tls_offset</span> <span class="o">==</span> <span class="n">NO_TLS_OFFSET</span>
-   <span class="o">||</span> <span class="n">map</span><span class="o">-&gt;</span><span class="n">l_tls_offset</span> <span class="o">==</span> <span class="n">FORCED_DYNAMIC_TLS_OFFSET</span><span class="p">)</span>
- <span class="p">{</span>
-   <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">For</span> <span class="n">dynamically</span> <span class="n">loaded</span> <span class="n">modules</span> <span class="n">we</span> <span class="n">simply</span> <span class="n">store</span>
-      <span class="n">the</span> <span class="n">value</span> <span class="n">indicating</span> <span class="n">deferred</span> <span class="n">allocation</span><span class="p">.</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
-   <span class="n">dtv</span><span class="p">[</span><span class="n">map</span><span class="o">-&gt;</span><span class="n">l_tls_modid</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">val</span> <span class="o">=</span> <span class="n">TLS_DTV_UNALLOCATED</span><span class="p">;</span>
-   <span class="n">dtv</span><span class="p">[</span><span class="n">map</span><span class="o">-&gt;</span><span class="n">l_tls_modid</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">is_static</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
-   <span class="k">continue</span><span class="p">;</span>
- <span class="p">}</span></code></pre></div></p>
+<p>{% highlight c++ %}
+if (map->l_tls_offset == NO_TLS_OFFSET
+   || map->l_tls_offset == FORCED_DYNAMIC_TLS_OFFSET)
+ {
+   /<em> For dynamically loaded modules we simply store
+      the value indicating deferred allocation.  </em>/
+   dtv[map->l_tls_modid].pointer.val = TLS_DTV_UNALLOCATED;
+   dtv[map->l_tls_modid].pointer.is_static = false;
+   continue;
+ }
+{% endhighlight %}</p>
 
 <p><code>dtv</code>数组大小之所以为17，可以参看代码 /elf/dl-tls.c <code>allocate_dtv</code>：</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// dl_tls_max_dtv_idx 随着载入模块的增加而增加，载入1个.so则是1&lt;/p&gt;</span>
+<p>{% highlight c++ %}
+// dl_tls_max_dtv_idx 随着载入模块的增加而增加，载入1个.so则是1</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">dtv_length</span> <span class="o">=</span> <span class="n">GL</span><span class="p">(</span><span class="n">dl_tls_max_dtv_idx</span><span class="p">)</span> <span class="o">+</span> <span class="n">DTV_SURPLUS</span><span class="p">;</span> <span class="c1">// DTV_SURPLUS 14</span>
-<span class="n">dtv</span> <span class="o">=</span> <span class="n">calloc</span> <span class="p">(</span><span class="n">dtv_length</span> <span class="o">+</span> <span class="mi">2</span><span class="p">,</span> <span class="k">sizeof</span> <span class="p">(</span><span class="kt">dtv_t</span><span class="p">));</span>
-<span class="k">if</span> <span class="p">(</span><span class="n">dtv</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span>
- <span class="p">{</span>
-   <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">This</span> <span class="n">is</span> <span class="n">the</span> <span class="n">initial</span> <span class="n">length</span> <span class="n">of</span> <span class="n">the</span> <span class="n">dtv</span><span class="p">.</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
-   <span class="n">dtv</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">counter</span> <span class="o">=</span> <span class="n">dtv_length</span><span class="p">;</span></code></pre></div></p>
+<p>dtv_length = GL(dl_tls_max_dtv_idx) + DTV_SURPLUS; // DTV_SURPLUS 14
+dtv = calloc (dtv_length + 2, sizeof (dtv_t));
+if (dtv != NULL)
+ {
+   /<em> This is the initial length of the dtv.  </em>/
+   dtv[0].counter = dtv_length;
+{% endhighlight %}</p>
 
 <p>继续上面的实验，当调用到.so中的<code>function</code>时，其TLS被初始化，此时<code>dtv[3]</code>中<code>val</code>指向初始化后的TLS变量地址：</p>
 
@@ -925,31 +961,33 @@ $4 = {counter = 6300896, pointer = {val = 0x6024e0, is_static = false}}
 
 <p>在<code>allocate_stack</code>中分配线程堆栈时，有一个从缓存中取的操作：</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">allocate_stack</span><span class="p">(..)</span> <span class="p">{</span>
-    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-    <span class="n">pd</span> <span class="o">=</span> <span class="n">get_cached_stack</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">size</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">mem</span><span class="p">);</span>
-    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-<span class="p">}</span>
-<span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">Get</span> <span class="n">a</span> <span class="n">stack</span> <span class="n">frame</span> <span class="n">from</span> <span class="n">the</span> <span class="n">cache</span><span class="p">.</span>  <span class="n">We</span> <span class="n">have</span> <span class="n">to</span> <span class="n">match</span> <span class="n">by</span> <span class="n">size</span> <span class="n">since</span>
-   <span class="n">some</span> <span class="n">blocks</span> <span class="n">might</span> <span class="n">be</span> <span class="n">too</span> <span class="n">small</span> <span class="n">or</span> <span class="n">far</span> <span class="n">too</span> <span class="n">large</span><span class="p">.</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
-<span class="n">get_cached_stack</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hellip</span><span class="p">;)</span> <span class="p">{</span>
-    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-    <span class="n">list_for_each</span> <span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">stack_cache</span><span class="p">)</span> <span class="c1">// 根据size从stack_cache中取</span>
-    <span class="p">{</span> <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span> <span class="p">}</span>
-    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-    <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">Clear</span> <span class="n">the</span> <span class="n">DTV</span><span class="p">.</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
-    <span class="kt">dtv_t</span> <span class="o">*</span><span class="n">dtv</span> <span class="o">=</span> <span class="n">GET_DTV</span> <span class="p">(</span><span class="n">TLS_TPADJ</span> <span class="p">(</span><span class="n">result</span><span class="p">));</span>
-    <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">cnt</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">cnt</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">dtv</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">].</span><span class="n">counter</span><span class="p">;</span> <span class="o">++</span><span class="n">cnt</span><span class="p">)</span>
-        <span class="k">if</span> <span class="p">(</span><span class="o">!</span> <span class="n">dtv</span><span class="p">[</span><span class="mi">1</span> <span class="o">+</span> <span class="n">cnt</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">is_static</span>
-                <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">dtv</span><span class="p">[</span><span class="mi">1</span> <span class="o">+</span> <span class="n">cnt</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">val</span> <span class="o">!=</span> <span class="n">TLS_DTV_UNALLOCATED</span><span class="p">)</span>
-            <span class="n">free</span> <span class="p">(</span><span class="n">dtv</span><span class="p">[</span><span class="mi">1</span> <span class="o">+</span> <span class="n">cnt</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">val</span><span class="p">);</span>
-    <span class="n">memset</span> <span class="p">(</span><span class="n">dtv</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="err">\</span><span class="mi">0</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="p">(</span><span class="n">dtv</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">].</span><span class="n">counter</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="k">sizeof</span> <span class="p">(</span><span class="kt">dtv_t</span><span class="p">));</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+allocate_stack(..) {
+    &hellip;
+    pd = get_cached_stack (&amp;size, &amp;mem);
+    &hellip;
+}
+/<em> Get a stack frame from the cache.  We have to match by size since
+   some blocks might be too small or far too large.  </em>/
+get_cached_stack(&hellip;) {
+    &hellip;
+    list_for_each (entry, &amp;stack_cache) // 根据size从stack_cache中取
+    { &hellip; }
+    &hellip;
+    /<em> Clear the DTV.  </em>/
+    dtv_t *dtv = GET_DTV (TLS_TPADJ (result));
+    for (size_t cnt = 0; cnt &lt; dtv[-1].counter; ++cnt)
+        if (! dtv[1 + cnt].pointer.is_static
+                &amp;&amp; dtv[1 + cnt].pointer.val != TLS_DTV_UNALLOCATED)
+            free (dtv[1 + cnt].pointer.val);
+    memset (dtv, &lsquo;\0&rsquo;, (dtv[-1].counter + 1) * sizeof (dtv_t));</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="cm">/* Re-initialize the TLS.  */</span>
-<span class="n">_dl_allocate_tls_init</span> <span class="p">(</span><span class="n">TLS_TPADJ</span> <span class="p">(</span><span class="n">result</span><span class="p">));</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+<pre><code>/* Re-initialize the TLS.  */
+_dl_allocate_tls_init (TLS_TPADJ (result));
+</code></pre>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span></code></pre></div></p>
+<p>}
+{% endhighlight %}</p>
 
 <p><code>get_cached_stack</code>会把取出的<code>pthread</code>中的dtv重新初始化。<strong>注意 <code>_dl_allocate_tls_init</code> 中是根据模块列表来初始化dtv数组的。</strong></p>
 
@@ -1044,40 +1082,42 @@ world
 
 <p>可以通过一些代码来展示以上过程。在开发C++程序时，可以利用文件静态变量会先于<code>main</code>之前执行做一些可能利于程序结构的事情。如果某个<code>.o</code>（包含静态库中打包的<code>.o</code>）被链接进程序，那么其文件静态变量就会先于<code>main</code>初始化。</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// test.cpp&lt;/p&gt;</span>
+<p>{% highlight c++ %}
+// test.cpp</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>include &lt;stdio.h></h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">Test</span> <span class="p">{</span>
-<span class="k">public</span><span class="o">:</span>
-    <span class="n">Test</span><span class="p">()</span> <span class="p">{</span>
-        <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Test</span> <span class="n">ctor</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
-    <span class="p">}</span>
-<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>class Test {
+public:
+    Test() {
+        printf(&ldquo;Test ctor\n&rdquo;);
+    }
+};</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">static</span> <span class="n">Test</span> <span class="n">s_test</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>static Test s_test;</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// lib.cpp&lt;/p&gt;</span>
+<p>// lib.cpp</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>include &lt;stdio.h></h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">Lib</span> <span class="p">{</span>
-<span class="k">public</span><span class="o">:</span>
-    <span class="n">Lib</span><span class="p">()</span> <span class="p">{</span>
-        <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Lib</span> <span class="n">ctor</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
-    <span class="p">}</span>
-<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>class Lib {
+public:
+    Lib() {
+        printf(&ldquo;Lib ctor\n&rdquo;);
+    }
+};</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">static</span> <span class="n">Lib</span> <span class="n">s_lib</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>static Lib s_lib;</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// main.cpp&lt;/p&gt;</span>
+<p>// main.cpp</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>include &lt;stdio.h></h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">main</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
-    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span></code></pre></div></p>
+<p>int main() {
+    printf(&ldquo;main\n&rdquo;);
+    return 0;
+}
+{% endhighlight %}</p>
 
 <p>以上代码<code>main.cpp</code>中未引用任何<code>test.cpp``lib.cpp</code>中的符号：</p>
 
@@ -1090,21 +1130,23 @@ main
 
 <p>生成的可执行程序执行如预期，其链接了<code>test.o``lib.o</code>。但是如果把<code>lib.o</code>以静态库的形式进行链接，情况就不一样了：为了做对比，基于以上的代码再加一个文件，及修改<code>main.cpp</code>：</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// libfn.cpp</span>
-<span class="kt">int</span> <span class="nf">sum</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">,</span> <span class="kt">int</span> <span class="n">b</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">;</span>
-<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}
+// libfn.cpp
+int sum(int a, int b) {
+    return a + b;
+}</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// main.cpp&lt;/p&gt;</span>
+<p>// main.cpp</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>include &lt;stdio.h></h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">main</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
-    <span class="k">extern</span> <span class="kt">int</span> <span class="nf">sum</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">);</span>
-    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="nl">sum</span><span class="p">:</span> <span class="o">%</span><span class="n">d</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="n">sum</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">));</span>
-    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span></code></pre></div></p>
+<p>int main() {
+    printf(&ldquo;main\n&rdquo;);
+    extern int sum(int, int);
+    printf(&ldquo;sum: %d\n&rdquo;, sum(2, 3));
+    return 0;
+}
+{% endhighlight %}</p>
 
 <p>将<code>libfn.o</code>和<code>lib.o</code>创建为静态库：</p>
 
@@ -1241,57 +1283,58 @@ rw-r--r-- 60833/100   2448 Sep 14 02:16 2014 lib.o
 
 <p>实验代码如下：</p>
 
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight c++ %}</p>
 
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+<h1>include &lt;stdio.h></h1>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">Base</span> <span class="p">{</span>
-<span class="k">public</span><span class="o">:</span>
-    <span class="n">Base</span><span class="p">()</span> <span class="p">{</span>
-        <span class="n">Init</span><span class="p">();</span>
-    <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>class Base {
+public:
+    Base() {
+        Init();
+    }</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="c1">//virtual</span>
- <span class="o">~</span><span class="n">Base</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Base dtor</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-    <span class="n">Release</span><span class="p">();</span>
-<span class="p">}</span>
+<pre><code>//virtual
+ ~Base() {
+    printf("Base dtor\n");
+    Release();
+}
 
-<span class="k">virtual</span> <span class="kt">void</span> <span class="n">Init</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Base::Init</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-<span class="p">}</span>
+virtual void Init() {
+    printf("Base::Init\n");
+}
 
-<span class="k">virtual</span> <span class="kt">void</span> <span class="n">Release</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Base::Release</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-<span class="p">}</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+virtual void Release() {
+    printf("Base::Release\n");
+}
+</code></pre>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>};</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">Derived</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Base</span> <span class="p">{</span>
-<span class="k">public</span><span class="o">:</span>
-    <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span>
-    <span class="o">~</span><span class="n">Derived</span><span class="p">()</span> <span class="p">{</span>
-        <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Derived</span> <span class="n">dtor</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
-    <span class="p">}</span> <span class="c1">// &lt;/em&gt;/&lt;/p&gt;</span>
+<p>class Derived : public Base {
+public:
+    /<em>
+    ~Derived() {
+        printf(&ldquo;Derived dtor\n&rdquo;);
+    } // </em>/</p>
 
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">virtual</span> <span class="kt">void</span> <span class="n">Init</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Derived::Init</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-<span class="p">}</span>
+<pre><code>virtual void Init() {
+    printf("Derived::Init\n");
+}
 
-<span class="k">virtual</span> <span class="kt">void</span> <span class="n">Release</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Derived:Release</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-<span class="p">}</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+virtual void Release() {
+    printf("Derived:Release\n");
+}
+</code></pre>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>};</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">()</span>
-<span class="p">{</span>
-    <span class="n">Base</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Derived</span><span class="p">();</span>
-    <span class="k">delete</span> <span class="n">obj</span><span class="p">;</span>
-    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span></code></pre></div></p>
+<p>int main()
+{
+    Base *obj = new Derived();
+    delete obj;
+    return 0;
+}
+{% endhighlight %}</p>
 
 <p>去掉<code>Derived</code>的析构函数，去掉<code>Base</code>析构函数的<code>virtual</code>：</p>
 

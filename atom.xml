@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2014-12-03T22:05:50+08:00</updated>
+  <updated>2015-03-31T20:32:46+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,176 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[初识JVM byte code]]></title>
+    <link href="http://codemacro.com/2015/03/31/intro-java-bytecode/"/>
+    <updated>2015-03-31T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2015/03/31/intro-java-bytecode</id>
+    <content type="html"><![CDATA[<p>关于JVM和其上的byte code，网上其实有足够多的资料了，我这里就简单做个提纲和介绍，权当记录吧。</p>
+
+<h2>stack-based VM</h2>
+
+<p>Java byte code运行在JVM上，就像机器指令运行在物理机上，是需要遵循这个机器的指令规范的。所以认识JVM byte code，是需要稍微了解下JVM的。JVM是一个基于栈(stack-based)的虚拟机。很久以前我还写过类似<a href="http://www.cppblog.com/kevinlynx/archive/2010/04/15/112704.html">简单的虚拟机</a>。</p>
+
+<p>基于栈的虚拟机其操作数和指令运算的中间结果全部都在一个虚拟栈中，与之对应的是基于寄存器(register-based)的虚拟机，其操作数和指令运算结果会存放在若干个寄存器（也就是存储单元）里。x86机器就可以理解为基于寄存器的机器。</p>
+
+<p>byte code其实和x86汇编代码本质一样，无非是对应机器制定的一堆指令，这里可以举例说明下两类虚拟机的不同：</p>
+
+<pre><code># stack-based 
+push 1       # 压立即数1到栈顶
+push 2       # 压立即数2到栈顶
+add          # 弹出栈顶2个数相加，将结果3压到栈顶
+
+# register-based
+mov ax, 1    # 写立即数到寄存器ax
+add ax, 2    # 取ax中的值1与立即数2进行相加，存放结果到ax
+</code></pre>
+
+<p>关于两类实现的比较，网上也有不少资料，例如<a href="http://www.zhihu.com/question/20207106">Dalvik 虚拟机和 Sun JVM 在架构和执行方面有什么本质区别？</a>。</p>
+
+<!-- more -->
+
+
+<p><em>至于有人说基于栈的虚拟机更利于移植，我不是很理解，因为即使是基于寄存器的实现，也不一定真的必须把这些寄存器映射到物理机CPU上的寄存器，使用内存来模拟性能上跟基于栈的方式不是八九不离十吗？</em></p>
+
+<p>了解了JVM的这个特点，JVM上的各种指令就可以更好地理解，如果要理解JVM如何运行byte code的，那还需要了解JVM内部的各种结构，例如符号解析、class loader、内存分配甚至垃圾回收等。这个以后再谈。</p>
+
+<h2>byte-code</h2>
+
+<p><code>*.class</code>文件就已经是编译好的byte code文件，就像C/C++编译出来的目标文件一样，已经是各种二进制指令了。这个时候可以通过JDK中带的<code>javap</code>工具来反汇编，以查看对应的byte code。</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="c1">// Test.java</span>
+    <span class="kd">public</span> <span class="kd">class</span> <span class="nc">Test</span> <span class="o">{</span>
+        <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+            <span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mh">0xae</span><span class="o">;</span>
+            <span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="mh">0x10</span><span class="o">;</span>
+            <span class="kt">int</span> <span class="n">c</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="o">;</span>
+            <span class="kt">int</span> <span class="n">d</span> <span class="o">=</span> <span class="n">c</span> <span class="o">+</span> <span class="mi">1</span><span class="o">;</span>
+            <span class="n">String</span> <span class="n">s</span><span class="o">;</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="s">&quot;hello&quot;</span><span class="o">;</span>
+        <span class="o">}</span>
+    <span class="o">}</span></code></pre></div>
+
+
+<p>编译该文件：<code>javac Test.java</code>得到<code>Test.class</code>，然后<code>javap -c Test</code>即得到：</p>
+
+<pre><code>Compiled from "Test.java"
+public class Test {
+  public Test();
+    Code:
+       0: aload_0
+       1: invokespecial #1                  // Method java/lang/Object."&lt;init&gt;":()V
+       4: return
+
+  public static void main(java.lang.String[]);
+    Code:
+       0: sipush        174           # push a short onto the stack 0xae=174
+       3: istore_1                    # store int value into variable 1: a = 0xae
+       4: bipush        16            # push a byte onto the stack 0x10=16
+       6: istore_2                    # store int value into variable 2: b = 0x10
+       7: iload_1                     # load value from variable 1 and push onto the stack
+       8: iload_2                   
+       9: iadd                        # add two ints: a + b
+      10: istore_3                    # c = a + b
+      11: iload_3                     
+      12: iconst_1                    # 1
+      13: iadd                        # c + 1
+      14: istore        4             # d = c + 1
+      16: ldc           #2                  // String hello
+      18: astore        5
+      20: return
+}
+</code></pre>
+
+<p>这个时候对照着JVM指令表看上面的代码，比起x86汇编浅显易懂多了，秒懂，参考<a href="http://en.wikipedia.org/wiki/Java_bytecode_instruction_listings">Java bytecode instruction listings</a>。JVM中每个指令只占一个字节，操作数是变长的，所以其一条完整的指令（操作码+操作数）也是变长的。上面每条指令前都有一个偏移，实际是按字节来偏移的。<em>想起Lua VM的指令竟然是以bit来干的</em></p>
+
+<p>从上面的byte code中，以x86汇编的角度来看会发现一些不同的东西：</p>
+
+<ul>
+<li>局部变量竟是以索引来区分：<code>istore_1</code> 写第一个局部变量，<code>istore_2</code>写第二个局部变量，第4个局部变量则需要用操作数来指定了：<code>istore 4</code></li>
+<li>函数调用<code>invokespecial #1</code>竟然也是类似的索引，这里调用的是<code>Object</code>基类构造函数</li>
+<li>常量字符串也是类似的索引：<code>ldc #2</code></li>
+<li><code>*.class</code>中是不是也分了常量数据段和代码段呢</li>
+</ul>
+
+
+<p>以上需要我们进一步了解<code>*.class</code>文件的格式。</p>
+
+<h2>class file format</h2>
+
+<p>class 文件格式网上也有讲得很详细的了，例如这篇<a href="http://www.importnew.com/15161.html">Java Class文件详解</a>。整个class文件完全可以用以下结构来描述：</p>
+
+<pre><code>ClassFile {
+    u4 magic;                                        //魔数
+    u2 minor_version;                                //次版本号
+    u2 major_version;                                //主版本号
+    u2 constant_pool_count;                          //常量池大小
+    cp_info constant_pool[constant_pool_count-1];    //常量池
+    u2 access_flags;                                 //类和接口层次的访问标志（通过|运算得到）
+    u2 this_class;                                   //类索引（指向常量池中的类常量）
+    u2 super_class;                                  //父类索引（指向常量池中的类常量）
+    u2 interfaces_count;                             //接口索引计数器
+    u2 interfaces[interfaces_count];                 //接口索引集合
+    u2 fields_count;                                 //字段数量计数器
+    field_info fields[fields_count];                 //字段表集合
+    u2 methods_count;                                //方法数量计数器
+    method_info methods[methods_count];              //方法表集合
+    u2 attributes_count;                             //属性个数
+    attribute_info attributes[attributes_count];     //属性表
+}
+</code></pre>
+
+<p>这明显已经不是以区段来分的格式了，上面提到的函数索引、常量字符串索引，都是保存在<code>constant_pool</code>常量池中。常量池中存储了很多信息，包括：</p>
+
+<ul>
+<li>各种字面常量，例如字符串</li>
+<li>类、数据成员、接口引用</li>
+</ul>
+
+
+<p>常量池的索引从1开始。对于上面例子<code>Test.java</code>，可以使用<code>javap -v Test</code>来查看其中的常量池，例如：</p>
+
+<pre><code>Constant pool:
+   #1 = Methodref          #4.#13         //  java/lang/Object."&lt;init&gt;":()V
+   #2 = String             #14            //  hello
+   #3 = Class              #15            //  Test
+   #4 = Class              #16            //  java/lang/Object
+   #5 = Utf8               &lt;init&gt;
+   #6 = Utf8               ()V
+   #7 = Utf8               Code
+   #8 = Utf8               LineNumberTable
+   #9 = Utf8               main
+  #10 = Utf8               ([Ljava/lang/String;)V
+  #11 = Utf8               SourceFile
+  #12 = Utf8               Test.java
+  #13 = NameAndType        #5:#6          //  "&lt;init&gt;":()V
+  #14 = Utf8               hello
+  #15 = Utf8               Test
+  #16 = Utf8               java/lang/Object
+</code></pre>
+
+<p>每一个类都会有一个常量池。</p>
+
+<h2>summary</h2>
+
+<p>要想了解JVM运行byte code，还需要了解更多JVM本身的东西，例如符号解析，内存管理等，可参考：</p>
+
+<ul>
+<li><a href="http://blog.jamesdbloom.com/JVMInternals.html">JVM Internals</a></li>
+<li><a href="http://www.cubrid.org/blog/dev-platform/understanding-jvm-internals/">Understanding JVM Internals</a></li>
+</ul>
+
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2015/03/31/intro-java-bytecode/'>http://codemacro.com/2015/03/31/intro-java-bytecode/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[基于内存查看STL常用容器内容]]></title>
@@ -3961,99 +4131,6 @@ g(2) // =&gt; 3
 <p class='post-footer'>
             原文地址：
             <a href='http://codemacro.com/2013/08/21/javascript-overview/'>http://codemacro.com/2013/08/21/javascript-overview/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[记一次堆栈平衡错误]]></title>
-    <link href="http://codemacro.com/2013/08/15/debug-esp-bug/"/>
-    <updated>2013-08-15T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2013/08/15/debug-esp-bug</id>
-    <content type="html"><![CDATA[<p>最近在一个使用Visual Studio开发的C++程序中，出现了如下错误：</p>
-
-<blockquote><p>Run-Time Check Failure #0 - The value of ESP was not properly saved across a function call.  This is usually a result of calling a function declared with one calling convention with a function pointer declared with a different calling convention.</p></blockquote>
-
-<p>这个错误主要指的就是函数调用堆栈不平衡。在C/C++程序中，调用一个函数前会保存当前堆栈信息，目标函数返回后会把堆栈恢复到调用前的状态。函数的参数、局部变量会影响堆栈。而函数堆栈不平衡，一般是因为函数调用方式和目标函数定义方式不一致导致，例如：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="kr">__stdcall</span> <span class="nf">func</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">)</span> <span class="p">{</span>
-<span class="p">}</span>
-
-<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span> <span class="p">{</span>
-    <span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">funcptr</span><span class="p">)(</span><span class="kt">int</span><span class="p">);</span>
-    <span class="n">funcptr</span> <span class="n">ptr</span> <span class="o">=</span> <span class="p">(</span><span class="n">funcptr</span><span class="p">)</span> <span class="n">func</span><span class="p">;</span>
-    <span class="n">ptr</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span> <span class="c1">// 返回后导致堆栈不平衡</span>
-    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span></code></pre></div>
-
-
-<p><code>__stdcall</code>修饰的函数，其函数参数的出栈由被调用者自己完成，而<code>__cdecl</code>，也就是C/C++函数的默认调用约定，则是调用者完成参数出栈。</p>
-
-<!-- more -->
-
-
-<p>Visual Studio在debug模式下会在我们的代码中加入不少检查代码，例如以上代码对应的汇编中，就会增加一个检查堆栈是否平衡的函数调用，当出现问题时，就会出现提示<code>Run-Time Check Failure...</code>这样的错误对话框：</p>
-
-<pre><code>call dword ptr [ptr]  ; ptr(1)
-add  esp,4  ; cdecl方式，调用者清除参数
-cmp  esi,esp  
-call @ILT+1345(__RTC_CheckEsp) (0B01546h) ; 检查堆栈是否平衡
-</code></pre>
-
-<p>但是我们的程序不是这种低级错误。我们调用的函数是放在dll中的，调用约定显示定义为<code>__stdcall</code>，函数声明和实现一致。大致的结构如下：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">IParser</span> <span class="o">*</span><span class="n">parser</span> <span class="o">=</span> <span class="n">CreateParser</span><span class="p">();</span>
-<span class="n">parser</span><span class="o">-&gt;</span><span class="n">Begin</span><span class="p">();</span>
-<span class="p">...</span>
-<span class="p">...</span>
-<span class="n">parser</span><span class="o">-&gt;</span><span class="n">End</span><span class="p">();</span>
-<span class="n">parser</span><span class="o">-&gt;</span><span class="n">Release</span><span class="p">();</span> <span class="c1">// 返回后导致堆栈不平衡</span></code></pre></div>
-
-
-<p>IParser的实现在一个dll里，这反而是一个误导人的信息。<code>parser-&gt;Release</code>返回后，堆栈不平衡，<strong>并且仅仅少了一个字节</strong>。一个字节怎么来的？</p>
-
-<p>解决这个问题主要的手段就是跟反汇编，在关键位置查看寄存器和堆栈的内容。编译器生成的代码是正确的，而我们自己的代码乍看上去也没问题。最后甚至使用最傻逼的调试手段&ndash;逐行语句注释查错。</p>
-
-<p>具体查错过程就不细说了。解决问题往往需要更多的冷静，和清晰的思路。最终我使用的方法是，在进入<code>Release</code>之前记录堆栈指针的值，堆栈指针的值会被压入堆栈，以在函数返回后从堆栈弹出，恢复堆栈指针。<code>Release</code>的实现很简单，就是删除一个<code>Parser</code>这个对象，但这个对象的析构会导致很多其他对象被析构。我就逐层地检查，是在哪个函数里改变了堆栈里的内容。</p>
-
-<p>理论上，函数本身是操作不到调用者的堆栈的。而现在看来，确实是被调用函数，也就是<code>Release</code>改写了调用者的堆栈内容。要改变堆栈的内容，只有通过局部变量的地址才能做到。</p>
-
-<p>最终，我发现在调用完以下函数后，我跟踪的堆栈地址内容发生了改变：</p>
-
-<pre><code>call llvm::RefCountedBase&lt;clang::TargetOptions&gt;::Release (10331117h)
-</code></pre>
-
-<p>因为注意到<code>TargetOptions</code>这个字眼，想起了在<code>parser-&gt;Begin</code>里有涉及到这个类的使用，类似于：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">TargetOptions</span> <span class="n">TO</span><span class="p">;</span>
-<span class="p">...</span>
-<span class="n">TargetInfo</span> <span class="o">*</span><span class="n">TI</span> <span class="o">=</span> <span class="n">TargetInfo</span><span class="o">::</span><span class="n">CreateTargetInfo</span><span class="p">(</span><span class="n">m_inst</span><span class="p">.</span><span class="n">getDiagnostics</span><span class="p">(),</span> <span class="n">TO</span><span class="p">);</span></code></pre></div>
-
-
-<p>这部分初始化代码，是直接从网上复制的，因为并不影响主要逻辑，所以从来没对这块代码深究。查看<code>CreateTargetInfo</code>的源码，<strong>发现这个函数将<code>TO</code>这个局部变量的地址保存了下来</strong>。</p>
-
-<p>而在<code>Release</code>中，则会对这个保存的临时变量进行删除操作，形如：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">Delete</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span>
-  <span class="n">assert</span> <span class="p">(</span><span class="n">ref_cnt</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="s">&quot;Reference count is already zero.&quot;</span><span class="p">);</span>
-  <span class="k">if</span> <span class="p">(</span><span class="o">--</span><span class="n">ref_cnt</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="k">delete</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="k">const</span> <span class="n">Derived</span><span class="o">*&gt;</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
-<span class="p">}</span></code></pre></div>
-
-
-<p>但是，<strong>问题并不在于对一个局部变量地址进行delete</strong>，<code>delete</code>在调试模式下是做了内存检测的，那会导致一种断言。</p>
-
-<p><code>TargetOptions</code>包含了<code>ref_cnt</code>这个成员。当出了<code>Begin</code>作用域后，parser保存的<code>TargetOptions</code>的地址，指向的内容（堆栈）发生了改变，也就是<code>ref_cnt</code>这个成员变量的值不再正常。由于一些巧合，主要是代码中各个局部变量、函数调用顺序、函数参数个数（曾尝试去除<code>Begin</code>的参数，可以避免错误提示），导致在调用<code>Release</code>前堆栈指针恰好等于之前保存的<code>TargetOptions</code>的地址。注意，之前保存的<code>TargetOptions</code>的地址，和调用<code>Release</code>前的堆栈指针值相同了。</p>
-
-<p>而在<code>TargetOptions</code>的<code>Delete</code>函数中，进行了<code>--ref_cnt</code>，这个变量是<code>TargetOptions</code>的第一个成员，它的减1，也就导致了堆栈内容的改变。</p>
-
-<p>至此，整个来龙去脉算是摸清。</p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2013/08/15/debug-esp-bug/'>http://codemacro.com/2013/08/15/debug-esp-bug/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
