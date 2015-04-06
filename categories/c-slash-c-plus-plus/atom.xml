@@ -4,7 +4,7 @@
   <title><![CDATA[Category: c/c++ | loop in codes]]></title>
   <link href="http://codemacro.com/categories/c-slash-c-plus-plus/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2015-03-31T20:35:52+08:00</updated>
+  <updated>2015-04-06T18:31:29+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,397 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[记一次tcmalloc分配内存引起的coredump]]></title>
+    <link href="http://codemacro.com/2015/04/06/tcmalloc-getstacktrace/"/>
+    <updated>2015-04-06T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2015/04/06/tcmalloc-getstacktrace</id>
+    <content type="html"><![CDATA[<h2>现象</h2>
+
+<p>线上的服务出现coredump，堆栈为：</p>
+
+<pre><code>#0  0x000000000045d145 in GetStackTrace(void**, int, int) ()
+#1  0x000000000045ec22 in tcmalloc::PageHeap::GrowHeap(unsigned long) ()
+#2  0x000000000045eeb3 in tcmalloc::PageHeap::New(unsigned long) ()
+#3  0x0000000000459ee8 in tcmalloc::CentralFreeList::Populate() ()
+#4  0x000000000045a088 in tcmalloc::CentralFreeList::FetchFromSpansSafe() ()
+#5  0x000000000045a10a in tcmalloc::CentralFreeList::RemoveRange(void**, void**, int) ()
+#6  0x000000000045c282 in tcmalloc::ThreadCache::FetchFromCentralCache(unsigned long, unsigned long) ()
+#7  0x0000000000470766 in tc_malloc ()
+#8  0x00007f75532cd4c2 in __conhash_get_rbnode (node=0x22c86870, hash=30)
+        at build/release64/cm_sub/conhash/conhash_inter.c:88
+#9  0x00007f75532cd76e in __conhash_add_replicas (conhash=0x24fbc7e0, iden=&lt;value optimized out&gt;)
+        at build/release64/cm_sub/conhash/conhash_inter.c:45
+#10 0x00007f75532cd1fa in conhash_add_node (conhash=0x24fbc7e0, iden=0) at build/release64/cm_sub/conhash/conhash.c:72
+#11 0x00007f75532c651b in cm_sub::TopoCluster::initLBPolicyInfo (this=0x2593a400)
+        at build/release64/cm_sub/topo_cluster.cpp:114
+#12 0x00007f75532cad73 in cm_sub::TopoClusterManager::processClusterMapTable (this=0xa219e0, ref=0x267ea8c0)
+        at build/release64/cm_sub/topo_cluster_manager.cpp:396
+#13 0x00007f75532c5a93 in cm_sub::SubRespMsgProcess::reinitCluster (this=0x9c2f00, msg=0x4e738ed0)
+        at build/release64/cm_sub/sub_resp_msg_process.cpp:157
+...
+</code></pre>
+
+<p>查看了应用层相关数据结构，基本数据都是没有问题的。所以最初怀疑是tcmalloc内部维护了错误的内存，在分配内存时出错，这个堆栈只是问题的表象。几天后，线上的另一个服务，基于同样的库，也core了，堆栈还是一样的。</p>
+
+<p>最初定位问题都是从最近更新的东西入手，包括依赖的server环境，但都没有明显的问题，所以最后只能从core的直接原因入手。</p>
+
+<!-- more -->
+
+
+<h2>分析GetStackTrace</h2>
+
+<p>确认core的详细位置：</p>
+
+<pre><code># core在该指令
+0x000000000045d145 &lt;_Z13GetStackTracePPvii+21&gt;: mov    0x8(%rax),%r9
+
+(gdb) p/x $rip              # core 的指令位置
+$9 = 0x45d145
+(gdb) p/x $rax              
+$10 = 0x4e73aa58
+(gdb) x/1a $rax+0x8         # rax + 8 = 0x4e73aa60
+0x4e73aa60:     0x0
+</code></pre>
+
+<p>该指令尝试从[0x4e73aa60]处读取内容，然后出错，这个内存单元不可读。但是具体这个指令在代码中是什么意思，<strong>需要将这个指令对应到代码中</strong>。获取tcmalloc的源码，发现<code>GetStackTrace</code>根据编译选项有很多实现，所以这里选择最可能的实现，然后对比汇编以确认代码是否匹配。最初选择的是<code>stacktrace_x86-64-inl.h</code>，后来发现完全不匹配，又选择了<code>stacktrace_x86-inl.h</code>。这个实现版本里也有对64位平台的支持。</p>
+
+<p><code>stacktrace_x86-inl.h</code>里使用了一些宏来生成函数名和参数，精简后代码大概为：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">int</span> <span class="n">GET_STACK_TRACE_OR_FRAMES</span> <span class="p">{</span>
+      <span class="kt">void</span> <span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">sp</span><span class="p">;</span>
+      <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">rbp</span><span class="p">;</span>
+      <span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="k">asm</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span> <span class="k">volatile</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">mov</span> <span class="o">%%</span><span class="n">rbp</span><span class="p">,</span> <span class="o">%</span><span class="mi">0</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span> <span class="o">:</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">=</span><span class="n">r</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span> <span class="p">(</span><span class="n">rbp</span><span class="p">));</span>
+      <span class="n">sp</span> <span class="o">=</span> <span class="p">(</span><span class="kt">void</span> <span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span><span class="p">)</span> <span class="n">rbp</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>  <span class="kt">int</span> <span class="n">n</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="k">while</span> <span class="p">(</span><span class="n">sp</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">n</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">max_depth</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">sp</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="k">reinterpret_cast</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="kt">void</span> <span class="o">*&amp;</span><span class="n">gt</span><span class="p">;(</span><span class="mi">0</span><span class="p">))</span> <span class="p">{</span>
+      <span class="k">break</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="kt">void</span> <span class="o">**</span><span class="n">next_sp</span> <span class="o">=</span> <span class="n">NextStackFrame</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">!</span><span class="n">IS_STACK_FRAMES</span><span class="p">,</span> <span class="n">IS_WITH_CONTEXT</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;(</span><span class="n">sp</span><span class="p">,</span> <span class="n">ucp</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">skip_count</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">skip_count</span><span class="o">--</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="n">result</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="n">sp</span><span class="o">+</span><span class="mi">1</span><span class="p">);</span>
+      <span class="n">n</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">sp</span> <span class="o">=</span> <span class="n">next_sp</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="n">n</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p><code>NextStackFrame</code>是一个模板函数，包含一大堆代码，精简后非常简单：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">template</span><span class="o">&lt;</span><span class="kt">bool</span> <span class="n">STRICT_UNWINDING</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">WITH_CONTEXT</span><span class="o">&gt;</span>
+    <span class="k">static</span> <span class="kt">void</span> <span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">NextStackFrame</span><span class="p">(</span><span class="kt">void</span> <span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">old_sp</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">uc</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kt">void</span> <span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">new_sp</span> <span class="o">=</span> <span class="p">(</span><span class="kt">void</span> <span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span><span class="p">)</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">old_sp</span><span class="p">;</span>
+      <span class="k">if</span> <span class="p">(</span><span class="n">STRICT_UNWINDING</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">new_sp</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">=</span> <span class="n">old_sp</span><span class="p">)</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">((</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">new_sp</span> <span class="o">-</span> <span class="p">(</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">old_sp</span> <span class="o">&gt;</span> <span class="mi">100000</span><span class="p">)</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">new_sp</span> <span class="o">==</span> <span class="n">old_sp</span><span class="p">)</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">new_sp</span> <span class="o">&gt;</span> <span class="n">old_sp</span><span class="p">)</span>
+            <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="p">((</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">new_sp</span> <span class="o">-</span> <span class="p">(</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">old_sp</span> <span class="o">&gt;</span> <span class="mi">1000000</span><span class="p">))</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+      <span class="p">}</span>
+      <span class="k">if</span> <span class="p">((</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">new_sp</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>  <span class="k">return</span> <span class="n">new_sp</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p>上面这个代码到汇编的对比过程还是花了些时间，其中汇编中出现的一些常量可以大大缩短对比时间，例如上面出现了<code>100000</code>，汇编中就有：</p>
+
+<pre><code>0x000000000045d176 &lt;_Z13GetStackTracePPvii+70&gt;: cmp    $0x186a0,%rbx  # 100000=0x186a0
+</code></pre>
+
+<p><em>注意<code>NextStackFrame</code>中的 <code>if (STRICT_UNWINDING)</code>使用的是模板参数，这导致生成的代码中根本没有else部分，也就没有<code>1000000</code>这个常量</em></p>
+
+<p>在对比代码的过程中，可以<strong>知道关键的几个寄存器、内存位置对应到代码中的变量，从而可以还原core时的现场环境</strong>。分析过程中不一定要从第一行汇编读，可以从较明显的位置读，从而还原整个代码，<strong>函数返回指令、跳转指令、比较指令、读内存指令、参数寄存器</strong>等都是比较明显对应的地方。</p>
+
+<p>另外注意<code>GetStackTrace</code>在<code>RecordGrowth</code>中调用，传入了3个参数：</p>
+
+<pre><code>GetStackTrace(t-&gt;stack, kMaxStackDepth-1, 3); // kMaxStackDepth = 31
+</code></pre>
+
+<p>以下是我分析的简单注解：</p>
+
+<pre><code>(gdb) disassemble
+Dump of assembler code for function _Z13GetStackTracePPvii:
+0x000000000045d130 &lt;_Z13GetStackTracePPvii+0&gt;:  push   %rbp
+0x000000000045d131 &lt;_Z13GetStackTracePPvii+1&gt;:  mov    %rsp,%rbp
+0x000000000045d134 &lt;_Z13GetStackTracePPvii+4&gt;:  push   %rbx
+0x000000000045d135 &lt;_Z13GetStackTracePPvii+5&gt;:  mov    %rbp,%rax
+0x000000000045d138 &lt;_Z13GetStackTracePPvii+8&gt;:  xor    %r8d,%r8d
+0x000000000045d13b &lt;_Z13GetStackTracePPvii+11&gt;: test   %rax,%rax
+0x000000000045d13e &lt;_Z13GetStackTracePPvii+14&gt;: je     0x45d167 &lt;_Z13GetStackTracePPvii+55&gt;
+0x000000000045d140 &lt;_Z13GetStackTracePPvii+16&gt;: cmp    %esi,%r8d        # while ( .. max_depth &gt; n ?
+0x000000000045d143 &lt;_Z13GetStackTracePPvii+19&gt;: jge    0x45d167 &lt;_Z13GetStackTracePPvii+55&gt;
+0x000000000045d145 &lt;_Z13GetStackTracePPvii+21&gt;: mov    0x8(%rax),%r9    # 关键位置：*(sp+1) -&gt; r9, rax 对应 sp变量
+0x000000000045d149 &lt;_Z13GetStackTracePPvii+25&gt;: test   %r9,%r9          # *(sp+1) == 0 ?
+0x000000000045d14c &lt;_Z13GetStackTracePPvii+28&gt;: je     0x45d167 &lt;_Z13GetStackTracePPvii+55&gt;
+0x000000000045d14e &lt;_Z13GetStackTracePPvii+30&gt;: mov    (%rax),%rcx      # new_sp = *old_sp，这里已经是NextStackFrame的代码
+0x000000000045d151 &lt;_Z13GetStackTracePPvii+33&gt;: cmp    %rcx,%rax        # new_sp &lt;= old_sp ? 
+0x000000000045d154 &lt;_Z13GetStackTracePPvii+36&gt;: jb     0x45d170 &lt;_Z13GetStackTracePPvii+64&gt;  # new_sp &gt; old_sp 跳转
+0x000000000045d156 &lt;_Z13GetStackTracePPvii+38&gt;: xor    %ecx,%ecx
+0x000000000045d158 &lt;_Z13GetStackTracePPvii+40&gt;: test   %edx,%edx        # skip_count &gt; 0 ?
+0x000000000045d15a &lt;_Z13GetStackTracePPvii+42&gt;: jle    0x45d186 &lt;_Z13GetStackTracePPvii+86&gt;
+0x000000000045d15c &lt;_Z13GetStackTracePPvii+44&gt;: sub    $0x1,%edx        # skip_count--
+0x000000000045d15f &lt;_Z13GetStackTracePPvii+47&gt;: mov    %rcx,%rax        
+0x000000000045d162 &lt;_Z13GetStackTracePPvii+50&gt;: test   %rax,%rax        # while (sp ?
+0x000000000045d165 &lt;_Z13GetStackTracePPvii+53&gt;: jne    0x45d140 &lt;_Z13GetStackTracePPvii+16&gt;
+0x000000000045d167 &lt;_Z13GetStackTracePPvii+55&gt;: pop    %rbx
+0x000000000045d168 &lt;_Z13GetStackTracePPvii+56&gt;: leaveq 
+0x000000000045d169 &lt;_Z13GetStackTracePPvii+57&gt;: mov    %r8d,%eax        # r8 存储了返回值，r8=n
+0x000000000045d16c &lt;_Z13GetStackTracePPvii+60&gt;: retq                    # return n
+0x000000000045d16d &lt;_Z13GetStackTracePPvii+61&gt;: nopl   (%rax)
+0x000000000045d170 &lt;_Z13GetStackTracePPvii+64&gt;: mov    %rcx,%rbx        
+0x000000000045d173 &lt;_Z13GetStackTracePPvii+67&gt;: sub    %rax,%rbx        # offset = new_sp - old_sp
+0x000000000045d176 &lt;_Z13GetStackTracePPvii+70&gt;: cmp    $0x186a0,%rbx    # offset &gt; 100000 ?
+0x000000000045d17d &lt;_Z13GetStackTracePPvii+77&gt;: ja     0x45d156 &lt;_Z13GetStackTracePPvii+38&gt; # return NULL
+0x000000000045d17f &lt;_Z13GetStackTracePPvii+79&gt;: test   $0x7,%cl         # new_sp &amp; (sizeof(void*) - 1)
+0x000000000045d182 &lt;_Z13GetStackTracePPvii+82&gt;: je     0x45d158 &lt;_Z13GetStackTracePPvii+40&gt;
+0x000000000045d184 &lt;_Z13GetStackTracePPvii+84&gt;: jmp    0x45d156 &lt;_Z13GetStackTracePPvii+38&gt;
+0x000000000045d186 &lt;_Z13GetStackTracePPvii+86&gt;: movslq %r8d,%rax        # rax = n
+0x000000000045d189 &lt;_Z13GetStackTracePPvii+89&gt;: add    $0x1,%r8d        # n++
+0x000000000045d18d &lt;_Z13GetStackTracePPvii+93&gt;: mov    %r9,(%rdi,%rax,8)# 关键位置：result[n] = *(sp+1)
+0x000000000045d191 &lt;_Z13GetStackTracePPvii+97&gt;: jmp    0x45d15f &lt;_Z13GetStackTracePPvii+47&gt;
+</code></pre>
+
+<p>分析过程比较耗时，同时还可以分析下<code>GetStackTrace</code>函数的实现原理，其实就是利用RBP寄存器不断回溯，从而得到整个调用堆栈各个函数的地址（严格来说是返回地址）。简单示意下函数调用中RBP的情况：</p>
+
+<pre><code>   ...
+saved registers          # i.e push rbx
+local variabes           # i.e sub 0x10, rsp
+return address           # call xxx
+last func RBP            # push rbp; mov rsp, rbp
+saved registers
+local variables 
+return address
+last func RBP
+...                      # rsp
+</code></pre>
+
+<p>总之，<strong>一般情况下，任何一个函数中，RBP寄存器指向了当前函数的栈基址，该栈基址中又存储了调用者的栈基址，同时该栈基址前面还存储了调用者的返回地址</strong>。所以，<code>GetStackTrace</code>的实现，简单来说大概就是：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">sp</span> <span class="o">=</span> <span class="n">rbp</span>  <span class="c1">// 取得当前函数GetStackTrace的栈基址</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">n</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">max_depth</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">new_sp</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">sp</span>
+        <span class="n">result</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">(</span><span class="n">new_sp</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">n</span><span class="o">++</span>
+    <span class="p">}</span></code></pre></div></p>
+
+<p>以上，最终就知道了以下关键信息：</p>
+
+<ul>
+<li>r8 对应变量 n，表示当前取到第几个栈帧了</li>
+<li>rax 对应变量 sp，代码core在 *(sp+1)</li>
+<li>rdi 对应变量 result，用于存储取得的各个地址</li>
+</ul>
+
+
+<p>然后可以看看现场是怎样的：</p>
+
+<pre><code>(gdb) x/10a $rdi
+0x1ffc9b98:     0x45a088 &lt;_ZN8tcmalloc15CentralFreeList18FetchFromSpansSafeEv+40&gt;       0x45a10a &lt;_ZN8tcmalloc15CentralFreeList11RemoveRangeEPPvS2_i+106&gt;
+0x1ffc9ba8:     0x45c282 &lt;_ZN8tcmalloc11ThreadCache21FetchFromCentralCacheEmm+114&gt;      0x470766 &lt;tc_malloc+790&gt;
+0x1ffc9bb8:     0x7f75532cd4c2 &lt;__conhash_get_rbnode+34&gt;        0x0
+0x1ffc9bc8:     0x0     0x0
+0x1ffc9bd8:     0x0     0x0
+
+(gdb) p/x $r8
+$3 = 0x5
+
+(gdb) p/x $rax
+$4 = 0x4e73aa58
+</code></pre>
+
+<p><strong>小结：</strong></p>
+
+<p><code>GetStackTrace</code>在取调用<code>__conhash_get_rbnode</code>的函数时出错，取得了5个函数地址。当前使用的RBP为<code>0x4e73aa58</code>。</p>
+
+<h2>错误的RBP</h2>
+
+<p>RBP也是从堆栈中取出来的，既然这个地址有问题，首先想到的就是有代码局部变量/数组写越界。例如<code>sprintf</code>的使用。而且，<strong>一般写越界破坏堆栈，都可能是把调用者的堆栈破坏了</strong>，例如：</p>
+
+<pre><code>char s[32];
+memcpy(s, p, 1024);
+</code></pre>
+
+<p>因为写入都是从低地址往高地址写，而调用者的堆栈在高地址。当然，也会遇到写坏调用者的调用者的堆栈，也就是跨栈帧越界写，例如以前遇到的：</p>
+
+<pre><code>len = vsnprintf(buf, sizeof(buf), fmt, wtf-long-string);
+buf[len] = 0;
+</code></pre>
+
+<p><code>__conhash_get_rbnode</code>的RBP是在tcmalloc的堆栈中取的：</p>
+
+<pre><code>(gdb) f 7
+#7  0x0000000000470766 in tc_malloc ()
+(gdb) x/10a $rsp
+0x4e738b80:     0x4e73aa58      0x22c86870
+0x4e738b90:     0x4e738bd0      0x85
+0x4e738ba0:     0x4e73aa58      0x7f75532cd4c2 &lt;__conhash_get_rbnode+34&gt;   # 0x4e73aa58
+</code></pre>
+
+<p>所以这里就会怀疑是<code>tcmalloc</code>这个函数里有把堆栈破坏，这个时候就是读代码，看看有没有疑似危险的地方，未果。这里就陷入了僵局，怀疑又遇到了跨栈帧破坏的情况，这个时候就只能<code>__conhash_get_rbnode</code>调用栈中周围的函数翻翻，例如调用<code>__conhash_get_rbnode</code>的函数<code>__conhash_add_replicas</code>中恰好有字符串操作：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">conhash_add_replicas</span><span class="p">(</span><span class="kt">conhash_t</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">conhash</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">iden</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="kt">node_t</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">node</span> <span class="o">=</span> <span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">conhash_create_node</span><span class="p">(</span><span class="n">iden</span><span class="p">,</span> <span class="n">conhash</span><span class="o">-&gt;</span><span class="n">replica</span><span class="p">);</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="n">buf_len</span><span class="p">];</span> <span class="c1">// buf_len = 64</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="n">snprintf</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="n">buf_len</span><span class="p">,</span> <span class="n">VIRT_NODE_HASH_FMT</span><span class="p">,</span> <span class="n">node</span><span class="o">-&gt;</span><span class="n">iden</span><span class="p">,</span> <span class="n">i</span><span class="p">);</span>
+        <span class="kt">uint32_t</span> <span class="n">hash</span> <span class="o">=</span> <span class="n">conhash</span><span class="o">-&gt;</span><span class="n">cb_hashfunc</span><span class="p">(</span><span class="n">buf</span><span class="p">);</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">util_rbtree_search</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;(</span><span class="n">conhash</span><span class="o">-&gt;</span><span class="n">vnode_tree</span><span class="p">),</span> <span class="n">hash</span><span class="p">)</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+        <span class="p">{</span>
+            <span class="kt">util_rbtree_node_t</span><span class="o">*</span> <span class="n">rbnode</span> <span class="o">=</span> <span class="n">__conhash_get_rbnode</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">hash</span><span class="p">);</span>
+            <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p>这段代码最终发现是没有问题的，这里又耗费了不少时间。后来发现若干个函数里的RBP都有点奇怪，这个调用栈比较正常的范围是：0x4e738c90</p>
+
+<pre><code>(gdb) f 8
+#8  0x00007f75532cd4c2 in __conhash_get_rbnode (node=0x22c86870, hash=30)
+(gdb) p/x $rbp
+$6 = 0x4e73aa58     # 这个还不算特别可疑
+(gdb) f 9
+#9  0x00007f75532cd76e in __conhash_add_replicas (conhash=0x24fbc7e0, iden=&lt;value optimized out&gt;)
+(gdb) p/x $rbp
+$7 = 0x4e738c60     # 这个也不算特别可疑
+(gdb) f 10
+#10 0x00007f75532cd1fa in conhash_add_node (conhash=0x24fbc7e0, iden=0) at build/release64/cm_sub/conhash/conhash.c:72
+(gdb) p/x $rbp      # 可疑
+$8 = 0x0
+(gdb) f 11
+#11 0x00007f75532c651b in cm_sub::TopoCluster::initLBPolicyInfo (this=0x2593a400)
+(gdb) p/x $rbp      # 可疑
+$9 = 0x2598fef0
+</code></pre>
+
+<p><strong>为什么很多函数中RBP都看起来不正常？</strong> 想了想真要是代码里把堆栈破坏了，这错误得发生得多巧妙？</p>
+
+<h2>错误RBP的来源</h2>
+
+<p>然后转机来了，脑海中突然闪出<code>-fomit-frame-pointer</code>。编译器生成的代码中是可以不需要栈基址指针的，也就是RBP寄存器不作为栈基址寄存器。大部分函数或者说开启了<code>frame-pointer</code>的函数，其函数头都会有以下指令：</p>
+
+<pre><code>push   %rbp
+mov    %rsp,%rbp
+...
+</code></pre>
+
+<p>表示保存调用者的栈基址到栈中，以及设置自己的栈基址。看下<code>__conhash</code>系列函数；</p>
+
+<pre><code>Dump of assembler code for function __conhash_get_rbnode:
+0x00007f75532cd4a0 &lt;__conhash_get_rbnode+0&gt;:    mov    %rbx,-0x18(%rsp)
+0x00007f75532cd4a5 &lt;__conhash_get_rbnode+5&gt;:    mov    %rbp,-0x10(%rsp)
+...
+</code></pre>
+
+<p>这个库是单独编译的，没有显示指定<code>-fno-omit-frame-pointer</code>，查阅<a href="https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html">gcc手册</a>，o2优化是开启了<code>omit-frame-pinter</code> 的。</p>
+
+<p>在没有RBP的情况下，tcmalloc的<code>GetStackTrace</code>尝试读RBP取获取调用返回地址，自然是有问题的。但是，<strong>如果整个调用栈中的函数，要么有RBP，要么没有RBP，那么<code>GetStackTrace</code>取出的结果最多就是跳过一些栈帧，不会出错。</strong> 除非，这中间的某个函数把RBP寄存器另作他用（编译器省出这个寄存器肯定是要另作他用的）。所以这里继续追查这个错误地址<code>0x4e73aa58</code>的来源。</p>
+
+<p>来源已经比较明显，肯定是<code>__conhash_get_rbnode</code>中设置的，因为这个函数的RBP是在被调用者<code>tcmalloc</code>中保存的。</p>
+
+<pre><code>Dump of assembler code for function __conhash_get_rbnode:
+0x00007f75532cd4a0 &lt;__conhash_get_rbnode+0&gt;:    mov    %rbx,-0x18(%rsp)
+0x00007f75532cd4a5 &lt;__conhash_get_rbnode+5&gt;:    mov    %rbp,-0x10(%rsp)
+0x00007f75532cd4aa &lt;__conhash_get_rbnode+10&gt;:   mov    %esi,%ebp                    # 改写了RBP
+0x00007f75532cd4ac &lt;__conhash_get_rbnode+12&gt;:   mov    %r12,-0x8(%rsp)
+0x00007f75532cd4b1 &lt;__conhash_get_rbnode+17&gt;:   sub    $0x18,%rsp
+0x00007f75532cd4b5 &lt;__conhash_get_rbnode+21&gt;:   mov    %rdi,%r12
+0x00007f75532cd4b8 &lt;__conhash_get_rbnode+24&gt;:   mov    $0x30,%edi
+0x00007f75532cd4bd &lt;__conhash_get_rbnode+29&gt;:   callq  0x7f75532b98c8 &lt;malloc@plt&gt;  # 调用tcmalloc，汇编到这里即可
+</code></pre>
+
+<p>这里打印RSI寄存器的值可能会被误导，因为任何时候打印寄存器的值可能都是错的，除非它有被显示保存。不过这里可以看出RSI的值来源于参数(RSI对应第二个参数)：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">conhash_add_replicas</span><span class="p">(</span><span class="kt">conhash_t</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">conhash</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">iden</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="kt">node_t</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">node</span> <span class="o">=</span> <span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">conhash_create_node</span><span class="p">(</span><span class="n">iden</span><span class="p">,</span> <span class="n">conhash</span><span class="o">-&gt;</span><span class="n">replica</span><span class="p">);</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="n">buf_len</span><span class="p">];</span> <span class="c1">// buf_len = 64</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="n">snprintf</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="n">buf_len</span><span class="p">,</span> <span class="n">VIRT_NODE_HASH_FMT</span><span class="p">,</span> <span class="n">node</span><span class="o">-&gt;</span><span class="n">iden</span><span class="p">,</span> <span class="n">i</span><span class="p">);</span>
+        <span class="kt">uint32_t</span> <span class="n">hash</span> <span class="o">=</span> <span class="n">conhash</span><span class="o">-&gt;</span><span class="n">cb_hashfunc</span><span class="p">(</span><span class="n">buf</span><span class="p">);</span> <span class="c1">// hash值由一个字符串哈希函数计算</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">util_rbtree_search</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;(</span><span class="n">conhash</span><span class="o">-&gt;</span><span class="n">vnode_tree</span><span class="p">),</span> <span class="n">hash</span><span class="p">)</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+        <span class="p">{</span>
+            <span class="kt">util_rbtree_node_t</span><span class="o">*</span> <span class="n">rbnode</span> <span class="o">=</span> <span class="n">__conhash_get_rbnode</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">hash</span><span class="p">);</span>  <span class="c1">// hash值</span>
+            <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p>追到<code>__conhash_add_replicas</code>：</p>
+
+<pre><code>0x00007f75532cd764 &lt;__conhash_add_replicas+164&gt;:        mov    %ebx,%esi    # 来源于rbx
+0x00007f75532cd766 &lt;__conhash_add_replicas+166&gt;:        mov    %r15,%rdi
+0x00007f75532cd769 &lt;__conhash_add_replicas+169&gt;:        callq  0x7f75532b9e48 &lt;__conhash_get_rbnode@plt&gt;
+
+(gdb) p/x $rbx
+$11 = 0x4e73aa58
+(gdb) p/x hash
+$12 = 0x4e73aa58      # 0x4e73aa58
+</code></pre>
+
+<p>找到了<code>0x4e73aa58</code>的来源。这个地址值竟然是一个字符串哈希算法算出来的！这里还可以看看这个字符串的内容：</p>
+
+<pre><code>(gdb) x/1s $rsp
+0x4e738bd0:      "conhash-00000-00133"
+</code></pre>
+
+<p>这个碉堡的哈希函数是<code>conhash_hash_def</code>。</p>
+
+<h2>coredump的条件</h2>
+
+<p>以上，既然只要某个库<code>omit-frame-pointer</code>，那tcmalloc就可能出错，为什么发生的频率并不高呢？这个可以回到<code>GetStackTrace</code>尤其是<code>NextStackFrame</code>的实现，其中包含了几个合法RBP的判定：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="k">if</span> <span class="p">(</span><span class="n">new_sp</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">=</span> <span class="n">old_sp</span><span class="p">)</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>  <span class="c1">// 上一个栈帧的RBP肯定比当前的大</span>
+    <span class="k">if</span> <span class="p">((</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">new_sp</span> <span class="o">-</span> <span class="p">(</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">old_sp</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="mi">100000</span><span class="p">)</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span> <span class="c1">// 指针值范围还必须在100000内</span>
+    <span class="p">...</span>
+<span class="k">if</span> <span class="p">((</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">new_sp</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span> <span class="c1">// 由于本身保存的是指针，所以还必须是sizeof(void*)的整数倍，对齐</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p>有了以上条件，才使得这个core几率变得很低。</p>
+
+<h2>总结</h2>
+
+<p>最后，如果你很熟悉tcmalloc，整个问题估计就被秒解了：<a href="http://gperftools.googlecode.com/svn/trunk/INSTALL">tcmalloc INSTALL</a></p>
+
+<h2>附</h2>
+
+<p>另外附上另一个有意思的东西。</p>
+
+<p>在分析<code>__conhash_add_replicas</code>时，其内定义了一个64字节的字符数组，查看其堆栈：</p>
+
+<pre><code>(gdb) x/20a $rsp
+0x4e738bd0:     0x2d687361686e6f63      0x30302d3030303030          # 这些是字符串conhash-00000-00133
+0x4e738be0:     0x333331        0x0
+0x4e738bf0:     0x0     0x7f75532cd69e &lt;__conhash_create_node+78&gt;
+0x4e738c00:     0x24fbc7e0      0x4e738c60
+0x4e738c10:     0x24fbc7e0      0x7f75532cd6e3 &lt;__conhash_add_replicas+35&gt;
+0x4e738c20:     0x0     0x24fbc7e8
+0x4e738c30:     0x4e738c20      0x24fbc7e0
+0x4e738c40:     0x22324360      0x246632c0
+0x4e738c50:     0x0     0x0
+0x4e738c60:     0x0     0x7f75532cd1fa &lt;conhash_add_node+74&gt;
+</code></pre>
+
+<p>最开始我觉得<code>buf</code>占64字节，也就是整个[0x4e738bd0, 0x4e738c10)内存，但是这块内存里居然有函数地址，这一度使我怀疑这里有问题。后来醒悟这些地址是定义<code>buf</code>前调用<code>__conhash_create_node</code>产生的，调用过程中写到堆栈里，调用完后栈指针改变，但并不需要清空栈中的内容。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[基于内存查看STL常用容器内容]]></title>
@@ -26,68 +417,66 @@
 
 <p>string，即<code>basic_string</code> <code>bits/basic_string.h</code>：</p>
 
-<p>{% highlight c++ %}
-    mutable <em>Alloc_hider  </em>M_dataplus;
-    &hellip;
-      const <em>CharT*
-      c_str() const
-      { return </em>M_data(); }
-    &hellip;  <br/>
-      <em>CharT*
-      </em>M_data() const
-      { return  <em>M_dataplus.</em>M_p; }</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">mutable</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Alloc_hider</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_dataplus</span><span class="p">;</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+      <span class="k">const</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">CharT</span><span class="o">*</span>
+      <span class="n">c_str</span><span class="p">()</span> <span class="k">const</span>
+      <span class="p">{</span> <span class="k">return</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_data</span><span class="p">();</span> <span class="p">}</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>  <span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
+      <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">CharT</span><span class="o">*</span>
+      <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_data</span><span class="p">()</span> <span class="k">const</span>
+      <span class="p">{</span> <span class="k">return</span>  <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_dataplus</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_p</span><span class="p">;</span> <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>...
-  struct _Alloc_hider : _Alloc
-  {
-_Alloc_hider(_CharT* __dat, const _Alloc&amp; __a)
-: _Alloc(__a), _M_p(__dat) { }
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="p">...</span>
+  <span class="k">struct</span> <span class="nl">_Alloc_hider</span> <span class="p">:</span> <span class="n">_Alloc</span>
+  <span class="p">{</span>
+<span class="n">_Alloc_hider</span><span class="p">(</span><span class="n">_CharT</span><span class="o">*</span> <span class="n">__dat</span><span class="p">,</span> <span class="k">const</span> <span class="n">_Alloc</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">__a</span><span class="p">)</span>
+<span class="o">:</span> <span class="n">_Alloc</span><span class="p">(</span><span class="n">__a</span><span class="p">),</span> <span class="n">_M_p</span><span class="p">(</span><span class="n">__dat</span><span class="p">)</span> <span class="p">{</span> <span class="p">}</span>
 
-_CharT* _M_p; // The actual data.
-  };
+<span class="n">_CharT</span><span class="o">*</span> <span class="n">_M_p</span><span class="p">;</span> <span class="c1">// The actual data.</span>
+  <span class="p">};</span>
 
-  size_type
-  length() const
-  { return _M_rep()-&gt;_M_length; }
+  <span class="n">size_type</span>
+  <span class="n">length</span><span class="p">()</span> <span class="k">const</span>
+  <span class="p">{</span> <span class="k">return</span> <span class="n">_M_rep</span><span class="p">()</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">_M_length</span><span class="p">;</span> <span class="p">}</span>
 
-  _Rep*
-  _M_rep() const
-  { return &amp;((reinterpret_cast&lt;_Rep*&gt; (_M_data()))[-1]); }
+  <span class="n">_Rep</span><span class="o">*</span>
+  <span class="n">_M_rep</span><span class="p">()</span> <span class="k">const</span>
+  <span class="p">{</span> <span class="k">return</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;((</span><span class="k">reinterpret_cast</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Rep</span><span class="o">*&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="p">(</span><span class="n">_M_data</span><span class="p">()))[</span><span class="o">-</span><span class="mi">1</span><span class="p">]);</span> <span class="p">}</span>
 
-  ...
-   struct _Rep_base
-  {
-size_type       _M_length;
-size_type       _M_capacity;
-_Atomic_word        _M_refcount;
-  };
+  <span class="p">...</span>
+   <span class="k">struct</span> <span class="n">_Rep_base</span>
+  <span class="p">{</span>
+<span class="n">size_type</span>       <span class="n">_M_length</span><span class="p">;</span>
+<span class="n">size_type</span>       <span class="n">_M_capacity</span><span class="p">;</span>
+<span class="n">_Atomic_word</span>        <span class="n">_M_refcount</span><span class="p">;</span>
+  <span class="p">};</span>
 
-  struct _Rep : _Rep_base
-</code></pre>
+  <span class="k">struct</span> <span class="nl">_Rep</span> <span class="p">:</span> <span class="n">_Rep_base</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>即，string内有一个指针，指向实际的字符串位置，这个位置前面有一个<code>_Rep</code>结构，其内保存了字符串的长度、可用内存以及引用计数。当我们拿到一个string对象的地址时，可以通过以下代码获取相关值：</p>
 
 <!-- more -->
 
 
-<p>{% highlight c++ %}
-    void ds_str_i(void <em>p) {
-        char <strong>raw = (char</strong>)p;
-        char </em>s = <em>raw;
-        size_t len = </em>(size_t*)(s - sizeof(size_t) * 3);
-        printf(&ldquo;str: %s (%zd)\n&rdquo;, s, len);
-    }</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">ds_str_i</span><span class="p">(</span><span class="kt">void</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">p</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">char</span> <span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">raw</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span><span class="p">)</span><span class="n">p</span><span class="p">;</span>
+        <span class="kt">char</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">s</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">raw</span><span class="p">;</span>
+        <span class="kt">size_t</span> <span class="n">len</span> <span class="o">=</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">(</span><span class="kt">size_t</span><span class="o">*</span><span class="p">)(</span><span class="n">s</span> <span class="o">-</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">size_t</span><span class="p">)</span> <span class="o">*</span> <span class="mi">3</span><span class="p">);</span>
+        <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="nl">str</span><span class="p">:</span> <span class="o">%</span><span class="n">s</span> <span class="p">(</span><span class="o">%</span><span class="n">zd</span><span class="p">)</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="n">s</span><span class="p">,</span> <span class="n">len</span><span class="p">);</span>
+    <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>size_t ds_str() {
-    std::string s = "hello";
-    ds_str_i(&amp;s);
-    return s.size();
-}
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">size_t</span> <span class="n">ds_str</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">s</span> <span class="o">=</span> <span class="s">&quot;hello&quot;</span><span class="p">;</span>
+    <span class="n">ds_str_i</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">s</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">s</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>在gdb中拿到一个string的地址时，可以以下打印出该字符串及长度：</p>
 
@@ -103,72 +492,68 @@ $2 = 0x606028 "hello"
 
 <p>众所周知vector实现就是一块连续的内存，<code>bits/stl_vector.h</code>。</p>
 
-<p>{% highlight c++ %}
-    template<typename _Tp, typename _Alloc = std::allocator<_Tp> >
-    class vector : protected <em>Vector_base&lt;</em>Tp, _Alloc></p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">_Tp</span><span class="p">,</span> <span class="k">typename</span> <span class="n">_Alloc</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">allocator</span><span class="o">&lt;</span><span class="n">_Tp</span><span class="o">&gt;</span> <span class="o">&gt;</span>
+    <span class="k">class</span> <span class="nc">vector</span> <span class="o">:</span> <span class="k">protected</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Vector_base</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Tp</span><span class="p">,</span> <span class="n">_Alloc</span><span class="o">&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>...
-template&lt;typename _Tp, typename _Alloc&gt;
-struct _Vector_base
-{
-  typedef typename _Alloc::template rebind&lt;_Tp&gt;::other _Tp_alloc_type;
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="p">...</span>
+<span class="k">template</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="k">typename</span> <span class="n">_Tp</span><span class="p">,</span> <span class="k">typename</span> <span class="n">_Alloc</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
+<span class="k">struct</span> <span class="n">_Vector_base</span>
+<span class="p">{</span>
+  <span class="k">typedef</span> <span class="k">typename</span> <span class="n">_Alloc</span><span class="o">::</span><span class="k">template</span> <span class="n">rebind</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Tp</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">::</span><span class="n">other</span> <span class="n">_Tp_alloc_type</span><span class="p">;</span>
 
-  struct _Vector_impl
-  : public _Tp_alloc_type
-  {
-_Tp*           _M_start;
-_Tp*           _M_finish;
-_Tp*           _M_end_of_storage;
-_Vector_impl(_Tp_alloc_type const&amp; __a)
-: _Tp_alloc_type(__a), _M_start(0), _M_finish(0), _M_end_of_storage(0)
-{ }
-  };
+  <span class="k">struct</span> <span class="nl">_Vector_impl</span>
+  <span class="p">:</span> <span class="k">public</span> <span class="n">_Tp_alloc_type</span>
+  <span class="p">{</span>
+<span class="n">_Tp</span><span class="o">*</span>           <span class="n">_M_start</span><span class="p">;</span>
+<span class="n">_Tp</span><span class="o">*</span>           <span class="n">_M_finish</span><span class="p">;</span>
+<span class="n">_Tp</span><span class="o">*</span>           <span class="n">_M_end_of_storage</span><span class="p">;</span>
+<span class="n">_Vector_impl</span><span class="p">(</span><span class="n">_Tp_alloc_type</span> <span class="k">const</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">__a</span><span class="p">)</span>
+<span class="o">:</span> <span class="n">_Tp_alloc_type</span><span class="p">(</span><span class="n">__a</span><span class="p">),</span> <span class="n">_M_start</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">_M_finish</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">_M_end_of_storage</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="p">{</span> <span class="p">}</span>
+  <span class="p">};</span>
 
 
-  _Vector_impl _M_impl;
-</code></pre>
+  <span class="n">_Vector_impl</span> <span class="n">_M_impl</span><span class="p">;</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>可以看出<code>sizeof(vector&lt;xxx&gt;)=24</code>，其内也就是3个指针，<code>_M_start</code>指向首元素地址，<code>_M_finish</code>指向最后一个节点+1，<code>_M_end_of_storage</code>是可用空间最后的位置。</p>
 
-<p>{% highlight c++ %}
-      iterator
-      end()
-      { return iterator (this-><em>M_impl.</em>M_finish); }
-      const_iterator
-      &hellip;
-      begin() const
-      { return const_iterator (this-><em>M_impl.</em>M_start); }
-      &hellip;
-      size_type
-      capacity() const
-      { return size_type(const_iterator(this-><em>M_impl.</em>M_end_of_storage)
-             - begin()); }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">iterator</span>
+      <span class="nf">end</span><span class="p">()</span>
+      <span class="p">{</span> <span class="k">return</span> <span class="n">iterator</span> <span class="p">(</span><span class="k">this</span><span class="o">-&gt;&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_impl</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_finish</span><span class="p">);</span> <span class="p">}</span>
+      <span class="n">const_iterator</span>
+      <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+      <span class="n">begin</span><span class="p">()</span> <span class="k">const</span>
+      <span class="p">{</span> <span class="k">return</span> <span class="n">const_iterator</span> <span class="p">(</span><span class="k">this</span><span class="o">-&gt;&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_impl</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_start</span><span class="p">);</span> <span class="p">}</span>
+      <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+      <span class="n">size_type</span>
+      <span class="nf">capacity</span><span class="p">()</span> <span class="k">const</span>
+      <span class="p">{</span> <span class="k">return</span> <span class="n">size_type</span><span class="p">(</span><span class="n">const_iterator</span><span class="p">(</span><span class="k">this</span><span class="o">-&gt;&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_impl</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_end_of_storage</span><span class="p">)</span>
+             <span class="o">-</span> <span class="n">begin</span><span class="p">());</span> <span class="p">}</span></code></pre></div></p>
 
 <p>可以通过代码从一个vector对象地址输出其信息：</p>
 
-<p>{% highlight c++ %}
-    template <typename T>
-    void ds_vec_i(void <em>p) {
-        T </em>start = <em>(T**)p;
-        T </em>finish = <em>(T**)((char</em>)p + sizeof(void<em>));
-        T </em>end_storage = <em>(T**)((char</em>)p + 2 * sizeof(void*));
-        printf(&ldquo;vec size: %ld, avaiable size: %ld\n&rdquo;, finish - start, end_storage - start);
-    }</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span>
+    <span class="kt">void</span> <span class="n">ds_vec_i</span><span class="p">(</span><span class="kt">void</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">p</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">T</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">start</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">(</span><span class="n">T</span><span class="o">**</span><span class="p">)</span><span class="n">p</span><span class="p">;</span>
+        <span class="n">T</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">finish</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">(</span><span class="n">T</span><span class="o">**</span><span class="p">)((</span><span class="kt">char</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span><span class="n">p</span> <span class="o">+</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">void</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">));</span>
+        <span class="n">T</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">end_storage</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">(</span><span class="n">T</span><span class="o">**</span><span class="p">)((</span><span class="kt">char</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span><span class="n">p</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="p">));</span>
+        <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">vec</span> <span class="nl">size</span><span class="p">:</span> <span class="o">%</span><span class="n">ld</span><span class="p">,</span> <span class="n">avaiable</span> <span class="nl">size</span><span class="p">:</span> <span class="o">%</span><span class="n">ld</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="n">finish</span> <span class="o">-</span> <span class="n">start</span><span class="p">,</span> <span class="n">end_storage</span> <span class="o">-</span> <span class="n">start</span><span class="p">);</span>
+    <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>size_t ds_vec() {
-    std::vector&lt;int&gt; vec;
-    vec.push_back(0x11);
-    vec.push_back(0x22);
-    vec.push_back(0x33);
-    ds_vec_i&lt;int&gt;(&amp;vec);
-    return vec.size();
-}
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">size_t</span> <span class="n">ds_vec</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="kt">int</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="n">vec</span><span class="p">;</span>
+    <span class="n">vec</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x11</span><span class="p">);</span>
+    <span class="n">vec</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x22</span><span class="p">);</span>
+    <span class="n">vec</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x33</span><span class="p">);</span>
+    <span class="n">ds_vec_i</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="kt">int</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">vec</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">vec</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>使用gdb输出一个vector中的内容：</p>
 
@@ -186,86 +571,84 @@ $3 = (void *) 0x7fffffffe380
 
 <p><code>bits/stl_list.h</code></p>
 
-<p>{% highlight c++ %}
-      bool
-      empty() const
-      { return this-><em>M_impl.</em>M_node.<em>M_next == &amp;this-></em>M_impl._M_node; }</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">bool</span>
+      <span class="n">empty</span><span class="p">()</span> <span class="k">const</span>
+      <span class="p">{</span> <span class="k">return</span> <span class="k">this</span><span class="o">-&gt;&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_impl</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_node</span><span class="p">.</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_next</span> <span class="o">==</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="k">this</span><span class="o">-&gt;&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_impl</span><span class="p">.</span><span class="n">_M_node</span><span class="p">;</span> <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>  const_iterator
-  begin() const
-  { return const_iterator(this-&gt;_M_impl._M_node._M_next); }
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>  <span class="n">const_iterator</span>
+  <span class="n">begin</span><span class="p">()</span> <span class="k">const</span>
+  <span class="p">{</span> <span class="k">return</span> <span class="n">const_iterator</span><span class="p">(</span><span class="k">this</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">_M_impl</span><span class="p">.</span><span class="n">_M_node</span><span class="p">.</span><span class="n">_M_next</span><span class="p">);</span> <span class="p">}</span>
 
-  iterator
-  end()
-  { return iterator(&amp;this-&gt;_M_impl._M_node); }
+  <span class="n">iterator</span>
+  <span class="n">end</span><span class="p">()</span>
+  <span class="p">{</span> <span class="k">return</span> <span class="n">iterator</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="k">this</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">_M_impl</span><span class="p">.</span><span class="n">_M_node</span><span class="p">);</span> <span class="p">}</span>
 
-  ...
+  <span class="p">...</span>
 
-struct _List_node_base
-{
-    _List_node_base* _M_next;   ///&lt; Self-explanatory
-    _List_node_base* _M_prev;   ///&lt; Self-explanatory
-    ...
-};
+<span class="k">struct</span> <span class="n">_List_node_base</span>
+<span class="p">{</span>
+    <span class="n">_List_node_base</span><span class="o">*</span> <span class="n">_M_next</span><span class="p">;</span>   <span class="c1">///&amp;lt; Self-explanatory</span>
+    <span class="n">_List_node_base</span><span class="o">*</span> <span class="n">_M_prev</span><span class="p">;</span>   <span class="c1">///&amp;lt; Self-explanatory</span>
+    <span class="p">...</span>
+<span class="p">};</span>
 
-template&lt;typename _Tp&gt;
-struct _List_node : public _List_node_base
-{
-  _Tp _M_data;                ///&lt; User's data.
-};
+<span class="k">template</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="k">typename</span> <span class="n">_Tp</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
+<span class="k">struct</span> <span class="nl">_List_node</span> <span class="p">:</span> <span class="k">public</span> <span class="n">_List_node_base</span>
+<span class="p">{</span>
+  <span class="n">_Tp</span> <span class="n">_M_data</span><span class="p">;</span>                <span class="c1">///&amp;lt; User&#39;s data.</span>
+<span class="p">};</span>
 
-template&lt;typename _Tp, typename _Alloc&gt;
-class _List_base
-{
-    ...
-  struct _List_impl
-  : public _Node_alloc_type
-  {
-_List_node_base _M_node;
-    ...
-  };
+<span class="k">template</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="k">typename</span> <span class="n">_Tp</span><span class="p">,</span> <span class="k">typename</span> <span class="n">_Alloc</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
+<span class="k">class</span> <span class="nc">_List_base</span>
+<span class="p">{</span>
+    <span class="p">...</span>
+  <span class="k">struct</span> <span class="nl">_List_impl</span>
+  <span class="p">:</span> <span class="k">public</span> <span class="n">_Node_alloc_type</span>
+  <span class="p">{</span>
+<span class="n">_List_node_base</span> <span class="n">_M_node</span><span class="p">;</span>
+    <span class="p">...</span>
+  <span class="p">};</span>
 
-  _List_impl _M_impl;
+  <span class="n">_List_impl</span> <span class="n">_M_impl</span><span class="p">;</span>
 
 
-template&lt;typename _Tp, typename _Alloc = std::allocator&lt;_Tp&gt; &gt;
-class list : protected _List_base&lt;_Tp, _Alloc&gt;
-</code></pre>
+<span class="k">template</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="k">typename</span> <span class="n">_Tp</span><span class="p">,</span> <span class="k">typename</span> <span class="n">_Alloc</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">allocator</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Tp</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
+<span class="k">class</span> <span class="nc">list</span> <span class="o">:</span> <span class="k">protected</span> <span class="n">_List_base</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Tp</span><span class="p">,</span> <span class="n">_Alloc</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>所以<code>sizeof(list&lt;xx&gt;)=16</code>，两个指针。每一个真正的节点首先是包含两个指针，然后是元素内容(<code>_List_node</code>)。</p>
 
 <p>通过代码输出list的内容：</p>
 
-<p>{% highlight c++ %}
-    #define NEXT(ptr, T) do { \
-        void <em>n = </em>(char<strong>)ptr; \
-        T val = <em>(T</em>)((char</strong>)ptr + 2); \
-        printf(&ldquo;list item %p val: 0x%x\n&rdquo;, ptr, val); \
-        ptr = n; \
-    } while (0)</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="cp">#define NEXT(ptr, T) do { \</span>
+<span class="cp">        void &lt;em&gt;n = &lt;/em&gt;(char&lt;strong&gt;)ptr; \</span>
+<span class="cp">        T val = &lt;em&gt;(T&lt;/em&gt;)((char&lt;/strong&gt;)ptr + 2); \</span>
+<span class="cp">        printf(&amp;ldquo;list item %p val: 0x%x\n&amp;rdquo;, ptr, val); \</span>
+<span class="cp">        ptr = n; \</span>
+<span class="cp">    } while (0)&lt;/p&gt;</span>
 
-<pre><code>template &lt;typename T&gt;
-void ds_list_i(void *p) {
-    void *ptr = *(char**)p;
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">template</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
+<span class="kt">void</span> <span class="nf">ds_list_i</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">p</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="kt">char</span><span class="o">**</span><span class="p">)</span><span class="n">p</span><span class="p">;</span>
 
-    NEXT(ptr, T);
-    NEXT(ptr, T);
-    NEXT(ptr, T);
-}
+    <span class="n">NEXT</span><span class="p">(</span><span class="n">ptr</span><span class="p">,</span> <span class="n">T</span><span class="p">);</span>
+    <span class="n">NEXT</span><span class="p">(</span><span class="n">ptr</span><span class="p">,</span> <span class="n">T</span><span class="p">);</span>
+    <span class="n">NEXT</span><span class="p">(</span><span class="n">ptr</span><span class="p">,</span> <span class="n">T</span><span class="p">);</span>
+<span class="p">}</span>
 
-size_t ds_list() {
-    std::list&lt;int&gt; lst;
-    lst.push_back(0x11);
-    lst.push_back(0x22);
-    lst.push_back(0x33);
-    ds_list_i&lt;int&gt;(&amp;lst);
-    return lst.size();
-}
-</code></pre>
+<span class="kt">size_t</span> <span class="nf">ds_list</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">list</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="kt">int</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="n">lst</span><span class="p">;</span>
+    <span class="n">lst</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x11</span><span class="p">);</span>
+    <span class="n">lst</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x22</span><span class="p">);</span>
+    <span class="n">lst</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x33</span><span class="p">);</span>
+    <span class="n">ds_list_i</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="kt">int</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">lst</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">lst</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>在gdb中可以以下方式遍历该list：</p>
 
@@ -287,98 +670,90 @@ $4 = (void *) 0x7fffffffe390
 
 <p><code>bits/stl_map.h</code></p>
 
-<p>{% highlight c++ %}
-      typedef <em>Rb_tree&lt;key_type, value_type, </em>Select1st<value_type>,
-               key_compare, <em>Pair_alloc_type> </em>Rep_type;
-    &hellip;
-     <em>Rep_type </em>M_t;
-    &hellip;</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">typedef</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Rb_tree</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">key_type</span><span class="p">,</span> <span class="n">value_type</span><span class="p">,</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Select1st</span><span class="o">&lt;</span><span class="n">value_type</span><span class="o">&gt;</span><span class="p">,</span>
+               <span class="n">key_compare</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Pair_alloc_type</span><span class="o">&gt;</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Rep_type</span><span class="p">;</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+     <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Rep_type</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_t</span><span class="p">;</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>  iterator
-  begin()
-  { return _M_t.begin(); }
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>  <span class="n">iterator</span>
+  <span class="n">begin</span><span class="p">()</span>
+  <span class="p">{</span> <span class="k">return</span> <span class="n">_M_t</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span> <span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p><code>bits/stl_tree.h</code></p>
 
-<p>{% highlight c++ %}
-     struct <em>Rb_tree_node_base
-      {
-        typedef </em>Rb_tree_node_base<em> <em>Base_ptr;
-        typedef const </em>Rb_tree_node_base</em> _Const_Base_ptr;</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">struct</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Rb_tree_node_base</span>
+      <span class="p">{</span>
+        <span class="k">typedef</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Rb_tree_node_base</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Base_ptr</span><span class="p">;</span>
+        <span class="k">typedef</span> <span class="k">const</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Rb_tree_node_base</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">_Const_Base_ptr</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>    _Rb_tree_color  _M_color;
-    _Base_ptr       _M_parent;
-    _Base_ptr       _M_left;
-    _Base_ptr       _M_right;
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="n">_Rb_tree_color</span>  <span class="n">_M_color</span><span class="p">;</span>
+    <span class="n">_Base_ptr</span>       <span class="n">_M_parent</span><span class="p">;</span>
+    <span class="n">_Base_ptr</span>       <span class="n">_M_left</span><span class="p">;</span>
+    <span class="n">_Base_ptr</span>       <span class="n">_M_right</span><span class="p">;</span>
 
-    ...
-  };
+    <span class="p">...</span>
+  <span class="p">};</span>
 
-template&lt;typename _Val&gt;
-struct _Rb_tree_node : public _Rb_tree_node_base
-{
-  typedef _Rb_tree_node&lt;_Val&gt;* _Link_type;
-  _Val _M_value_field;
-};
+<span class="k">template</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="k">typename</span> <span class="n">_Val</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
+<span class="k">struct</span> <span class="nl">_Rb_tree_node</span> <span class="p">:</span> <span class="k">public</span> <span class="n">_Rb_tree_node_base</span>
+<span class="p">{</span>
+  <span class="k">typedef</span> <span class="n">_Rb_tree_node</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Val</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">*</span> <span class="n">_Link_type</span><span class="p">;</span>
+  <span class="n">_Val</span> <span class="n">_M_value_field</span><span class="p">;</span>
+<span class="p">};</span>
 
 
-template&lt;typename _Key_compare,
-       bool _Is_pod_comparator = std::__is_pod&lt;_Key_compare&gt;::__value&gt;
-    struct _Rb_tree_impl : public _Node_allocator
-    {
-  _Key_compare      _M_key_compare;
-  _Rb_tree_node_base    _M_header;
-  size_type         _M_node_count; // Keeps track of size of tree.
-  ...
-    }
+<span class="k">template</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="k">typename</span> <span class="n">_Key_compare</span><span class="p">,</span>
+       <span class="kt">bool</span> <span class="n">_Is_pod_comparator</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">__is_pod</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Key_compare</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">::</span><span class="n">__value</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="nl">_Rb_tree_impl</span> <span class="p">:</span> <span class="k">public</span> <span class="n">_Node_allocator</span>
+    <span class="p">{</span>
+  <span class="n">_Key_compare</span>      <span class="n">_M_key_compare</span><span class="p">;</span>
+  <span class="n">_Rb_tree_node_base</span>    <span class="n">_M_header</span><span class="p">;</span>
+  <span class="n">size_type</span>         <span class="n">_M_node_count</span><span class="p">;</span> <span class="c1">// Keeps track of size of tree.</span>
+  <span class="p">...</span>
+    <span class="p">}</span>
 
-_Rb_tree_impl&lt;_Compare&gt; _M_impl;
-...
+<span class="n">_Rb_tree_impl</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Compare</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="n">_M_impl</span><span class="p">;</span>
+<span class="p">...</span>
 
-  iterator
-  begin()
-  {
-return iterator(static_cast&lt;_Link_type&gt;
-        (this-&gt;_M_impl._M_header._M_left));
-  }
-</code></pre>
+  <span class="n">iterator</span>
+  <span class="n">begin</span><span class="p">()</span>
+  <span class="p">{</span>
+<span class="k">return</span> <span class="n">iterator</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">_Link_type</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
+        <span class="p">(</span><span class="k">this</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">_M_impl</span><span class="p">.</span><span class="n">_M_header</span><span class="p">.</span><span class="n">_M_left</span><span class="p">));</span>
+  <span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>所以可以看出，大部分时候(取决于<code>_M_key_compare</code>) <code>sizeof(map&lt;xx&gt;)=48</code>，主要的元素是：</p>
 
-<p>{% highlight c++ %}
-        <em>Rb_tree_color  </em>M_color; // 节点颜色
-        <em>Base_ptr       </em>M_parent; // 父节点
-        <em>Base_ptr       </em>M_left; // 左节点
-        <em>Base_ptr       </em>M_right; // 右节点
-        <em>Val            </em>M_value_field // 同list中节点技巧一致，后面是实际的元素
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Rb_tree_color</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_color</span><span class="p">;</span> <span class="c1">// 节点颜色</span>
+        <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Base_ptr</span>       <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_parent</span><span class="p">;</span> <span class="c1">// 父节点</span>
+        <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Base_ptr</span>       <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_left</span><span class="p">;</span> <span class="c1">// 左节点</span>
+        <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Base_ptr</span>       <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_right</span><span class="p">;</span> <span class="c1">// 右节点</span>
+        <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">Val</span>            <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_value_field</span> <span class="c1">// 同list中节点技巧一致，后面是实际的元素</span></code></pre></div></p>
 
 <p>同list中的实现一致，map本身作为一个节点，其不是一个存储数据的节点，</p>
 
 <p><code>_Rb_tree::end</code></p>
 
-<p>{% highlight c++ %}
-      iterator
-      end()
-      { return iterator(static_cast<_Link_type>(&amp;this-><em>M_impl.</em>M_header)); }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">iterator</span>
+      <span class="nf">end</span><span class="p">()</span>
+      <span class="p">{</span> <span class="k">return</span> <span class="n">iterator</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="n">_Link_type</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="k">this</span><span class="o">-&gt;&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_impl</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">M_header</span><span class="p">));</span> <span class="p">}</span></code></pre></div></p>
 
 <p>由于节点值在<code>_Rb_tree_node_base</code>后，所以任意时候拿到节点就可以偏移这个结构体拿到节点值，节点的值是一个pair，包含了key和value。</p>
 
 <p>在gdb中打印以下map的内容：</p>
 
-<p>{% highlight c++ %}
-    size_t ds_map() {
-        std::map&lt;std::string, int> imap;
-        imap[&ldquo;abc&rdquo;] = 0xbbb;
-        return imap.size();
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">size_t</span> <span class="nf">ds_map</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span> <span class="kt">int</span><span class="o">&gt;</span> <span class="n">imap</span><span class="p">;</span>
+        <span class="n">imap</span><span class="p">[</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">abc</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;]</span> <span class="o">=</span> <span class="mh">0xbbb</span><span class="p">;</span>
+        <span class="k">return</span> <span class="n">imap</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <pre><code>(gdb) p/x &amp;imap
 $7 = 0x7fffffffe370
@@ -417,17 +792,15 @@ $9 = 0x606028 "abc"
 
 <p>一个应用程序<code>test</code>会链接一个动态库<code>libdy.so</code>，如果一个符号，例如函数<code>callfn</code>定义于libdy.so中，test要使用该函数，简单地声明即可：</p>
 
-<p>{% highlight c++ %}
-// dy.cpp libdy.so
-void callfn() {
-    &hellip;
-}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// dy.cpp libdy.so</span>
+<span class="kt">void</span> <span class="nf">callfn</span><span class="p">()</span> <span class="p">{</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>// main.cpp test
-extern void callfn();</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// main.cpp test</span>
+<span class="k">extern</span> <span class="kt">void</span> <span class="n">callfn</span><span class="p">();</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>callfn();  <br/>
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">callfn</span><span class="p">();</span>  <span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span></code></pre></div></p>
 
 <p>在链接test的时候，链接器会统一进行检查。</p>
 
@@ -436,17 +809,15 @@ extern void callfn();</p>
 <!-- more -->
 
 
-<p>{% highlight c++ %}
-// dy.cpp libdy.so
-extern void mfunc();</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// dy.cpp libdy.so</span>
+<span class="k">extern</span> <span class="kt">void</span> <span class="nf">mfunc</span><span class="p">();</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>mfunc();</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">mfunc</span><span class="p">();</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>// main.cpp test
-void mfunc() {
-    &hellip;
-}
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// main.cpp test</span>
+<span class="kt">void</span> <span class="n">mfunc</span><span class="p">()</span> <span class="p">{</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div></p>
 
 <p>在生成libdy.so时<code>mfunc</code>可以找不到，此时<code>mfunc</code>为未定义：</p>
 
@@ -461,25 +832,25 @@ U _Z5mfuncv
 
 <p>同样，如果我们动态载入libdy.so，此时当然可以链接通过，但是在载入时同样得到找不到符号的错误：</p>
 
-<p>{% highlight c++ %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<h1>ifdef DY_LOAD</h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">ifdef</span> <span class="n">DY_LOAD</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<pre><code>void *dp = dlopen("./libdy.so", RTLD_LAZY);
-typedef void (*callfn)();
-callfn f = (callfn) dlsym(dp, "callfn");
-f();
-dlclose(dp);
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">void</span> <span class="o">*</span><span class="n">dp</span> <span class="o">=</span> <span class="n">dlopen</span><span class="p">(</span><span class="s">&quot;./libdy.so&quot;</span><span class="p">,</span> <span class="n">RTLD_LAZY</span><span class="p">);</span>
+<span class="k">typedef</span> <span class="nf">void</span> <span class="p">(</span><span class="o">*</span><span class="n">callfn</span><span class="p">)();</span>
+<span class="n">callfn</span> <span class="n">f</span> <span class="o">=</span> <span class="p">(</span><span class="n">callfn</span><span class="p">)</span> <span class="n">dlsym</span><span class="p">(</span><span class="n">dp</span><span class="p">,</span> <span class="s">&quot;callfn&quot;</span><span class="p">);</span>
+<span class="n">f</span><span class="p">();</span>
+<span class="n">dlclose</span><span class="p">(</span><span class="n">dp</span><span class="p">);</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<h1>else</h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="k">else</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<pre><code>callfn();
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">callfn</span><span class="p">();</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<h1>endif</h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">endif</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>得到错误：</p>
 
@@ -517,33 +888,31 @@ $ ./test
 
 <p>当直接链接动态库时，libdy.so和test都会链接包含<code>func</code>函数的fun.o，为了区分，我把<code>func</code>按照条件编译得到不同的版本：</p>
 
-<p>{% highlight c++ %}
-// fun.cpp</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// fun.cpp&lt;/p&gt;</span>
 
-<h1>ifdef V2</h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">ifdef</span> <span class="n">V2</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<p>extern &ldquo;C&rdquo; void func() {
-    printf(&ldquo;func v2\n&rdquo;);
-}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">extern</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">C</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span> <span class="kt">void</span> <span class="nf">func</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">func</span> <span class="n">v2</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<h1>else</h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="k">else</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<p>extern &ldquo;C&rdquo; void func() {
-    printf(&ldquo;func v1\n&rdquo;);
-}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">extern</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">C</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span> <span class="kt">void</span> <span class="nf">func</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">func</span> <span class="n">v1</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<h1>endif</h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">endif</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<p>// Makefile
-test: libdy obj.o mainfn
-    g++ -g -Wall -c fun.cpp -o fun.o # 编译为fun.o
-    g++ -g -Wall -c main.cpp #-DDY_LOAD
-    g++ -g -Wall -o test main.o obj.o fun.o -ldl mfun.o -ldy -L.</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// Makefile</span>
+<span class="nl">test</span><span class="p">:</span> <span class="n">libdy</span> <span class="n">obj</span><span class="p">.</span><span class="n">o</span> <span class="n">mainfn</span>
+    <span class="n">g</span><span class="o">++</span> <span class="o">-</span><span class="n">g</span> <span class="o">-</span><span class="n">Wall</span> <span class="o">-</span><span class="n">c</span> <span class="n">fun</span><span class="p">.</span><span class="n">cpp</span> <span class="o">-</span><span class="n">o</span> <span class="n">fun</span><span class="p">.</span><span class="n">o</span> <span class="err">#</span> <span class="err">编译为</span><span class="n">fun</span><span class="p">.</span><span class="n">o</span>
+    <span class="n">g</span><span class="o">++</span> <span class="o">-</span><span class="n">g</span> <span class="o">-</span><span class="n">Wall</span> <span class="o">-</span><span class="n">c</span> <span class="n">main</span><span class="p">.</span><span class="n">cpp</span> <span class="err">#</span><span class="o">-</span><span class="n">DDY_LOAD</span>
+    <span class="n">g</span><span class="o">++</span> <span class="o">-</span><span class="n">g</span> <span class="o">-</span><span class="n">Wall</span> <span class="o">-</span><span class="n">o</span> <span class="n">test</span> <span class="n">main</span><span class="p">.</span><span class="n">o</span> <span class="n">obj</span><span class="p">.</span><span class="n">o</span> <span class="n">fun</span><span class="p">.</span><span class="n">o</span> <span class="o">-</span><span class="n">ldl</span> <span class="n">mfun</span><span class="p">.</span><span class="n">o</span> <span class="o">-</span><span class="n">ldy</span> <span class="o">-</span><span class="n">L</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>libdy: obj
-    g++ -Wall -fPIC -c fun.cpp -DV2 -o fun-dy.o  # 定义V2宏，编译为fun-dy.o
-    g++ -Wall -fPIC -shared -o libdy.so dy.cpp -g obj.o fun-dy.o
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="nl">libdy</span><span class="p">:</span> <span class="n">obj</span>
+    <span class="n">g</span><span class="o">++</span> <span class="o">-</span><span class="n">Wall</span> <span class="o">-</span><span class="n">fPIC</span> <span class="o">-</span><span class="n">c</span> <span class="n">fun</span><span class="p">.</span><span class="n">cpp</span> <span class="o">-</span><span class="n">DV2</span> <span class="o">-</span><span class="n">o</span> <span class="n">fun</span><span class="o">-</span><span class="n">dy</span><span class="p">.</span><span class="n">o</span>  <span class="err">#</span> <span class="err">定义</span><span class="n">V2</span><span class="err">宏，编译为</span><span class="n">fun</span><span class="o">-</span><span class="n">dy</span><span class="p">.</span><span class="n">o</span>
+    <span class="n">g</span><span class="o">++</span> <span class="o">-</span><span class="n">Wall</span> <span class="o">-</span><span class="n">fPIC</span> <span class="o">-</span><span class="n">shared</span> <span class="o">-</span><span class="n">o</span> <span class="n">libdy</span><span class="p">.</span><span class="n">so</span> <span class="n">dy</span><span class="p">.</span><span class="n">cpp</span> <span class="o">-</span><span class="n">g</span> <span class="n">obj</span><span class="p">.</span><span class="n">o</span> <span class="n">fun</span><span class="o">-</span><span class="n">dy</span><span class="p">.</span><span class="n">o</span></code></pre></div></p>
 
 <p>这样，test中的<code>func</code>就会输出<code>func v1</code>；libdy.so中的<code>func</code>就会输出<code>func v2</code>。test和libdy.o确实都有<code>func</code>符号：</p>
 
@@ -556,23 +925,21 @@ $nm test | grep func
 
 <p>在test和libdy.so中都会调用<code>func</code>函数：</p>
 
-<p>{% highlight c++ %}
-// main.cpp test
-int main(int argc, char **argv) {
-    func();
-    &hellip;
-    callfn(); // 调用libdy.so中的函数
-    &hellip;
-}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// main.cpp test</span>
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">func</span><span class="p">();</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+    <span class="n">callfn</span><span class="p">();</span> <span class="c1">// 调用libdy.so中的函数</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>// dy.cpp libdy.so
-extern &ldquo;C&rdquo; void callfn() {
-    &hellip;
-    printf(&ldquo;callfn\n&rdquo;);
-    func();
-    &hellip;
-}
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// dy.cpp libdy.so</span>
+<span class="k">extern</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">C</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span> <span class="kt">void</span> <span class="nf">callfn</span><span class="p">()</span> <span class="p">{</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">callfn</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+    <span class="n">func</span><span class="p">();</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div></p>
 
 <p>运行后发现，都<strong>调用的是同一个<code>func</code></strong>：</p>
 
@@ -590,32 +957,30 @@ func v1
 
 <p>但是对于动态载入的情况则不同，同样的libdy.so我们在test中不链接，而是动态载入：</p>
 
-<p>{% highlight c++ %}
-int main(int argc, char **argv) {
-    func();</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">func</span><span class="p">();</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<h1>ifdef DY_LOAD</h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">ifdef</span> <span class="n">DY_LOAD</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<pre><code>void *dp = dlopen("./libdy.so", RTLD_LAZY);
-typedef void (*callfn)();
-callfn f = (callfn) dlsym(dp, "callfn");
-f();
-func();
-dlclose(dp);
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">void</span> <span class="o">*</span><span class="n">dp</span> <span class="o">=</span> <span class="n">dlopen</span><span class="p">(</span><span class="s">&quot;./libdy.so&quot;</span><span class="p">,</span> <span class="n">RTLD_LAZY</span><span class="p">);</span>
+<span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">callfn</span><span class="p">)();</span>
+<span class="n">callfn</span> <span class="n">f</span> <span class="o">=</span> <span class="p">(</span><span class="n">callfn</span><span class="p">)</span> <span class="n">dlsym</span><span class="p">(</span><span class="n">dp</span><span class="p">,</span> <span class="s">&quot;callfn&quot;</span><span class="p">);</span>
+<span class="n">f</span><span class="p">();</span>
+<span class="n">func</span><span class="p">();</span>
+<span class="n">dlclose</span><span class="p">(</span><span class="n">dp</span><span class="p">);</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<h1>else</h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="k">else</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<pre><code>callfn();
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">callfn</span><span class="p">();</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<h1>endif</h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">endif</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<pre><code>return 0;
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>}
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span></code></pre></div></p>
 
 <p>运行得到：</p>
 
@@ -635,44 +1000,42 @@ func v1
 
 <p>变量本质上也是符号(symbol)，但其处理规则和函数还有点不一样(<em>是不是有点想吐槽了</em>)。</p>
 
-<p>{% highlight c++ %}
-// object.h
-class Object {
-public:
-    Object() {</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// object.h</span>
+<span class="k">class</span> <span class="nc">Object</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="n">Object</span><span class="p">()</span> <span class="p">{</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<h1>ifdef DF</h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">ifdef</span> <span class="n">DF</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<pre><code>    s = malloc(32);
-    printf("s addr %p\n", s);
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="n">s</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="mi">32</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;s addr %p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">s</span><span class="p">);</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<h1>endif</h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">endif</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<pre><code>    printf("ctor %p\n", this);
-}
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;ctor %p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="k">this</span><span class="p">);</span>
+<span class="p">}</span>
 
-~Object() {
-    printf("dtor %p\n", this);
-</code></pre>
+<span class="o">~</span><span class="n">Object</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;dtor %p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="k">this</span><span class="p">);</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<h1>ifdef DF</h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">ifdef</span> <span class="n">DF</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<pre><code>    printf("s addr %p\n", s);
-    free(s);
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;s addr %p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">s</span><span class="p">);</span>
+    <span class="n">free</span><span class="p">(</span><span class="n">s</span><span class="p">);</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<h1>endif</h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">endif</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<pre><code>}
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="p">}</span>
 
-void *s;
-</code></pre>
+<span class="kt">void</span> <span class="o">*</span><span class="n">s</span><span class="p">;</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>};</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>extern Object g_obj;
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">extern</span> <span class="n">Object</span> <span class="n">g_obj</span><span class="p">;</span></code></pre></div></p>
 
 <p>我们的程序test和动态库libdy.so都会链接object.o。首先测试test链接libdy.so，test和libdy.so中都会有<code>g_obj</code>这个符号：</p>
 
@@ -785,16 +1148,14 @@ GNU C Library stable release version 2.5, by Roland McGrath et al.
 
 <p><code>/nptl/sysdeps/unix/sysv/linux/timer_routines.c</code></p>
 
-<p>{% highlight c++ %}
-timer_helper_thread(&hellip;)  // 用于检测定时器触发的辅助线程
-{
-    &hellip;
-      pthread_t th;
-      (void) pthread_create (&amp;th, &amp;tk->attr, timer_sigev_thread, // 开启一个新线程调用用户注册的定时器函数
-                 td);
-    &hellip;
-}
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">timer_helper_thread</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hellip</span><span class="p">;)</span>  <span class="c1">// 用于检测定时器触发的辅助线程</span>
+<span class="p">{</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+      <span class="kt">pthread_t</span> <span class="n">th</span><span class="p">;</span>
+      <span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="n">pthread_create</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">th</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">tk</span><span class="o">-&gt;</span><span class="n">attr</span><span class="p">,</span> <span class="n">timer_sigev_thread</span><span class="p">,</span> <span class="c1">// 开启一个新线程调用用户注册的定时器函数</span>
+                 <span class="n">td</span><span class="p">);</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div></p>
 
 <p>要重现此BUG可以使用我的实验代码 <a href="https://gist.github.com/kevinlynx/69435e718785a0ad12c4">thread-tls</a>，或者使用<a href="https://sourceware.org/bugzilla/attachment.cgi?id=6290">Bug 13862 中的附件</a></p>
 
@@ -814,26 +1175,24 @@ timer_helper_thread(&hellip;)  // 用于检测定时器触发的辅助线程
 
 <p>以上结构用代码描述为，</p>
 
-<p>{% highlight c++ %}
-union dtv_t {
-    size_t counter;
-    struct {
-        void <em>val; /</em> point to tls variable memory */
-        bool is_static;
-    } pointer;
-};</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">union</span> <span class="kt">dtv_t</span> <span class="p">{</span>
+    <span class="kt">size_t</span> <span class="n">counter</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="p">{</span>
+        <span class="kt">void</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">val</span><span class="p">;</span> <span class="o">/&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">point</span> <span class="n">to</span> <span class="n">tls</span> <span class="n">variable</span> <span class="n">memory</span> <span class="err">*/</span>
+        <span class="kt">bool</span> <span class="n">is_static</span><span class="p">;</span>
+    <span class="p">}</span> <span class="n">pointer</span><span class="p">;</span>
+<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>struct tcbhead_t {
-    void <em>tcb;
-    dtv_t </em>dtv; /<em> point to a dtv_t array </em>/
-    void <em>padding[22]; /</em> other members i don&rsquo;t care */
-};</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">struct</span> <span class="kt">tcbhead_t</span> <span class="p">{</span>
+    <span class="kt">void</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tcb</span><span class="p">;</span>
+    <span class="kt">dtv_t</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">dtv</span><span class="p">;</span> <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">point</span> <span class="n">to</span> <span class="n">a</span> <span class="kt">dtv_t</span> <span class="n">array</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
+    <span class="kt">void</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">padding</span><span class="p">[</span><span class="mi">22</span><span class="p">];</span> <span class="o">/&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">other</span> <span class="n">members</span> <span class="n">i</span> <span class="n">don</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="n">t</span> <span class="n">care</span> <span class="err">*/</span>
+<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>struct pthread {
-    tcbhead_t tcb;
-    /<em> more members i don&rsquo;t care </em>/
-};
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">struct</span> <span class="n">pthread</span> <span class="p">{</span>
+    <span class="kt">tcbhead_t</span> <span class="n">tcb</span><span class="p">;</span>
+    <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">more</span> <span class="n">members</span> <span class="n">i</span> <span class="n">don</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="n">t</span> <span class="n">care</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
+<span class="p">};</span></code></pre></div></p>
 
 <p><strong>dtv是一个用于以模块为单位存储TLS变量的数组</strong>。</p>
 
@@ -856,30 +1215,26 @@ $2 = {counter = 18446744073709551615, pointer = {val = 0xffffffffffffffff, is_st
 
 <p>/elf/dl-tls.c <code>_dl_allocate_tls_init</code></p>
 
-<p>{% highlight c++ %}
-if (map->l_tls_offset == NO_TLS_OFFSET
-   || map->l_tls_offset == FORCED_DYNAMIC_TLS_OFFSET)
- {
-   /<em> For dynamically loaded modules we simply store
-      the value indicating deferred allocation.  </em>/
-   dtv[map->l_tls_modid].pointer.val = TLS_DTV_UNALLOCATED;
-   dtv[map->l_tls_modid].pointer.is_static = false;
-   continue;
- }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">if</span> <span class="p">(</span><span class="n">map</span><span class="o">-&gt;</span><span class="n">l_tls_offset</span> <span class="o">==</span> <span class="n">NO_TLS_OFFSET</span>
+   <span class="o">||</span> <span class="n">map</span><span class="o">-&gt;</span><span class="n">l_tls_offset</span> <span class="o">==</span> <span class="n">FORCED_DYNAMIC_TLS_OFFSET</span><span class="p">)</span>
+ <span class="p">{</span>
+   <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">For</span> <span class="n">dynamically</span> <span class="n">loaded</span> <span class="n">modules</span> <span class="n">we</span> <span class="n">simply</span> <span class="n">store</span>
+      <span class="n">the</span> <span class="n">value</span> <span class="n">indicating</span> <span class="n">deferred</span> <span class="n">allocation</span><span class="p">.</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
+   <span class="n">dtv</span><span class="p">[</span><span class="n">map</span><span class="o">-&gt;</span><span class="n">l_tls_modid</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">val</span> <span class="o">=</span> <span class="n">TLS_DTV_UNALLOCATED</span><span class="p">;</span>
+   <span class="n">dtv</span><span class="p">[</span><span class="n">map</span><span class="o">-&gt;</span><span class="n">l_tls_modid</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">is_static</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+   <span class="k">continue</span><span class="p">;</span>
+ <span class="p">}</span></code></pre></div></p>
 
 <p><code>dtv</code>数组大小之所以为17，可以参看代码 /elf/dl-tls.c <code>allocate_dtv</code>：</p>
 
-<p>{% highlight c++ %}
-// dl_tls_max_dtv_idx 随着载入模块的增加而增加，载入1个.so则是1</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// dl_tls_max_dtv_idx 随着载入模块的增加而增加，载入1个.so则是1&lt;/p&gt;</span>
 
-<p>dtv_length = GL(dl_tls_max_dtv_idx) + DTV_SURPLUS; // DTV_SURPLUS 14
-dtv = calloc (dtv_length + 2, sizeof (dtv_t));
-if (dtv != NULL)
- {
-   /<em> This is the initial length of the dtv.  </em>/
-   dtv[0].counter = dtv_length;
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">dtv_length</span> <span class="o">=</span> <span class="n">GL</span><span class="p">(</span><span class="n">dl_tls_max_dtv_idx</span><span class="p">)</span> <span class="o">+</span> <span class="n">DTV_SURPLUS</span><span class="p">;</span> <span class="c1">// DTV_SURPLUS 14</span>
+<span class="n">dtv</span> <span class="o">=</span> <span class="n">calloc</span> <span class="p">(</span><span class="n">dtv_length</span> <span class="o">+</span> <span class="mi">2</span><span class="p">,</span> <span class="k">sizeof</span> <span class="p">(</span><span class="kt">dtv_t</span><span class="p">));</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">dtv</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span>
+ <span class="p">{</span>
+   <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">This</span> <span class="n">is</span> <span class="n">the</span> <span class="n">initial</span> <span class="n">length</span> <span class="n">of</span> <span class="n">the</span> <span class="n">dtv</span><span class="p">.</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
+   <span class="n">dtv</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">counter</span> <span class="o">=</span> <span class="n">dtv_length</span><span class="p">;</span></code></pre></div></p>
 
 <p>继续上面的实验，当调用到.so中的<code>function</code>时，其TLS被初始化，此时<code>dtv[3]</code>中<code>val</code>指向初始化后的TLS变量地址：</p>
 
@@ -961,33 +1316,31 @@ $4 = {counter = 6300896, pointer = {val = 0x6024e0, is_static = false}}
 
 <p>在<code>allocate_stack</code>中分配线程堆栈时，有一个从缓存中取的操作：</p>
 
-<p>{% highlight c++ %}
-allocate_stack(..) {
-    &hellip;
-    pd = get_cached_stack (&amp;size, &amp;mem);
-    &hellip;
-}
-/<em> Get a stack frame from the cache.  We have to match by size since
-   some blocks might be too small or far too large.  </em>/
-get_cached_stack(&hellip;) {
-    &hellip;
-    list_for_each (entry, &amp;stack_cache) // 根据size从stack_cache中取
-    { &hellip; }
-    &hellip;
-    /<em> Clear the DTV.  </em>/
-    dtv_t *dtv = GET_DTV (TLS_TPADJ (result));
-    for (size_t cnt = 0; cnt &lt; dtv[-1].counter; ++cnt)
-        if (! dtv[1 + cnt].pointer.is_static
-                &amp;&amp; dtv[1 + cnt].pointer.val != TLS_DTV_UNALLOCATED)
-            free (dtv[1 + cnt].pointer.val);
-    memset (dtv, &lsquo;\0&rsquo;, (dtv[-1].counter + 1) * sizeof (dtv_t));</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">allocate_stack</span><span class="p">(..)</span> <span class="p">{</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+    <span class="n">pd</span> <span class="o">=</span> <span class="n">get_cached_stack</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">size</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">mem</span><span class="p">);</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">Get</span> <span class="n">a</span> <span class="n">stack</span> <span class="n">frame</span> <span class="n">from</span> <span class="n">the</span> <span class="n">cache</span><span class="p">.</span>  <span class="n">We</span> <span class="n">have</span> <span class="n">to</span> <span class="n">match</span> <span class="n">by</span> <span class="n">size</span> <span class="n">since</span>
+   <span class="n">some</span> <span class="n">blocks</span> <span class="n">might</span> <span class="n">be</span> <span class="n">too</span> <span class="n">small</span> <span class="n">or</span> <span class="n">far</span> <span class="n">too</span> <span class="n">large</span><span class="p">.</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
+<span class="n">get_cached_stack</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hellip</span><span class="p">;)</span> <span class="p">{</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+    <span class="n">list_for_each</span> <span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">stack_cache</span><span class="p">)</span> <span class="c1">// 根据size从stack_cache中取</span>
+    <span class="p">{</span> <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span> <span class="p">}</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+    <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">Clear</span> <span class="n">the</span> <span class="n">DTV</span><span class="p">.</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
+    <span class="kt">dtv_t</span> <span class="o">*</span><span class="n">dtv</span> <span class="o">=</span> <span class="n">GET_DTV</span> <span class="p">(</span><span class="n">TLS_TPADJ</span> <span class="p">(</span><span class="n">result</span><span class="p">));</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">cnt</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">cnt</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">dtv</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">].</span><span class="n">counter</span><span class="p">;</span> <span class="o">++</span><span class="n">cnt</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span> <span class="n">dtv</span><span class="p">[</span><span class="mi">1</span> <span class="o">+</span> <span class="n">cnt</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">is_static</span>
+                <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">dtv</span><span class="p">[</span><span class="mi">1</span> <span class="o">+</span> <span class="n">cnt</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">val</span> <span class="o">!=</span> <span class="n">TLS_DTV_UNALLOCATED</span><span class="p">)</span>
+            <span class="n">free</span> <span class="p">(</span><span class="n">dtv</span><span class="p">[</span><span class="mi">1</span> <span class="o">+</span> <span class="n">cnt</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">val</span><span class="p">);</span>
+    <span class="n">memset</span> <span class="p">(</span><span class="n">dtv</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="err">\</span><span class="mi">0</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="p">(</span><span class="n">dtv</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">].</span><span class="n">counter</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="k">sizeof</span> <span class="p">(</span><span class="kt">dtv_t</span><span class="p">));</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>/* Re-initialize the TLS.  */
-_dl_allocate_tls_init (TLS_TPADJ (result));
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="cm">/* Re-initialize the TLS.  */</span>
+<span class="n">_dl_allocate_tls_init</span> <span class="p">(</span><span class="n">TLS_TPADJ</span> <span class="p">(</span><span class="n">result</span><span class="p">));</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>}
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span></code></pre></div></p>
 
 <p><code>get_cached_stack</code>会把取出的<code>pthread</code>中的dtv重新初始化。<strong>注意 <code>_dl_allocate_tls_init</code> 中是根据模块列表来初始化dtv数组的。</strong></p>
 
@@ -1082,42 +1435,40 @@ world
 
 <p>可以通过一些代码来展示以上过程。在开发C++程序时，可以利用文件静态变量会先于<code>main</code>之前执行做一些可能利于程序结构的事情。如果某个<code>.o</code>（包含静态库中打包的<code>.o</code>）被链接进程序，那么其文件静态变量就会先于<code>main</code>初始化。</p>
 
-<p>{% highlight c++ %}
-// test.cpp</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// test.cpp&lt;/p&gt;</span>
 
-<h1>include &lt;stdio.h></h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<p>class Test {
-public:
-    Test() {
-        printf(&ldquo;Test ctor\n&rdquo;);
-    }
-};</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">Test</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="n">Test</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Test</span> <span class="n">ctor</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+    <span class="p">}</span>
+<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>static Test s_test;</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">static</span> <span class="n">Test</span> <span class="n">s_test</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>// lib.cpp</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// lib.cpp&lt;/p&gt;</span>
 
-<h1>include &lt;stdio.h></h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<p>class Lib {
-public:
-    Lib() {
-        printf(&ldquo;Lib ctor\n&rdquo;);
-    }
-};</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">Lib</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="n">Lib</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Lib</span> <span class="n">ctor</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+    <span class="p">}</span>
+<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>static Lib s_lib;</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">static</span> <span class="n">Lib</span> <span class="n">s_lib</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>// main.cpp</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// main.cpp&lt;/p&gt;</span>
 
-<h1>include &lt;stdio.h></h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<p>int main() {
-    printf(&ldquo;main\n&rdquo;);
-    return 0;
-}
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">main</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div></p>
 
 <p>以上代码<code>main.cpp</code>中未引用任何<code>test.cpp``lib.cpp</code>中的符号：</p>
 
@@ -1130,23 +1481,21 @@ main
 
 <p>生成的可执行程序执行如预期，其链接了<code>test.o``lib.o</code>。但是如果把<code>lib.o</code>以静态库的形式进行链接，情况就不一样了：为了做对比，基于以上的代码再加一个文件，及修改<code>main.cpp</code>：</p>
 
-<p>{% highlight c++ %}
-// libfn.cpp
-int sum(int a, int b) {
-    return a + b;
-}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// libfn.cpp</span>
+<span class="kt">int</span> <span class="nf">sum</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">,</span> <span class="kt">int</span> <span class="n">b</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">;</span>
+<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>// main.cpp</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// main.cpp&lt;/p&gt;</span>
 
-<h1>include &lt;stdio.h></h1>
+<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
 
-<p>int main() {
-    printf(&ldquo;main\n&rdquo;);
-    extern int sum(int, int);
-    printf(&ldquo;sum: %d\n&rdquo;, sum(2, 3));
-    return 0;
-}
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">main</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+    <span class="k">extern</span> <span class="kt">int</span> <span class="nf">sum</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="nl">sum</span><span class="p">:</span> <span class="o">%</span><span class="n">d</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="n">sum</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">));</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div></p>
 
 <p>将<code>libfn.o</code>和<code>lib.o</code>创建为静态库：</p>
 
@@ -1260,246 +1609,6 @@ rw-r--r-- 60833/100   2448 Sep 14 02:16 2014 lib.o
 <li><a href="http://www.scons.org/doc/0.96.1/HTML/scons-user/c549.html">scons Building and Linking with Libraries</a></li>
 </ul>
 
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[C++构造/析构函数中的多态(二)]]></title>
-    <link href="http://codemacro.com/2014/09/06/necessary-dtor/"/>
-    <updated>2014-09-06T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2014/09/06/necessary-dtor</id>
-    <content type="html"><![CDATA[<p>本来是几年以前写的一篇博客：<a href="http://codemacro.com/2012/09/17/c-plus-plus-ctor-virtual/">C++陷阱：构造函数中的多态</a>。然后有同学在评论中讨论了起来，为了记录我就在这里单独写一篇，基本上就是用编译器的实现去证明了早就被大家熟知的一些结论。</p>
-
-<p><strong>默认构造函数/析构函数不是在所有情况下都会被生成出来的。</strong>为此我还特地翻出《Inside C++ object model》：</p>
-
-<blockquote><p>2.1 Default Constructor Construction</p>
-
-<p>The C++ Annotated Reference Manual (ARM) [ELLIS90] (Section 12.1) tells us that &ldquo;default constructors…are generated (by the compiler) where needed….&rdquo;</p></blockquote>
-
-<p>后面别人还罗列了好些例子告诉你哪些情况才算<code>needed</code>。本文我就解释<code>构造函数中的多态</code>评论中的问题。</p>
-
-<!-- more -->
-
-
-<p>实验代码如下：</p>
-
-<p>{% highlight c++ %}</p>
-
-<h1>include &lt;stdio.h></h1>
-
-<p>class Base {
-public:
-    Base() {
-        Init();
-    }</p>
-
-<pre><code>//virtual
- ~Base() {
-    printf("Base dtor\n");
-    Release();
-}
-
-virtual void Init() {
-    printf("Base::Init\n");
-}
-
-virtual void Release() {
-    printf("Base::Release\n");
-}
-</code></pre>
-
-<p>};</p>
-
-<p>class Derived : public Base {
-public:
-    /<em>
-    ~Derived() {
-        printf(&ldquo;Derived dtor\n&rdquo;);
-    } // </em>/</p>
-
-<pre><code>virtual void Init() {
-    printf("Derived::Init\n");
-}
-
-virtual void Release() {
-    printf("Derived:Release\n");
-}
-</code></pre>
-
-<p>};</p>
-
-<p>int main()
-{
-    Base *obj = new Derived();
-    delete obj;
-    return 0;
-}
-{% endhighlight %}</p>
-
-<p>去掉<code>Derived</code>的析构函数，去掉<code>Base</code>析构函数的<code>virtual</code>：</p>
-
-<pre><code># g++ -Wa,-adhln -g test.cpp &gt; test.s
-
-  44:test.cpp      ****     delete obj;
- 227                    .loc 1 44 0
- 228 0028 488B45F0      movq    -16(%rbp), %rax
- 229 002c 488945E0      movq    %rax, -32(%rbp)
- 230 0030 48837DE0      cmpq    $0, -32(%rbp)       
- 230      00
- 231 0035 7520          jne .L17                   
- 232 0037 EB30          jmp .L18
-...
- 244                .L17:
- 245                    .loc 1 44 0
- 246 0057 488B7DE0      movq    -32(%rbp), %rdi
- 247 005b E8000000      call    _ZN4BaseD1Ev             # 直接call
-</code></pre>
-
-<p>从这里甚至可以看到<code>delete</code>对空指针的判定。<code>Base</code>的析构函数不是<code>virtual</code>，所以这里编译器生成的析构函数调用代码根本不需要用到<code>vptr</code>，直接<code>call</code>就可以。而具体<code>call</code>谁则是根据<code>obj</code>指向的类型<code>Base</code>确定。<em>即使<code>Derived</code>用户定义了析构函数也不会调用，无论是否<code>virtual</code>。</em></p>
-
-<p>事实上编译器甚至不需要生成<code>Derived</code>的析构函数，<em>多傻的编译器才会生成这些什么事都不做的代码而光进出函数就得好几条指令？</em></p>
-
-<p>查看程序中的符号，没有生成<code>Derived</code>析构函数：</p>
-
-<pre><code># nm test
-...
-0000000000400816 W _ZN4Base4InitEv
-00000000004007fe W _ZN4Base7ReleaseEv
-000000000040082e W _ZN4BaseC2Ev
-0000000000400876 W _ZN4BaseD1Ev             
-00000000004007e6 W _ZN7Derived4InitEv
-00000000004007ce W _ZN7Derived7ReleaseEv
-0000000000400852 W _ZN7DerivedC1Ev
-...
-</code></pre>
-
-<p>现在把<code>Base</code>析构函数变为<code>virtual</code>的：</p>
-
-<pre><code>  44:test.cpp      ****     delete obj;
- 170                    .loc 1 44 0
- 171 0028 48837DF0      cmpq    $0, -16(%rbp)
- 171      00
- 172 002d 7520          jne .L12
- 173 002f EB32          jmp .L13
-...
- 185                .L12:
- 186                    .loc 1 44 0
- 187 004f 488B45F0      movq    -16(%rbp), %rax     # this -&gt; rax
- 188 0053 488B00        movq    (%rax), %rax        # *rax -&gt; vptr
- 189 0056 4883C008      addq    $8, %rax            # vptr += 8
- 190 005a 488B00        movq    (%rax), %rax        # *vptr -&gt; Base::~Base
- 191 005d 488B7DF0      movq    -16(%rbp), %rdi     # this as first argument (passed by rdi)
- 192 0061 FFD0          call    *%rax               # call
-</code></pre>
-
-<p>析构函数动态调用这也是预期的。至于为什么是偏移<code>vptr+8</code>，是因为第一个指针指向的是<code>type_info</code>，具体可看<a href="http://www.cnblogs.com/zhyg6516/archive/2011/03/07/1971898.html">浅议 Dynamic_cast 和 RTTI</a>。<em>vptr和virtual function table还需要详述吗？</em></p>
-
-<p>此时就会生成<code>Derived</code>的析构函数：</p>
-
-<pre><code>...
-000000000040084c W _ZN4Base4InitEv
-00000000004008ac W _ZN4Base7ReleaseEv
-0000000000400864 W _ZN4BaseC2Ev
-0000000000400970 W _ZN4BaseD0Ev
-00000000004009b0 W _ZN4BaseD1Ev
-00000000004008c4 W _ZN4BaseD2Ev
-0000000000400834 W _ZN7Derived4InitEv
-000000000040081c W _ZN7Derived7ReleaseEv
-0000000000400888 W _ZN7DerivedC1Ev
-0000000000400904 W _ZN7DerivedD0Ev          
-000000000040093a W _ZN7DerivedD1Ev
-...
-</code></pre>
-
-<p>细心的人就会发现无论是<code>Base</code>还是<code>Derived</code>都会生成多个析构函数，这个深入下去还有很多内容，具体可以参看：<a href="http://stackoverflow.com/questions/6613870/gnu-gcc-g-why-does-it-generate-multiple-dtors">GNU GCC (g++): Why does it generate multiple dtors?</a>。</p>
-
-<p>甚至可以运行这个例子看到调用到了<code>Derived</code>的析构函数：</p>
-
-<pre><code>(gdb) ni
-0x000000000040080d      45          return 0;
-1: x/3i $pc
-0x40080d &lt;main()+117&gt;:  callq  *%rax                  # 调用
-0x40080f &lt;main()+119&gt;:  mov    $0x0,%eax
-0x400814 &lt;main()+124&gt;:  add    $0x28,%rsp
-(gdb) si
-Derived::~Derived (this=0x7ffff7ffd000, __in_chrg=&lt;value optimized out&gt;) at test.cpp:24
-24      class Derived : public Base {
-1: x/3i $pc
-0x400904 &lt;Derived::~Derived()&gt;: push   %rbp
-0x400905 &lt;Derived::~Derived()+1&gt;:       mov    %rsp,%rbp
-0x400908 &lt;Derived::~Derived()+4&gt;:       sub    $0x10,%rsp
-</code></pre>
-
-<p>其实看<code>Derived</code>的析构函数实现会发现很多有趣的东西：</p>
-
-<pre><code>(gdb) disassemble 'Derived::~Derived'
-Dump of assembler code for function Derived::~Derived():
-0x0000000000400904 &lt;Derived::~Derived()+0&gt;:     push   %rbp
-0x0000000000400905 &lt;Derived::~Derived()+1&gt;:     mov    %rsp,%rbp
-0x0000000000400908 &lt;Derived::~Derived()+4&gt;:     sub    $0x10,%rsp
-0x000000000040090c &lt;Derived::~Derived()+8&gt;:     mov    %rdi,-0x8(%rbp)
-0x0000000000400910 &lt;Derived::~Derived()+12&gt;:    mov    $0x400b50,%edx
-0x0000000000400915 &lt;Derived::~Derived()+17&gt;:    mov    -0x8(%rbp),%rax
-0x0000000000400919 &lt;Derived::~Derived()+21&gt;:    mov    %rdx,(%rax)
-0x000000000040091c &lt;Derived::~Derived()+24&gt;:    mov    -0x8(%rbp),%rdi
-0x0000000000400920 &lt;Derived::~Derived()+28&gt;:    callq  0x4008c4 &lt;Base::~Base()&gt;
-0x0000000000400925 &lt;Derived::~Derived()+33&gt;:    mov    $0x1,%eax
-0x000000000040092a &lt;Derived::~Derived()+38&gt;:    test   %al,%al
-0x000000000040092c &lt;Derived::~Derived()+40&gt;:    je     0x400937 &lt;Derived::~Derived()+51&gt;
-0x000000000040092e &lt;Derived::~Derived()+42&gt;:    mov    -0x8(%rbp),%rdi
-0x0000000000400932 &lt;Derived::~Derived()+46&gt;:    callq  0x400670 &lt;_ZdlPv@plt&gt;               
-0x0000000000400937 &lt;Derived::~Derived()+51&gt;:    leaveq
-0x0000000000400938 &lt;Derived::~Derived()+52&gt;:    retq
-</code></pre>
-
-<p>实际上这个析构函数就是上面的<code>D0</code>版本，它做了一件重要的事就是<code>delete this</code>。具体的可以google gcc对析构函数的实现。</p>
-
-<p>构造函数和析构函数中根本就不会启用多态，这个是结论或者说是标准，但不是原因(真怕又有人告诉我c++ standard某section这样写的所以这就是理由)。既然反正已经看实现了，就索性看一眼编译器怎么处理这个问题：</p>
-
-<pre><code>// Base::~Base
- 261 0000 55            pushq   %rbp
- 262                .LCFI22:
- 263 0001 4889E5        movq    %rsp, %rbp
- 264                .LCFI23:
- 265 0004 4883EC10      subq    $16, %rsp
- 266                .LCFI24:
- 267 0008 48897DF8      movq    %rdi, -8(%rbp)
- 268                    .loc 1 10 0
- 269 000c BA000000      movl    $_ZTV4Base+16, %edx
- 269      00
- 270 0011 488B45F8      movq    -8(%rbp), %rax
- 271 0015 488910        movq    %rdx, (%rax)
- 272                    .loc 1 11 0
- 273 0018 BF000000      movl    $.LC4, %edi
- 273      00
- 274 001d E8000000      call    puts
- 274      00
- 275                    .loc 1 12 0
- 276 0022 488B7DF8      movq    -8(%rbp), %rdi
- 277 0026 E8000000      call    _ZN4Base7ReleaseEv  # 直接call绝对地址
-</code></pre>
-
-<p>构造函数一样：</p>
-
-<pre><code>  94 0000 55            pushq   %rbp
-  95                .LCFI9:
-  96 0001 4889E5        movq    %rsp, %rbp
-  97                .LCFI10:
-  98 0004 4883EC10      subq    $16, %rsp
-  99                .LCFI11:
- 100 0008 48897DF8      movq    %rdi, -8(%rbp)
- 101                .LBB2:
- 102                    .loc 1 5 0
- 103 000c B8000000      movl    $_ZTV4Base+16, %eax
- 103      00
- 104 0011 488B55F8      movq    -8(%rbp), %rdx
- 105 0015 488902        movq    %rax, (%rdx)
- 106                    .loc 1 6 0
- 107 0018 488B7DF8      movq    -8(%rbp), %rdi
- 108 001c E8000000      call    _ZN4Base4InitEv  # 直接call地址
-</code></pre>
-
-<p><em>END</em></p>
 ]]></content>
   </entry>
   

@@ -9,7 +9,8 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="本来是几年以前写的一篇博客：C++陷阱：构造函数中的多态。然后有同学在评论中讨论了起来，为了记录我就在这里单独写一篇，基本上就是用编译器的实现去证明了早就被大家熟知的一些结论。 默认构造函数/析构函数不是在所有情况下都会被生成出来的。为此我还特地翻出《Inside C++ object model &hellip;">
+  <meta name="description" content="git不同于类似SVN这种版本管理系统，虽然熟悉常用的操作就可以满足大部分需求，但为了在遇到麻烦时不至于靠蛮力去尝试，了解git的原理还是很有必要。 文件 通过git管理的文件版本信息全部存放在根目录.git下，稍微看下： $ ls .git
+COMMIT_EDITMSG HEAD &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +65,62 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2014/09/09/understand-git/">理解git常用命令原理</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-09-09T00:00:00+08:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>9</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>git不同于类似SVN这种版本管理系统，虽然熟悉常用的操作就可以满足大部分需求，但为了在遇到麻烦时不至于靠蛮力去尝试，了解git的原理还是很有必要。</p>
+
+<h2>文件</h2>
+
+<p>通过git管理的文件版本信息全部存放在根目录<code>.git</code>下，稍微看下：</p>
+
+<pre><code>$ ls .git
+COMMIT_EDITMSG  HEAD       branches  description  index  logs     packed-refs
+FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
+</code></pre>
+
+<p>git除了提供给我们平时常用的一些命令之外，还有很多底层命令，可以用于查看以上部分文件表示的东西。</p>
+
+<h2>三个区域/三类对象</h2>
+
+<p>理解git里的三个区域概念非常重要。git里很多常用的命令都是围绕着这三个区域来做的。它们分别为：</p>
+
+<ul>
+<li>working directory，也就是你所操作的那些文件</li>
+<li>history，你所提交的所有记录，文件历史内容等等。<strong>git是个分布式版本管理系统，在你本地有项目的所有历史提交记录；文件历史记录；提交日志等等。</strong></li>
+<li>stage(index)，暂存区域，本质上是个文件，也就是<code>.git/index</code></li>
+</ul>
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/09/09/understand-git/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -562,71 +619,6 @@ nfds [in] Ignored. The nfds parameter is included only for compatibility with Be
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2013/08/21/javascript-overview/">Javascript Overview</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2013-08-21T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>Lexical Structure</h2>
-
-<p>In JavaScript, identifiers are used to name variables and functions and to provide labels for certain loops in JavaScript code. A JavaScript identifier must begin with a letter, an underscore (_), or a dollar sign ($). Subsequent characters can be letters, digits, underscores, or dollar signs</p>
-
-<pre><code>i
-abc
-v1
-$str
-</code></pre>
-
-<p>JavaScript allows identifiers to contain letters and digits from the entire Unicode character set.</p>
-
-<p>Like many programming languages, JavaScript uses the semicolon (;) to separate statements from each other. In JavaScript, you can usually omit the semicolon between two statements if those statements are written on separate lines.</p>
-
-<h2>Types/Values/Variables</h2>
-
-<h3>Numbers</h3>
-
-<p>Unlike many languages, JavaScript does not make a distinction between integer values and floating-point values. All numbers in JavaScript are represented as floating-point values.</p>
-
-<pre><code>0
-3
-0xff
-3.14
-</code></pre>
-
-<h3>Strings</h3>
-
-<pre><code>"hello world"
-'hello world'
-"Wouldn't you prefer O'Reilly's book?"  
-</code></pre>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2013/08/21/javascript-overview/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/3">&larr; Older</a>
@@ -641,11 +633,15 @@ $str
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (21)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (1)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (22)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (1)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2015/04/06/tcmalloc-getstacktrace/">记一次tcmalloc分配内存引起的coredump</a>
+      </li>
     
       <li class="post">
         <a href="/2015/03/31/intro-java-bytecode/">初识JVM byte code</a>
@@ -663,10 +659,6 @@ $str
         <a href="/2014/10/19/zk-fastleaderelection/">图解zookeeper FastLeader选举算法</a>
       </li>
     
-      <li class="post">
-        <a href="/2014/10/15/explain-poxos/">图解分布式一致性协议Paxos</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -678,7 +670,7 @@ $str
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(21)</a> <a href='/categories/clang' style='font-size: 102.85714285714286%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 122.85714285714286%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.42857142857143%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.71428571428571%'>ice(2)</a> <a href='/categories/java' style='font-size: 102.85714285714286%'>java(1)</a> <a href='/categories/javascript' style='font-size: 102.85714285714286%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 114.28571428571429%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 114.28571428571429%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.57142857142857%'>module(3)</a> <a href='/categories/network' style='font-size: 134.28571428571428%'>network(12)</a> <a href='/categories/other' style='font-size: 120.0%'>other(7)</a> <a href='/categories/ruby' style='font-size: 111.42857142857143%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.85714285714286%'>scala(1)</a> <a href='/categories/tips' style='font-size: 160.0%'>tips(21)</a> <a href='/categories/web' style='font-size: 111.42857142857143%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(22)</a> <a href='/categories/clang' style='font-size: 102.72727272727273%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 121.81818181818181%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 110.9090909090909%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.45454545454545%'>ice(2)</a> <a href='/categories/java' style='font-size: 102.72727272727273%'>java(1)</a> <a href='/categories/javascript' style='font-size: 102.72727272727273%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 113.63636363636364%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 113.63636363636364%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.18181818181819%'>module(3)</a> <a href='/categories/network' style='font-size: 132.72727272727272%'>network(12)</a> <a href='/categories/other' style='font-size: 119.0909090909091%'>other(7)</a> <a href='/categories/ruby' style='font-size: 110.9090909090909%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.72727272727273%'>scala(1)</a> <a href='/categories/tips' style='font-size: 157.27272727272728%'>tips(21)</a> <a href='/categories/web' style='font-size: 110.9090909090909%'>web(4)</a> </span>
 </section>
 
   

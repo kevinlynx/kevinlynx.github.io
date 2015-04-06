@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="上一篇谈了一些关键技术的实现方案。本篇描述一些遇到的问题。 一 在策划制作完了几个职业后（主要是技能制作），大概去年年底公司内部进行了一次混战测试。30个角色在一个场景进行混战，测试结果从技术上来说非常不理想。首先是客户端和服务器都巨卡无比。服务器CPU一直是满负载状态。而客户端又频繁宕机。 &hellip;">
+  <meta name="description" content="我们使用tolua++手工绑定c/c++接口到lua中，在绑定的接口实现里，就需要取出传入的参数。tolua++中提供了一系列tolua_toxxx函数，例如： lua_Number tolua_tonumber(lua_State *L, int narg, lua_Number def) &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,48 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2012/05/10/tolua-api/">tolua的tolua_toxxx系列API设计</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2012-05-10T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>10</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>我们使用tolua++手工绑定c/c++接口到lua中，在绑定的接口实现里，就需要取出传入的参数。tolua++中提供了一系列tolua_toxxx函数，例如：</p>
+
+<div class="highlight"><pre><code class="language-c" data-lang="c"><span class="n">lua_Number</span> <span class="n">tolua_tonumber</span><span class="p">(</span><span class="n">lua_State</span> <span class="o">*</span><span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">narg</span><span class="p">,</span> <span class="n">lua_Number</span> <span class="n">def</span><span class="p">)</span>
+<span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">tolua_tostring</span><span class="p">(</span><span class="n">lua_State</span> <span class="o">*</span><span class="n">L</span><span class="p">,</span> <span class="kt">int</span> <span class="n">narg</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">def</span><span class="p">)</span></code></pre></div>
+
+
+<p>这些函数都有一个def参数。乍一看，这些函数使用起来很简单。传入lua_State，传入参数在栈中的位置，然后再传一个<strong>失败</strong>后返回的默认值。</p>
+
+<p>我重点要说的是这里这个<strong>失败</strong>，按正常程序员的理解，针对lua而言，什么情况下算失败呢？lua语言里函数参数支持不传，此时实参为nil，将nil转换为一个c类型必然失败；参数类型不正确算不算失败？你传一个user data，c里按数字来取，这也算失败。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2012/05/10/tolua-api/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -416,43 +458,6 @@ Stroustrup在&lt;D&amp;E>一书里也常为此表现出无奈。另一方面，�
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2011/03/30/lisp-rss/">Lisp实践：开发RSS阅读器</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2011-03-30T00:00:00+08:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>30</span><span class='date-suffix'>th</span>, <span class='date-year'>2011</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h1>一、RSS阅读器的实现</h1>
-
-<p>RSS Reader的实现并不像它看上去那么复杂。当初在决定写这个作为Lisp练习时，甚至觉得
-没有多少内容可做。其简单程度甚至用不了你启动一个慢速IDE的时间:D。对Lisp无兴趣的 TX只需要读完这一节即可，</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2011/03/30/lisp-rss/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/8">&larr; Older</a>
@@ -467,11 +472,15 @@ Stroustrup在&lt;D&amp;E>一书里也常为此表现出无奈。另一方面，�
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (21)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (1)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (22)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (1)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2015/04/06/tcmalloc-getstacktrace/">记一次tcmalloc分配内存引起的coredump</a>
+      </li>
     
       <li class="post">
         <a href="/2015/03/31/intro-java-bytecode/">初识JVM byte code</a>
@@ -489,10 +498,6 @@ Stroustrup在&lt;D&amp;E>一书里也常为此表现出无奈。另一方面，�
         <a href="/2014/10/19/zk-fastleaderelection/">图解zookeeper FastLeader选举算法</a>
       </li>
     
-      <li class="post">
-        <a href="/2014/10/15/explain-poxos/">图解分布式一致性协议Paxos</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -504,7 +509,7 @@ Stroustrup在&lt;D&amp;E>一书里也常为此表现出无奈。另一方面，�
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(21)</a> <a href='/categories/clang' style='font-size: 102.85714285714286%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 122.85714285714286%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.42857142857143%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.71428571428571%'>ice(2)</a> <a href='/categories/java' style='font-size: 102.85714285714286%'>java(1)</a> <a href='/categories/javascript' style='font-size: 102.85714285714286%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 114.28571428571429%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 114.28571428571429%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.57142857142857%'>module(3)</a> <a href='/categories/network' style='font-size: 134.28571428571428%'>network(12)</a> <a href='/categories/other' style='font-size: 120.0%'>other(7)</a> <a href='/categories/ruby' style='font-size: 111.42857142857143%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.85714285714286%'>scala(1)</a> <a href='/categories/tips' style='font-size: 160.0%'>tips(21)</a> <a href='/categories/web' style='font-size: 111.42857142857143%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(22)</a> <a href='/categories/clang' style='font-size: 102.72727272727273%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 121.81818181818181%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 110.9090909090909%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.45454545454545%'>ice(2)</a> <a href='/categories/java' style='font-size: 102.72727272727273%'>java(1)</a> <a href='/categories/javascript' style='font-size: 102.72727272727273%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 113.63636363636364%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 113.63636363636364%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.18181818181819%'>module(3)</a> <a href='/categories/network' style='font-size: 132.72727272727272%'>network(12)</a> <a href='/categories/other' style='font-size: 119.0909090909091%'>other(7)</a> <a href='/categories/ruby' style='font-size: 110.9090909090909%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.72727272727273%'>scala(1)</a> <a href='/categories/tips' style='font-size: 157.27272727272728%'>tips(21)</a> <a href='/categories/web' style='font-size: 110.9090909090909%'>web(4)</a> </span>
 </section>
 
   

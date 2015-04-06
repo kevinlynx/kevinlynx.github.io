@@ -9,7 +9,8 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="关于JVM和其上的byte code，网上其实有足够多的资料了，我这里就简单做个提纲和介绍，权当记录吧。 stack-based VM Java byte code运行在JVM上，就像机器指令运行在物理机上，是需要遵循这个机器的指令规范的。所以认识JVM byte code， &hellip;">
+  <meta name="description" content="现象 线上的服务出现coredump，堆栈为： #0 0x000000000045d145 in GetStackTrace(void**, int, int) ()
+#1 0x000000000045ec22 in tcmalloc::PageHeap::GrowHeap(unsigned &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +65,68 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2015/04/06/tcmalloc-getstacktrace/">记一次tcmalloc分配内存引起的coredump</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-04-06T00:00:00+08:00'><span class='date'><span class='date-month'>Apr</span> <span class='date-day'>6</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>现象</h2>
+
+<p>线上的服务出现coredump，堆栈为：</p>
+
+<pre><code>#0  0x000000000045d145 in GetStackTrace(void**, int, int) ()
+#1  0x000000000045ec22 in tcmalloc::PageHeap::GrowHeap(unsigned long) ()
+#2  0x000000000045eeb3 in tcmalloc::PageHeap::New(unsigned long) ()
+#3  0x0000000000459ee8 in tcmalloc::CentralFreeList::Populate() ()
+#4  0x000000000045a088 in tcmalloc::CentralFreeList::FetchFromSpansSafe() ()
+#5  0x000000000045a10a in tcmalloc::CentralFreeList::RemoveRange(void**, void**, int) ()
+#6  0x000000000045c282 in tcmalloc::ThreadCache::FetchFromCentralCache(unsigned long, unsigned long) ()
+#7  0x0000000000470766 in tc_malloc ()
+#8  0x00007f75532cd4c2 in __conhash_get_rbnode (node=0x22c86870, hash=30)
+        at build/release64/cm_sub/conhash/conhash_inter.c:88
+#9  0x00007f75532cd76e in __conhash_add_replicas (conhash=0x24fbc7e0, iden=&lt;value optimized out&gt;)
+        at build/release64/cm_sub/conhash/conhash_inter.c:45
+#10 0x00007f75532cd1fa in conhash_add_node (conhash=0x24fbc7e0, iden=0) at build/release64/cm_sub/conhash/conhash.c:72
+#11 0x00007f75532c651b in cm_sub::TopoCluster::initLBPolicyInfo (this=0x2593a400)
+        at build/release64/cm_sub/topo_cluster.cpp:114
+#12 0x00007f75532cad73 in cm_sub::TopoClusterManager::processClusterMapTable (this=0xa219e0, ref=0x267ea8c0)
+        at build/release64/cm_sub/topo_cluster_manager.cpp:396
+#13 0x00007f75532c5a93 in cm_sub::SubRespMsgProcess::reinitCluster (this=0x9c2f00, msg=0x4e738ed0)
+        at build/release64/cm_sub/sub_resp_msg_process.cpp:157
+...
+</code></pre>
+
+<p>查看了应用层相关数据结构，基本数据都是没有问题的。所以最初怀疑是tcmalloc内部维护了错误的内存，在分配内存时出错，这个堆栈只是问题的表象。几天后，线上的另一个服务，基于同样的库，也core了，堆栈还是一样的。</p>
+
+<p>最初定位问题都是从最近更新的东西入手，包括依赖的server环境，但都没有明显的问题，所以最后只能从core的直接原因入手。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2015/04/06/tcmalloc-getstacktrace/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -598,62 +661,6 @@ world
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2014/09/09/understand-git/">理解git常用命令原理</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2014-09-09T00:00:00+08:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>9</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>git不同于类似SVN这种版本管理系统，虽然熟悉常用的操作就可以满足大部分需求，但为了在遇到麻烦时不至于靠蛮力去尝试，了解git的原理还是很有必要。</p>
-
-<h2>文件</h2>
-
-<p>通过git管理的文件版本信息全部存放在根目录<code>.git</code>下，稍微看下：</p>
-
-<pre><code>$ ls .git
-COMMIT_EDITMSG  HEAD       branches  description  index  logs     packed-refs
-FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
-</code></pre>
-
-<p>git除了提供给我们平时常用的一些命令之外，还有很多底层命令，可以用于查看以上部分文件表示的东西。</p>
-
-<h2>三个区域/三类对象</h2>
-
-<p>理解git里的三个区域概念非常重要。git里很多常用的命令都是围绕着这三个区域来做的。它们分别为：</p>
-
-<ul>
-<li>working directory，也就是你所操作的那些文件</li>
-<li>history，你所提交的所有记录，文件历史内容等等。<strong>git是个分布式版本管理系统，在你本地有项目的所有历史提交记录；文件历史记录；提交日志等等。</strong></li>
-<li>stage(index)，暂存区域，本质上是个文件，也就是<code>.git/index</code></li>
-</ul>
-
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2014/09/09/understand-git/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/2">&larr; Older</a>
@@ -666,11 +673,15 @@ FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (21)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (1)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (22)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (1)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2015/04/06/tcmalloc-getstacktrace/">记一次tcmalloc分配内存引起的coredump</a>
+      </li>
     
       <li class="post">
         <a href="/2015/03/31/intro-java-bytecode/">初识JVM byte code</a>
@@ -688,10 +699,6 @@ FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
         <a href="/2014/10/19/zk-fastleaderelection/">图解zookeeper FastLeader选举算法</a>
       </li>
     
-      <li class="post">
-        <a href="/2014/10/15/explain-poxos/">图解分布式一致性协议Paxos</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -703,7 +710,7 @@ FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(21)</a> <a href='/categories/clang' style='font-size: 102.85714285714286%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 122.85714285714286%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.42857142857143%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.71428571428571%'>ice(2)</a> <a href='/categories/java' style='font-size: 102.85714285714286%'>java(1)</a> <a href='/categories/javascript' style='font-size: 102.85714285714286%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 114.28571428571429%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 114.28571428571429%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.57142857142857%'>module(3)</a> <a href='/categories/network' style='font-size: 134.28571428571428%'>network(12)</a> <a href='/categories/other' style='font-size: 120.0%'>other(7)</a> <a href='/categories/ruby' style='font-size: 111.42857142857143%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.85714285714286%'>scala(1)</a> <a href='/categories/tips' style='font-size: 160.0%'>tips(21)</a> <a href='/categories/web' style='font-size: 111.42857142857143%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(22)</a> <a href='/categories/clang' style='font-size: 102.72727272727273%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 121.81818181818181%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 110.9090909090909%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.45454545454545%'>ice(2)</a> <a href='/categories/java' style='font-size: 102.72727272727273%'>java(1)</a> <a href='/categories/javascript' style='font-size: 102.72727272727273%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 113.63636363636364%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 113.63636363636364%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.18181818181819%'>module(3)</a> <a href='/categories/network' style='font-size: 132.72727272727272%'>network(12)</a> <a href='/categories/other' style='font-size: 119.0909090909091%'>other(7)</a> <a href='/categories/ruby' style='font-size: 110.9090909090909%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.72727272727273%'>scala(1)</a> <a href='/categories/tips' style='font-size: 157.27272727272728%'>tips(21)</a> <a href='/categories/web' style='font-size: 110.9090909090909%'>web(4)</a> </span>
 </section>
 
   

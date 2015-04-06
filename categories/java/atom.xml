@@ -4,7 +4,7 @@
   <title><![CDATA[Category: java | loop in codes]]></title>
   <link href="http://codemacro.com/categories/java/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2015-03-31T20:35:52+08:00</updated>
+  <updated>2015-04-06T18:31:29+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -51,19 +51,17 @@ add ax, 2    # 取ax中的值1与立即数2进行相加，存放结果到ax
 
 <p><code>*.class</code>文件就已经是编译好的byte code文件，就像C/C++编译出来的目标文件一样，已经是各种二进制指令了。这个时候可以通过JDK中带的<code>javap</code>工具来反汇编，以查看对应的byte code。</p>
 
-<p>{% highlight java %}
-    // Test.java
-    public class Test {
-        public static void main(String[] args) {
-            int a = 0xae;
-            int b = 0x10;
-            int c = a + b;
-            int d = c + 1;
-            String s;
-            s = &ldquo;hello&rdquo;;
-        }
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="c1">// Test.java</span>
+    <span class="kd">public</span> <span class="kd">class</span> <span class="nc">Test</span> <span class="o">{</span>
+        <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+            <span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mh">0xae</span><span class="o">;</span>
+            <span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="mh">0x10</span><span class="o">;</span>
+            <span class="kt">int</span> <span class="n">c</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="o">;</span>
+            <span class="kt">int</span> <span class="n">d</span> <span class="o">=</span> <span class="n">c</span> <span class="o">+</span> <span class="mi">1</span><span class="o">;</span>
+            <span class="n">String</span> <span class="n">s</span><span class="o">;</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">hello</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;;</span>
+        <span class="o">}</span>
+    <span class="o">}</span></code></pre></div></p>
 
 <p>编译该文件：<code>javac Test.java</code>得到<code>Test.class</code>，然后<code>javap -c Test</code>即得到：</p>
 

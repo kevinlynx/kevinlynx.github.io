@@ -9,9 +9,8 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="变量，是所有编程语言里都有的语法概念。在C/C++中，变量用于标示一个内存地址，而变
-量名则在语法层面上代表这个地址。当链接器最终链接我们的程序时，就将这些名字替换
-为实际的地址。在其他语言中，变量虽然或多或少有其他不同的含义，但也大致如此。 Lisp中的变量也差不多这样， &hellip;">
+  <meta name="description" content="一、RSS阅读器的实现 RSS Reader的实现并不像它看上去那么复杂。当初在决定写这个作为Lisp练习时，甚至觉得
+没有多少内容可做。其简单程度甚至用不了你启动一个慢速IDE的时间:D。对Lisp无兴趣的 TX只需要读完这一节即可， ">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -66,6 +65,43 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2011/03/30/lisp-rss/">Lisp实践：开发RSS阅读器</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2011-03-30T00:00:00+08:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>30</span><span class='date-suffix'>th</span>, <span class='date-year'>2011</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h1>一、RSS阅读器的实现</h1>
+
+<p>RSS Reader的实现并不像它看上去那么复杂。当初在决定写这个作为Lisp练习时，甚至觉得
+没有多少内容可做。其简单程度甚至用不了你启动一个慢速IDE的时间:D。对Lisp无兴趣的 TX只需要读完这一节即可，</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2011/03/30/lisp-rss/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -158,11 +194,15 @@
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (21)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (1)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (22)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (1)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2015/04/06/tcmalloc-getstacktrace/">记一次tcmalloc分配内存引起的coredump</a>
+      </li>
     
       <li class="post">
         <a href="/2015/03/31/intro-java-bytecode/">初识JVM byte code</a>
@@ -180,10 +220,6 @@
         <a href="/2014/10/19/zk-fastleaderelection/">图解zookeeper FastLeader选举算法</a>
       </li>
     
-      <li class="post">
-        <a href="/2014/10/15/explain-poxos/">图解分布式一致性协议Paxos</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -195,7 +231,7 @@
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(21)</a> <a href='/categories/clang' style='font-size: 102.85714285714286%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 122.85714285714286%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.42857142857143%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.71428571428571%'>ice(2)</a> <a href='/categories/java' style='font-size: 102.85714285714286%'>java(1)</a> <a href='/categories/javascript' style='font-size: 102.85714285714286%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 114.28571428571429%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 114.28571428571429%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.57142857142857%'>module(3)</a> <a href='/categories/network' style='font-size: 134.28571428571428%'>network(12)</a> <a href='/categories/other' style='font-size: 120.0%'>other(7)</a> <a href='/categories/ruby' style='font-size: 111.42857142857143%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.85714285714286%'>scala(1)</a> <a href='/categories/tips' style='font-size: 160.0%'>tips(21)</a> <a href='/categories/web' style='font-size: 111.42857142857143%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(22)</a> <a href='/categories/clang' style='font-size: 102.72727272727273%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 121.81818181818181%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 110.9090909090909%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.45454545454545%'>ice(2)</a> <a href='/categories/java' style='font-size: 102.72727272727273%'>java(1)</a> <a href='/categories/javascript' style='font-size: 102.72727272727273%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 113.63636363636364%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 113.63636363636364%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.18181818181819%'>module(3)</a> <a href='/categories/network' style='font-size: 132.72727272727272%'>network(12)</a> <a href='/categories/other' style='font-size: 119.0909090909091%'>other(7)</a> <a href='/categories/ruby' style='font-size: 110.9090909090909%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.72727272727273%'>scala(1)</a> <a href='/categories/tips' style='font-size: 157.27272727272728%'>tips(21)</a> <a href='/categories/web' style='font-size: 110.9090909090909%'>web(4)</a> </span>
 </section>
 
   
