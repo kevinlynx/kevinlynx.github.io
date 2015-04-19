@@ -4,7 +4,7 @@
   <title><![CDATA[Category: c/c++ | loop in codes]]></title>
   <link href="http://codemacro.com/categories/c-slash-c-plus-plus/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2015-04-06T18:31:29+08:00</updated>
+  <updated>2015-04-19T19:08:32+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,234 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[使用RCU技术实现读写线程无锁]]></title>
+    <link href="http://codemacro.com/2015/04/19/rw_thread_gc/"/>
+    <updated>2015-04-19T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2015/04/19/rw_thread_gc</id>
+    <content type="html"><![CDATA[<p>在一个系统中有一个写线程和若干个读线程，读写线程通过一个指针共用了一个数据结构，写线程改写这个结构，读线程读取该结构。在写线程改写这个数据结构的过程中，加锁情况下读线程由于等待锁耗时会增加。</p>
+
+<p>可以利用RCU (Read Copy Update <a href="http://www.rdrop.com/~paulmck/RCU/whatisRCU.html">What is rcu</a>)的思想来去除这个锁。本文提到的主要实现代码：<a href="https://gist.github.com/kevinlynx/ba728f2f1b33c763a6c3">gist</a></p>
+
+<h2>RCU</h2>
+
+<p>RCU可以说是一种替代读写锁的方法。其基于一个事实：当写线程在改变一个指针时，读线程获取这个指针，要么获取到老的值，要么获取到新的值。RCU的基本思想其实很简单，参考<a href="http://www.rdrop.com/~paulmck/RCU/whatisRCU.html">What is RCU</a>中Toy implementation可以很容易理解。一种简单的RCU流程可以描述为：</p>
+
+<p>写线程：</p>
+
+<pre><code>old_ptr = _ptr
+tmp_ptr = copy(_ptr)     // copy
+change(tmp_ptr)          // change 
+_ptr = tmp_ptr           // update
+synchroize(tmp_ptr)
+</code></pre>
+
+<p>写线程要更新<code>_ptr</code>指向的内容时，先复制一份新的，基于新的进行改变，更新<code>_ptr</code>指针，最后同步释放老的内存。</p>
+
+<!-- more -->
+
+
+<p>读线程：</p>
+
+<pre><code>tmp_ptr = _ptr
+use(tmp_ptr)
+dereference(tmp_ptr)
+</code></pre>
+
+<p>读线程直接使用<code>_ptr</code>，使用完后需要告诉写线程自己不再使用<code>_ptr</code>。读线程获取<code>_ptr</code>时，可能会获取到老的也可能获取到新的，无论哪种RCU都需要保证这块内存是有效的。重点在<code>synchroize</code>和<code>dereference</code>。<code>synchroize</code>会等待所有使用老的<code>_ptr</code>的线程<code>dereference</code>，对于新的<code>_ptr</code>使用者其不需要等待。这个问题说白了就是写线程如何知道<code>old_ptr</code>没有任何读线程在使用，可以安全地释放。</p>
+
+<p>这个问题实际上在<code>wait-free</code>的各种实现中有好些解法，<a href="http://stackoverflow.com/questions/22263874/how-when-to-release-memory-in-wait-free-algorithms">how-when-to-release-memory-in-wait-free-algorithms</a>这里有人总结了几种方法，例如<code>Hazard pointers</code>、<code>Quiescence period based reclamation</code>。</p>
+
+<p>简单地使用引用计数智能指针是无法解决这个问题的，因为智能指针自己不是线程安全的，例如：</p>
+
+<pre><code>tmp_ptr = _ptr      // 1
+tmp_ptr-&gt;addRef()   // 2
+use
+tmp_ptr-&gt;release()
+</code></pre>
+
+<p>代码1/2行不是原子的，所以当取得<code>tmp_ptr</code>准备<code>addRef</code>时，<code>tmp_ptr</code>可能刚好被释放了。</p>
+
+<p><code>Quiescence period based reclamation</code>方法指的是读线程需要声明自己处于<code>Quiescence period</code>，也就是不使用<code>_ptr</code>的时候，当其使用<code>_ptr</code>的时候实际是进入了一个逻辑上的临界区，当所有读线程都不再使用<code>_ptr</code>的时候，写线程就可以对内存进行安全地释放。</p>
+
+<p>本文正是描述了一种<code>Quiescence period based reclamation</code>实现。这个实现可以用于有一个写线程和多个读线程共用若干个数据的场景。</p>
+
+<h2>实现</h2>
+
+<p>该方法本质上把数据同步分解为基本的内存单元读写。使用方式上可描述为：</p>
+
+<p>读线程：</p>
+
+<pre><code>tmp_ptr = _ptr
+use
+update() // 标识自己不再使用任何共享数据
+</code></pre>
+
+<p>写线程：</p>
+
+<pre><code>old_ptr = _ptr
+tmp_ptr = copy(_ptr)
+change(tmp_ptr)
+_ptr = tmp_ptr
+gc()
+defer_free(old_ptr)
+</code></pre>
+
+<p>以下具体描述读写线程的实现。</p>
+
+<h3>写线程</h3>
+
+<p>写线程负责标识内存需要被释放，以及检查何时可以真正释放内存。其维护了一个释放内存队列：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="o">*&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pending</span><span class="p">[</span><span class="mi">8</span><span class="p">]</span>
+    <span class="kt">uint64_t</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">head</span><span class="p">,</span> <span class="n">_tail</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">defer_free</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">p</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">_head</span> <span class="o">++</span>
+    <span class="n">_pending</span><span class="p">[</span><span class="n">PENDING_POS</span><span class="p">(</span><span class="n">_head</span><span class="p">)]</span> <span class="o">=</span> <span class="n">p</span>
+<span class="p">}</span>
+
+<span class="n">gc</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">_tail</span> <span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="n">find_free_pos</span><span class="p">())</span>
+        <span class="n">free</span><span class="p">(</span><span class="n">_pending</span><span class="p">[</span><span class="n">_tail</span><span class="p">])</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p><code>find_free_pos</code>找到一个可释放内存位置，在<code>[_tail, find_free_pos())</code>这个区间内所有内存是可以安全被释放的。</p>
+
+<p>队列位置<code>_head/_tail</code>一直增大，<code>PENDING_POS</code>就是对这个位置取模，限定在队列大小范围内也是可行的，无论哪种方式，<code>_head</code>从逻辑上说一直<code>&gt;=_tail</code>，但在实际中可能小于<code>_tail</code>，所以实现时不使用大小判定，而是：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">gc</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">find_free_pos</span><span class="p">()</span>
+        <span class="k">while</span> <span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tail</span> <span class="o">!=</span> <span class="n">pos</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">free</span><span class="p">(</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pending</span><span class="p">[</span><span class="n">PENDING_POS</span><span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tail</span><span class="p">)])</span>
+            <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tail</span> <span class="o">++</span>
+        <span class="p">}</span>
+    <span class="p">}</span></code></pre></div></p>
+
+<h3>读线程</h3>
+
+<p>读线程不再使用共享内存时，就标识自己：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">update</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">static</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="kr">thread</span> <span class="kt">int</span> <span class="n">tid</span>
+        <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tmark</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">head</span>
+    <span class="p">}</span></code></pre></div></p>
+
+<p>读线程的状态会影响写线程的回收逻辑，其状态分为：</p>
+
+<ul>
+<li>初始</li>
+<li>活跃，会调用到<code>update</code></li>
+<li>暂停，其他地方同步，或被挂起</li>
+<li>退出</li>
+</ul>
+
+
+<p>读线程处于活跃状态时，它会不断地更新自己可释放内存位置(<code>_tmark[tid]</code>)。写线程检查所有读线程的<code>_tmark[tid]</code>，<code>[_tail, min(_tmark[]))</code>是所有读线程都不再使用的内存区间，可以被安全释放。</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">find_free_pos</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">min</span> <span class="o">=</span> <span class="n">MAX_INTEGER</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">tid</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">tid</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">max_threads</span><span class="p">;</span> <span class="o">++</span><span class="n">tid</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">tpos</span> <span class="o">=</span> <span class="n">_tmark</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="n">tpos</span> <span class="o">-</span> <span class="n">tail</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">offset</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">min</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">min</span> <span class="o">=</span> <span class="n">offset</span>
+                <span class="n">pos</span> <span class="o">=</span> <span class="n">tpos</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">pos</span>
+    <span class="p">}</span></code></pre></div></p>
+
+<p>当读线程暂停时，其<code>_tmark[tid]</code>可能会在很长一段时间里得不到更新，此时会阻碍写线程释放内存。所以需要方法来标识读线程是否进入暂停状态。通过设置一个上次释放内存位置<code>_tfreeds[tid]</code>，标识每个线程当前内存释放到的位置。如果一个线程处于暂停状态了，那么在一定时间后，<code>_tfreeds[tid] == _tmark[tid]</code>。在查找可释放位置时，就需要忽略暂停状态的读线程：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">find_free_pos</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">min</span> <span class="o">=</span> <span class="n">MAX_INTEGER</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">head</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">tid</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">tid</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">max_threads</span><span class="p">;</span> <span class="o">++</span><span class="n">tid</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">tpos</span> <span class="o">=</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tmark</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">tpos</span> <span class="o">==</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tfreeds</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span> <span class="k">continue</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="n">tpos</span> <span class="o">-</span> <span class="n">tail</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">offset</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">min</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">min</span> <span class="o">=</span> <span class="n">offset</span>
+                <span class="n">pos</span> <span class="o">=</span> <span class="n">tpos</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">tid</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">tid</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">max_threads</span><span class="p">;</span> <span class="o">++</span><span class="n">tid</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tfreeds</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">!=</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tmark</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span>
+                <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tfreeds</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">pos</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">pos</span>
+    <span class="p">}</span></code></pre></div></p>
+
+<p>但是当所有线程都处于暂停状态时，写线程可能还在工作，上面的实现就会返回<code>_head</code>，此时写线程依然可以正常释放内存。</p>
+
+<p><strong>小结</strong>，该方法原理可用下图表示：</p>
+
+<p><img src="/assets/res/rw_thread.png" alt="" /></p>
+
+<h3>线程动态增加/减少</h3>
+
+<p>如果读线程可能中途退出，中途动态增加，那么<code>_tmark[]</code>就需要被复用，此时线程<code>tid</code>的分配调整为动态的即可：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">class</span> <span class="nc">ThreadIdPool</span> <span class="p">{</span>
+    <span class="k">public</span><span class="o">:</span>
+        <span class="c1">// 动态获取一个线程tid，某线程每次调用该接口返回相同的值</span>
+        <span class="kt">int</span> <span class="n">get</span><span class="p">()</span>
+        <span class="c1">// 线程退出时回收该tid</span>
+        <span class="kt">void</span> <span class="n">put</span><span class="p">(</span><span class="kt">int</span> <span class="n">id</span><span class="p">)</span>
+    <span class="p">}</span></code></pre></div></p>
+
+<p><code>ThreadIdPool</code>的实现无非就是利用TLS，以及在线程退出时得到通知以回收tid。那么对于读线程的<code>update</code>实现变为：</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">update</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">tid</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">idPool</span><span class="o">-&gt;</span><span class="n">get</span><span class="p">()</span>
+        <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tmark</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">_head</span>
+    <span class="p">}</span></code></pre></div></p>
+
+<p>当某个线程退出时，<code>_tmark[tid]</code>和<code>_tfreeds[tid]</code>不需要做任何处理，当新创建的线程复用了该<code>tid</code>时，可以立即复用<code>_tmark[tid]</code>和<code>_tfreeds[tid]</code>，此时这2个值必然是相等的。</p>
+
+<p>以上，就是整个方法的实现。</p>
+
+<h2>线程可读可写</h2>
+
+<p>以上方法适用场景还是不够通用。在<a href="https://code.google.com/p/nbds/">nbds</a>项目（实现了一些无锁数据结构的toy project）中有一份虽然简单但也有启发的实现(rcu.c)。该实现支持任意线程<code>defer_free</code>，所有线程<code>update</code>。<code>update</code>除了声明不再使用任何共享内存外，还可能回收内存。任意线程都可能维护一些待释放的内存，任意一块内存可能被任意其他线程使用。那么它是如何内存回收的？</p>
+
+<p>本文描述的方法是所有读线程自己声明自己，然后由写线程主动来检查。不同于此方法， nbds的实现，基于一种<strong>通知扩散</strong>的方式。该方式以这样一种方式工作：</p>
+
+<p>当某个线程尝试内存回收时，它需要知道所有其他线程的空闲位置（相当于<code>_tmark[tid]</code>），它通知下一个线程我需要释放的范围。当下一个线程<code>update</code>时（离开临界区），它会将上个线程的通知继续告诉下一个线程，直到最后这个通知回到发起线程。那么对于发起线程而言，这个释放请求在所有线程中走了一遍，得到了大家的认可，可以安全释放。每个线程都以这样的方式工作。</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">rcu_defer_free</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">x</span><span class="p">)</span> <span class="p">{</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="n">rcu</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">[</span><span class="n">next_thread_id</span><span class="p">][</span><span class="n">tid</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rcu_last_posted</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">[</span><span class="n">tid</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">][</span><span class="n">tid</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pending</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">[</span><span class="n">tid_</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">head</span><span class="p">;</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+    <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">rcu_update</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="p">{</span>
+    <span class="p">...</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">num_threads_</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+        <span class="p">...</span>     
+        <span class="kt">uint64_t</span> <span class="n">x</span> <span class="o">=</span> <span class="n">rcu_</span><span class="p">[</span><span class="n">tid_</span><span class="p">][</span><span class="n">i</span><span class="p">];</span> <span class="c1">// 其它线程发给自己的通知</span>
+        <span class="n">rcu_</span><span class="p">[</span><span class="n">next_thread_id</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">rcu_last_posted_</span><span class="p">[</span><span class="n">tid_</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span> <span class="c1">// 扩散出去</span>
+        <span class="p">...</span>
+    <span class="p">}</span>
+    <span class="p">...</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">q</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">tail</span> <span class="o">!=</span> <span class="n">rcu_</span><span class="p">[</span><span class="n">tid_</span><span class="p">][</span><span class="n">tid_</span><span class="p">])</span> <span class="p">{</span>
+        <span class="n">free</span>
+    <span class="p">}</span>     
+    <span class="p">...</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p>这个实现相对简单，不支持线程暂停，以及线程动态增加和减少。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[记一次tcmalloc分配内存引起的coredump]]></title>
@@ -1372,241 +1600,6 @@ pthread 0x413c9940, dtv 0x1be46a0
 <li><a href="http://tsecer.blog.163.com/blog/static/1501817201172883556743/">gLibc TLS实现</a></li>
 <li><a href="http://blog.chinaunix.net/uid-24774106-id-3651266.html">Linux线程之线程栈</a></li>
 <li><a href="http://www.longene.org/forum/viewtopic.php?f=17&amp;t=429">Linux用户空间线程管理介绍之二：创建线程堆栈</a></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[浅析静态库链接原理]]></title>
-    <link href="http://codemacro.com/2014/09/15/inside-static-library/"/>
-    <updated>2014-09-15T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2014/09/15/inside-static-library</id>
-    <content type="html"><![CDATA[<p>静态库的链接基本上同链接目标文件<code>.obj/.o</code>相同，但也有些不同的地方。本文简要描述linux下静态库在链接过程中的一些细节。</p>
-
-<h2>静态库文件格式</h2>
-
-<p>静态库远远不同于动态库，不涉及到符号重定位之类的问题。静态库本质上只是将一堆目标文件进行打包而已。静态库没有标准，不同的linux下都会有些细微的差别。大致的格式<a href="http://en.wikipedia.org/wiki/Ar_%28Unix%29#File_format_details">wiki</a>上描述的较清楚：</p>
-
-<pre><code>Global header
------------------        +-------------------------------
-File header 1       ---&gt; | File name
-File content 1  |        | File modification timestamp 
------------------        | Owner ID
-File header 2            | Group ID
-File content 2           | File mode
------------------        | File size in bytes
-...                      | File magic
-                         +-------------------------------
-</code></pre>
-
-<p><code>File header</code>很多字段都是以ASCII码表示，所以可以用文本编辑器打开。</p>
-
-<p>静态库本质上就是使用<code>ar</code>命令打包一堆<code>.o</code>文件。我们甚至可以用<code>ar</code>随意打包一些文件：</p>
-
-<pre><code>$ echo 'hello' &gt; a.txt &amp;&amp; echo 'world' &gt; b.txt
-$ ar -r test.a a.txt b.txt
-$ cat test.a
-!&lt;arch&gt;
-a.txt/          1410628755  60833 100   100644  6         `
-hello
-b.txt/          1410628755  60833 100   100644  6         `
-world
-</code></pre>
-
-<!-- more -->
-
-
-<h2>链接过程</h2>
-
-<p>链接器在链接静态库时，同链接一般的<code>.o</code>基本相似。链接过程大致可以归纳下图：</p>
-
-<p><img src="/assets/res/link-process.png" alt="" /></p>
-
-<p>总结为：</p>
-
-<ul>
-<li><strong>所有传入链接器的<code>.o</code>都会被链接进最终的可执行程序</strong>；链接<code>.o</code>时，会将<code>.o</code>中的<code>global symbol</code>和<code>unresolved symbol</code>放入一个临时表</li>
-<li>如果多个<code>.o</code>定义了相同的<code>global symbol</code>，那么就会得到多重定义的链接错误</li>
-<li>如果链接结束了，<code>unresolved symbol</code>表不为空，那么就会得到符号未定义的链接错误</li>
-<li><code>.a</code>静态库处理本质上就是处理其中的每一个<code>.o</code>，不同的是，如果某个<code>.o</code>中没有一个符号属于<code>unresolved symbol</code>表，也就是链接器此时怀疑该<code>.o</code>没有必要，那么其就会被忽略</li>
-</ul>
-
-
-<p>可以通过一些代码来展示以上过程。在开发C++程序时，可以利用文件静态变量会先于<code>main</code>之前执行做一些可能利于程序结构的事情。如果某个<code>.o</code>（包含静态库中打包的<code>.o</code>）被链接进程序，那么其文件静态变量就会先于<code>main</code>初始化。</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// test.cpp&lt;/p&gt;</span>
-
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">Test</span> <span class="p">{</span>
-<span class="k">public</span><span class="o">:</span>
-    <span class="n">Test</span><span class="p">()</span> <span class="p">{</span>
-        <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Test</span> <span class="n">ctor</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
-    <span class="p">}</span>
-<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">static</span> <span class="n">Test</span> <span class="n">s_test</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// lib.cpp&lt;/p&gt;</span>
-
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">Lib</span> <span class="p">{</span>
-<span class="k">public</span><span class="o">:</span>
-    <span class="n">Lib</span><span class="p">()</span> <span class="p">{</span>
-        <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Lib</span> <span class="n">ctor</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
-    <span class="p">}</span>
-<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">static</span> <span class="n">Lib</span> <span class="n">s_lib</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// main.cpp&lt;/p&gt;</span>
-
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">main</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
-    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span></code></pre></div></p>
-
-<p>以上代码<code>main.cpp</code>中未引用任何<code>test.cpp``lib.cpp</code>中的符号：</p>
-
-<pre><code>$ g++ -o test test.o lib.o main.o
-$ ./test
-Lib ctor
-Test ctor
-main
-</code></pre>
-
-<p>生成的可执行程序执行如预期，其链接了<code>test.o``lib.o</code>。但是如果把<code>lib.o</code>以静态库的形式进行链接，情况就不一样了：为了做对比，基于以上的代码再加一个文件，及修改<code>main.cpp</code>：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// libfn.cpp</span>
-<span class="kt">int</span> <span class="nf">sum</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">,</span> <span class="kt">int</span> <span class="n">b</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">;</span>
-<span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// main.cpp&lt;/p&gt;</span>
-
-<span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="n">include</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">stdio</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">main</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
-    <span class="k">extern</span> <span class="kt">int</span> <span class="nf">sum</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">);</span>
-    <span class="n">printf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="nl">sum</span><span class="p">:</span> <span class="o">%</span><span class="n">d</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="n">sum</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">));</span>
-    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span></code></pre></div></p>
-
-<p>将<code>libfn.o</code>和<code>lib.o</code>创建为静态库：</p>
-
-<pre><code>$ ar -r libfn.a libfn.o lib.o
-$ g++ -o test main.o test.o -lfn -L.
-$ ./test
-Test ctor
-main
-sum: 5
-</code></pre>
-
-<p>因为<code>lib.o</code>没有被链接，导致其文件静态变量也未得到初始化。</p>
-
-<p>调整链接顺序，可以进一步检验前面的链接过程：</p>
-
-<pre><code># 将libfn.a的链接放在main.o前面
-
-$ g++ -o test test.o -lfn main.o  -L.
-main.o: In function `main':
-main.cpp:(.text+0x19): undefined reference to `sum(int, int)'
-collect2: ld returned 1 exit status
-</code></pre>
-
-<p>这个问题遇到得比较多，也有点让人觉得莫名其妙。其原因就在于链接器在链接<code>libfn.a</code>的时候，发现<code>libfn.o</code>依然没有<strong>被之前链接的<code>*.o</code>引用到，也就是没有任何符号在<code>unresolved symbol table</code>中</strong>，所以<code>libfn.o</code>也被忽略。</p>
-
-<h2>一些实践</h2>
-
-<p>在实际开发中还会遇到一些静态库相关的问题。</p>
-
-<h3>链接顺序问题</h3>
-
-<p>前面的例子已经展示了这个问题。<strong>调整库的链接顺序</strong>可以解决大部分问题，但当静态库之间存在环形依赖时，则无法通过调整顺序来解决。</p>
-
-<h4>-whole-archive</h4>
-
-<p><code>-whole-archive</code>选项告诉链接器把静态库中的所有<code>.o</code>都进行链接，针对以上例子：</p>
-
-<pre><code>$ g++ -o test -L. test.o -Wl,--whole-archive -lfn main.o -Wl,--no-whole-archive
-$ ./test
-Lib ctor
-Test ctor
-main
-sum: 5
-</code></pre>
-
-<p>连<code>lib.o</code>也被链接了进来。<em><code>-Wl</code>选项告诉gcc将其作为链接器参数传入；之所以在命令行结尾加上<code>--no-whole-archive</code>是为了告诉编译器不要链接gcc默认的库</em></p>
-
-<p>可以看出这个方法还是有点暴力了。</p>
-
-<h4>&ndash;start-group</h4>
-
-<p>格式为：</p>
-
-<pre><code>--start-group archives --end-group
-</code></pre>
-
-<p>位于<code>--start-group</code>  <code>--end-group</code>中的所有静态库将被反复搜索，而不是默认的只搜索一次，直到不再有新的<code>unresolved symbol</code>产生为止。也就是说，出现在这里的<code>.o</code>如果发现有<code>unresolved symbol</code>，则可能回到之前的静态库中继续搜索。</p>
-
-<pre><code>$ g++ -o test -L. test.o -Wl,--start-group -lfn main.o -Wl,--end-group
-$ ./test
-Test ctor
-main
-sum: 5
-</code></pre>
-
-<p>查看<code>ldd</code>关于该参数的man page还可以一窥链接过程的细节：</p>
-
-<blockquote><p>The specified archives are searched repeatedly until no new undefined references are created. Normally, an archive is searched only once in the order that it is specified on the command line. If a symbol in that archive is needed to resolve an undefined symbol referred to by an object in an archive that appears later on the command line, the linker would not be able to resolve that reference. By grouping the archives, they all be searched repeatedly until all possible references are resolved.</p></blockquote>
-
-<h3>嵌套静态库</h3>
-
-<p>由于<code>ar</code>创建静态库时本质上只是对文件进行打包，所以甚至可以创建一个嵌套的静态库，从而测试链接器是否会递归处理静态库中的<code>.o</code>：</p>
-
-<pre><code>$ ar -r libfn.a libfn.o
-$ ar -r liboutfn.a libfn.a lib.o
-$ g++ -o test -L. test.o main.o -loutfn
-main.o: In function `main':
-main.cpp:(.text+0x19): undefined reference to `sum(int, int)'
-collect2: ld returned 1 exit status
-</code></pre>
-
-<p><strong>可见链接器并不会递归处理静态库中的文件</strong></p>
-
-<p>之所以要提到嵌套静态库这个问题，是因为我发现很多时候我们喜欢为一个静态库工程链接其他静态库。当然，这里的链接并非真正的链接（仅是打包），这个过程当然可以聪明到将其他静态库里的<code>.o</code>提取出来然后打包到新的静态库。</p>
-
-<p>如果我们使用的是类似<a href="http://www.scons.org/">scons</a>这种封装更高的依赖项管理工具，那么它是否会这样干呢？</p>
-
-<p>基于之前的例子，我们使用scons来创建<code>liboutfn.a</code>：</p>
-
-<pre><code># Sconstruct
-StaticLibrary('liboutfn.a', ['libfn.a', 'lib.o'])
-</code></pre>
-
-<p>使用文本编辑器打开<code>liboutfn.a</code>就可以看到其内容，或者使用：</p>
-
-<pre><code>$ ar -tv liboutfn.a
-rw-r--r-- 60833/100   1474 Sep 14 02:59 2014 libfn.a
-rw-r--r-- 60833/100   2448 Sep 14 02:16 2014 lib.o
-</code></pre>
-
-<p>可见scons也只是单纯地打包。<strong>所以，在scons中构建一个静态库时，再<code>链接</code>其他静态库是没有意义的</strong></p>
-
-<h2>参考文档</h2>
-
-<ul>
-<li><a href="http://en.wikipedia.org/wiki/Ar_%28Unix%29#File_format_details">ar (Unix)</a></li>
-<li><a href="http://linux.die.net/man/1/ld">ld man page</a></li>
-<li><a href="http://wen00072-blog.logdown.com/posts/188339-study-on-the-gnu-ld">GNU ld初探</a></li>
-<li><a href="http://eli.thegreenplace.net/2013/07/09/library-order-in-static-linking/">Library order in static linking</a></li>
-<li><a href="http://www.linuxjournal.com/article/6463?page=0,1">Linkers and Loaders</a></li>
-<li><a href="http://www.scons.org/doc/0.96.1/HTML/scons-user/c549.html">scons Building and Linking with Libraries</a></li>
 </ul>
 
 ]]></content>

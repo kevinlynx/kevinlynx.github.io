@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="AMQP和RabbitMQ概述 AMQP(Advanced Message Queue Protocol)定义了一种消息系统规范。这个规范描述了在一个分布式的系统中各个子系统如何通过消息交互。而RabbitMQ则是AMQP的一种基于erlang的实现。 AMQP将分布式系统中各个子系统隔离开来， &hellip;">
+  <meta name="description" content="用erlang也算写了些代码了，主要包括使用RabbitMQ的练习，以及最近写的kl_tserver和icerl。其中icerl是一个实现了Ice的erlang库。 erlang的书较少，我主要读过\和\。其实erlang本身就语言来说的话比较简单，同ruby一样， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,67 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2013/05/08/thought-about-erlang/">erlang使用感受</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-05-08T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>8</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>用erlang也算写了些代码了，主要包括<a href="http://codemacro.com/2013/04/11/rabbitmq-erlang/">使用RabbitMQ的练习</a>，以及最近写的<a href="https://github.com/kevinlynx/erlang-tcpserver">kl_tserver</a>和<a href="https://github.com/kevinlynx/icerl">icerl</a>。其中icerl是一个实现了<a href="http://www.zeroc.com/">Ice</a>的erlang库。</p>
+
+<p>erlang的书较少，我主要读过\<Programming Erlang\>和\<Erlang/OTP in Action\>。其实erlang本身就语言来说的话比较简单，同ruby一样，类似这种本身目标是应用于实际软件项目的语言都比较简单，对应的语法书很快可以翻完。</p>
+
+<p>这里我仅谈谈自己在编写erlang代码过程中的一些感受。</p>
+
+<h2>语法</h2>
+
+<p>erlang语法很简单，接触过函数式语言的程序员上手会很快。它没有类似common lisp里宏这种较复杂的语言特性。其语法元素很紧凑，不存在一些用处不大的特性。在这之前，我学习过ruby和common lisp。ruby代码写的比common lisp多。但是在学习erlang的过程中我的脑海里却不断出现common lisp里的语法特性。这大概是因为common lisp的语法相对ruby来说，更接近erlang。</p>
+
+<h3>编程模式</h3>
+
+<p>erlang不是一个面向对象的语言，它也不同common lisp提供多种编程模式。它的代码就是靠一个个函数组织出来的。面向对象语言在语法上有一点让我很爽的是，其函数调用更自然。erlang的接口调用就像C语言里接口的调用一样：</p>
+
+<pre><code>func(Obj, args)
+Obj-&gt;func(args)
+</code></pre>
+
+<p>即需要在函数第一个参数传递操作对象。但是面向对象语言也会带来一些语法的复杂性。如果一门语言可以用很少的语法元素表达很多信息，那么我觉得这门语言就是门优秀的语言。</p>
+
+<h3>表达式/语句</h3>
+
+<p>erlang里没有语句，全部是表达式，意思是所有语法元素都是有返回值的。这实在太好了，全世界都有返回值可以让代码写起来简单多了：</p>
+
+<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nv">Flag</span> <span class="o">=</span> <span class="k">case</span> <span class="n">func</span><span class="p">()</span> <span class="k">of</span> <span class="mi">1</span> <span class="o">-&gt;</span> <span class="n">true</span><span class="p">;</span> <span class="mi">0</span> <span class="o">-&gt;</span> <span class="n">false</span> <span class="k">end</span><span class="p">,</span></code></pre></div>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/05/08/thought-about-erlang/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -478,85 +539,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/08/29/branch-predictor/">为什么处理排序的数组要比非排序的快？</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2012-08-29T19:55:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>29</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>7:55 pm</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>参考<a href="http://stackoverflow.com/questions/11227809/why-is-processing-a-sorted-array-faster-than-an-unsorted-array">Why is processing a sorted array faster than an unsorted array?</a></p>
-
-<h2>问题</h2>
-
-<p>看以下代码：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="cp">#include &lt;algorithm&gt;</span>
-<span class="cp">#include &lt;ctime&gt;</span>
-<span class="cp">#include &lt;iostream&gt;</span>
-
-<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
-<span class="p">{</span>
-    <span class="c1">// generate data</span>
-    <span class="k">const</span> <span class="kt">unsigned</span> <span class="n">arraySize</span> <span class="o">=</span> <span class="mi">32768</span><span class="p">;</span>
-    <span class="kt">int</span> <span class="n">data</span><span class="p">[</span><span class="n">arraySize</span><span class="p">];</span>
-
-    <span class="k">for</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="n">c</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">c</span> <span class="o">&lt;</span> <span class="n">arraySize</span><span class="p">;</span> <span class="o">++</span><span class="n">c</span><span class="p">)</span>
-        <span class="n">data</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">rand</span><span class="p">()</span> <span class="o">%</span> <span class="mi">256</span><span class="p">;</span>
-
-
-    <span class="c1">// !!! with this, the next loop runs faster</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">sort</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">data</span> <span class="o">+</span> <span class="n">arraySize</span><span class="p">);</span>
-
-
-    <span class="c1">// test</span>
-    <span class="kt">clock_t</span> <span class="n">start</span> <span class="o">=</span> <span class="n">clock</span><span class="p">();</span>
-    <span class="kt">long</span> <span class="kt">long</span> <span class="n">sum</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-
-    <span class="k">for</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">100000</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span>
-    <span class="p">{</span>
-        <span class="c1">// primary loop</span>
-        <span class="k">for</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="n">c</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">c</span> <span class="o">&lt;</span> <span class="n">arraySize</span><span class="p">;</span> <span class="o">++</span><span class="n">c</span><span class="p">)</span>
-        <span class="p">{</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">128</span><span class="p">)</span>
-                <span class="n">sum</span> <span class="o">+=</span> <span class="n">data</span><span class="p">[</span><span class="n">c</span><span class="p">];</span>
-        <span class="p">}</span>
-    <span class="p">}</span>
-
-    <span class="kt">double</span> <span class="n">elapsedTime</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="p">(</span><span class="n">clock</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span> <span class="o">/</span> <span class="n">CLOCKS_PER_SEC</span><span class="p">;</span>
-
-    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">elapsedTime</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;sum = &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">sum</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
-<span class="p">}</span></code></pre></div>
-
-
-<p>问题就在于，去掉<code>std::sort</code>那一行，以上代码将运行更长的时间。在我的机器上未去掉<code>std::sort</code>耗时8.99s，去掉后耗时24.78s。编译器使用的是gcc4.4.3。事实上，以上代码跟编译器没有关系，甚至跟语言没有关系。那这是为什么呢？</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/08/29/branch-predictor/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/5">&larr; Older</a>
@@ -571,11 +553,15 @@
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (22)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (1)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (23)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (1)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2015/04/19/rw_thread_gc/">使用RCU技术实现读写线程无锁</a>
+      </li>
     
       <li class="post">
         <a href="/2015/04/06/tcmalloc-getstacktrace/">记一次tcmalloc分配内存引起的coredump</a>
@@ -593,10 +579,6 @@
         <a href="/2014/11/04/linux-dynamic-library/">linux动态库的种种要点</a>
       </li>
     
-      <li class="post">
-        <a href="/2014/10/19/zk-fastleaderelection/">图解zookeeper FastLeader选举算法</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -608,7 +590,7 @@
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(22)</a> <a href='/categories/clang' style='font-size: 102.72727272727273%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 121.81818181818181%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 110.9090909090909%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.45454545454545%'>ice(2)</a> <a href='/categories/java' style='font-size: 102.72727272727273%'>java(1)</a> <a href='/categories/javascript' style='font-size: 102.72727272727273%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 113.63636363636364%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 113.63636363636364%'>lua(5)</a> <a href='/categories/module' style='font-size: 108.18181818181819%'>module(3)</a> <a href='/categories/network' style='font-size: 132.72727272727272%'>network(12)</a> <a href='/categories/other' style='font-size: 119.0909090909091%'>other(7)</a> <a href='/categories/ruby' style='font-size: 110.9090909090909%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.72727272727273%'>scala(1)</a> <a href='/categories/tips' style='font-size: 157.27272727272728%'>tips(21)</a> <a href='/categories/web' style='font-size: 110.9090909090909%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(23)</a> <a href='/categories/clang' style='font-size: 102.6086956521739%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 120.86956521739131%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 110.43478260869566%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.21739130434783%'>ice(2)</a> <a href='/categories/java' style='font-size: 102.6086956521739%'>java(1)</a> <a href='/categories/javascript' style='font-size: 102.6086956521739%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 113.04347826086956%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 113.04347826086956%'>lua(5)</a> <a href='/categories/module' style='font-size: 107.82608695652173%'>module(3)</a> <a href='/categories/network' style='font-size: 131.30434782608697%'>network(12)</a> <a href='/categories/other' style='font-size: 118.26086956521739%'>other(7)</a> <a href='/categories/ruby' style='font-size: 110.43478260869566%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.6086956521739%'>scala(1)</a> <a href='/categories/tips' style='font-size: 154.7826086956522%'>tips(21)</a> <a href='/categories/web' style='font-size: 110.43478260869566%'>web(4)</a> </span>
 </section>
 
   

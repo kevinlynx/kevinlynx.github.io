@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2015-04-06T18:31:29+08:00</updated>
+  <updated>2015-04-19T19:08:32+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,244 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[使用RCU技术实现读写线程无锁]]></title>
+    <link href="http://codemacro.com/2015/04/19/rw_thread_gc/"/>
+    <updated>2015-04-19T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2015/04/19/rw_thread_gc</id>
+    <content type="html"><![CDATA[<p>在一个系统中有一个写线程和若干个读线程，读写线程通过一个指针共用了一个数据结构，写线程改写这个结构，读线程读取该结构。在写线程改写这个数据结构的过程中，加锁情况下读线程由于等待锁耗时会增加。</p>
+
+<p>可以利用RCU (Read Copy Update <a href="http://www.rdrop.com/~paulmck/RCU/whatisRCU.html">What is rcu</a>)的思想来去除这个锁。本文提到的主要实现代码：<a href="https://gist.github.com/kevinlynx/ba728f2f1b33c763a6c3">gist</a></p>
+
+<h2>RCU</h2>
+
+<p>RCU可以说是一种替代读写锁的方法。其基于一个事实：当写线程在改变一个指针时，读线程获取这个指针，要么获取到老的值，要么获取到新的值。RCU的基本思想其实很简单，参考<a href="http://www.rdrop.com/~paulmck/RCU/whatisRCU.html">What is RCU</a>中Toy implementation可以很容易理解。一种简单的RCU流程可以描述为：</p>
+
+<p>写线程：</p>
+
+<pre><code>old_ptr = _ptr
+tmp_ptr = copy(_ptr)     // copy
+change(tmp_ptr)          // change 
+_ptr = tmp_ptr           // update
+synchroize(tmp_ptr)
+</code></pre>
+
+<p>写线程要更新<code>_ptr</code>指向的内容时，先复制一份新的，基于新的进行改变，更新<code>_ptr</code>指针，最后同步释放老的内存。</p>
+
+<!-- more -->
+
+
+<p>读线程：</p>
+
+<pre><code>tmp_ptr = _ptr
+use(tmp_ptr)
+dereference(tmp_ptr)
+</code></pre>
+
+<p>读线程直接使用<code>_ptr</code>，使用完后需要告诉写线程自己不再使用<code>_ptr</code>。读线程获取<code>_ptr</code>时，可能会获取到老的也可能获取到新的，无论哪种RCU都需要保证这块内存是有效的。重点在<code>synchroize</code>和<code>dereference</code>。<code>synchroize</code>会等待所有使用老的<code>_ptr</code>的线程<code>dereference</code>，对于新的<code>_ptr</code>使用者其不需要等待。这个问题说白了就是写线程如何知道<code>old_ptr</code>没有任何读线程在使用，可以安全地释放。</p>
+
+<p>这个问题实际上在<code>wait-free</code>的各种实现中有好些解法，<a href="http://stackoverflow.com/questions/22263874/how-when-to-release-memory-in-wait-free-algorithms">how-when-to-release-memory-in-wait-free-algorithms</a>这里有人总结了几种方法，例如<code>Hazard pointers</code>、<code>Quiescence period based reclamation</code>。</p>
+
+<p>简单地使用引用计数智能指针是无法解决这个问题的，因为智能指针自己不是线程安全的，例如：</p>
+
+<pre><code>tmp_ptr = _ptr      // 1
+tmp_ptr-&gt;addRef()   // 2
+use
+tmp_ptr-&gt;release()
+</code></pre>
+
+<p>代码1/2行不是原子的，所以当取得<code>tmp_ptr</code>准备<code>addRef</code>时，<code>tmp_ptr</code>可能刚好被释放了。</p>
+
+<p><code>Quiescence period based reclamation</code>方法指的是读线程需要声明自己处于<code>Quiescence period</code>，也就是不使用<code>_ptr</code>的时候，当其使用<code>_ptr</code>的时候实际是进入了一个逻辑上的临界区，当所有读线程都不再使用<code>_ptr</code>的时候，写线程就可以对内存进行安全地释放。</p>
+
+<p>本文正是描述了一种<code>Quiescence period based reclamation</code>实现。这个实现可以用于有一个写线程和多个读线程共用若干个数据的场景。</p>
+
+<h2>实现</h2>
+
+<p>该方法本质上把数据同步分解为基本的内存单元读写。使用方式上可描述为：</p>
+
+<p>读线程：</p>
+
+<pre><code>tmp_ptr = _ptr
+use
+update() // 标识自己不再使用任何共享数据
+</code></pre>
+
+<p>写线程：</p>
+
+<pre><code>old_ptr = _ptr
+tmp_ptr = copy(_ptr)
+change(tmp_ptr)
+_ptr = tmp_ptr
+gc()
+defer_free(old_ptr)
+</code></pre>
+
+<p>以下具体描述读写线程的实现。</p>
+
+<h3>写线程</h3>
+
+<p>写线程负责标识内存需要被释放，以及检查何时可以真正释放内存。其维护了一个释放内存队列：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="o">*</span><span class="n">_pending</span><span class="p">[</span><span class="mi">8</span><span class="p">]</span>
+    <span class="kt">uint64_t</span> <span class="n">_head</span><span class="p">,</span> <span class="n">_tail</span>
+
+    <span class="kt">void</span> <span class="n">defer_free</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">p</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">_head</span> <span class="o">++</span>
+        <span class="n">_pending</span><span class="p">[</span><span class="n">PENDING_POS</span><span class="p">(</span><span class="n">_head</span><span class="p">)]</span> <span class="o">=</span> <span class="n">p</span>
+    <span class="p">}</span>
+
+    <span class="n">gc</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">_tail</span> <span class="o">-&gt;</span> <span class="n">find_free_pos</span><span class="p">())</span>
+            <span class="n">free</span><span class="p">(</span><span class="n">_pending</span><span class="p">[</span><span class="n">_tail</span><span class="p">])</span>
+    <span class="p">}</span></code></pre></div>
+
+
+<p><code>find_free_pos</code>找到一个可释放内存位置，在<code>[_tail, find_free_pos())</code>这个区间内所有内存是可以安全被释放的。</p>
+
+<p>队列位置<code>_head/_tail</code>一直增大，<code>PENDING_POS</code>就是对这个位置取模，限定在队列大小范围内也是可行的，无论哪种方式，<code>_head</code>从逻辑上说一直<code>&gt;=_tail</code>，但在实际中可能小于<code>_tail</code>，所以实现时不使用大小判定，而是：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">gc</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">find_free_pos</span><span class="p">()</span>
+        <span class="k">while</span> <span class="p">(</span><span class="n">_tail</span> <span class="o">!=</span> <span class="n">pos</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">free</span><span class="p">(</span><span class="n">_pending</span><span class="p">[</span><span class="n">PENDING_POS</span><span class="p">(</span><span class="n">_tail</span><span class="p">)])</span>
+            <span class="n">_tail</span> <span class="o">++</span>
+        <span class="p">}</span>
+    <span class="p">}</span></code></pre></div>
+
+
+<h3>读线程</h3>
+
+<p>读线程不再使用共享内存时，就标识自己：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">update</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">static</span> <span class="n">__thread</span> <span class="kt">int</span> <span class="n">tid</span>
+        <span class="n">_tmark</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">_head</span>
+    <span class="p">}</span></code></pre></div>
+
+
+<p>读线程的状态会影响写线程的回收逻辑，其状态分为：</p>
+
+<ul>
+<li>初始</li>
+<li>活跃，会调用到<code>update</code></li>
+<li>暂停，其他地方同步，或被挂起</li>
+<li>退出</li>
+</ul>
+
+
+<p>读线程处于活跃状态时，它会不断地更新自己可释放内存位置(<code>_tmark[tid]</code>)。写线程检查所有读线程的<code>_tmark[tid]</code>，<code>[_tail, min(_tmark[]))</code>是所有读线程都不再使用的内存区间，可以被安全释放。</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">find_free_pos</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">min</span> <span class="o">=</span> <span class="n">MAX_INTEGER</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">tid</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">tid</span> <span class="o">&lt;</span> <span class="n">max_threads</span><span class="p">;</span> <span class="o">++</span><span class="n">tid</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">tpos</span> <span class="o">=</span> <span class="n">_tmark</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="n">tpos</span> <span class="o">-</span> <span class="n">tail</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">offset</span> <span class="o">&lt;</span> <span class="n">min</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">min</span> <span class="o">=</span> <span class="n">offset</span>
+                <span class="n">pos</span> <span class="o">=</span> <span class="n">tpos</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">pos</span>
+    <span class="p">}</span></code></pre></div>
+
+
+<p>当读线程暂停时，其<code>_tmark[tid]</code>可能会在很长一段时间里得不到更新，此时会阻碍写线程释放内存。所以需要方法来标识读线程是否进入暂停状态。通过设置一个上次释放内存位置<code>_tfreeds[tid]</code>，标识每个线程当前内存释放到的位置。如果一个线程处于暂停状态了，那么在一定时间后，<code>_tfreeds[tid] == _tmark[tid]</code>。在查找可释放位置时，就需要忽略暂停状态的读线程：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">find_free_pos</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">min</span> <span class="o">=</span> <span class="n">MAX_INTEGER</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">_head</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">tid</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">tid</span> <span class="o">&lt;</span> <span class="n">max_threads</span><span class="p">;</span> <span class="o">++</span><span class="n">tid</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">tpos</span> <span class="o">=</span> <span class="n">_tmark</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">tpos</span> <span class="o">==</span> <span class="n">_tfreeds</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span> <span class="k">continue</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="n">tpos</span> <span class="o">-</span> <span class="n">tail</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">offset</span> <span class="o">&lt;</span> <span class="n">min</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">min</span> <span class="o">=</span> <span class="n">offset</span>
+                <span class="n">pos</span> <span class="o">=</span> <span class="n">tpos</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">tid</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">tid</span> <span class="o">&lt;</span> <span class="n">max_threads</span><span class="p">;</span> <span class="o">++</span><span class="n">tid</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">_tfreeds</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">!=</span> <span class="n">_tmark</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span> 
+                <span class="n">_tfreeds</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">pos</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">pos</span>
+    <span class="p">}</span></code></pre></div>
+
+
+<p>但是当所有线程都处于暂停状态时，写线程可能还在工作，上面的实现就会返回<code>_head</code>，此时写线程依然可以正常释放内存。</p>
+
+<p><strong>小结</strong>，该方法原理可用下图表示：</p>
+
+<p><img src="http://codemacro.com/assets/res/rw_thread.png" alt="" /></p>
+
+<h3>线程动态增加/减少</h3>
+
+<p>如果读线程可能中途退出，中途动态增加，那么<code>_tmark[]</code>就需要被复用，此时线程<code>tid</code>的分配调整为动态的即可：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">class</span> <span class="nc">ThreadIdPool</span> <span class="p">{</span>
+    <span class="k">public</span><span class="o">:</span>
+        <span class="c1">// 动态获取一个线程tid，某线程每次调用该接口返回相同的值</span>
+        <span class="kt">int</span> <span class="n">get</span><span class="p">()</span>
+        <span class="c1">// 线程退出时回收该tid</span>
+        <span class="kt">void</span> <span class="n">put</span><span class="p">(</span><span class="kt">int</span> <span class="n">id</span><span class="p">)</span>
+    <span class="p">}</span></code></pre></div>
+
+
+<p><code>ThreadIdPool</code>的实现无非就是利用TLS，以及在线程退出时得到通知以回收tid。那么对于读线程的<code>update</code>实现变为：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">update</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">tid</span> <span class="o">=</span> <span class="n">_idPool</span><span class="o">-&gt;</span><span class="n">get</span><span class="p">()</span>
+        <span class="n">_tmark</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">_head</span>
+    <span class="p">}</span></code></pre></div>
+
+
+<p>当某个线程退出时，<code>_tmark[tid]</code>和<code>_tfreeds[tid]</code>不需要做任何处理，当新创建的线程复用了该<code>tid</code>时，可以立即复用<code>_tmark[tid]</code>和<code>_tfreeds[tid]</code>，此时这2个值必然是相等的。</p>
+
+<p>以上，就是整个方法的实现。</p>
+
+<h2>线程可读可写</h2>
+
+<p>以上方法适用场景还是不够通用。在<a href="https://code.google.com/p/nbds/">nbds</a>项目（实现了一些无锁数据结构的toy project）中有一份虽然简单但也有启发的实现(rcu.c)。该实现支持任意线程<code>defer_free</code>，所有线程<code>update</code>。<code>update</code>除了声明不再使用任何共享内存外，还可能回收内存。任意线程都可能维护一些待释放的内存，任意一块内存可能被任意其他线程使用。那么它是如何内存回收的？</p>
+
+<p>本文描述的方法是所有读线程自己声明自己，然后由写线程主动来检查。不同于此方法， nbds的实现，基于一种<strong>通知扩散</strong>的方式。该方式以这样一种方式工作：</p>
+
+<p>当某个线程尝试内存回收时，它需要知道所有其他线程的空闲位置（相当于<code>_tmark[tid]</code>），它通知下一个线程我需要释放的范围。当下一个线程<code>update</code>时（离开临界区），它会将上个线程的通知继续告诉下一个线程，直到最后这个通知回到发起线程。那么对于发起线程而言，这个释放请求在所有线程中走了一遍，得到了大家的认可，可以安全释放。每个线程都以这样的方式工作。</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">rcu_defer_free</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">x</span><span class="p">)</span> <span class="p">{</span>
+        <span class="p">...</span>
+        <span class="n">rcu_</span><span class="p">[</span><span class="n">next_thread_id</span><span class="p">][</span><span class="n">tid_</span><span class="p">]</span> <span class="o">=</span> <span class="n">rcu_last_posted_</span><span class="p">[</span><span class="n">tid_</span><span class="p">][</span><span class="n">tid_</span><span class="p">]</span> <span class="o">=</span> <span class="n">pending_</span><span class="p">[</span><span class="n">tid_</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">head</span><span class="p">;</span>
+        <span class="p">...</span>
+    <span class="p">}</span>
+
+    <span class="kt">void</span> <span class="nf">rcu_update</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="p">{</span>
+        <span class="p">...</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">num_threads_</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+            <span class="p">...</span>     
+            <span class="kt">uint64_t</span> <span class="n">x</span> <span class="o">=</span> <span class="n">rcu_</span><span class="p">[</span><span class="n">tid_</span><span class="p">][</span><span class="n">i</span><span class="p">];</span> <span class="c1">// 其它线程发给自己的通知</span>
+            <span class="n">rcu_</span><span class="p">[</span><span class="n">next_thread_id</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">rcu_last_posted_</span><span class="p">[</span><span class="n">tid_</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span> <span class="c1">// 扩散出去</span>
+            <span class="p">...</span>
+        <span class="p">}</span>
+        <span class="p">...</span>
+        <span class="k">while</span> <span class="p">(</span><span class="n">q</span><span class="o">-&gt;</span><span class="n">tail</span> <span class="o">!=</span> <span class="n">rcu_</span><span class="p">[</span><span class="n">tid_</span><span class="p">][</span><span class="n">tid_</span><span class="p">])</span> <span class="p">{</span>
+            <span class="n">free</span>
+        <span class="p">}</span>     
+        <span class="p">...</span>
+    <span class="p">}</span></code></pre></div>
+
+
+<p>这个实现相对简单，不支持线程暂停，以及线程动态增加和减少。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2015/04/19/rw_thread_gc/'>http://codemacro.com/2015/04/19/rw_thread_gc/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[记一次tcmalloc分配内存引起的coredump]]></title>
@@ -3825,340 +4063,6 @@ Pool -&gt; ReqProcessor -&gt; O
 <p class='post-footer'>
             原文地址：
             <a href='http://codemacro.com/2014/02/02/2013/'>http://codemacro.com/2014/02/02/2013/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[scala主要特性一览]]></title>
-    <link href="http://codemacro.com/2013/09/23/scala-feature-overview/"/>
-    <updated>2013-09-23T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2013/09/23/scala-feature-overview</id>
-    <content type="html"><![CDATA[<h2>概述</h2>
-
-<p>scala语言包含了函数式语言和面向对象语言的语法特性，从我目前的感受来看，这不是一门简单的语言。同Ruby/Erlang相比，其语法集大多了。scala基于JVM或.NET平台，其可以几乎无缝地使用Java库（不但使用上没有负担，其运行效率上也不会增加负担），配合其强大的语言表达能力，还是很有吸引力。</p>
-
-<h2>类型</h2>
-
-<h3>类/对象</h3>
-
-<p>scala中一切都是对象，虽然Java也是这样说的（其实ruby也是这样说的）。在Java中一个数字仅仅是个值，但在scala中却真的是对象：</p>
-
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="n">println</span><span class="o">(</span><span class="s">&quot;2 type: &quot;</span> <span class="o">+</span> <span class="mf">2.</span><span class="n">getClass</span><span class="o">())</span></code></pre></div>
-
-
-<p>scala同Java一样将所有类型都设定了一个基类：<code>Any</code>。不同的是，<code>Any</code>下还区分了<code>AnyVal</code>和<code>AnyRef</code>。</p>
-
-<h3>类型推断</h3>
-
-<p>scala是一门静态类型语言，但是其强大的类型推断可以避免很多冗余信息的代码。例如：</p>
-
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">map</span><span class="k">:</span><span class="kt">Map</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">HashMap</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]</span>
-<span class="c1">// 可简写为</span>
-<span class="k">val</span> <span class="n">map</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">HashMap</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]</span>
-
-<span class="k">def</span> <span class="n">func</span><span class="o">()</span><span class="k">:</span><span class="kt">String</span> <span class="o">=</span> <span class="o">{</span>
-    <span class="s">&quot;hello&quot;</span>
-<span class="o">}</span>
-<span class="c1">// 可简写为</span>
-<span class="k">def</span> <span class="n">func</span><span class="o">()</span> <span class="k">=</span> <span class="o">{</span>
-    <span class="s">&quot;hello&quot;</span>
-<span class="o">}</span></code></pre></div>
-
-
-<p>类型推断可以根据表达式的类型决定这个变量/函数的类型，这就如同C++11中的<code>auto</code>关键字。</p>
-
-<h3>函数</h3>
-
-<p>scala既然包含了函数式语言的特性，那么函数作为first citizen就是自然而言的事情。而function literal的语法形式也就必须更自然（想想common lisp里lambda那蛋疼的关键字）：</p>
-
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">factor</span> <span class="k">=</span> <span class="mi">3</span>
-<span class="k">val</span> <span class="n">multiplier</span> <span class="k">=</span> <span class="o">(</span><span class="n">i</span><span class="k">:</span><span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">i</span> <span class="o">*</span> <span class="n">factor</span> <span class="c1">// function literal, lexical bind to factor</span>
-<span class="k">val</span> <span class="n">l1</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">,</span> <span class="mi">5</span><span class="o">)</span> <span class="n">map</span> <span class="n">multiplier</span> <span class="c1">// map `multiplier` to every element in List l1</span>
-
-<span class="k">def</span> <span class="n">add</span><span class="o">(</span><span class="n">a</span><span class="k">:</span><span class="kt">Int</span><span class="o">,</span> <span class="n">b</span><span class="k">:</span><span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
-  <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
-<span class="o">}</span>
-
-<span class="k">val</span> <span class="n">f</span><span class="k">:</span><span class="o">(</span><span class="kt">Int</span><span class="o">,</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">Int</span> <span class="k">=</span> <span class="n">add</span> <span class="c1">// f is a function type: (Int, Int) =&gt; Int</span>
-<span class="n">println</span><span class="o">(</span><span class="s">&quot;f:&quot;</span> <span class="o">+</span> <span class="n">f</span><span class="o">(</span><span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">))</span></code></pre></div>
-
-
-
-
-<!-- more -->
-
-
-<h3>Symbol</h3>
-
-<p>在Ruby中有Symbol，在Erlang中也有Symbol(Erlang中叫Atom)。Symbol在Erlang中使用非常自然，因为其思维模式；但在scala中基于目前我还在把它当命令式语言使用，Symbol成了一个可有可无的特性。</p>
-
-<h2>语句/表达式</h2>
-
-<p>scala中其实没有语句。对于if/while之类都算是表达式，其处理方式同函数式语言中一样，将最后一个表达式的值作为返回值：</p>
-
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">i</span> <span class="k">=</span> <span class="k">if</span> <span class="o">(</span><span class="mi">2</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="o">)</span> <span class="-Symbol">&#39;true</span> <span class="k">else</span> <span class="-Symbol">&#39;false</span></code></pre></div>
-
-
-<h3>控制语句</h3>
-
-<p>if/while什么的同C-like language一致。</p>
-
-<h3>for comprehension</h3>
-
-<p>这个语法特性对应着函数式语言中的List Comprehension，可以用于处理一个集合，以产出另一个集合。</p>
-
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">r</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
-  <span class="n">n</span> <span class="k">&lt;-</span> <span class="nc">Array</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">,</span> <span class="mi">5</span><span class="o">)</span>
-  <span class="k">if</span> <span class="n">n</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span>
-<span class="o">}</span> <span class="k">yield</span> <span class="n">n</span>
-<span class="n">r</span> <span class="n">map</span> <span class="n">println</span></code></pre></div>
-
-
-<p>这个例子同Erlang中的：</p>
-
-<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="p">[</span><span class="nv">N</span> <span class="p">||</span> <span class="nv">N</span> <span class="o">&lt;-</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="nv">N</span> <span class="ow">rem</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">].</span></code></pre></div>
-
-
-<p>for中的generator在实践中也比较有用，相当于foreach：</p>
-
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">for</span> <span class="o">(</span><span class="n">i</span> <span class="k">&lt;-</span> <span class="nc">Array</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">))</span> <span class="n">println</span><span class="o">(</span><span class="n">i</span><span class="o">)</span></code></pre></div>
-
-
-<h3>pattern match</h3>
-
-<p>pattern match同Erlang中一样，可以简单地当switch&hellip;case来用，但用途远不止于对整数值的匹配。pattern match同样有返回值，其返回值为匹配成功块的值。</p>
-
-<p>最简单的匹配：</p>
-
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="n">println</span><span class="o">(</span><span class="mi">1</span> <span class="k">match</span> <span class="o">{</span> 
-  <span class="k">case</span> <span class="mi">1</span> <span class="k">=&gt;</span> <span class="s">&quot;one&quot;</span> 
-  <span class="k">case</span> <span class="mi">2</span> <span class="k">=&gt;</span> <span class="s">&quot;two&quot;</span> 
-  <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="s">&quot;unknown&quot;</span> <span class="o">})</span></code></pre></div>
-
-
-<p>对类型进行匹配：</p>
-
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">obj</span><span class="k">:</span><span class="kt">Any</span> <span class="o">=</span> <span class="kc">null</span>
-<span class="n">println</span><span class="o">(</span><span class="n">obj</span> <span class="k">match</span> <span class="o">{</span>
-  <span class="k">case</span> <span class="n">t</span><span class="k">:</span><span class="kt">Int</span> <span class="o">=&gt;</span> <span class="s">&quot;int&quot;</span>
-  <span class="k">case</span> <span class="n">t</span><span class="k">:</span><span class="kt">String</span> <span class="o">=&gt;</span> <span class="s">&quot;string&quot;</span>
-  <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="s">&quot;unknown&quot;</span>
-<span class="o">})</span></code></pre></div>
-
-
-<p>更有用的是提取list/tuple之类集合里的元素。通过一个match&hellip;case才能匹配出list/tuple里的元素（当然也可以通过一些函数来提取），多少有点累赘：</p>
-
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="o">(</span><span class="s">&quot;hello&quot;</span><span class="o">,</span> <span class="mi">110</span><span class="o">)</span> <span class="k">match</span> <span class="o">{</span>
-  <span class="k">case</span> <span class="o">(</span><span class="n">str</span><span class="o">,</span> <span class="k">_</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="n">str</span><span class="o">)</span>
-  <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="s">&quot;unknown&quot;</span><span class="o">)</span>
-<span class="o">}</span>
-
-<span class="nc">List</span><span class="o">(</span><span class="s">&quot;hello&quot;</span><span class="o">,</span> <span class="mi">110</span><span class="o">,</span> <span class="-Symbol">&#39;sym</span><span class="o">)</span> <span class="k">match</span> <span class="o">{</span>
-  <span class="k">case</span> <span class="nc">List</span><span class="o">(</span><span class="k">_</span><span class="o">,</span> <span class="k">_</span><span class="o">,</span> <span class="n">s</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="n">s</span><span class="o">)</span>
-  <span class="k">case</span> <span class="k">_</span><span class="o">::</span><span class="n">n</span><span class="o">::</span><span class="k">_</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="n">n</span><span class="o">)</span> <span class="c1">// head::tail</span>
-<span class="o">}</span></code></pre></div>
-
-
-<p>例子中还体现了scala对于list的处理能力，果然包含了函数式语言的特性。</p>
-
-<h3>Guard</h3>
-
-<p>函数式语言里为了支持if，一般都会有Guard的概念。其用于进行条件限定，在scala中的for comprehension和pattern match中四处可见：</p>
-
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">obj</span><span class="k">:</span><span class="kt">Any</span> <span class="o">=</span> <span class="s">&quot;hello&quot;</span>
-<span class="n">println</span><span class="o">(</span><span class="n">obj</span> <span class="k">match</span> <span class="o">{</span>
-  <span class="k">case</span> <span class="n">t</span><span class="k">:</span><span class="kt">Int</span> <span class="o">=&gt;</span> <span class="s">&quot;int&quot;</span>
-  <span class="k">case</span> <span class="n">t</span><span class="k">:</span><span class="kt">String</span> <span class="kt">if</span> <span class="kt">t</span> <span class="o">=</span><span class="k">=</span> <span class="s">&quot;hello&quot;</span> <span class="k">=&gt;</span> <span class="s">&quot;world&quot;</span> <span class="c1">// guard</span>
-  <span class="k">case</span> <span class="n">t</span><span class="k">:</span><span class="kt">String</span> <span class="o">=&gt;</span> <span class="s">&quot;hello&quot;</span>
-  <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="s">&quot;unknown&quot;</span>
-<span class="o">})</span></code></pre></div>
-
-
-<h2>trait/abstract type</h2>
-
-<p>trait可以用于实现mix-in，虽然可以简单地将它视为interface，但它的功能远不止于此：</p>
-
-<p>简单的应用：</p>
-
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">trait</span> <span class="nc">Show</span> <span class="o">{</span>
-  <span class="k">def</span> <span class="n">show</span><span class="o">(</span><span class="n">s</span><span class="k">:</span><span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="n">println</span><span class="o">(</span><span class="n">s</span><span class="o">)</span>
-<span class="o">}</span>
-
-<span class="k">abstract</span> <span class="k">class</span> <span class="nc">Widget</span>
-<span class="k">class</span> <span class="nc">MyClass</span> <span class="k">extends</span> <span class="nc">Widget</span> <span class="k">with</span> <span class="nc">Show</span> <span class="o">{</span>
-  <span class="k">override</span> <span class="k">def</span> <span class="n">show</span><span class="o">(</span><span class="n">s</span><span class="k">:</span><span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="n">println</span><span class="o">(</span><span class="s">&quot;MyClass &quot;</span> <span class="o">+</span> <span class="n">s</span><span class="o">)</span>
-<span class="o">}</span>
-
-<span class="k">val</span> <span class="n">t</span><span class="k">:</span><span class="kt">Show</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">MyClass</span>
-<span class="n">t</span> <span class="n">show</span> <span class="s">&quot;hello&quot;</span> <span class="c1">// 等同于t.show(&quot;hello&quot;)，scala中支持这种函数调用，可应用于构建DSL</span></code></pre></div>
-
-
-<p>以上例子显现不出trait的作用。trait为了支持“混入(mixin)“，<strong>语法上允许在创建一个对象时，混入一个trait</strong>，而不用在类定义时混入：</p>
-
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">trait</span> <span class="nc">Show</span> <span class="o">{</span>
-  <span class="k">def</span> <span class="n">show</span><span class="o">(</span><span class="n">s</span><span class="k">:</span><span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="n">println</span><span class="o">(</span><span class="n">s</span><span class="o">)</span>
-<span class="o">}</span>
-
-<span class="k">class</span> <span class="nc">Person</span><span class="o">(</span><span class="k">val</span> <span class="n">name</span><span class="k">:</span><span class="kt">String</span><span class="o">)</span> <span class="o">{</span>
-<span class="o">}</span>
-
-<span class="k">val</span> <span class="n">person</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Person</span><span class="o">(</span><span class="s">&quot;kevin&quot;</span><span class="o">)</span> <span class="k">with</span> <span class="nc">Show</span> <span class="c1">// 混入Show到person中</span>
-<span class="n">person</span><span class="o">.</span><span class="n">show</span><span class="o">(</span><span class="n">person</span><span class="o">.</span><span class="n">name</span><span class="o">)</span> <span class="c1">// person拥有show接口</span></code></pre></div>
-
-
-<h2>class</h2>
-
-<p>class方面的语法可以简单关注些常用的语法，trait一节中的例子已经显示了class定义方面的一些语法：</p>
-
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">class</span> <span class="nc">Person</span><span class="o">(</span><span class="k">val</span> <span class="n">name</span><span class="k">:</span><span class="kt">String</span><span class="o">)</span> <span class="o">{</span> <span class="c1">// primary constructor，参数作为类成员</span>
-  <span class="k">val</span> <span class="n">address</span> <span class="k">=</span> <span class="s">&quot;earth&quot;</span> <span class="c1">// 另一个成员，默认的可见属性</span>
-  <span class="k">var</span> <span class="n">id</span><span class="k">:</span><span class="kt">Int</span> <span class="o">=</span> <span class="mi">0</span>
-  <span class="k">private</span> <span class="k">val</span> <span class="n">email</span> <span class="k">=</span> <span class="s">&quot;kevinlynx at gmail dot com&quot;</span> <span class="c1">// private成员</span>
-
-  <span class="n">id</span> <span class="k">=</span> <span class="n">randid</span> <span class="c1">// 类体一定程度上作为primary constructor函数体 </span>
-
-  <span class="k">def</span> <span class="n">fullname</span> <span class="k">=</span> <span class="n">println</span><span class="o">(</span><span class="n">name</span> <span class="o">+</span> <span class="s">&quot; lynx&quot;</span><span class="o">)</span> <span class="c1">// 接口</span>
-  
-  <span class="k">def</span> <span class="k">this</span><span class="o">()</span> <span class="k">=</span> <span class="k">this</span><span class="o">(</span><span class="s">&quot;ah&quot;</span><span class="o">)</span> <span class="c1">// 0个或多个auxiliary constructor，可以调用primary constructor</span>
-  
-  <span class="k">def</span> <span class="n">randid</span><span class="k">:</span><span class="kt">Int</span> <span class="o">=</span> <span class="mi">2</span>
-<span class="o">}</span>
-
-<span class="k">val</span> <span class="n">p</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Person</span>
-<span class="n">println</span><span class="o">(</span><span class="n">p</span><span class="o">.</span><span class="n">fullname</span><span class="o">)</span>
-<span class="n">println</span><span class="o">(</span><span class="n">p</span><span class="o">.</span><span class="n">id</span><span class="o">)</span></code></pre></div>
-
-
-<p>面向对象语法在scala中占有很大的比例，除了基本类语法外，还有很多类相关的语法，例如<code>companion classes</code>、<code>case classes</code>等。</p>
-
-<h2>object</h2>
-
-<p>object类似于类，类可以有很多实例化出很多对象，但object则只有一个实例，其更像一个语言内置的单件模式。scala中任意object，只要包含了main接口，即可作为一个程序的入口：</p>
-
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">object</span> <span class="nc">Test</span> <span class="o">{</span>
-  <span class="k">val</span> <span class="n">i</span> <span class="k">=</span> <span class="mi">100</span>
-  <span class="k">val</span> <span class="n">str</span> <span class="k">=</span> <span class="s">&quot;hello&quot;</span>   
-
-  <span class="k">def</span> <span class="n">main</span><span class="o">(</span><span class="n">args</span><span class="k">:</span><span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">])</span> <span class="k">=</span> <span class="o">{</span>
-    <span class="n">println</span><span class="o">(</span><span class="n">i</span><span class="o">)</span>
-  <span class="o">}</span>
-<span class="o">}</span>
-<span class="n">println</span><span class="o">(</span><span class="nc">Test</span><span class="o">.</span><span class="n">str</span><span class="o">)</span></code></pre></div>
-
-
-<h2>functions</h2>
-
-<p>首先，函数定义是可以嵌套的。</p>
-
-<p>函数相关的语法里这里只关注几个重要的函数式风格的语法，包括：偏函数(partial function)、柯里化(currying)等。</p>
-
-<h3>partial functions</h3>
-
-<p>简单来说就是将多参数的函数转换为某个参数为固定值的函数：</p>
-
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">concatUpper</span><span class="o">(</span><span class="n">s1</span><span class="k">:</span><span class="kt">String</span><span class="o">,</span> <span class="n">s2</span><span class="k">:</span><span class="kt">String</span><span class="o">)</span><span class="k">:</span><span class="kt">String</span> <span class="o">=</span> <span class="o">(</span><span class="n">s1</span> <span class="o">+</span> <span class="s">&quot; &quot;</span> <span class="o">+</span> <span class="n">s2</span><span class="o">).</span><span class="n">toUpperCase</span>
-
-<span class="k">val</span> <span class="n">c1</span> <span class="k">=</span> <span class="n">concatUpper</span> <span class="k">_</span> <span class="c1">// now c1 is a function value, type: (String, String) =&gt; String</span>
-<span class="n">println</span><span class="o">(</span><span class="n">c1</span><span class="o">(</span><span class="s">&quot;short&quot;</span><span class="o">,</span> <span class="s">&quot;pants&quot;</span><span class="o">))</span>
-<span class="k">val</span> <span class="n">c2</span> <span class="k">=</span> <span class="n">concatUpper</span><span class="o">(</span><span class="s">&quot;short&quot;</span><span class="o">,</span> <span class="k">_:</span><span class="kt">String</span><span class="o">)</span>
-<span class="n">println</span><span class="o">(</span><span class="n">c2</span><span class="o">(</span><span class="s">&quot;pants&quot;</span><span class="o">))</span></code></pre></div>
-
-
-<h3>currying</h3>
-
-<p>函数柯里化同偏函数一定程度上具有相同的作用。scala里柯里化函数的语法不同：</p>
-
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">multiplier</span><span class="o">(</span><span class="n">i</span><span class="k">:</span><span class="kt">Int</span><span class="o">)(</span><span class="n">factor</span><span class="k">:</span><span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="n">i</span> <span class="o">*</span> <span class="n">factor</span>
-
-<span class="c1">// 当然也可以将一个普通函数转换为柯里化版本</span>
-<span class="k">val</span> <span class="n">catVal</span> <span class="k">=</span> <span class="n">concatUpper</span> <span class="k">_</span>
-<span class="k">val</span> <span class="n">curryCat</span> <span class="k">=</span> <span class="n">catVal</span><span class="o">.</span><span class="n">curried</span> <span class="c1">// 2.10中curry，以前是用Function.curried</span>
-<span class="k">val</span> <span class="n">catLeft</span> <span class="k">=</span> <span class="n">curryCat</span><span class="o">(</span><span class="s">&quot;hello&quot;</span><span class="o">)</span>
-<span class="n">println</span><span class="o">(</span><span class="n">catLeft</span><span class="o">(</span><span class="s">&quot;world&quot;</span><span class="o">))</span></code></pre></div>
-
-
-<h3>call by name</h3>
-
-<p>函数参数传递中的call by name特性，有点类似于惰性计算，即在使用到参数的时候才计算该参数，而不是在调用函数之前就把参数值计算好。</p>
-
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">show</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="o">=&gt;</span> <span class="nc">String</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span> <span class="c1">// 指定s call by name</span>
-  <span class="n">println</span><span class="o">(</span><span class="s">&quot;show get called&quot;</span><span class="o">)</span>
-  <span class="n">println</span><span class="o">(</span><span class="s">&quot;argument:&quot;</span> <span class="o">+</span> <span class="n">s</span><span class="o">)</span>
-<span class="o">}</span>
-<span class="k">def</span> <span class="n">getStr</span> <span class="k">=</span> <span class="o">{</span>
-  <span class="n">println</span><span class="o">(</span><span class="s">&quot;getStr get called&quot;</span><span class="o">)</span> 
-  <span class="s">&quot;hello&quot;</span>
-<span class="o">}</span>
-<span class="n">show</span><span class="o">(</span><span class="n">getStr</span><span class="o">)</span></code></pre></div>
-
-
-<p>给我印象较深的是，通过call by name语法，<strong>可以实现一个如同while的函数</strong>：</p>
-
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">myWhile</span><span class="o">(</span><span class="n">cond</span><span class="k">:</span> <span class="o">=&gt;</span> <span class="nc">Boolean</span><span class="o">)(</span><span class="n">f</span><span class="k">:</span> <span class="o">=&gt;</span> <span class="nc">Unit</span><span class="o">)</span> <span class="o">{</span>
-  <span class="k">if</span> <span class="o">(</span><span class="n">cond</span><span class="o">)</span> <span class="o">{</span> 
-    <span class="n">f</span>
-    <span class="n">myWhile</span><span class="o">(</span><span class="n">cond</span><span class="o">)(</span><span class="n">f</span><span class="o">)</span>
-  <span class="o">}</span>
-<span class="o">}</span>
-
-<span class="k">var</span> <span class="n">count</span> <span class="k">=</span> <span class="mi">0</span>
-<span class="c1">// WTF ?</span>
-<span class="n">myWhile</span><span class="o">(</span><span class="n">count</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="o">)</span> <span class="o">{</span>
-  <span class="n">println</span><span class="o">(</span><span class="s">&quot;in while&quot;</span><span class="o">)</span>
-  <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
-<span class="o">}</span></code></pre></div>
-
-
-<h2>other</h2>
-
-<p>scala中有那么一些语法，虽然不是什么很大的特性，但很会给人留下深刻的印象。structural types和parameterized types有点像C++里的模板，前者约定拥有相同接口的类型，后者则只表示一种类型。</p>
-
-<h3>structural types</h3>
-
-<p>用来表示所有拥有某个相同原型接口的类型：</p>
-
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="c1">// 相当于C中的typedef，定义一个structural types类型，需要包含名为show的接口</span>
-<span class="k">type</span> <span class="kt">MyType</span> <span class="o">=</span> <span class="o">{</span> <span class="k">def</span> <span class="n">show</span><span class="o">()</span><span class="k">:</span><span class="kt">Unit</span> <span class="o">}</span> 
-<span class="k">class</span> <span class="nc">ClassA</span> <span class="o">{</span>
-  <span class="k">def</span> <span class="n">show</span><span class="o">()</span><span class="k">:</span><span class="kt">Unit</span> <span class="o">=</span> <span class="o">{</span>
-    <span class="n">println</span><span class="o">(</span><span class="s">&quot;ClassA&quot;</span><span class="o">)</span>
-  <span class="o">}</span>
-<span class="o">}</span>
-<span class="k">class</span> <span class="nc">ClassB</span> <span class="o">{</span>
-  <span class="k">def</span> <span class="n">show</span><span class="o">()</span><span class="k">:</span><span class="kt">Unit</span> <span class="o">=</span> <span class="o">{</span>
-    <span class="n">println</span><span class="o">(</span><span class="s">&quot;ClassB&quot;</span><span class="o">)</span>
-  <span class="o">}</span>
-<span class="o">}</span>
-<span class="k">var</span> <span class="n">obj</span><span class="k">:</span><span class="kt">MyType</span> <span class="o">=</span> <span class="kc">null</span>
-<span class="n">obj</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ClassA</span>
-<span class="n">obj</span><span class="o">.</span><span class="n">show</span>
-<span class="n">obj</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ClassB</span>
-<span class="n">obj</span><span class="o">.</span><span class="n">show</span></code></pre></div>
-
-
-<p>虽然ClassA/ClassB没有任何关系，但因为都包含了一个<code>show</code>接口，则可以通过一个统一的类型将其统一起来。</p>
-
-<h3>parameterized types</h3>
-
-<p>基本类似于C++模板，但仅限于类型信息，适合定义类似C++ STL的容器：</p>
-
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">class</span> <span class="nc">Vector</span><span class="o">[</span><span class="kt">T</span><span class="o">](</span><span class="k">var</span> <span class="n">a</span><span class="k">:</span><span class="kt">T</span><span class="o">,</span> <span class="k">var</span> <span class="n">b</span><span class="k">:</span><span class="kt">T</span><span class="o">)</span> <span class="o">{</span>
-<span class="o">}</span>
-<span class="k">val</span> <span class="n">v</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Vector</span><span class="o">[</span><span class="kt">Int</span><span class="o">](</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">)</span>
-<span class="n">println</span><span class="o">(</span><span class="n">v</span><span class="o">.</span><span class="n">a</span> <span class="o">+</span> <span class="s">&quot;:&quot;</span> <span class="o">+</span> <span class="n">v</span><span class="o">.</span><span class="n">b</span><span class="o">)</span></code></pre></div>
-
-
-<h2>小结</h2>
-
-<p>目前基于JVM的语言有很多，基于JVM的好处是可以使用Java社区丰富的库、框架。scala的语法还算优美，值得一试。希望能有机会投入到更大的项目中使用。</p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2013/09/23/scala-feature-overview/'>http://codemacro.com/2013/09/23/scala-feature-overview/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
