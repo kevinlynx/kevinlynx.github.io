@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="参考（翻译、摘抄）于Can Ruby Live without Rails?。这篇文章发表于2006年，受访者在回答“如果可以你会把Ruby的哪些特性加入Java“这个问题时，提到了Ruby的一些我个人认为比较突出的语法特性。其实并不是针对Java语言，何况6年时间过去， &hellip;">
+  <meta name="description" content="我使用的wxLua版本信息为wxLua 2.8.7.0 built with wxWidgets 2.8.8，也就是LuaForWindows_v5.1.4-40.exe这个安装包里自带的wxLua。我不知道其他wxWidgets版本里wxListCtrl怎样， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,42 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2012/08/07/edit-item-wxlistctrl/">让wxListCtrl支持子item编辑</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2012-08-07T13:48:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>7</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>1:48 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>我使用的wxLua版本信息为<code>wxLua 2.8.7.0 built with wxWidgets 2.8.8</code>，也就是LuaForWindows_v5.1.4-40.exe这个安装包里自带的wxLua。我不知道其他wxWidgets版本里wxListCtrl怎样，但我使用的版本里wxListCtrl是不支持编辑里面的子item的。在我使用的report模式下，子item也就是特定某一行一列的item。</p>
+
+<p>google了一下，发现悲剧地需要自己实现，主要就是自己显示一个wxTextCtrl：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2012/08/07/edit-item-wxlistctrl/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -429,44 +465,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/07/18/add-tag-to-octopress/">为octopress添加tag cloud</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2012-07-18T16:37:00+08:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>18</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>4:37 pm</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>同添加category list一样，网络上有很多方法，这里列举一种。首先到<a href="https://github.com/robbyedwards/octopress-tag-pages">https://github.com/robbyedwards/octopress-tag-pages</a>和<a href="https://github.com/robbyedwards/octopress-tag-cloud">https://github.com/robbyedwards/octopress-tag-cloud</a>clone这两个项目的代码。这两个项目分别用于产生tag page和tag cloud。 针对这两个插件，需要手工复制一些文件到你的octopress目录。</p>
-
-<p><strong>octopress-tag-pages</strong></p>
-
-<p>复制tag_generator.rb到/plugins目录；复制tag_index.html到/source/_layouts目录。<strong>需要注意的是，还需要复制tag_feed.xml到/source/_includes/custom/目录。</strong>这个官方文档里没提到，在我机器上rake generate时报错。其他文件就不需要复制了，都是些例子。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/07/18/add-tag-to-octopress/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/7">&larr; Older</a>
@@ -481,11 +479,15 @@
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (23)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (1)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (24)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (1)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2015/05/03/hazard-pointer/">并行编程中的内存回收Hazard Pointer</a>
+      </li>
     
       <li class="post">
         <a href="/2015/04/19/rw_thread_gc/">使用RCU技术实现读写线程无锁</a>
@@ -503,10 +505,6 @@
         <a href="/2014/12/03/gdb_stl/">基于内存查看STL常用容器内容</a>
       </li>
     
-      <li class="post">
-        <a href="/2014/11/04/linux-dynamic-library/">linux动态库的种种要点</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -518,7 +516,7 @@
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(23)</a> <a href='/categories/clang' style='font-size: 102.6086956521739%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 120.86956521739131%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 110.43478260869566%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.21739130434783%'>ice(2)</a> <a href='/categories/java' style='font-size: 102.6086956521739%'>java(1)</a> <a href='/categories/javascript' style='font-size: 102.6086956521739%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 113.04347826086956%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 113.04347826086956%'>lua(5)</a> <a href='/categories/module' style='font-size: 107.82608695652173%'>module(3)</a> <a href='/categories/network' style='font-size: 131.30434782608697%'>network(12)</a> <a href='/categories/other' style='font-size: 118.26086956521739%'>other(7)</a> <a href='/categories/ruby' style='font-size: 110.43478260869566%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.6086956521739%'>scala(1)</a> <a href='/categories/tips' style='font-size: 154.7826086956522%'>tips(21)</a> <a href='/categories/web' style='font-size: 110.43478260869566%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(24)</a> <a href='/categories/clang' style='font-size: 102.5%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 120.0%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 110.0%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.0%'>ice(2)</a> <a href='/categories/java' style='font-size: 102.5%'>java(1)</a> <a href='/categories/javascript' style='font-size: 102.5%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 112.5%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 112.5%'>lua(5)</a> <a href='/categories/module' style='font-size: 107.5%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(12)</a> <a href='/categories/other' style='font-size: 117.5%'>other(7)</a> <a href='/categories/ruby' style='font-size: 110.0%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.5%'>scala(1)</a> <a href='/categories/tips' style='font-size: 152.5%'>tips(21)</a> <a href='/categories/web' style='font-size: 110.0%'>web(4)</a> </span>
 </section>
 
   

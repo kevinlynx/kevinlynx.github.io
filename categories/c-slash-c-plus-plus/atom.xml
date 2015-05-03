@@ -4,7 +4,7 @@
   <title><![CDATA[Category: c/c++ | loop in codes]]></title>
   <link href="http://codemacro.com/categories/c-slash-c-plus-plus/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2015-04-19T19:08:32+08:00</updated>
+  <updated>2015-05-03T20:46:20+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,130 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[并行编程中的内存回收Hazard Pointer]]></title>
+    <link href="http://codemacro.com/2015/05/03/hazard-pointer/"/>
+    <updated>2015-05-03T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2015/05/03/hazard-pointer</id>
+    <content type="html"><![CDATA[<p>接上篇<a href="http://codemacro.com/2015/04/19/rw_thread_gc/">使用RCU技术实现读写线程无锁</a>，在没有GC机制的语言中，要实现Lock free的算法，就免不了要自己处理内存回收的问题。</p>
+
+<p>Hazard Pointer是另一种处理这个问题的算法，而且相比起来不但简单，功能也很强大。<a href="http://blog.csdn.net/pongba/article/details/589864">锁无关的数据结构与Hazard指针</a>中讲得很好，<a href="http://en.wikipedia.org/wiki/Hazard_pointer">Wikipedia Hazard pointer</a>也描述得比较清楚，所以我这里就不讲那么细了。</p>
+
+<p>一个简单的实现可以参考<a href="https://github.com/kevinlynx/lockfree-list/blob/master/haz_ptr.c">我的github haz_ptr.c</a></p>
+
+<h2>原理</h2>
+
+<p>基本原理无非也是读线程对指针进行标识，指针(指向的内存)要释放时都会缓存起来延迟到确认没有读线程了才对其真正释放。</p>
+
+<p><code>&lt;Lock-Free Data Structures with Hazard Pointers&gt;</code>中的描述：</p>
+
+<blockquote><p>Each reader thread owns a single-writer/multi-reader shared pointer called &ldquo;hazard pointer.&rdquo; When a reader thread assigns the address of a map to its hazard pointer, it is basically announcing to other threads (writers), &ldquo;I am reading this map. You can replace it if you want, but don&rsquo;t change its contents and certainly keep your deleteing hands off it.&rdquo;</p></blockquote>
+
+<p>关键的结构包括：<code>Hazard pointer</code>、<code>Thread Free list</code></p>
+
+<p><code>Hazard pointer</code>：一个读线程要使用一个指针时，就会创建一个Hazard pointer包装这个指针。一个Hazard pointer会被一个线程写，多个线程读。</p>
+
+<!-- more -->
+
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">struct</span> <span class="n">HazardPointer</span> <span class="p">{</span>
+        <span class="kt">void</span> <span class="o">*</span><span class="n">real_ptr</span><span class="p">;</span> <span class="c1">// 包装的指针</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span> <span class="c1">// 不同的实现有不同的成员</span>
+    <span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">func</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">HazardPointer</span> <span class="o">*</span><span class="n">hp</span> <span class="o">=</span> <span class="n">accquire</span><span class="p">(</span><span class="n">_real_ptr</span><span class="p">);</span>
+    <span class="p">...</span> <span class="c1">// use _real_ptr</span>
+    <span class="n">release</span><span class="p">(</span><span class="n">hp</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p><code>Thread Free List</code>：每个线程都有一个这样的列表，保存着将要释放的指针列表，这个列表仅对应的线程读写</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">defer_free</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">_free_list</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">ptr</span><span class="p">);</span>
+    <span class="p">}</span></code></pre></div></p>
+
+<p>当某个线程要尝试释放Free List中的指针时，例如指针<code>ptr</code>，就检查所有其他线程使用的Hazard pointer，检查是否存在包装了<code>ptr</code>的Hazard pointer，如果没有则说明没有读线程正在使用<code>ptr</code>，可以安全释放<code>ptr</code>。</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">gc</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">for</span><span class="p">(</span><span class="n">ptr</span> <span class="n">in</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">free_list</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">conflict</span> <span class="o">=</span> <span class="nb">false</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">hp</span> <span class="n">in</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">all_hazard_pointers</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">hp</span><span class="o">-&gt;</span><span class="n">_real_ptr</span> <span class="o">==</span> <span class="n">ptr</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="n">confilict</span> <span class="o">=</span> <span class="nb">true</span>
+                    <span class="k">break</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+            <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">conflict</span><span class="p">)</span>
+                <span class="k">delete</span> <span class="n">ptr</span>
+        <span class="p">}</span>
+    <span class="p">}</span></code></pre></div></p>
+
+<p>以上，其实就是<code>Hazard Pointer</code>的主要内容。</p>
+
+<h2>Hazard Pointer的管理</h2>
+
+<p>上面的代码中没有提到<code>_all_hazard_pointers</code>及<code>accquire</code>的具体实现，这就是Hazard Pointer的管理问题。</p>
+
+<p>《锁无关的数据结构与Hazard指针》文中创建了一个Lock free的链表来表示这个全局的Hazard Pointer List。每个Hazard Pointer有一个成员标识其是否可用。这个List中也就保存了已经被使用的Hazard Pointer集合和未被使用的Hazard Pointer集合，当所有Hazard Pointer都被使用时，就会新分配一个加进这个List。当读线程不使用指针时，需要归还Hazard Pointer，直接设置可用成员标识即可。要<code>gc()</code>时，就直接遍历这个List。</p>
+
+<p>要实现一个Lock free的链表，并且仅需要实现头插入，还是非常简单的。本身Hazard Pointer标识某个指针时，都是用了后立即标识，所以这个实现直接支持了动态线程，支持线程的挂起等。</p>
+
+<p>在<a href="https://code.google.com/p/nbds/">nbds</a>项目中也有一个Hazard Pointer的实现，相对要弱一点。它为每个线程都设置了自己的Hazard Pointer池，写线程要释放指针时，就访问所有其他线程的Hazard Pointer池。</p>
+
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">typedef</span> <span class="k">struct</span> <span class="n">haz_local</span> <span class="p">{</span>
+        <span class="c1">// Free List</span>
+        <span class="kt">pending_t</span> <span class="o">*</span><span class="n">pending</span><span class="p">;</span> <span class="c1">// to be freed</span>
+        <span class="kt">int</span> <span class="n">pending_size</span><span class="p">;</span>
+        <span class="kt">int</span> <span class="n">pending_count</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="c1">// Hazard Pointer 池，动态和静态两种</span>
+    <span class="kt">haz_t</span> <span class="n">static_haz</span><span class="p">[</span><span class="n">STATIC_HAZ_PER_THREAD</span><span class="p">];</span>
+
+    <span class="kt">haz_t</span> <span class="o">**</span><span class="n">dynamic</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">dynamic_size</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">dynamic_count</span><span class="p">;</span>
+
+<span class="p">}</span> <span class="n">__attribute__</span> <span class="p">((</span><span class="n">aligned</span><span class="p">(</span><span class="n">CACHE_LINE_SIZE</span><span class="p">)))</span> <span class="kt">haz_local_t</span><span class="p">;</span>
+
+<span class="k">static</span> <span class="kt">haz_local_t</span> <span class="n">haz_local_</span><span class="p">[</span><span class="n">MAX_NUM_THREADS</span><span class="p">]</span> <span class="o">=</span> <span class="p">{};</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+
+<p>每个线程当然就涉及到<code>haz_local_</code>索引(ID)的分配，就像<a href="http://codemacro.com/2015/04/19/rw_thread_gc/">使用RCU技术实现读写线程无锁</a>中的一样。这个实现为了支持线程动态创建，就需要一套线程ID的重用机制，相对复杂多了。</p>
+
+<h2>附录</h2>
+
+<p>最后，附上一些并行编程中的一些概念。</p>
+
+<h3>Lock Free &amp; Wait Free</h3>
+
+<p>常常看到<code>Lock Free</code>和<code>Wait Free</code>的概念，这些概念用于衡量一个系统或者说一段代码的并行级别，并行级别可参考<a href="http://www.cnblogs.com/jiayy/p/3246167.html">并行编程——并发级别</a>。总之Wait Free是一个比Lock Free更牛逼的级别。</p>
+
+<p>我自己的理解，例如《锁无关的数据结构与Hazard指针》中实现的Hazard Pointer链表就可以说是Lock Free的，注意它在插入新元素到链表头时，因为使用<code>CAS</code>，总免不了一个busy loop，有这个特征的情况下就算是<code>Lock Free</code>，虽然没锁，但某个线程的执行情况也受其他线程的影响。</p>
+
+<p>相对而言，<code>Wait Free</code>则是每个线程的执行都是独立的，例如《锁无关的数据结构与Hazard指针》中的<code>Scan</code>函数。<code>“每个线程的执行时间都不依赖于其它任何线程的行为”</code></p>
+
+<blockquote><p>锁无关(Lock-Free)意味着系统中总存在某个线程能够得以继续执行；而等待无关(Wait-Free)则是一个更强的条件，它意味着所有线程都能往下进行。</p></blockquote>
+
+<h3>ABA问题</h3>
+
+<p>在实现<code>Lock Free</code>算法的过程中，总是要使用<code>CAS</code>原语的，而<code>CAS</code>就会带来<code>ABA</code>问题。</p>
+
+<blockquote><p>在进行CAS操作的时候，因为在更改V之前，CAS主要询问“V的值是否仍然为A”，所以在第一次读取V之后以及对V执行CAS操作之前，如果将值从A改为B，然后再改回A，会使基于CAS的算法混乱。在这种情况下，CAS操作会成功。这类问题称为ABA问题。</p></blockquote>
+
+<p><a href="http://en.wikipedia.org/wiki/Hazard_pointer">Wiki Hazard Pointer</a>提到了一个ABA问题的好例子：在一个Lock free的栈实现中，现在要出栈，栈里的元素是<code>[A, B, C]</code>，<code>head</code>指向栈顶，那么就有<code>compare_and_swap(target=&amp;head, newvalue=B, expected=A)</code>。但是在这个操作中，其他线程把<code>A</code> <code>B</code>都出栈，且删除了<code>B</code>，又把<code>A</code>压入栈中，即<code>[A, C]</code>。那么前一个线程的<code>compare_and_swap</code>能够成功，此时<code>head</code>指向了一个已经被删除的<code>B</code>。stackoverflow上也有个例子 <a href="http://stackoverflow.com/questions/14535948/real-world-examples-for-aba-in-multithreading">Real-world examples for ABA in multithreading</a></p>
+
+<blockquote><p>对于CAS产生的这个ABA问题，通常的解决方案是采用CAS的一个变种DCAS。DCAS，是对于每一个V增加一个引用的表示修改次数的标记符。对于每个V，如果引用修改了一次，这个计数器就加1。然后再这个变量需要update的时候，就同时检查变量的值和计数器的值。</p></blockquote>
+
+<p>但也早有人提出<code>DCAS</code>也不是<a href="http://people.csail.mit.edu/shanir/publications/DCAS.pdf">ABA problem 的银弹</a>。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[使用RCU技术实现读写线程无锁]]></title>
@@ -1321,287 +1445,6 @@ s addr 0x20de040
 <p><strong>总结</strong>，全局变量符号重复时，始终会只使用一个，并且会被初始化/释放两次，是一种较危险的情况，应当避免在使用动态库的过程中使用全局变量。</p>
 
 <p><em>完</em></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[浅析glibc中thread tls的一处bug]]></title>
-    <link href="http://codemacro.com/2014/10/07/pthread-tls-bug/"/>
-    <updated>2014-10-07T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2014/10/07/pthread-tls-bug</id>
-    <content type="html"><![CDATA[<p>最早的时候是在程序初始化过程中开启了一个timer(<code>timer_create</code>)，这个timer第一次触发的时间较短时就会引起程序core掉，core的位置也是不定的。使用valgrind可以发现有错误的内存写入：</p>
-
-<pre><code>==31676== Invalid write of size 8
-==31676==    at 0x37A540F852: _dl_allocate_tls_init (in /lib64/ld-2.5.so)
-==31676==    by 0x4E26BD3: pthread_create@@GLIBC_2.2.5 (in /lib64/libpthread-2.5.so)
-==31676==    by 0x76E0B00: timer_helper_thread (in /lib64/librt-2.5.so)
-==31676==    by 0x4E2673C: start_thread (in /lib64/libpthread-2.5.so)
-==31676==    by 0x58974BC: clone (in /lib64/libc-2.5.so)
-==31676==  Address 0xf84dbd0 is 0 bytes after a block of size 336 alloc'd
-==31676==    at 0x4A05430: calloc (vg_replace_malloc.c:418)
-==31676==    by 0x37A5410082: _dl_allocate_tls (in /lib64/ld-2.5.so)
-==31676==    by 0x4E26EB8: pthread_create@@GLIBC_2.2.5 (in /lib64/libpthread-2.5.so)
-==31676==    by 0x76E0B00: timer_helper_thread (in /lib64/librt-2.5.so)
-==31676==    by 0x4E2673C: start_thread (in /lib64/libpthread-2.5.so)
-==31676==    by 0x58974BC: clone (in /lib64/libc-2.5.so)
-</code></pre>
-
-<p>google <code>_dl_allocate_tls_init</code> 相关发现一个glibc的bug <a href="https://sourceware.org/bugzilla/show_bug.cgi?id=13862">Bug 13862</a> 和我的情况有点类似。本文就此bug及tls相关实现做一定阐述。</p>
-
-<p>需要查看glibc的源码，如何确认使用的glibc的版本，可以这样：</p>
-
-<pre><code>$ /lib/libc.so.6
-GNU C Library stable release version 2.5, by Roland McGrath et al.
-...
-</code></pre>
-
-<p>为了方便，还可以直接在(glibc Cross Reference)[<a href="http://osxr.org/glibc/source/?v=glibc-2.17">http://osxr.org/glibc/source/?v=glibc-2.17</a>]网页上进行查看，版本不同，但影响不大。</p>
-
-<!-- more -->
-
-
-<h2>BUG描述</h2>
-
-<p>要重现13862 BUG作者提到要满足以下条件：</p>
-
-<blockquote><p>The use of a relatively large number of dynamic libraries, loaded at runtime using dlopen.</p>
-
-<p>The use of thread-local-storage within those libraries.</p>
-
-<p>A thread exiting prior to the number of loaded libraries increasing a significant amount, followed by a new thread being created after the number of libraries has increased.</p></blockquote>
-
-<p>简单来说，就是在加载一大堆包含TLS变量的动态库的过程中，开启了一个线程，这个线程退出后又开启了另一个线程。</p>
-
-<p>这和我们的问题场景很相似。不同的是我们使用的是timer，但timer在触发时也是开启新的线程，并且这个线程会立刻退出：</p>
-
-<p><code>/nptl/sysdeps/unix/sysv/linux/timer_routines.c</code></p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">timer_helper_thread</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hellip</span><span class="p">;)</span>  <span class="c1">// 用于检测定时器触发的辅助线程</span>
-<span class="p">{</span>
-    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-      <span class="kt">pthread_t</span> <span class="n">th</span><span class="p">;</span>
-      <span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="n">pthread_create</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">th</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">tk</span><span class="o">-&gt;</span><span class="n">attr</span><span class="p">,</span> <span class="n">timer_sigev_thread</span><span class="p">,</span> <span class="c1">// 开启一个新线程调用用户注册的定时器函数</span>
-                 <span class="n">td</span><span class="p">);</span>
-    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-<span class="p">}</span></code></pre></div></p>
-
-<p>要重现此BUG可以使用我的实验代码 <a href="https://gist.github.com/kevinlynx/69435e718785a0ad12c4">thread-tls</a>，或者使用<a href="https://sourceware.org/bugzilla/attachment.cgi?id=6290">Bug 13862 中的附件</a></p>
-
-<h2>TLS相关实现</h2>
-
-<p>可以顺着<code>_dl_allocate_tls_init</code>函数的实现查看相关联的部分代码。该函数遍历所有加载的包含TLS变量的模块，初始化一个线程的TLS数据结构。</p>
-
-<p>每一个线程都有自己的堆栈空间，其中单独存储了各个模块的TLS变量，从而实现TLS变量在每一个线程中都有单独的拷贝。TLS与线程的关联关系可以查看下图：</p>
-
-<p><img src="/assets/res/pthread-tls.png" alt="" /></p>
-
-<p>应用层使用的<code>pthread_t</code>实际是个<code>pthread</code>对象的地址。创建线程时线程的堆栈空间和<code>pthread</code>结构是一块连续的内存。但这个地址并不指向这块内存的首地址。相关代码：/nptl/allocatestack.c <code>allocate_stack</code>，该函数分配线程的堆栈内存。</p>
-
-<p><code>pthread</code>第一个成员是<code>tcbhead_t</code>，<code>tcbhead_t</code>中<code>dtv</code>指向了一个<code>dtv_t</code>数组，该数组的大小随着当前程序载入的模块多少而动态变化。每一个模块被载入时，都有一个<code>l_tls_modid</code>，其直接作为<code>dtv_t</code>数组的下标索引。<code>tcbhead_t</code>中的<code>dtv</code>实际指向的是<code>dtv_t</code>第二个元素，第一个元素用于记录整个<code>dtv_t</code>数组有多少元素，第二个元素也做特殊使用，从第三个元素开始，才是用于存储TLS变量。</p>
-
-<p>一个<code>dtv_t</code>存储的是一个模块中所有TLS变量的地址，当然这些TLS变量都会被放在连续的内存空间里。<code>dtv_t::pointer::val</code>正是用于指向这块内存的指针。对于非动态加载的模块它指向的是线程堆栈的位置；否则指向动态分配的内存位置。</p>
-
-<p>以上结构用代码描述为，</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">union</span> <span class="kt">dtv_t</span> <span class="p">{</span>
-    <span class="kt">size_t</span> <span class="n">counter</span><span class="p">;</span>
-    <span class="k">struct</span> <span class="p">{</span>
-        <span class="kt">void</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">val</span><span class="p">;</span> <span class="o">/&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">point</span> <span class="n">to</span> <span class="n">tls</span> <span class="n">variable</span> <span class="n">memory</span> <span class="err">*/</span>
-        <span class="kt">bool</span> <span class="n">is_static</span><span class="p">;</span>
-    <span class="p">}</span> <span class="n">pointer</span><span class="p">;</span>
-<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">struct</span> <span class="kt">tcbhead_t</span> <span class="p">{</span>
-    <span class="kt">void</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tcb</span><span class="p">;</span>
-    <span class="kt">dtv_t</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">dtv</span><span class="p">;</span> <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">point</span> <span class="n">to</span> <span class="n">a</span> <span class="kt">dtv_t</span> <span class="n">array</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
-    <span class="kt">void</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">padding</span><span class="p">[</span><span class="mi">22</span><span class="p">];</span> <span class="o">/&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">other</span> <span class="n">members</span> <span class="n">i</span> <span class="n">don</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="n">t</span> <span class="n">care</span> <span class="err">*/</span>
-<span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">struct</span> <span class="n">pthread</span> <span class="p">{</span>
-    <span class="kt">tcbhead_t</span> <span class="n">tcb</span><span class="p">;</span>
-    <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">more</span> <span class="n">members</span> <span class="n">i</span> <span class="n">don</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="n">t</span> <span class="n">care</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
-<span class="p">};</span></code></pre></div></p>
-
-<p><strong>dtv是一个用于以模块为单位存储TLS变量的数组</strong>。</p>
-
-<p>实际代码参看 /nptl/descr.h 及 nptl/sysdeps/x86_64/tls.h。</p>
-
-<h3>实验</h3>
-
-<p>使用<code>g++ -o thread -g -Wall -lpthread -ldl thread.cpp</code>编译<a href="https://gist.github.com/kevinlynx/69435e718785a0ad12c4">代码</a>，即在创建线程前加载了一个.so：</p>
-
-<pre><code>Breakpoint 1, dump_pthread (id=1084229952) at thread.cpp:40
-40          printf("pthread %p, dtv %p\n", pd, dtv);
-(gdb) set $dtv=pd-&gt;tcb.dtv
-(gdb) p $dtv[-1]
-$1 = {counter = 17, pointer = {val = 0x11, is_static = false}}
-(gdb) p $dtv[3]
-$2 = {counter = 18446744073709551615, pointer = {val = 0xffffffffffffffff, is_static = false}}
-</code></pre>
-
-<p><code>dtv[3]</code>对应着动态加载的模块，<code>is_static=false</code>，<code>val</code>被初始化为-1：</p>
-
-<p>/elf/dl-tls.c <code>_dl_allocate_tls_init</code></p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">if</span> <span class="p">(</span><span class="n">map</span><span class="o">-&gt;</span><span class="n">l_tls_offset</span> <span class="o">==</span> <span class="n">NO_TLS_OFFSET</span>
-   <span class="o">||</span> <span class="n">map</span><span class="o">-&gt;</span><span class="n">l_tls_offset</span> <span class="o">==</span> <span class="n">FORCED_DYNAMIC_TLS_OFFSET</span><span class="p">)</span>
- <span class="p">{</span>
-   <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">For</span> <span class="n">dynamically</span> <span class="n">loaded</span> <span class="n">modules</span> <span class="n">we</span> <span class="n">simply</span> <span class="n">store</span>
-      <span class="n">the</span> <span class="n">value</span> <span class="n">indicating</span> <span class="n">deferred</span> <span class="n">allocation</span><span class="p">.</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
-   <span class="n">dtv</span><span class="p">[</span><span class="n">map</span><span class="o">-&gt;</span><span class="n">l_tls_modid</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">val</span> <span class="o">=</span> <span class="n">TLS_DTV_UNALLOCATED</span><span class="p">;</span>
-   <span class="n">dtv</span><span class="p">[</span><span class="n">map</span><span class="o">-&gt;</span><span class="n">l_tls_modid</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">is_static</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
-   <span class="k">continue</span><span class="p">;</span>
- <span class="p">}</span></code></pre></div></p>
-
-<p><code>dtv</code>数组大小之所以为17，可以参看代码 /elf/dl-tls.c <code>allocate_dtv</code>：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// dl_tls_max_dtv_idx 随着载入模块的增加而增加，载入1个.so则是1&lt;/p&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">dtv_length</span> <span class="o">=</span> <span class="n">GL</span><span class="p">(</span><span class="n">dl_tls_max_dtv_idx</span><span class="p">)</span> <span class="o">+</span> <span class="n">DTV_SURPLUS</span><span class="p">;</span> <span class="c1">// DTV_SURPLUS 14</span>
-<span class="n">dtv</span> <span class="o">=</span> <span class="n">calloc</span> <span class="p">(</span><span class="n">dtv_length</span> <span class="o">+</span> <span class="mi">2</span><span class="p">,</span> <span class="k">sizeof</span> <span class="p">(</span><span class="kt">dtv_t</span><span class="p">));</span>
-<span class="k">if</span> <span class="p">(</span><span class="n">dtv</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span>
- <span class="p">{</span>
-   <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">This</span> <span class="n">is</span> <span class="n">the</span> <span class="n">initial</span> <span class="n">length</span> <span class="n">of</span> <span class="n">the</span> <span class="n">dtv</span><span class="p">.</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
-   <span class="n">dtv</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">counter</span> <span class="o">=</span> <span class="n">dtv_length</span><span class="p">;</span></code></pre></div></p>
-
-<p>继续上面的实验，当调用到.so中的<code>function</code>时，其TLS被初始化，此时<code>dtv[3]</code>中<code>val</code>指向初始化后的TLS变量地址：</p>
-
-<pre><code>68          fn();
-(gdb)
-0x601808, 0x601804, 0x601800
-72          return 0;
-(gdb) p $dtv[3]
-$3 = {counter = 6297600, pointer = {val = 0x601800, is_static = false}}
-(gdb) x/3xw 0x601800
-0x601800:       0x55667788      0xaabbccdd      0x11223344
-</code></pre>
-
-<p>这个时候还可以看看<code>dtv[1]</code>中的内容，正是指向了<code>pthread</code>前面的内存位置：</p>
-
-<pre><code>(gdb) p $dtv[1]
-$5 = {counter = 1084229936, pointer = {val = 0x40a00930, is_static = true}}
-(gdb) p/x tid
-$7 = 0x40a00940
-</code></pre>
-
-<p><strong>结论</strong>:</p>
-
-<ul>
-<li>线程中TLS变量的存储是以模块为单位的</li>
-</ul>
-
-
-<h2>so模块加载</h2>
-
-<p>这里也并不太需要查看<code>dlopen</code>等具体实现，由于使用<code>__thread</code>来定义TLS变量，整个实现涉及到ELF加载器的一些细节，深入下去内容较多。这里直接通过实验的手段来了解一些实现即可。</p>
-
-<p>上文已经看到，<strong>在创建线程前如果动态加载了.so，dtv数组的大小是会随之增加的</strong>。如果是在线程创建后再载入.so呢？</p>
-
-<p>使用<code>g++ -o thread -g -Wall -lpthread -ldl thread.cpp -DTEST_DTV_EXPAND -DSO_CNT=1</code>编译程序，调试得到：</p>
-
-<pre><code>73          load_sos();
-(gdb)
-0x601e78, 0x601e74, 0x601e70
-
-Breakpoint 1, dump_pthread (id=1084229952) at thread.cpp:44
-44          printf("pthread %p, dtv %p\n", pd, dtv);
-(gdb) p $dtv[-1]
-$3 = {counter = 17, pointer = {val = 0x11, is_static = false}}
-(gdb) p $dtv[4]
-$4 = {counter = 6299248, pointer = {val = 0x601e70, is_static = false}}
-</code></pre>
-
-<p>在新载入了.so时，<code>dtv</code>数组大小并没有新增，<code>dtv[4]</code>直接被拿来使用。</p>
-
-<p>因为<code>dtv</code>初始大小为16，那么当载入的.so超过这个数字的时候会怎样？</p>
-
-<p>使用<code>g++ -o thread -g -Wall -lpthread -ldl thread.cpp -DTEST_DTV_EXPAND</code>编译程序：</p>
-
-<pre><code>...
-pthread 0x40a00940, dtv 0x6016a0
-...
-Breakpoint 1, dump_pthread (id=1084229952) at thread.cpp:44
-44          printf("pthread %p, dtv %p\n", pd, dtv);
-(gdb) p dtv
-$2 = (dtv_t *) 0x6078a0
-(gdb) p dtv[-1]
-$3 = {counter = 32, pointer = {val = 0x20, is_static = false}}
-(gdb) p dtv[5]
-$4 = {counter = 6300896, pointer = {val = 0x6024e0, is_static = false}}
-</code></pre>
-
-<p>可以看出，<code>dtv</code>被重新分配了内存(0x6016a0 -> 0x6078a0)并做了扩大。</p>
-
-<p>以上得出结论：</p>
-
-<ul>
-<li>创建线程前dtv的大小会根据载入模块数量决定</li>
-<li>创建线程后新载入的模块会动态扩展dtv的大小(必要的时候)</li>
-</ul>
-
-
-<h2>pthread堆栈重用</h2>
-
-<p>在<code>allocate_stack</code>中分配线程堆栈时，有一个从缓存中取的操作：</p>
-
-<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">allocate_stack</span><span class="p">(..)</span> <span class="p">{</span>
-    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-    <span class="n">pd</span> <span class="o">=</span> <span class="n">get_cached_stack</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">size</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">mem</span><span class="p">);</span>
-    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-<span class="p">}</span>
-<span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">Get</span> <span class="n">a</span> <span class="n">stack</span> <span class="n">frame</span> <span class="n">from</span> <span class="n">the</span> <span class="n">cache</span><span class="p">.</span>  <span class="n">We</span> <span class="n">have</span> <span class="n">to</span> <span class="n">match</span> <span class="n">by</span> <span class="n">size</span> <span class="n">since</span>
-   <span class="n">some</span> <span class="n">blocks</span> <span class="n">might</span> <span class="n">be</span> <span class="n">too</span> <span class="n">small</span> <span class="n">or</span> <span class="n">far</span> <span class="n">too</span> <span class="n">large</span><span class="p">.</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
-<span class="n">get_cached_stack</span><span class="p">(</span><span class="o">&amp;</span><span class="n">hellip</span><span class="p">;)</span> <span class="p">{</span>
-    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-    <span class="n">list_for_each</span> <span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">stack_cache</span><span class="p">)</span> <span class="c1">// 根据size从stack_cache中取</span>
-    <span class="p">{</span> <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span> <span class="p">}</span>
-    <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
-    <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">Clear</span> <span class="n">the</span> <span class="n">DTV</span><span class="p">.</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
-    <span class="kt">dtv_t</span> <span class="o">*</span><span class="n">dtv</span> <span class="o">=</span> <span class="n">GET_DTV</span> <span class="p">(</span><span class="n">TLS_TPADJ</span> <span class="p">(</span><span class="n">result</span><span class="p">));</span>
-    <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">cnt</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">cnt</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">dtv</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">].</span><span class="n">counter</span><span class="p">;</span> <span class="o">++</span><span class="n">cnt</span><span class="p">)</span>
-        <span class="k">if</span> <span class="p">(</span><span class="o">!</span> <span class="n">dtv</span><span class="p">[</span><span class="mi">1</span> <span class="o">+</span> <span class="n">cnt</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">is_static</span>
-                <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">dtv</span><span class="p">[</span><span class="mi">1</span> <span class="o">+</span> <span class="n">cnt</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">val</span> <span class="o">!=</span> <span class="n">TLS_DTV_UNALLOCATED</span><span class="p">)</span>
-            <span class="n">free</span> <span class="p">(</span><span class="n">dtv</span><span class="p">[</span><span class="mi">1</span> <span class="o">+</span> <span class="n">cnt</span><span class="p">].</span><span class="n">pointer</span><span class="p">.</span><span class="n">val</span><span class="p">);</span>
-    <span class="n">memset</span> <span class="p">(</span><span class="n">dtv</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="err">\</span><span class="mi">0</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="p">(</span><span class="n">dtv</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">].</span><span class="n">counter</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="k">sizeof</span> <span class="p">(</span><span class="kt">dtv_t</span><span class="p">));</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="cm">/* Re-initialize the TLS.  */</span>
-<span class="n">_dl_allocate_tls_init</span> <span class="p">(</span><span class="n">TLS_TPADJ</span> <span class="p">(</span><span class="n">result</span><span class="p">));</span>
-<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span></code></pre></div></p>
-
-<p><code>get_cached_stack</code>会把取出的<code>pthread</code>中的dtv重新初始化。<strong>注意 <code>_dl_allocate_tls_init</code> 中是根据模块列表来初始化dtv数组的。</strong></p>
-
-<h3>实验</h3>
-
-<p>当一个线程退出后，它就可能被当做cache被<code>get_cached_stack</code>取出复用。</p>
-
-<p>使用<code>g++ -o thread -g -Wall -lpthread -ldl thread.cpp -DTEST_CACHE_STACK</code>编译程序，运行：</p>
-
-<pre><code>$ ./thread
-..
-pthread 0x413c9940, dtv 0x1be46a0
-... 
-pthread 0x413c9940, dtv 0x1be46a0
-</code></pre>
-
-<h2>回顾BUG</h2>
-
-<p>当新创建的线程复用了之前退出的线程堆栈时，由于在<code>_dl_allocate_tls_init</code>中初始化dtv数组时是根据当前载入的模块数量而定。如果在这个时候模块数已经超过了这个复用的dtv数组大小，那么就会出现写入非法的内存。使用valgrind检测就会得到本文开头提到的结果。</p>
-
-<p>由于dtv数组大小通常会稍微大点，所以在新加载的模块数量不够多时程序还不会有问题。可以通过控制测试程序中<code>SO_CNT</code>的大小看看dtv中内容的变化。</p>
-
-<p>另外，我查看了下glibc的更新历史，到目前为止(2.20)这个BUG还没有修复。</p>
-
-<h2>参考文档</h2>
-
-<ul>
-<li><a href="https://sourceware.org/bugzilla/show_bug.cgi?id=13862">glibc Bug 13862 - Reuse of cached stack can cause bounds overrun of thread DTV</a></li>
-<li><a href="http://tsecer.blog.163.com/blog/static/1501817201172883556743/">gLibc TLS实现</a></li>
-<li><a href="http://blog.chinaunix.net/uid-24774106-id-3651266.html">Linux线程之线程栈</a></li>
-<li><a href="http://www.longene.org/forum/viewtopic.php?f=17&amp;t=429">Linux用户空间线程管理介绍之二：创建线程堆栈</a></li>
-</ul>
-
 ]]></content>
   </entry>
   

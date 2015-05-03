@@ -1,0 +1,350 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>并行编程中的内存回收Hazard Pointer - loop in codes</title>
+  <meta name="author" content="Kevin Lynx">
+
+  
+  <meta name="description" content="接上篇使用RCU技术实现读写线程无锁，在没有GC机制的语言中，要实现Lock free的算法，就免不了要自己处理内存回收的问题。 Hazard Pointer是另一种处理这个问题的算法，而且相比起来不但简单，功能也很强大。锁无关的数据结构与Hazard指针中讲得很好，Wikipedia &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://codemacro.com/2015/05/03/hazard-pointer">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <!--script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script-->
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<!--link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css"-->
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">loop in codes</a></h1>
+  
+    <h2>Kevin Lynx BLOG</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:codemacro.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about.html">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">并行编程中的内存回收Hazard Pointer</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-05-03T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>3</span><span class='date-suffix'>rd</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>接上篇<a href="http://codemacro.com/2015/04/19/rw_thread_gc/">使用RCU技术实现读写线程无锁</a>，在没有GC机制的语言中，要实现Lock free的算法，就免不了要自己处理内存回收的问题。</p>
+
+<p>Hazard Pointer是另一种处理这个问题的算法，而且相比起来不但简单，功能也很强大。<a href="http://blog.csdn.net/pongba/article/details/589864">锁无关的数据结构与Hazard指针</a>中讲得很好，<a href="http://en.wikipedia.org/wiki/Hazard_pointer">Wikipedia Hazard pointer</a>也描述得比较清楚，所以我这里就不讲那么细了。</p>
+
+<p>一个简单的实现可以参考<a href="https://github.com/kevinlynx/lockfree-list/blob/master/haz_ptr.c">我的github haz_ptr.c</a></p>
+
+<h2>原理</h2>
+
+<p>基本原理无非也是读线程对指针进行标识，指针(指向的内存)要释放时都会缓存起来延迟到确认没有读线程了才对其真正释放。</p>
+
+<p><code>&lt;Lock-Free Data Structures with Hazard Pointers&gt;</code>中的描述：</p>
+
+<blockquote><p>Each reader thread owns a single-writer/multi-reader shared pointer called &ldquo;hazard pointer.&rdquo; When a reader thread assigns the address of a map to its hazard pointer, it is basically announcing to other threads (writers), &ldquo;I am reading this map. You can replace it if you want, but don&rsquo;t change its contents and certainly keep your deleteing hands off it.&rdquo;</p></blockquote>
+
+<p>关键的结构包括：<code>Hazard pointer</code>、<code>Thread Free list</code></p>
+
+<p><code>Hazard pointer</code>：一个读线程要使用一个指针时，就会创建一个Hazard pointer包装这个指针。一个Hazard pointer会被一个线程写，多个线程读。</p>
+
+<!-- more -->
+
+
+
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">struct</span> <span class="n">HazardPointer</span> <span class="p">{</span>
+        <span class="kt">void</span> <span class="o">*</span><span class="n">real_ptr</span><span class="p">;</span> <span class="c1">// 包装的指针</span>
+        <span class="p">...</span> <span class="c1">// 不同的实现有不同的成员</span>
+    <span class="p">};</span>
+
+    <span class="kt">void</span> <span class="nf">func</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">HazardPointer</span> <span class="o">*</span><span class="n">hp</span> <span class="o">=</span> <span class="n">accquire</span><span class="p">(</span><span class="n">_real_ptr</span><span class="p">);</span>
+        <span class="p">...</span> <span class="c1">// use _real_ptr</span>
+        <span class="n">release</span><span class="p">(</span><span class="n">hp</span><span class="p">);</span>
+    <span class="p">}</span></code></pre></div>
+
+
+<p><code>Thread Free List</code>：每个线程都有一个这样的列表，保存着将要释放的指针列表，这个列表仅对应的线程读写</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">defer_free</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">_free_list</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">ptr</span><span class="p">);</span>
+    <span class="p">}</span></code></pre></div>
+
+
+<p>当某个线程要尝试释放Free List中的指针时，例如指针<code>ptr</code>，就检查所有其他线程使用的Hazard pointer，检查是否存在包装了<code>ptr</code>的Hazard pointer，如果没有则说明没有读线程正在使用<code>ptr</code>，可以安全释放<code>ptr</code>。</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">gc</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">for</span><span class="p">(</span><span class="n">ptr</span> <span class="n">in</span> <span class="n">_free_list</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">conflict</span> <span class="o">=</span> <span class="nb">false</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">hp</span> <span class="n">in</span> <span class="n">_all_hazard_pointers</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">hp</span><span class="o">-&gt;</span><span class="n">_real_ptr</span> <span class="o">==</span> <span class="n">ptr</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="n">confilict</span> <span class="o">=</span> <span class="nb">true</span>
+                    <span class="k">break</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+            <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">conflict</span><span class="p">)</span>
+                <span class="k">delete</span> <span class="n">ptr</span>
+        <span class="p">}</span>
+    <span class="p">}</span></code></pre></div>
+
+
+<p>以上，其实就是<code>Hazard Pointer</code>的主要内容。</p>
+
+<h2>Hazard Pointer的管理</h2>
+
+<p>上面的代码中没有提到<code>_all_hazard_pointers</code>及<code>accquire</code>的具体实现，这就是Hazard Pointer的管理问题。</p>
+
+<p>《锁无关的数据结构与Hazard指针》文中创建了一个Lock free的链表来表示这个全局的Hazard Pointer List。每个Hazard Pointer有一个成员标识其是否可用。这个List中也就保存了已经被使用的Hazard Pointer集合和未被使用的Hazard Pointer集合，当所有Hazard Pointer都被使用时，就会新分配一个加进这个List。当读线程不使用指针时，需要归还Hazard Pointer，直接设置可用成员标识即可。要<code>gc()</code>时，就直接遍历这个List。</p>
+
+<p>要实现一个Lock free的链表，并且仅需要实现头插入，还是非常简单的。本身Hazard Pointer标识某个指针时，都是用了后立即标识，所以这个实现直接支持了动态线程，支持线程的挂起等。</p>
+
+<p>在<a href="https://code.google.com/p/nbds/">nbds</a>项目中也有一个Hazard Pointer的实现，相对要弱一点。它为每个线程都设置了自己的Hazard Pointer池，写线程要释放指针时，就访问所有其他线程的Hazard Pointer池。</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">typedef</span> <span class="k">struct</span> <span class="n">haz_local</span> <span class="p">{</span>
+        <span class="c1">// Free List</span>
+        <span class="kt">pending_t</span> <span class="o">*</span><span class="n">pending</span><span class="p">;</span> <span class="c1">// to be freed</span>
+        <span class="kt">int</span> <span class="n">pending_size</span><span class="p">;</span>
+        <span class="kt">int</span> <span class="n">pending_count</span><span class="p">;</span>
+
+        <span class="c1">// Hazard Pointer 池，动态和静态两种</span>
+        <span class="kt">haz_t</span> <span class="n">static_haz</span><span class="p">[</span><span class="n">STATIC_HAZ_PER_THREAD</span><span class="p">];</span>
+
+        <span class="kt">haz_t</span> <span class="o">**</span><span class="n">dynamic</span><span class="p">;</span>
+        <span class="kt">int</span> <span class="n">dynamic_size</span><span class="p">;</span>
+        <span class="kt">int</span> <span class="n">dynamic_count</span><span class="p">;</span>
+
+    <span class="p">}</span> <span class="n">__attribute__</span> <span class="p">((</span><span class="n">aligned</span><span class="p">(</span><span class="n">CACHE_LINE_SIZE</span><span class="p">)))</span> <span class="kt">haz_local_t</span><span class="p">;</span>
+
+    <span class="k">static</span> <span class="kt">haz_local_t</span> <span class="n">haz_local_</span><span class="p">[</span><span class="n">MAX_NUM_THREADS</span><span class="p">]</span> <span class="o">=</span> <span class="p">{};</span></code></pre></div>
+
+
+<p>每个线程当然就涉及到<code>haz_local_</code>索引(ID)的分配，就像<a href="http://codemacro.com/2015/04/19/rw_thread_gc/">使用RCU技术实现读写线程无锁</a>中的一样。这个实现为了支持线程动态创建，就需要一套线程ID的重用机制，相对复杂多了。</p>
+
+<h2>附录</h2>
+
+<p>最后，附上一些并行编程中的一些概念。</p>
+
+<h3>Lock Free &amp; Wait Free</h3>
+
+<p>常常看到<code>Lock Free</code>和<code>Wait Free</code>的概念，这些概念用于衡量一个系统或者说一段代码的并行级别，并行级别可参考<a href="http://www.cnblogs.com/jiayy/p/3246167.html">并行编程——并发级别</a>。总之Wait Free是一个比Lock Free更牛逼的级别。</p>
+
+<p>我自己的理解，例如《锁无关的数据结构与Hazard指针》中实现的Hazard Pointer链表就可以说是Lock Free的，注意它在插入新元素到链表头时，因为使用<code>CAS</code>，总免不了一个busy loop，有这个特征的情况下就算是<code>Lock Free</code>，虽然没锁，但某个线程的执行情况也受其他线程的影响。</p>
+
+<p>相对而言，<code>Wait Free</code>则是每个线程的执行都是独立的，例如《锁无关的数据结构与Hazard指针》中的<code>Scan</code>函数。<code>“每个线程的执行时间都不依赖于其它任何线程的行为”</code></p>
+
+<blockquote><p>锁无关(Lock-Free)意味着系统中总存在某个线程能够得以继续执行；而等待无关(Wait-Free)则是一个更强的条件，它意味着所有线程都能往下进行。</p></blockquote>
+
+<h3>ABA问题</h3>
+
+<p>在实现<code>Lock Free</code>算法的过程中，总是要使用<code>CAS</code>原语的，而<code>CAS</code>就会带来<code>ABA</code>问题。</p>
+
+<blockquote><p>在进行CAS操作的时候，因为在更改V之前，CAS主要询问“V的值是否仍然为A”，所以在第一次读取V之后以及对V执行CAS操作之前，如果将值从A改为B，然后再改回A，会使基于CAS的算法混乱。在这种情况下，CAS操作会成功。这类问题称为ABA问题。</p></blockquote>
+
+<p><a href="http://en.wikipedia.org/wiki/Hazard_pointer">Wiki Hazard Pointer</a>提到了一个ABA问题的好例子：在一个Lock free的栈实现中，现在要出栈，栈里的元素是<code>[A, B, C]</code>，<code>head</code>指向栈顶，那么就有<code>compare_and_swap(target=&amp;head, newvalue=B, expected=A)</code>。但是在这个操作中，其他线程把<code>A</code> <code>B</code>都出栈，且删除了<code>B</code>，又把<code>A</code>压入栈中，即<code>[A, C]</code>。那么前一个线程的<code>compare_and_swap</code>能够成功，此时<code>head</code>指向了一个已经被删除的<code>B</code>。stackoverflow上也有个例子 <a href="http://stackoverflow.com/questions/14535948/real-world-examples-for-aba-in-multithreading">Real-world examples for ABA in multithreading</a></p>
+
+<blockquote><p>对于CAS产生的这个ABA问题，通常的解决方案是采用CAS的一个变种DCAS。DCAS，是对于每一个V增加一个引用的表示修改次数的标记符。对于每个V，如果引用修改了一次，这个计数器就加1。然后再这个变量需要update的时候，就同时检查变量的值和计数器的值。</p></blockquote>
+
+<p>但也早有人提出<code>DCAS</code>也不是<a href="http://people.csail.mit.edu/shanir/publications/DCAS.pdf">ABA problem 的银弹</a>。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2015/05/03/hazard-pointer/'>http://codemacro.com/2015/05/03/hazard-pointer/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-05-03T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>3</span><span class='date-suffix'>rd</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/categories/c-slash-c-plus-plus/'>c/c++</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/2015/04/19/rw_thread_gc/" title="Previous Post: 使用RCU技术实现读写线程无锁">&laquo; 使用RCU技术实现读写线程无锁</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (24)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (1)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2015/05/03/hazard-pointer/">并行编程中的内存回收Hazard Pointer</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2015/04/19/rw_thread_gc/">使用RCU技术实现读写线程无锁</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2015/04/06/tcmalloc-getstacktrace/">记一次tcmalloc分配内存引起的coredump</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2015/03/31/intro-java-bytecode/">初识JVM byte code</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2014/12/03/gdb_stl/">基于内存查看STL常用容器内容</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+<div id="recentcomments" class="dsq-widget">
+<h1 class="dsq-widget-title">Recent Comments</h1>
+<script type="text/javascript" src="http://loopincodes.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
+</div>
+<a href="http://disqus.com/">Powered by Disqus</a>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(24)</a> <a href='/categories/clang' style='font-size: 102.5%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 120.0%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 110.0%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.0%'>ice(2)</a> <a href='/categories/java' style='font-size: 102.5%'>java(1)</a> <a href='/categories/javascript' style='font-size: 102.5%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 112.5%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 112.5%'>lua(5)</a> <a href='/categories/module' style='font-size: 107.5%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(12)</a> <a href='/categories/other' style='font-size: 117.5%'>other(7)</a> <a href='/categories/ruby' style='font-size: 110.0%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.5%'>scala(1)</a> <a href='/categories/tips' style='font-size: 152.5%'>tips(21)</a> <a href='/categories/web' style='font-size: 110.0%'>web(4)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - Kevin Lynx -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
+<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
+
+</p>
+
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'loopincodes';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://codemacro.com/2015/05/03/hazard-pointer/';
+        var disqus_url = 'http://codemacro.com/2015/05/03/hazard-pointer/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>
