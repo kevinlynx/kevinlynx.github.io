@@ -11,7 +11,7 @@ comments: true
 
 2014.4 - 
 
-广度有了还是得有点深度
+一大波牛人的世界
 
 ### 计算机科学业余爱好者
 
@@ -26,7 +26,7 @@ comments: true
 
 架构；分析设计；团队；沟通；凝聚力；进度；计划；责任；压力。
 
-有时候还是想安静专注地写一天代码。
+培养一个团队需要倾注感情
 
 ### MMO游戏后端
 
@@ -52,10 +52,9 @@ comments: true
 * Erlang(2013)
 * Scala(2013-2014)
 * Javascript(2014)
-* 杂项
-    * 汇编(破解；C++编译器实现)
-    * Java(Android)
-    * HTML/CSS
+* Java
+* 汇编(破解；C++编译器实现)
+* HTML/CSS
 
 ### 业余项目
 
@@ -65,7 +64,11 @@ comments: true
 * [ext-blog](https://github.com/kevinlynx/ext-blog)，Common Lisp写的博客系统
 * [codertrace](https://github.com/kevinlynx/codertrace)，想聚合程序员信息的网站
 * [dhtcrawler2](https://github.com/kevinlynx/dhtcrawler2)，看片神器
+* [dy800.net](http://dy800.net)
+* [btrabbit](http://btrabbit.com)
 * 杂项若干
+
+更多参考[github](http://github.com/kevinlynx)
 
 ### 经历
 
