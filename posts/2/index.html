@@ -9,7 +9,8 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="zookeeper中节点数量理论上仅受限于内存，但一个节点下的子节点数量受限于request/response 1M数据 (size of data / number of znodes) zookeeper的watch机制用于数据变更时zookeeper的主动通知。 &hellip;">
+  <meta name="description" content="最早的时候是在程序初始化过程中开启了一个timer(timer_create)，这个timer第一次触发的时间较短时就会引起程序core掉，core的位置也是不定的。使用valgrind可以发现有错误的内存写入： ==31676== Invalid write of size 8
+==31676 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +65,66 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2014/10/07/pthread-tls-bug/">浅析glibc中thread tls的一处bug</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-10-07T00:00:00+08:00'><span class='date'><span class='date-month'>Oct</span> <span class='date-day'>7</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>最早的时候是在程序初始化过程中开启了一个timer(<code>timer_create</code>)，这个timer第一次触发的时间较短时就会引起程序core掉，core的位置也是不定的。使用valgrind可以发现有错误的内存写入：</p>
+
+<pre><code>==31676== Invalid write of size 8
+==31676==    at 0x37A540F852: _dl_allocate_tls_init (in /lib64/ld-2.5.so)
+==31676==    by 0x4E26BD3: pthread_create@@GLIBC_2.2.5 (in /lib64/libpthread-2.5.so)
+==31676==    by 0x76E0B00: timer_helper_thread (in /lib64/librt-2.5.so)
+==31676==    by 0x4E2673C: start_thread (in /lib64/libpthread-2.5.so)
+==31676==    by 0x58974BC: clone (in /lib64/libc-2.5.so)
+==31676==  Address 0xf84dbd0 is 0 bytes after a block of size 336 alloc'd
+==31676==    at 0x4A05430: calloc (vg_replace_malloc.c:418)
+==31676==    by 0x37A5410082: _dl_allocate_tls (in /lib64/ld-2.5.so)
+==31676==    by 0x4E26EB8: pthread_create@@GLIBC_2.2.5 (in /lib64/libpthread-2.5.so)
+==31676==    by 0x76E0B00: timer_helper_thread (in /lib64/librt-2.5.so)
+==31676==    by 0x4E2673C: start_thread (in /lib64/libpthread-2.5.so)
+==31676==    by 0x58974BC: clone (in /lib64/libc-2.5.so)
+</code></pre>
+
+<p>google <code>_dl_allocate_tls_init</code> 相关发现一个glibc的bug <a href="https://sourceware.org/bugzilla/show_bug.cgi?id=13862">Bug 13862</a> 和我的情况有点类似。本文就此bug及tls相关实现做一定阐述。</p>
+
+<p>需要查看glibc的源码，如何确认使用的glibc的版本，可以这样：</p>
+
+<pre><code>$ /lib/libc.so.6
+GNU C Library stable release version 2.5, by Roland McGrath et al.
+...
+</code></pre>
+
+<p>为了方便，还可以直接在(glibc Cross Reference)[<a href="http://osxr.org/glibc/source/?v=glibc-2.17">http://osxr.org/glibc/source/?v=glibc-2.17</a>]网页上进行查看，版本不同，但影响不大。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/10/07/pthread-tls-bug/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -580,48 +641,6 @@ nfds [in] Ignored. The nfds parameter is included only for compatibility with Be
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2014/02/21/dhtcrawler-process/">dhtcrawler的进程模型经验</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2014-02-21T00:00:00+08:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>距离写<a href="http://codemacro.com/2013/07/02/dhtcrawler2/">dhtcrawler</a>已经有半年时间。半年前就想总结点心得经验，但最后写出来的并没有表达出我特别有感慨的地方。最近又被人问到这方面的经验问题，才静下心来思考整理了下。</p>
-
-<p>我的经验是关于在写一个网络项目时所涉及到的架构（或者说是模型）。</p>
-
-<p>在dhtcrawler中，一个主要的问题是：程序在网络中需要尽可能快尽可能多地收集请求，然后程序需要尽可能快地加工处理这些信息。本质上就这么简单，我觉得很多网络系统面临的都可能是类似的问题。</p>
-
-<p>详细点说，dhtcrawler高峰期每天会收到2000万的DHT协议请求，收到这些请求后，dhtcrawler需要对这些请求做处理，包括：合并相同的请求；从外部网站请求下载种子文件；新增/更新种子信息到数据库；建立种子sphinx索引等。在实际运行期间，高峰期每天能新录入14万个种子。</p>
-
-<p>那么如何架构这个系统来让处理速度尽可能地快呢？首先，毫无疑问这个系统是多线程/多进程，甚至是分布式的。写一个多线程程序学几个API谁都会，但是如何组织这些线程以让系统最优则是一个较困难的问题。根据dhtcrawler的经验，我简单总结了以下几种模型/架构：</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2014/02/21/dhtcrawler-process/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/3">&larr; Older</a>
@@ -636,11 +655,15 @@ nfds [in] Ignored. The nfds parameter is included only for compatibility with Be
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (24)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (1)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (25)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (1)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2015/05/05/lock_free_list/">无锁有序链表的实现</a>
+      </li>
     
       <li class="post">
         <a href="/2015/05/03/hazard-pointer/">并行编程中的内存回收Hazard Pointer</a>
@@ -658,10 +681,6 @@ nfds [in] Ignored. The nfds parameter is included only for compatibility with Be
         <a href="/2015/03/31/intro-java-bytecode/">初识JVM byte code</a>
       </li>
     
-      <li class="post">
-        <a href="/2014/12/03/gdb_stl/">基于内存查看STL常用容器内容</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -673,7 +692,7 @@ nfds [in] Ignored. The nfds parameter is included only for compatibility with Be
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(24)</a> <a href='/categories/clang' style='font-size: 102.5%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 120.0%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 110.0%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 105.0%'>ice(2)</a> <a href='/categories/java' style='font-size: 102.5%'>java(1)</a> <a href='/categories/javascript' style='font-size: 102.5%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 112.5%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 112.5%'>lua(5)</a> <a href='/categories/module' style='font-size: 107.5%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(12)</a> <a href='/categories/other' style='font-size: 117.5%'>other(7)</a> <a href='/categories/ruby' style='font-size: 110.0%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.5%'>scala(1)</a> <a href='/categories/tips' style='font-size: 152.5%'>tips(21)</a> <a href='/categories/web' style='font-size: 110.0%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(25)</a> <a href='/categories/clang' style='font-size: 102.4%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 119.2%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.6%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.8%'>ice(2)</a> <a href='/categories/java' style='font-size: 102.4%'>java(1)</a> <a href='/categories/javascript' style='font-size: 102.4%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 112.0%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 112.0%'>lua(5)</a> <a href='/categories/module' style='font-size: 107.2%'>module(3)</a> <a href='/categories/network' style='font-size: 128.8%'>network(12)</a> <a href='/categories/other' style='font-size: 116.8%'>other(7)</a> <a href='/categories/ruby' style='font-size: 109.6%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.4%'>scala(1)</a> <a href='/categories/tips' style='font-size: 150.4%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.6%'>web(4)</a> </span>
 </section>
 
   
