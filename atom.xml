@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2015-05-05T19:36:51+08:00</updated>
+  <updated>2015-05-30T20:36:40+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,169 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Drill中实现HTTP storage plugin]]></title>
+    <link href="http://codemacro.com/2015/05/30/drill-http-plugin/"/>
+    <updated>2015-05-30T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2015/05/30/drill-http-plugin</id>
+    <content type="html"><![CDATA[<p>Apache Drill可用于大数据的实时分析，引用一段介绍：</p>
+
+<blockquote><p>受到Google Dremel启发，Apache的Drill项目是对大数据集进行交互式分析的分布式系统。Drill并不会试图取代已有的大数据批处理框架（Big Data batch processing framework），如Hadoop MapReduce或流处理框架（stream processing framework），如S4和Storm。相反，它是要填充现有空白的——对大数据集的实时交互式处理</p></blockquote>
+
+<p>简单来说，Drill可接收SQL查询语句，然后后端从多个数据源例如HDFS、MongoDB等获取数据并分析产出分析结果。在一次分析中，它可以汇集多个数据源的数据。而且基于分布式的架构，可以支持秒级查询。</p>
+
+<p>Drill在架构上是比较灵活的，它的前端可以不一定是SQL查询语言，后端数据源也可以接入Storage plugin来支持其他数据来源。这里我就实现了一个从HTTP服务获取数据的Storage plugin demo。这个demo可以接入基于GET请求，返回JSON格式的HTTP服务。源码可从我的Github获取：<a href="https://github.com/kevinlynx/drill-storage-http">drill-storage-http</a></p>
+
+<p>例子包括：</p>
+
+<pre><code>select name, length from http.`/e/api:search` where $p=2 and $q='avi'
+select name, length from http.`/e/api:search?q=avi&amp;p=2` where length &gt; 0 
+</code></pre>
+
+<h2>实现</h2>
+
+<p>要实现一个自己的storage plugin，目前Drill这方面文档几乎没有，只能从已有的其他storage plugin源码入手，例如mongodb的，参考Drill子项目<code>drill-mongo-storage</code>。实现的storage plugin打包为jar放到<code>jars</code>目录，Drill启动时会自动载入，然后web上配置指定类型即可。</p>
+
+<p>主要需要实现的类包括：</p>
+
+<pre><code>AbstractStoragePlugin
+StoragePluginConfig
+SchemaFactory
+BatchCreator
+AbstractRecordReader
+AbstractGroupScan
+</code></pre>
+
+<!-- more -->
+
+
+<h3>AbstraceStoragePlugin</h3>
+
+<p><code>StoragePluginConfig</code>用于配置plugin，例如：</p>
+
+<pre><code>{
+  "type" : "http",
+  "connection" : "http://xxx.com:8000",
+  "resultKey" : "results",
+  "enabled" : true
+}
+</code></pre>
+
+<p>它必须是可JSON序列化/反序列化的，Drill会把storage配置存储到<code>/tmp/drill/sys.storage_plugins</code>中，例如windows下<code>D:\tmp\drill\sys.storage_plugins</code>。</p>
+
+<p><code>AbstractStoragePlugin</code> 是plugin的主类，它必须配合<code>StoragePluginConfig</code>，实现这个类时，构造函数必须遵循参数约定，例如：</p>
+
+<pre><code>public HttpStoragePlugin(HttpStoragePluginConfig httpConfig, DrillbitContext context, String name)
+</code></pre>
+
+<p>Drill启动时会自动扫描<code>AbstractStoragePlugin</code>实现类(<code>StoragePluginRegistry</code>)，并建立<code>StoragePluginConfig.class</code>到<code>AbstractStoragePlugin constructor</code>的映射。<code>AbstractStoragePlugin</code>需要实现的接口包括：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="c1">// 相应地需要实现AbstraceGroupScan</span>
+    <span class="c1">// selection包含了database name和table name，可用可不用</span>
+    <span class="kd">public</span> <span class="n">AbstractGroupScan</span> <span class="nf">getPhysicalScan</span><span class="o">(</span><span class="n">String</span> <span class="n">userName</span><span class="o">,</span> <span class="n">JSONOptions</span> <span class="n">selection</span><span class="o">)</span> 
+
+    <span class="c1">// 注册schema</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">registerSchemas</span><span class="o">(</span><span class="n">SchemaConfig</span> <span class="n">schemaConfig</span><span class="o">,</span> <span class="n">SchemaPlus</span> <span class="n">parent</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span>
+
+    <span class="c1">// StoragePluginOptimizerRule 用于优化Drill生成的plan，可实现也可不实现</span>
+    <span class="kd">public</span> <span class="n">Set</span><span class="o">&lt;</span><span class="n">StoragePluginOptimizerRule</span><span class="o">&gt;</span> <span class="nf">getOptimizerRules</span><span class="o">()</span></code></pre></div>
+
+
+<p>Drill中的schema用于描述一个database，以及处理table之类的事务，必须要实现，否则任意一个SQL查询都会被认为是找不到对应的table。<code>AbstraceGroupScan</code>用于一次查询中提供信息，例如查询哪些columns。</p>
+
+<p>Drill在查询时，有一种中间数据结构(基于JSON)叫Plan，其中又分为Logic Plan和Physical Plan。Logic Plan是第一层中间结构，用于完整表达一次查询，是SQL或其他前端查询语言转换后的中间结构。完了后还要被转换为Physical Plan，又称为Exectuion Plan，这个Plan是被优化后的Plan，可用于与数据源交互进行真正的查询。<code>StoragePluginOptimizerRule</code>就是用于优化Physical Plan的。这些Plan最终对应的结构有点类似于语法树，毕竟SQL也可以被认为是一种程序语言。<code>StoragePluginOptimizerRule</code>可以被理解为改写这些语法树的。例如Mongo storage plugin就实现了这个类，它会把<code>where</code>中的filter转换为mongodb自己的filter(如{&lsquo;$gt&rsquo;: 2})，从而优化查询。</p>
+
+<p>这里又牵扯出Apache的另一个项目：<a href="https://github.com/apache/incubator-calcite">calcite</a>，前身就是OptiQ。Drill中整个关于SQL的执行，主要是依靠这个项目。要玩转Plan的优化是比较难的，也是因为文档欠缺，相关代码较多。</p>
+
+<h3>SchemaFactory</h3>
+
+<p><code>registerSchemas</code>主要还是调用<code>SchemaFactory.registerSchemas</code>接口。Drill中的Schema是一种树状结构，所以可以看到<code>registerSchemas</code>实际就是往parent中添加child：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">registerSchemas</span><span class="o">(</span><span class="n">SchemaConfig</span> <span class="n">schemaConfig</span><span class="o">,</span> <span class="n">SchemaPlus</span> <span class="n">parent</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+        <span class="n">HttpSchema</span> <span class="n">schema</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">HttpSchema</span><span class="o">(</span><span class="n">schemaName</span><span class="o">);</span>
+        <span class="n">parent</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">schema</span><span class="o">.</span><span class="na">getName</span><span class="o">(),</span> <span class="n">schema</span><span class="o">);</span>
+    <span class="o">}</span></code></pre></div>
+
+
+<p><code>HttpSchema</code>派生于<code>AbstractSchema</code>，主要需要实现接口<code>getTable</code>，因为我这个http storage plugin中的table实际就是传给HTTP service的query，所以table是动态的，所以<code>getTable</code>的实现比较简单：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="n">Table</span> <span class="nf">getTable</span><span class="o">(</span><span class="n">String</span> <span class="n">tableName</span><span class="o">)</span> <span class="o">{</span> <span class="c1">// table name can be any of string</span>
+        <span class="n">HttpScanSpec</span> <span class="n">spec</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">HttpScanSpec</span><span class="o">(</span><span class="n">tableName</span><span class="o">);</span> <span class="c1">// will be pass to getPhysicalScan</span>
+        <span class="k">return</span> <span class="k">new</span> <span class="nf">DynamicDrillTable</span><span class="o">(</span><span class="n">plugin</span><span class="o">,</span> <span class="n">schemaName</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="n">spec</span><span class="o">);</span>
+    <span class="o">}</span></code></pre></div>
+
+
+<p>这里的<code>HttpScanSpec</code>用于保存查询中的一些参数，例如这里保存了table name，也就是HTTP service的query，例如<code>/e/api:search?q=avi&amp;p=2</code>。它会被传到<code>AbstraceStoragePlugin.getPhysicalScan</code>中的<code>JSONOptions</code>：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="n">AbstractGroupScan</span> <span class="nf">getPhysicalScan</span><span class="o">(</span><span class="n">String</span> <span class="n">userName</span><span class="o">,</span> <span class="n">JSONOptions</span> <span class="n">selection</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+        <span class="n">HttpScanSpec</span> <span class="n">spec</span> <span class="o">=</span> <span class="n">selection</span><span class="o">.</span><span class="na">getListWith</span><span class="o">(</span><span class="k">new</span> <span class="nf">ObjectMapper</span><span class="o">(),</span> <span class="k">new</span> <span class="n">TypeReference</span><span class="o">&lt;</span><span class="n">HttpScanSpec</span><span class="o">&gt;()</span> <span class="o">{});</span>
+        <span class="k">return</span> <span class="k">new</span> <span class="nf">HttpGroupScan</span><span class="o">(</span><span class="n">userName</span><span class="o">,</span> <span class="n">httpConfig</span><span class="o">,</span> <span class="n">spec</span><span class="o">);</span>
+    <span class="o">}</span></code></pre></div>
+
+
+<p><code>HttpGroupScan</code>后面会看到用处。</p>
+
+<h3>AbstractRecordReader</h3>
+
+<p><code>AbstractRecordReader</code>负责真正地读取数据并返回给Drill。<code>BatchCreator</code>则是用于创建<code>AbstractRecordReader</code>。</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">HttpScanBatchCreator</span> <span class="kd">implements</span> <span class="n">BatchCreator</span><span class="o">&lt;</span><span class="n">HttpSubScan</span><span class="o">&gt;</span> <span class="o">{</span>
+
+      <span class="nd">@Override</span>
+      <span class="kd">public</span> <span class="n">CloseableRecordBatch</span> <span class="nf">getBatch</span><span class="o">(</span><span class="n">FragmentContext</span> <span class="n">context</span><span class="o">,</span>
+          <span class="n">HttpSubScan</span> <span class="n">config</span><span class="o">,</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">RecordBatch</span><span class="o">&gt;</span> <span class="n">children</span><span class="o">)</span>
+          <span class="kd">throws</span> <span class="n">ExecutionSetupException</span> <span class="o">{</span>
+        <span class="n">List</span><span class="o">&lt;</span><span class="n">RecordReader</span><span class="o">&gt;</span> <span class="n">readers</span> <span class="o">=</span> <span class="n">Lists</span><span class="o">.</span><span class="na">newArrayList</span><span class="o">();</span>
+        <span class="n">readers</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="k">new</span> <span class="nf">HttpRecordReader</span><span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="n">config</span><span class="o">));</span>
+        <span class="k">return</span> <span class="k">new</span> <span class="nf">ScanBatch</span><span class="o">(</span><span class="n">config</span><span class="o">,</span> <span class="n">context</span><span class="o">,</span> <span class="n">readers</span><span class="o">.</span><span class="na">iterator</span><span class="o">());</span>
+      <span class="o">}</span>
+    <span class="o">}</span></code></pre></div>
+
+
+<p>既然<code>AbstractRecordReader</code>负责真正读取数据，那么它肯定是需要知道传给HTTP service的query的，但这个query最早是在<code>HttpScanSpec</code>中，然后传给了<code>HttpGroupScan</code>，所以马上会看到<code>HttpGroupScan</code>又把参数信息传给了<code>HttpSubScan</code>。</p>
+
+<p>Drill也会自动扫描<code>BatchCreator</code>的实现类，所以这里就不用关心<code>HttpScanBatchCreator</code>的来历了。</p>
+
+<p><code>HttpSubScan</code>的实现比较简单，主要是用来存储<code>HttpScanSpec</code>的：</p>
+
+<pre><code>public class HttpSubScan extends AbstractBase implements SubScan // 需要实现SubScan
+</code></pre>
+
+<p>回到<code>HttpGroupScan</code>，必须实现的接口：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="n">SubScan</span> <span class="nf">getSpecificScan</span><span class="o">(</span><span class="kt">int</span> <span class="n">minorFragmentId</span><span class="o">)</span> <span class="o">{</span> <span class="c1">// pass to HttpScanBatchCreator</span>
+        <span class="k">return</span> <span class="k">new</span> <span class="nf">HttpSubScan</span><span class="o">(</span><span class="n">config</span><span class="o">,</span> <span class="n">scanSpec</span><span class="o">);</span> <span class="c1">// 最终会被传递到HttpScanBatchCreator.getBatch接口</span>
+      <span class="o">}</span></code></pre></div>
+
+
+<p>最终query被传递到<code>HttpRecordReader</code>，该类需要实现的接口包括：<code>setup</code>和<code>next</code>，有点类似于迭代器。<code>setup</code>中查询出数据，然后<code>next</code>中转换数据给Drill。转换给Drill时可以使用到<code>VectorContainerWriter</code>和<code>JsonReader</code>。这里也就是Drill中传说的vector数据格式，也就是列存储数据。</p>
+
+<h3>总结</h3>
+
+<p>以上，就包含了plugin本身的创建，及查询中query的传递。查询中类似<code>select titile, name</code> 中的columns会被传递到<code>HttpGroupScan.clone</code>接口，只不过我这里并不关注。实现了这些，就可以通过Drill查询HTTP service中的数据了。</p>
+
+<p>而<code>select * from xx where xx</code>中的<code>where</code> filter，Drill自己会对查询出来的数据做过滤。如果要像mongo plugin中构造mongodb的filter，则需要实现<code>StoragePluginOptimizerRule</code>。</p>
+
+<p>我这里实现的HTTP storage plugin，本意是觉得传给HTTP service的query可能会动态构建，例如：</p>
+
+<pre><code>select name, length from http.`/e/api:search` where $p=2 and $q='avi' # p=2&amp;q=avi 就是动态构建，其值可以来源于其他查询结果
+select name, length from http.`/e/api:search?q=avi&amp;p=2` where length &gt; 0  # 这里就是静态的
+</code></pre>
+
+<p>第一条查询就需要借助<code>StoragePluginOptimizerRule</code>，它会收集所有where中的filter，最终作为HTTP serivce的query。但这里的实现还不完善。</p>
+
+<p>总体而言，由于Drill项目相对较新，要进行扩展还是比较困难的。尤其是Plan优化部分。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2015/05/30/drill-http-plugin/'>http://codemacro.com/2015/05/30/drill-http-plugin/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[无锁有序链表的实现]]></title>
@@ -3939,261 +4102,6 @@ typedef struct fd_set {
 <p class='post-footer'>
             原文地址：
             <a href='http://codemacro.com/2014/06/01/select-limit/'>http://codemacro.com/2014/06/01/select-limit/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[muduo源码阅读]]></title>
-    <link href="http://codemacro.com/2014/05/04/muduo-source/"/>
-    <updated>2014-05-04T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2014/05/04/muduo-source</id>
-    <content type="html"><![CDATA[<p>最近简单读了下<a href="http://blog.csdn.net/solstice/article/details/5848547">muduo</a>的源码，本文对其主要实现/结构简单总结下。</p>
-
-<p>muduo的主要源码位于net文件夹下，base文件夹是一些基础代码，不影响理解网络部分的实现。muduo主要类包括：</p>
-
-<ul>
-<li>EventLoop</li>
-<li>Channel</li>
-<li>Poller</li>
-<li>TcpConnection</li>
-<li>TcpClient</li>
-<li>TcpServer</li>
-<li>Connector</li>
-<li>Acceptor</li>
-<li>EventLoopThread</li>
-<li>EventLoopThreadPool</li>
-</ul>
-
-
-<p>其中，Poller（及其实现类）包装了Poll/EPoll，封装了OS针对设备(fd)的操作；Channel是设备fd的包装，在muduo中主要包装socket；TcpConnection抽象一个TCP连接，无论是客户端还是服务器只要建立了网络连接就会使用TcpConnection；TcpClient/TcpServer分别抽象TCP客户端和服务器；Connector/Acceptor分别包装TCP客户端和服务器的建立连接/接受连接；EventLoop是一个主控类，是一个事件发生器，它驱动Poller产生/发现事件，然后将事件派发到Channel处理；EventLoopThread是一个带有EventLoop的线程；EventLoopThreadPool自然是一个EventLoopThread的资源池，维护一堆EventLoopThread。</p>
-
-<p>阅读库源码时可以从库的接口层着手，看看关键功能是如何实现的。对于muduo而言，可以从TcpServer/TcpClient/EventLoop/TcpConnection这几个类着手。接下来看看主要功能的实现：</p>
-
-<!-- more -->
-
-
-<h2>建立连接</h2>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">TcpClient</span><span class="o">::</span><span class="n">connect</span> 
-        <span class="o">-&gt;</span> <span class="n">Connector</span><span class="o">::</span><span class="n">start</span> 
-            <span class="o">-&gt;</span> <span class="n">EventLoop</span><span class="o">::</span><span class="n">runInLoop</span><span class="p">(</span><span class="n">Connector</span><span class="o">::</span><span class="n">startInLoop</span><span class="p">...</span>
-            <span class="o">-&gt;</span> <span class="n">Connector</span><span class="o">::</span><span class="n">connect</span></code></pre></div>
-
-
-<p>EventLoop::runInLoop接口用于在this所在的线程运行某个函数，这个后面看下EventLoop的实现就可以了解。 网络连接的最终建立是在Connector::connect中实现，建立连接之后会创建一个Channel来代表这个socket，并且绑定事件监听接口。最后最重要的是，调用<code>Channel::enableWriting</code>。<code>Channel</code>有一系列的enableXX接口，这些接口用于标识自己关心某IO事件。后面会看到他们的实现。</p>
-
-<p>Connector监听的主要事件无非就是连接已建立，用它监听读数据/写数据事件也不符合设计。TcpConnection才是做这种事的。</p>
-
-<h2>客户端收发数据</h2>
-
-<p>当Connector发现连接真正建立好后，会回调到<code>TcpClient::newConnection</code>，在TcpClient构造函数中：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">connector_</span><span class="o">-&gt;</span><span class="n">setNewConnectionCallback</span><span class="p">(</span>
-      <span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">TcpClient</span><span class="o">::</span><span class="n">newConnection</span><span class="p">,</span> <span class="k">this</span><span class="p">,</span> <span class="n">_1</span><span class="p">));</span></code></pre></div>
-
-
-<p><code>TcpClient::newConnection</code>中创建一个TcpConnection来代表这个连接：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">TcpConnectionPtr</span> <span class="nf">conn</span><span class="p">(</span><span class="k">new</span> <span class="n">TcpConnection</span><span class="p">(</span><span class="n">loop_</span><span class="p">,</span>
-                                            <span class="n">connName</span><span class="p">,</span>
-                                            <span class="n">sockfd</span><span class="p">,</span>
-                                            <span class="n">localAddr</span><span class="p">,</span>
-                                            <span class="n">peerAddr</span><span class="p">));</span>
-
-    <span class="n">conn</span><span class="o">-&gt;</span><span class="n">setConnectionCallback</span><span class="p">(</span><span class="n">connectionCallback_</span><span class="p">);</span>
-    <span class="n">conn</span><span class="o">-&gt;</span><span class="n">setMessageCallback</span><span class="p">(</span><span class="n">messageCallback_</span><span class="p">);</span>
-    <span class="n">conn</span><span class="o">-&gt;</span><span class="n">setWriteCompleteCallback</span><span class="p">(</span><span class="n">writeCompleteCallback_</span><span class="p">);</span>
-    <span class="p">...</span>
-    <span class="n">conn</span><span class="o">-&gt;</span><span class="n">connectEstablished</span><span class="p">();</span></code></pre></div>
-
-
-<p>并同时设置事件回调，以上设置的回调都是应用层（即库的使用者）的接口。每一个TcpConnection都有一个Channel，毕竟每一个网络连接都对应了一个socket fd。在TcpConnection构造函数中创建了一个Channel，并设置事件回调函数。</p>
-
-<p><code>TcpConnection::connectEstablished</code>函数最主要的是通知Channel自己开始关心IO读取事件：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">TcpConnection</span><span class="o">::</span><span class="n">connectEstablished</span><span class="p">()</span>
-    <span class="p">{</span>
-        <span class="p">...</span>
-        <span class="n">channel_</span><span class="o">-&gt;</span><span class="n">enableReading</span><span class="p">();</span></code></pre></div>
-
-
-<p>这是自此我们看到的第二个<code>Channel::enableXXX</code>接口，这些接口是如何实现关心IO事件的呢？这个后面讲到。</p>
-
-<p>muduo的数据发送都是通过<code>TcpConnection::send</code>完成，这个就是一般网络库中在不使用OS的异步IO情况下的实现：缓存应用层传递过来的数据，在IO设备可写的情况下尽量写入数据。这个主要实现在<code>TcpConnection::sendInLoop</code>中。</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">TcpConnection</span><span class="o">::</span><span class="n">sendInLoop</span><span class="p">(....)</span> <span class="p">{</span>
-        <span class="p">...</span>
-        <span class="c1">// if no thing in output queue, try writing directly</span>
-        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">channel_</span><span class="o">-&gt;</span><span class="n">isWriting</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="n">outputBuffer_</span><span class="p">.</span><span class="n">readableBytes</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1">// 设备可写且没有缓存时立即写入</span>
-        <span class="p">{</span> 
-            <span class="n">nwrote</span> <span class="o">=</span> <span class="n">sockets</span><span class="o">::</span><span class="n">write</span><span class="p">(</span><span class="n">channel_</span><span class="o">-&gt;</span><span class="n">fd</span><span class="p">(),</span> <span class="n">data</span><span class="p">,</span> <span class="n">len</span><span class="p">);</span>
-        <span class="p">}</span>
-        <span class="p">...</span>
-        <span class="c1">// 否则加入数据到缓存，等待IO可写时再写</span>
-        <span class="n">outputBuffer_</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="k">const</span> <span class="kt">char</span><span class="o">*&gt;</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">+</span><span class="n">nwrote</span><span class="p">,</span> <span class="n">remaining</span><span class="p">);</span>
-        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">channel_</span><span class="o">-&gt;</span><span class="n">isWriting</span><span class="p">())</span>
-        <span class="p">{</span>
-            <span class="c1">// 注册关心IO写事件，Poller就会对写做检测</span>
-            <span class="n">channel_</span><span class="o">-&gt;</span><span class="n">enableWriting</span><span class="p">();</span>
-        <span class="p">}</span>
-        <span class="p">...</span>     
-    <span class="p">}</span></code></pre></div>
-
-
-<p>当IO可写时，Channel就会回调<code>TcpConnection::handleWrite</code>（构造函数中注册）</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">TcpConnection</span><span class="o">::</span><span class="n">handleWrite</span><span class="p">()</span>
-    <span class="p">{</span>
-        <span class="p">...</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">channel_</span><span class="o">-&gt;</span><span class="n">isWriting</span><span class="p">())</span>
-        <span class="p">{</span>
-            <span class="kt">ssize_t</span> <span class="n">n</span> <span class="o">=</span> <span class="n">sockets</span><span class="o">::</span><span class="n">write</span><span class="p">(</span><span class="n">channel_</span><span class="o">-&gt;</span><span class="n">fd</span><span class="p">(),</span>
-                               <span class="n">outputBuffer_</span><span class="p">.</span><span class="n">peek</span><span class="p">(),</span>
-                               <span class="n">outputBuffer_</span><span class="p">.</span><span class="n">readableBytes</span><span class="p">());</span></code></pre></div>
-
-
-<p>服务器端的数据收发同客户端机制一致，不同的是连接(TcpConnection)的建立方式不同。</p>
-
-<h2>服务器接收连接</h2>
-
-<p>服务器接收连接的实现在一个网络库中比较重要。muduo中通过Acceptor类来接收连接。在TcpClient中，其Connector通过一个关心Channel可写的事件来通过连接已建立；在Acceptor中则是通过一个Channel可读的事件来表示有新的连接到来：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">Acceptor</span><span class="o">::</span><span class="n">Acceptor</span><span class="p">(....)</span> <span class="p">{</span>
-        <span class="p">...</span>
-        <span class="n">acceptChannel_</span><span class="p">.</span><span class="n">setReadCallback</span><span class="p">(</span>
-            <span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">Acceptor</span><span class="o">::</span><span class="n">handleRead</span><span class="p">,</span> <span class="k">this</span><span class="p">));</span>
-        <span class="p">...</span> 
-    <span class="p">}</span>
-
-    <span class="kt">void</span> <span class="n">Acceptor</span><span class="o">::</span><span class="n">handleRead</span><span class="p">()</span>
-    <span class="p">{</span>
-        <span class="p">...</span>
-        <span class="kt">int</span> <span class="n">connfd</span> <span class="o">=</span> <span class="n">acceptSocket_</span><span class="p">.</span><span class="n">accept</span><span class="p">(</span><span class="o">&amp;</span><span class="n">peerAddr</span><span class="p">);</span> <span class="c1">// 接收连接获得一个新的socket</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">connfd</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span>
-        <span class="p">{</span>
-            <span class="p">...</span>
-            <span class="n">newConnectionCallback_</span><span class="p">(</span><span class="n">connfd</span><span class="p">,</span> <span class="n">peerAddr</span><span class="p">);</span> <span class="c1">// 回调到TcpServer::newConnection</span></code></pre></div>
-
-
-<p><code>TcpServer::newConnection</code>中建立一个TcpConnection，并将其附加到一个EventLoopThread中，简单来说就是给其配置一个线程：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">TcpServer</span><span class="o">::</span><span class="n">newConnection</span><span class="p">(</span><span class="kt">int</span> <span class="n">sockfd</span><span class="p">,</span> <span class="k">const</span> <span class="n">InetAddress</span><span class="o">&amp;</span> <span class="n">peerAddr</span><span class="p">)</span>
-    <span class="p">{</span>
-        <span class="p">...</span>
-        <span class="n">EventLoop</span><span class="o">*</span> <span class="n">ioLoop</span> <span class="o">=</span> <span class="n">threadPool_</span><span class="o">-&gt;</span><span class="n">getNextLoop</span><span class="p">();</span>
-        <span class="n">TcpConnectionPtr</span> <span class="nf">conn</span><span class="p">(</span><span class="k">new</span> <span class="n">TcpConnection</span><span class="p">(</span><span class="n">ioLoop</span><span class="p">,</span>
-                                                <span class="n">connName</span><span class="p">,</span>
-                                                <span class="n">sockfd</span><span class="p">,</span>
-                                                <span class="n">localAddr</span><span class="p">,</span>
-                                                <span class="n">peerAddr</span><span class="p">));</span>
-        <span class="n">connections_</span><span class="p">[</span><span class="n">connName</span><span class="p">]</span> <span class="o">=</span> <span class="n">conn</span><span class="p">;</span>
-        <span class="p">...</span>
-        <span class="n">ioLoop</span><span class="o">-&gt;</span><span class="n">runInLoop</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">TcpConnection</span><span class="o">::</span><span class="n">connectEstablished</span><span class="p">,</span> <span class="n">conn</span><span class="p">));</span></code></pre></div>
-
-
-<h2>IO的驱动</h2>
-
-<p>之前提到，一旦要关心某IO事件了，就调用<code>Channel::enableXXX</code>，这个如何实现的呢？</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">class</span> <span class="nc">Channel</span> <span class="p">{</span>
-        <span class="p">...</span>
-        <span class="kt">void</span> <span class="n">enableReading</span><span class="p">()</span> <span class="p">{</span> <span class="n">events_</span> <span class="o">|=</span> <span class="n">kReadEvent</span><span class="p">;</span> <span class="n">update</span><span class="p">();</span> <span class="p">}</span>
-        <span class="kt">void</span> <span class="n">enableWriting</span><span class="p">()</span> <span class="p">{</span> <span class="n">events_</span> <span class="o">|=</span> <span class="n">kWriteEvent</span><span class="p">;</span> <span class="n">update</span><span class="p">();</span> <span class="p">}</span>
-       
-    <span class="kt">void</span> <span class="n">Channel</span><span class="o">::</span><span class="n">update</span><span class="p">()</span>
-    <span class="p">{</span>
-        <span class="n">loop_</span><span class="o">-&gt;</span><span class="n">updateChannel</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
-    <span class="p">}</span>
-
-    <span class="kt">void</span> <span class="n">EventLoop</span><span class="o">::</span><span class="n">updateChannel</span><span class="p">(</span><span class="n">Channel</span><span class="o">*</span> <span class="n">channel</span><span class="p">)</span>
-    <span class="p">{</span>
-        <span class="p">...</span>
-        <span class="n">poller_</span><span class="o">-&gt;</span><span class="n">updateChannel</span><span class="p">(</span><span class="n">channel</span><span class="p">);</span>
-    <span class="p">}</span></code></pre></div>
-
-
-<p>最终调用到<code>Poller::upateChannel</code>。muduo中有两个Poller的实现，分别是Poll和EPoll，可以选择简单的Poll来看：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">PollPoller</span><span class="o">::</span><span class="n">updateChannel</span><span class="p">(</span><span class="n">Channel</span><span class="o">*</span> <span class="n">channel</span><span class="p">)</span>
-    <span class="p">{</span>
-      <span class="p">...</span>
-      <span class="k">if</span> <span class="p">(</span><span class="n">channel</span><span class="o">-&gt;</span><span class="n">index</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
-      <span class="p">{</span>
-        <span class="c1">// a new one, add to pollfds_</span>
-        <span class="n">assert</span><span class="p">(</span><span class="n">channels_</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">channel</span><span class="o">-&gt;</span><span class="n">fd</span><span class="p">())</span> <span class="o">==</span> <span class="n">channels_</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
-        <span class="k">struct</span> <span class="n">pollfd</span> <span class="n">pfd</span><span class="p">;</span>
-        <span class="n">pfd</span><span class="p">.</span><span class="n">fd</span> <span class="o">=</span> <span class="n">channel</span><span class="o">-&gt;</span><span class="n">fd</span><span class="p">();</span>
-        <span class="n">pfd</span><span class="p">.</span><span class="n">events</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">short</span><span class="o">&gt;</span><span class="p">(</span><span class="n">channel</span><span class="o">-&gt;</span><span class="n">events</span><span class="p">());</span> <span class="c1">// 也就是Channel::enableXXX操作的那个events_</span>
-        <span class="n">pfd</span><span class="p">.</span><span class="n">revents</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-        <span class="n">pollfds_</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">pfd</span><span class="p">);</span> <span class="c1">// 加入一个新的pollfd</span>
-        <span class="kt">int</span> <span class="n">idx</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">pollfds_</span><span class="p">.</span><span class="n">size</span><span class="p">())</span><span class="o">-</span><span class="mi">1</span><span class="p">;</span>
-        <span class="n">channel</span><span class="o">-&gt;</span><span class="n">set_index</span><span class="p">(</span><span class="n">idx</span><span class="p">);</span>
-        <span class="n">channels_</span><span class="p">[</span><span class="n">pfd</span><span class="p">.</span><span class="n">fd</span><span class="p">]</span> <span class="o">=</span> <span class="n">channel</span><span class="p">;</span></code></pre></div>
-
-
-<p>可见Poller就是把Channel关心的IO事件转换为OS提供的IO模型数据结构上。通过查看关键的<code>pollfds_</code>的使用，可以发现其主要是在Poller::poll接口里。这个接口会在EventLoop的主循环中不断调用：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">EventLoop</span><span class="o">::</span><span class="n">loop</span><span class="p">()</span>
-    <span class="p">{</span>
-      <span class="p">...</span>
-      <span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">quit_</span><span class="p">)</span>
-      <span class="p">{</span>
-        <span class="n">activeChannels_</span><span class="p">.</span><span class="n">clear</span><span class="p">();</span>
-        <span class="n">pollReturnTime_</span> <span class="o">=</span> <span class="n">poller_</span><span class="o">-&gt;</span><span class="n">poll</span><span class="p">(</span><span class="n">kPollTimeMs</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">activeChannels_</span><span class="p">);</span>
-        <span class="p">...</span>
-        <span class="k">for</span> <span class="p">(</span><span class="n">ChannelList</span><span class="o">::</span><span class="n">iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">activeChannels_</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span>
-            <span class="n">it</span> <span class="o">!=</span> <span class="n">activeChannels_</span><span class="p">.</span><span class="n">end</span><span class="p">();</span> <span class="o">++</span><span class="n">it</span><span class="p">)</span>
-        <span class="p">{</span>
-          <span class="n">currentActiveChannel_</span> <span class="o">=</span> <span class="o">*</span><span class="n">it</span><span class="p">;</span>
-          <span class="n">currentActiveChannel_</span><span class="o">-&gt;</span><span class="n">handleEvent</span><span class="p">(</span><span class="n">pollReturnTime_</span><span class="p">);</span> <span class="c1">// 获得IO事件，通知各注册回调</span>
-        <span class="p">}</span></code></pre></div>
-
-
-<p>整个流程可总结为：各Channel内部会把自己关心的事件告诉给Poller，Poller由EventLoop驱动检测IO，然后返回哪些Channel发生了事件，EventLoop再驱动这些Channel调用各注册回调。</p>
-
-<p>从这个过程中可以看出，EventLoop就是一个事件产生器。</p>
-
-<h2>线程模型</h2>
-
-<p>在muduo的服务器中，muduo的线程模型是怎样的呢？它如何通过线程来支撑高并发呢？其实很简单，它为每一个线程配置了一个EventLoop，这个线程同时被附加了若干个网络连接，这个EventLoop服务于这些网络连接，为这些连接收集并派发IO事件。</p>
-
-<p>回到<code>TcpServer::newConnection</code>中：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="n">TcpServer</span><span class="o">::</span><span class="n">newConnection</span><span class="p">(</span><span class="kt">int</span> <span class="n">sockfd</span><span class="p">,</span> <span class="k">const</span> <span class="n">InetAddress</span><span class="o">&amp;</span> <span class="n">peerAddr</span><span class="p">)</span>
-    <span class="p">{</span>
-      <span class="p">...</span>
-      <span class="n">EventLoop</span><span class="o">*</span> <span class="n">ioLoop</span> <span class="o">=</span> <span class="n">threadPool_</span><span class="o">-&gt;</span><span class="n">getNextLoop</span><span class="p">();</span>
-      <span class="p">...</span>
-      <span class="n">TcpConnectionPtr</span> <span class="n">conn</span><span class="p">(</span><span class="k">new</span> <span class="n">TcpConnection</span><span class="p">(</span><span class="n">ioLoop</span><span class="p">,</span> <span class="c1">// 使用这个选择到的线程中的EventLoop</span>
-                                              <span class="n">connName</span><span class="p">,</span>
-                                              <span class="n">sockfd</span><span class="p">,</span>
-                                              <span class="n">localAddr</span><span class="p">,</span>
-                                              <span class="n">peerAddr</span><span class="p">));</span>
-      <span class="p">...</span>
-      <span class="n">ioLoop</span><span class="o">-&gt;</span><span class="n">runInLoop</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">TcpConnection</span><span class="o">::</span><span class="n">connectEstablished</span><span class="p">,</span> <span class="n">conn</span><span class="p">));</span></code></pre></div>
-
-
-<p>注意<code>TcpConnection::connectEstablished</code>是如何通过Channel注册关心的IO事件到<code>ioLoop</code>的。</p>
-
-<p>极端来说，muduo的每一个连接线程可以只为一个网络连接服务，这就有点类似于thread per connection模型了。</p>
-
-<h2>网络模型</h2>
-
-<p>传说中的Reactor模式，以及one loop per thread，基于EventLoop的作用，以及线程池与TcpConnection的关系，可以醍醐灌顶般理解以下这张muduo的网络模型图了：</p>
-
-<p><img src="http://codemacro.com/assets/res/muduo-model.png" alt="muduo-model" /></p>
-
-<h2>总结</h2>
-
-<p>本文主要对muduo的主要结构及主要机制的实现做了描述，其他如Buffer的实现、定时器的实现大家都可以自行研究。muduo的源码很清晰，通过源码及配合<a href="http://blog.csdn.net/solstice">陈硕博客</a>上的内容可以学到一些网络编程方面的经验。</p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2014/05/04/muduo-source/'>http://codemacro.com/2014/05/04/muduo-source/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
