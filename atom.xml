@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2015-05-30T20:36:40+08:00</updated>
+  <updated>2015-05-31T15:54:52+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,190 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Java中的反射及Bean容器的实现]]></title>
+    <link href="http://codemacro.com/2015/05/31/java-refect-ioc/"/>
+    <updated>2015-05-31T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2015/05/31/java-refect-ioc</id>
+    <content type="html"><![CDATA[<p>编程语言中的反射(Refection)指的是可以在程序运行期动态加载一个类。与之相关的是自省(Introspection)，这个指的是程序自己可以获取一个类型的描述信息，例如获取一个类的所有接口定义、一个接口的所有形参。当编程语言有了这些语言特性之后，可以在很大程度上解决代码耦合问题，所以在Java的世界里，可以看到很多库/框架使用了反射技术。</p>
+
+<p>类似Spring的Bean容器实现就是大量运用了反射机制。Bean容器维护了一些Bean对象，简单来说就是一些普通对象。Bean容器可以根据配置创建这些对象，创建时如果这些对象依赖了其他对象，Bean容器还会负责将依赖的对象注入到目标对象中，也就是所谓的依赖注入(dependence injection)。放在模块设计中，又衍生出控制反转(IoC, Inverse of Control)概念，用于描述应用程序在使用一个框架时，不是框架来控制/限制应用程序的架构模式，而是由应用程序来控制框架。</p>
+
+<p>本文就简单描述下Bean容器是如何使用反射来实现的，最终代码参考<a href="https://github.com/kevinlynx/ioc-sample">github ioc-sample</a></p>
+
+<h2>类的动态加载</h2>
+
+<p>可以简单地使用<code>Class.forName</code>，传入某个class的完整名：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">loadClass</span><span class="o">(</span><span class="n">String</span> <span class="n">fullName</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">ClassNotFoundException</span> <span class="o">{</span>
+      <span class="k">return</span> <span class="n">Class</span><span class="o">.</span><span class="na">forName</span><span class="o">(</span><span class="n">fullName</span><span class="o">);</span>
+    <span class="o">}</span></code></pre></div>
+
+
+<p>类的加载涉及到class loader，这块内容是可以进一步深化的。加载了类之后就可以创建出类的实例，但还没有完成依赖注入的功能：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">c</span> <span class="o">=</span> <span class="n">loadClass</span><span class="o">(</span><span class="s">&quot;com.codemacro.bean.test.Test1&quot;</span><span class="o">);</span>
+    <span class="n">Object</span> <span class="n">o</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">newInstance</span><span class="o">();</span></code></pre></div>
+
+
+
+
+<!-- more -->
+
+
+<h2>通过set接口注入</h2>
+
+<p>我们的类可以包含<code>set</code>接口，用于设置某个成员：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Test2</span> <span class="o">{</span>
+      <span class="kd">public</span> <span class="n">Test1</span> <span class="n">test1</span><span class="o">;</span>
+      
+      <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setTest1</span><span class="o">(</span><span class="n">Test1</span> <span class="n">t</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">test1</span> <span class="o">=</span> <span class="n">t</span><span class="o">;</span>
+      <span class="o">}</span>
+    <span class="o">}</span></code></pre></div>
+
+
+<p>那么可以通过<code>setXXX</code>接口将<code>Test1</code>注入到<code>Test2</code>中：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="c1">// props指定哪些成员需要注入，例如{&quot;Test1&quot;, &quot;test1&quot;}，Test1指的是setTest1，test1指的是bean名字</span>
+    <span class="kd">public</span> <span class="n">Object</span> <span class="nf">buildWithSetters</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">c</span><span class="o">,</span> <span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="o">,</span> <span class="n">String</span><span class="o">&gt;</span> <span class="n">props</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">try</span> <span class="o">{</span>
+        <span class="c1">// ClassSetMethods 类获取Class&lt;?&gt;中所有setXX这种接口</span>
+        <span class="n">ClassSetMethods</span> <span class="n">setMethods</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">ClassSetMethods</span><span class="o">(</span><span class="n">c</span><span class="o">);</span>
+        <span class="n">Object</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">newInstance</span><span class="o">();</span>
+        <span class="k">for</span> <span class="o">(</span><span class="n">Map</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">String</span><span class="o">,</span> <span class="n">String</span><span class="o">&gt;</span> <span class="n">entrys</span> <span class="o">:</span> <span class="n">props</span><span class="o">.</span><span class="na">entrySet</span><span class="o">())</span> <span class="o">{</span>
+          <span class="n">String</span> <span class="n">pname</span> <span class="o">=</span> <span class="n">entrys</span><span class="o">.</span><span class="na">getKey</span><span class="o">();</span>
+          <span class="n">String</span> <span class="n">beanName</span> <span class="o">=</span> <span class="n">entrys</span><span class="o">.</span><span class="na">getValue</span><span class="o">();</span>
+          <span class="c1">// 取得setXXX这个Method</span>
+          <span class="n">Method</span> <span class="n">m</span> <span class="o">=</span> <span class="n">setMethods</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">pname</span><span class="o">);</span>
+          <span class="n">Object</span> <span class="n">val</span> <span class="o">=</span> <span class="n">getBean</span><span class="o">(</span><span class="n">beanName</span><span class="o">);</span>
+          <span class="c1">// 调用</span>
+          <span class="n">m</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">obj</span><span class="o">,</span> <span class="n">val</span><span class="o">);</span>
+        <span class="o">}</span>
+        <span class="n">beans</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">obj</span><span class="o">);</span>
+        <span class="k">return</span> <span class="n">obj</span><span class="o">;</span>
+      <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">&quot;build bean failed&quot;</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
+      <span class="o">}</span>
+    <span class="o">}</span></code></pre></div>
+
+
+<p><code>ClassSetMethod</code>自省出一个Class中所有的<code>setXXX(xx)</code>接口：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="nf">ClassSetMethods</span><span class="o">(</span><span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">c</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">Method</span><span class="o">[]</span> <span class="n">methods</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">getMethods</span><span class="o">();</span>
+      <span class="k">for</span> <span class="o">(</span><span class="n">Method</span> <span class="n">m</span> <span class="o">:</span> <span class="n">methods</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">String</span> <span class="n">mname</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="na">getName</span><span class="o">();</span>
+        <span class="n">Class</span><span class="o">&lt;?&gt;[]</span> <span class="n">ptypes</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="na">getParameterTypes</span><span class="o">();</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">mname</span><span class="o">.</span><span class="na">startsWith</span><span class="o">(</span><span class="s">&quot;set&quot;</span><span class="o">)</span> <span class="o">&amp;&amp;</span> <span class="n">ptypes</span><span class="o">.</span><span class="na">length</span> <span class="o">==</span> <span class="mi">1</span> <span class="o">&amp;&amp;</span> <span class="n">m</span><span class="o">.</span><span class="na">getReturnType</span><span class="o">()</span> <span class="o">==</span> <span class="n">Void</span><span class="o">.</span><span class="na">TYPE</span><span class="o">)</span> <span class="o">{</span>
+          <span class="n">String</span> <span class="n">name</span> <span class="o">=</span> <span class="n">mname</span><span class="o">.</span><span class="na">substring</span><span class="o">(</span><span class="s">&quot;set&quot;</span><span class="o">.</span><span class="na">length</span><span class="o">());</span>
+          <span class="k">this</span><span class="o">.</span><span class="na">methods</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">m</span><span class="o">);</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+    <span class="o">}</span></code></pre></div>
+
+
+<p>以上就可以看出Java中的自省能力，例如<code>Class&lt;?&gt;.getMethods</code>、<code>Method.getReturnType</code>、<code>Method.getParameterTypes</code>。</p>
+
+<h2>通过构造函数注入</h2>
+
+<p>类似于Spring中的：</p>
+
+<pre><code>&lt;bean id="exampleBean" class="examples.ExampleBean"&gt;
+  &lt;constructor-arg type="int" value="2001"/&gt;
+  &lt;constructor-arg type="java.lang.String" value="Zara"/&gt;
+</code></pre>
+
+<p>   </bean></p>
+
+<p>可以将依赖的Bean通过构造函数参数注入到目标对象中：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">params</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;();</span>
+    <span class="n">params</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;test1&quot;</span><span class="o">);</span>
+    <span class="n">bf</span><span class="o">.</span><span class="na">buildWithConstructor</span><span class="o">(</span><span class="s">&quot;test2&quot;</span><span class="o">,</span> <span class="n">Test2</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="n">params</span><span class="o">);</span></code></pre></div>
+
+
+<p>其实现：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="n">Object</span> <span class="nf">buildWithConstructor</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">c</span><span class="o">,</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">beanNames</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">try</span> <span class="o">{</span>
+        <span class="n">Constructor</span><span class="o">&lt;?&gt;[]</span> <span class="n">ctors</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">getConstructors</span><span class="o">();</span> <span class="c1">// 取得Class构造函数列表</span>
+        <span class="k">assert</span> <span class="n">ctors</span><span class="o">.</span><span class="na">length</span> <span class="o">==</span> <span class="mi">1</span><span class="o">;</span>
+        <span class="n">Constructor</span><span class="o">&lt;?&gt;</span> <span class="n">cc</span> <span class="o">=</span> <span class="n">ctors</span><span class="o">[</span><span class="mi">0</span><span class="o">];</span> 
+        <span class="n">Class</span><span class="o">&lt;?&gt;[]</span> <span class="n">ptypes</span> <span class="o">=</span> <span class="n">cc</span><span class="o">.</span><span class="na">getParameterTypes</span><span class="o">();</span> <span class="c1">// 取得构造函数参数类型列表</span>
+        <span class="k">assert</span> <span class="n">ptypes</span><span class="o">.</span><span class="na">length</span> <span class="o">==</span> <span class="n">beans</span><span class="o">.</span><span class="na">size</span><span class="o">();</span>
+        <span class="n">Object</span><span class="o">[]</span> <span class="n">args</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Object</span><span class="o">[</span><span class="n">ptypes</span><span class="o">.</span><span class="na">length</span><span class="o">];</span>
+        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">beanNames</span><span class="o">.</span><span class="na">size</span><span class="o">();</span> <span class="o">++</span><span class="n">i</span><span class="o">)</span> <span class="o">{</span> 
+          <span class="n">args</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="n">getBean</span><span class="o">(</span><span class="n">beanNames</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">));</span> <span class="c1">// 构造调用构造函数的实参列表</span>
+        <span class="o">}</span>
+        <span class="n">Object</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">cc</span><span class="o">.</span><span class="na">newInstance</span><span class="o">(</span><span class="n">args</span><span class="o">);</span> <span class="c1">// 通过构造函数创建对象</span>
+        <span class="n">beans</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">obj</span><span class="o">);</span>
+        <span class="k">return</span> <span class="n">obj</span><span class="o">;</span>
+      <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">&quot;build bean failed&quot;</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
+      <span class="o">}</span>
+    <span class="o">}</span></code></pre></div>
+
+
+<p>这个接口的使用约定<code>beanNames</code>保存的是bean名称，并与构造函数参数一一对应。</p>
+
+<h2>通过注解注入</h2>
+
+<p>我们可以通过注解标注某个数据成员是需要被自动注入的。我这里简单地获取注解标注的成员类型，找到该类型对应的Bean作为注入对象。当然复杂点还可以指定要注入Bean的名字，或自动查找类型的派生类实现。</p>
+
+<p>一个空的注解即可：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="nd">@Retention</span><span class="o">(</span><span class="n">RetentionPolicy</span><span class="o">.</span><span class="na">RUNTIME</span><span class="o">)</span>
+    <span class="nd">@Target</span><span class="o">(</span><span class="n">ElementType</span><span class="o">.</span><span class="na">FIELD</span><span class="o">)</span>
+    <span class="kd">public</span> <span class="nd">@interface</span> <span class="n">Inject</span> <span class="o">{</span>
+    <span class="o">}</span></code></pre></div>
+
+
+<p>实现：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="n">Object</span> <span class="nf">buildWithInject</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">c</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">try</span> <span class="o">{</span>
+        <span class="n">Object</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">newInstance</span><span class="o">();</span>
+        <span class="n">Field</span><span class="o">[]</span> <span class="n">fields</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">getDeclaredFields</span><span class="o">();</span> <span class="c1">// 获取该类所有定义的成员</span>
+        <span class="k">for</span> <span class="o">(</span><span class="n">Field</span> <span class="n">f</span> <span class="o">:</span><span class="n">fields</span><span class="o">)</span> <span class="o">{</span>
+          <span class="n">Inject</span> <span class="n">inject</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="na">getAnnotation</span><span class="o">(</span><span class="n">Inject</span><span class="o">.</span><span class="na">class</span><span class="o">);</span> <span class="c1">// 获取数据成员的注解</span>
+          <span class="k">if</span> <span class="o">(</span><span class="n">inject</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span> <span class="c1">// 如果被Inject注解标注</span>
+            <span class="n">Object</span> <span class="n">bean</span> <span class="o">=</span> <span class="n">getBeanByType</span><span class="o">(</span><span class="n">f</span><span class="o">.</span><span class="na">getType</span><span class="o">());</span> <span class="c1">// 根据成员的类型找到对应的Bean</span>
+            <span class="n">f</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="n">obj</span><span class="o">,</span> <span class="n">bean</span><span class="o">);</span> <span class="c1">// 注入</span>
+          <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+            <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">&quot;not found bean &quot;</span> <span class="o">+</span> <span class="n">f</span><span class="o">.</span><span class="na">getName</span><span class="o">());</span>
+          <span class="o">}</span>
+        <span class="o">}</span>
+        <span class="n">beans</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">obj</span><span class="o">);</span>
+        <span class="k">return</span> <span class="n">obj</span><span class="o">;</span>
+      <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">&quot;build bean failed&quot;</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
+      <span class="o">}</span>
+    <span class="o">}</span></code></pre></div>
+
+
+<p><code>getBeanByType</code>就是根据<code>Class</code>匹配所有的Bean。使用时：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Test2</span> <span class="o">{</span>
+      <span class="nd">@Inject</span>
+      <span class="kd">public</span> <span class="n">Test1</span> <span class="n">test1</span><span class="o">;</span>
+      <span class="o">...</span>
+    <span class="o">}</span></code></pre></div>
+
+
+<p>完。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2015/05/31/java-refect-ioc/'>http://codemacro.com/2015/05/31/java-refect-ioc/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Drill中实现HTTP storage plugin]]></title>
@@ -3920,188 +4104,6 @@ const Node&amp; HashRing&lt;Node, Data, Hash&gt;::GetNode(const Data&amp; data) 
 <p class='post-footer'>
             原文地址：
             <a href='http://codemacro.com/2014/08/25/lb-policy/'>http://codemacro.com/2014/08/25/lb-policy/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[select真的有限制吗]]></title>
-    <link href="http://codemacro.com/2014/06/01/select-limit/"/>
-    <updated>2014-06-01T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2014/06/01/select-limit</id>
-    <content type="html"><![CDATA[<p>在刚开始学习网络编程时，似乎莫名其妙地就会被某人/某资料告诉<code>select</code>函数是有fd(file descriptor)数量限制的。在最近的一次记忆里还有个人笑说<code>select</code>只支持64个fd。我甚至还写过一篇不负责任甚至错误的博客(<a href="http://www.cppblog.com/kevinlynx/archive/2008/05/20/50500.html">突破select的FD_SETSIZE限制</a>)。有人说，直接重新定义<code>FD_SETSIZE</code>就可以突破这个<code>select</code>的限制，也有人说除了重定义这个宏之外还的重新编译内核。</p>
-
-<p>事实具体是怎样的？实际上，造成这些混乱的原因恰好是不同平台对<code>select</code>的实现不一样。</p>
-
-<h2>Windows的实现</h2>
-
-<p><a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms740141(v=vs.85">MSDN</a>.aspx)上对<code>select</code>的说明：</p>
-
-<pre><code>int select(
-  _In_     int nfds,
-  _Inout_  fd_set *readfds,
-  _Inout_  fd_set *writefds,
-  _Inout_  fd_set *exceptfds,
-  _In_     const struct timeval *timeout
-);
-
-nfds [in] Ignored. The nfds parameter is included only for compatibility with Berkeley sockets.
-</code></pre>
-
-<p>第一个参数MSDN只说没有使用，其存在仅仅是为了保持与Berkeley Socket的兼容。</p>
-
-<blockquote><p>The variable FD_SETSIZE determines the maximum number of descriptors in a set. (The default value of FD_SETSIZE is 64, which can be modified by defining FD_SETSIZE to another value before including Winsock2.h.) Internally, socket handles in an fd_set structure are not represented as bit flags as in Berkeley Unix.</p></blockquote>
-
-<p>Windows上<code>select</code>的实现不同于Berkeley Unix，<strong>后者使用位标志来表示socket</strong>。</p>
-
-<!-- more -->
-
-
-<p>在MSDN的评论中有人提到：</p>
-
-<blockquote><p>Unlike the Linux versions of these macros which use a single calculation to set/check the fd, the Winsock versions use a loop which goes through the entire set of fds each time you call FD_SET or FD_ISSET (check out winsock2.h and you&rsquo;ll see). So you might want to consider an alternative if you have thousands of sockets!</p></blockquote>
-
-<p>不同于Linux下处理<code>fd_set</code>的那些宏(FD_CLR/FD_SET之类)，Windows上这些宏的实现都使用了一个循环，看看这些宏的大致实现(Winsock2.h)：</p>
-
-<pre><code>#define FD_SET(fd, set) do { \
-    u_int __i; \
-    for (__i = 0; __i &lt; ((fd_set FAR *)(set))-&gt;fd_count; __i++) { \
-        if (((fd_set FAR *)(set))-&gt;fd_array[__i] == (fd)) { \
-            break; \
-        } \
-    } \
-    if (__i == ((fd_set FAR *)(set))-&gt;fd_count) { \
-        if (((fd_set FAR *)(set))-&gt;fd_count &lt; FD_SETSIZE) { \
-            ((fd_set FAR *)(set))-&gt;fd_array[__i] = (fd); \
-            ((fd_set FAR *)(set))-&gt;fd_count++; \
-        } \
-    } \
-} while(0)
-</code></pre>
-
-<p>看下Winsock2.h中关于<code>fd_set</code>的定义：</p>
-
-<pre><code>typedef struct fd_set {
-    u_int fd_count;
-    SOCKET fd_array[FD_SETSIZE];
-} fd_set;
-</code></pre>
-
-<p>再看一篇更重要的MSDN <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms739169(v=vs.85">Maximum Number of Sockets Supported</a>.aspx)：</p>
-
-<blockquote><p>The Microsoft Winsock provider limits the maximum number of sockets supported only by available memory on the local computer.
-The maximum number of sockets that a Windows Sockets application can use is not affected by the manifest constant FD_SETSIZE.
-If an application is designed to be capable of working with more than 64 sockets using the select and WSAPoll functions, the implementor should define the manifest FD_SETSIZE in every source file before including the Winsock2.h header file.</p></blockquote>
-
-<p>Windows上<code>select</code>支持的socket数量并不受宏<code>FD_SETSIZE</code>的影响，而仅仅受内存的影响。如果应用程序想使用超过<code>FD_SETSIZE</code>的socket，仅需要重新定义<code>FD_SETSIZE</code>即可。</p>
-
-<p>实际上稍微想想就可以明白，既然<code>fd_set</code>里面已经有一个socket的数量计数，那么<code>select</code>的实现完全可以使用这个计数，而不是<code>FD_SETSIZE</code>这个宏。那么结论是，<strong><code>select</code>至少在Windows上并没有socket支持数量的限制。</strong>当然效率问题这里不谈。</p>
-
-<p>这看起来推翻了我们一直以来没有深究的一个事实。</p>
-
-<h2>Linux的实现</h2>
-
-<p>在上面提到的MSDN中，其实已经提到了Windows与Berkeley Unix实现的不同。在<code>select</code>的API文档中也看到了第一个参数并没有说明其作用。看下Linux的<a href="http://linux.die.net/man/2/select">man</a>：</p>
-
-<blockquote><p>nfds is the highest-numbered file descriptor in any of the three sets, plus 1.</p></blockquote>
-
-<p>第一个参数简单来说就是最大描述符+1。</p>
-
-<blockquote><p>An fd_set is a fixed size buffer. Executing FD_CLR() or FD_SET() with a value of fd that is negative or is equal to or larger than FD_SETSIZE will result in undefined behavior.</p></blockquote>
-
-<p>明确说了，如果调用<code>FD_SET</code>之类的宏fd超过了<code>FD_SETSIZE</code>将导致<code>undefined behavior</code>。也有人专门做了测试：<a href="http://www.moythreads.com/wordpress/2009/12/22/select-system-call-limitation/">select system call limitation in Linux</a>。也有现实遇到的问题：<a href="http://serverfault.com/questions/497086/socket-file-descriptor-1063-is-larger-than-fd-setsize-1024-you-probably-nee">socket file descriptor (1063) is larger than FD_SETSIZE (1024), you probably need to rebuild Apache with a larger FD_SETSIZE</a></p>
-
-<p>看起来在Linux上使用<code>select</code>确实有<code>FD_SETSIZE</code>的限制。有必要看下相关的实现 <a href="http://fxr.watson.org/fxr/source/sys/fd_set.h?v=NETBSD">fd_set.h</a>：</p>
-
-<pre><code>typedef __uint32_t      __fd_mask;
-
-/* 32 = 2 ^ 5 */
-#define __NFDBITS       (32)
-#define __NFDSHIFT      (5)
-#define __NFDMASK       (__NFDBITS - 1)
-
-/*
- * Select uses bit fields of file descriptors.  These macros manipulate
- * such bit fields.  Note: FD_SETSIZE may be defined by the user.
- */
-
-#ifndef FD_SETSIZE
-#define FD_SETSIZE      256
-#endif
-
-#define __NFD_SIZE      (((FD_SETSIZE) + (__NFDBITS - 1)) / __NFDBITS)
-
-typedef struct fd_set {
-    __fd_mask       fds_bits[__NFD_SIZE];
-} fd_set;
-</code></pre>
-
-<p>在这份实现中不同于Windows实现，它使用了位来表示fd。看下<code>FD_SET</code>系列宏的大致实现：</p>
-
-<pre><code>#define FD_SET(n, p)    \
-   ((p)-&gt;fds_bits[(unsigned)(n) &gt;&gt; __NFDSHIFT] |= (1 &lt;&lt; ((n) &amp; __NFDMASK)))
-</code></pre>
-
-<p>添加一个fd到<code>fd_set</code>中也不是Windows的遍历，而是直接位运算。这里也有人对另一份类似实现做了剖析：<a href="http://my.oschina.net/u/870054/blog/212063">linux的I/O多路转接select的fd_set数据结构和相应FD_宏的实现分析</a>。在APUE中也提到<code>fd_set</code>：</p>
-
-<blockquote><p>这种数据类型(fd_set)为每一可能的描述符保持了一位。</p></blockquote>
-
-<p>既然<code>fd_set</code>中不包含其保存了多少个fd的计数，那么<code>select</code>的实现里要知道自己要处理多少个fd，那只能使用FD_SETSIZE宏去做判定，但Linux的实现选用了更好的方式，即通过第一个参数让应用层告诉<code>select</code>需要处理的最大fd（这里不是数量）。那么其实现大概为：</p>
-
-<pre><code>for (int i = 0; i &lt; nfds; ++i) {
-    if (FD_ISSET...
-       ...
-}
-</code></pre>
-
-<p>如此看来，<strong>Linux的<code>select</code>实现则是受限于<code>FD_SETSIZE</code>的大小</strong>。这里也看到，<code>fd_set</code>使用位数组来保存fd，那么fd本身作为一个int数，其值就不能超过<code>FD_SETSIZE</code>。<strong>这不仅仅是数量的限制，还是其取值的限制</strong>。实际上，Linux上fd的取值是保证了小于<code>FD_SETSIZE</code>的（但不是不变的）<a href="http://stackoverflow.com/questions/12583927/is-the-value-of-a-linux-file-descriptor-always-smaller-than-the-open-file-limits">Is the value of a Linux file descriptor always smaller than the open file limits?</a>：</p>
-
-<blockquote><p>Each process is further limited via the setrlimit(2) RLIMIT_NOFILE per-process limit on the number of open files. 1024 is a common RLIMIT_NOFILE limit. (It&rsquo;s very easy to change this limit via /etc/security/limits.conf.)</p></blockquote>
-
-<p>fd的取值会小于<code>RLIMIT_NOFILE</code>，有很多方法可以改变这个值。这个值默认情况下和<code>FD_SETSIZE</code>应该是一样的。这个信息告诉我们，<strong>Linux下fd的取值应该是从0开始递增的</strong>（理论上，实际上还有stdin/stdout/stderr之类的fd）。这才能保证<code>select</code>的那些宏可以工作。</p>
-
-<h2>应用层使用</h2>
-
-<p>标准的<code>select</code>用法应该大致如下：</p>
-
-<pre><code>while (true) {
-    ...
-    select(...)
-    for-each socket {
-        if (FD_ISSET(fd, set))
-            ...
-    }
-
-    ...
-}
-</code></pre>
-
-<p>即遍历目前管理的fd，通过<code>FD_ISSET</code>去判定当前fd是否有IO事件。因为Windows的实现<code>FD_ISSET</code>都是一个循环，所以有了另一种不跨平台的用法：</p>
-
-<pre><code>while (true) {
-    ...
-    select(. &amp;read_sockets, &amp;write_sockets..)
-    for-each read_socket {
-        use fd.fd_array[i)
-    }
-    ...
-}
-</code></pre>
-
-<h2>总结</h2>
-
-<ul>
-<li>Windows上<code>select</code>没有fd数量的限制，但因为使用了循环来检查，所以效率相对较低</li>
-<li>Linux上<code>select</code>有<code>FD_SETSIZE</code>的限制，但其相对效率较高</li>
-</ul>
-
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2014/06/01/select-limit/'>http://codemacro.com/2014/06/01/select-limit/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
