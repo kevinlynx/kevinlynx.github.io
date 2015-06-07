@@ -9,10 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="有一天有个同事在通过vld调试一个内存泄漏问题，折腾了很久然后找到我。我瞥了一眼他的代码，发现问题和我曾经遇到的一模一样： class Base {
-public: ~Base();
-}; class Derived : public Base {
-privated: std::vector&lt &hellip;">
+  <meta name="description" content="C++中主要是通过给函数加上virtual关键字来实现多态。多态可用于改变一个接口的实现，也算是一种嵌入应用层代码到底层的实现手段。就算你用不到C++那些复杂的技术，多态肯定会被用到。 但加上virtual不一定能保证多态成功： ">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -67,6 +64,42 @@ privated: std::vector&lt &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2012/09/17/c-plus-plus-ctor-virtual/">C++陷阱：构造函数中的多态</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2012-09-17T16:01:00+08:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>17</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>4:01 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>C++中主要是通过给函数加上<code>virtual</code>关键字来实现多态。多态可用于改变一个接口的实现，也算是一种嵌入应用层代码到底层的实现手段。就算你用不到C++那些复杂的技术，多态肯定会被用到。</p>
+
+<p>但加上<code>virtual</code>不一定能保证多态成功：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2012/09/17/c-plus-plus-ctor-virtual/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -524,42 +557,6 @@ privated: std::vector&lt &hellip;">
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/08/14/dynamic-scope-in-lisp/">Lisp中定义变量*var*和var有什么不同？</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2012-08-14T15:53:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>14</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>3:53 pm</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>参考<a href="http://stackoverflow.com/questions/11932876/whats-difference-between-var-and-var-when-using-defvar">What&rsquo;s difference between <em>var</em> and var when using defvar?</a></p>
-
-<p>其实，Common Lisp中使用defvar定义变量加不加星号没有区别。这只是一种Lisp程序员的约定。Lisp中并不使用特定的符号来影响语法元素，例如Ruby中通过给变量添加@前缀来标示该变量为类成员变量。这个问题引出了lisp总dynamic scope这个话题。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/08/14/dynamic-scope-in-lisp/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/6">&larr; Older</a>
@@ -574,11 +571,15 @@ privated: std::vector&lt &hellip;">
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (25)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (3)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (25)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (4)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2015/06/07/servlet-web-framework/">基于servlet实现一个web框架</a>
+      </li>
     
       <li class="post">
         <a href="/2015/05/31/java-refect-ioc/">Java中的反射及Bean容器的实现</a>
@@ -596,10 +597,6 @@ privated: std::vector&lt &hellip;">
         <a href="/2015/05/03/hazard-pointer/">并行编程中的内存回收Hazard Pointer</a>
       </li>
     
-      <li class="post">
-        <a href="/2015/04/19/rw_thread_gc/">使用RCU技术实现读写线程无锁</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -611,7 +608,7 @@ privated: std::vector&lt &hellip;">
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(25)</a> <a href='/categories/clang' style='font-size: 102.4%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 119.2%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.6%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.8%'>ice(2)</a> <a href='/categories/java' style='font-size: 107.2%'>java(3)</a> <a href='/categories/javascript' style='font-size: 102.4%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 112.0%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 112.0%'>lua(5)</a> <a href='/categories/module' style='font-size: 107.2%'>module(3)</a> <a href='/categories/network' style='font-size: 128.8%'>network(12)</a> <a href='/categories/other' style='font-size: 116.8%'>other(7)</a> <a href='/categories/ruby' style='font-size: 109.6%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.4%'>scala(1)</a> <a href='/categories/tips' style='font-size: 150.4%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.6%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(25)</a> <a href='/categories/clang' style='font-size: 102.4%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 119.2%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.6%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.8%'>ice(2)</a> <a href='/categories/java' style='font-size: 109.6%'>java(4)</a> <a href='/categories/javascript' style='font-size: 102.4%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 112.0%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 112.0%'>lua(5)</a> <a href='/categories/module' style='font-size: 107.2%'>module(3)</a> <a href='/categories/network' style='font-size: 128.8%'>network(12)</a> <a href='/categories/other' style='font-size: 116.8%'>other(7)</a> <a href='/categories/ruby' style='font-size: 109.6%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.4%'>scala(1)</a> <a href='/categories/tips' style='font-size: 150.4%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.6%'>web(4)</a> </span>
 </section>
 
   

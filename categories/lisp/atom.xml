@@ -4,7 +4,7 @@
   <title><![CDATA[Category: lisp | loop in codes]]></title>
   <link href="http://codemacro.com/categories/lisp/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2015-05-31T15:54:52+08:00</updated>
+  <updated>2015-06-07T17:59:18+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -35,40 +35,46 @@
 
 <p>所以：</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nb">defvar</span> <span class="nv">b</span> <span class="mi">3</span><span class="p">)</span><span class="nv">&lt;/p&gt;</span>
+<p>{% highlight cl %}
+(defvar b 3)</p>
 
-<span class="nv">&lt;p&gt;</span><span class="p">(</span><span class="nb">defun</span> <span class="nv">add-to-b</span> <span class="p">(</span><span class="nv">x</span><span class="p">)</span>
-  <span class="p">(</span><span class="nb">+</span> <span class="nv">x</span> <span class="nv">b</span><span class="p">))</span><span class="nv">&lt;/p&gt;</span>
+<p>(defun add-to-b (x)
+  (+ x b))</p>
 
-<span class="nv">&lt;p&gt;</span><span class="p">(</span><span class="nv">add-to-b</span> <span class="mi">1</span><span class="p">)</span>
-  <span class="nv">=&gt;</span> <span class="nv">4&lt;/p&gt;</span>
+<p>(add-to-b 1)
+  => 4</p>
 
-<span class="nv">&lt;p&gt;</span><span class="p">(</span><span class="k">let</span> <span class="p">((</span><span class="nv">b</span> <span class="mi">4</span><span class="p">))</span>
-  <span class="p">(</span><span class="nb">list</span> <span class="p">(</span><span class="nv">add-to-b</span> <span class="mi">1</span><span class="p">)</span> <span class="nv">b</span><span class="p">))</span>
-<span class="nv">=&gt;</span> <span class="p">(</span><span class="mi">5</span> <span class="mi">4</span><span class="p">)</span><span class="nv">&lt;/p&gt;</span>
+<p>(let ((b 4))
+  (list (add-to-b 1) b))
+=> (5 4)</p>
 
-<span class="nv">&lt;p&gt;</span><span class="p">(</span><span class="k">let</span> <span class="p">((</span><span class="nv">a</span> <span class="mi">3</span><span class="p">))</span>
-  <span class="p">(</span><span class="nb">defun</span> <span class="nv">add-to-a</span> <span class="p">(</span><span class="nv">x</span><span class="p">)</span>
-    <span class="p">(</span><span class="nb">+</span> <span class="nv">x</span> <span class="nv">a</span><span class="p">)))</span><span class="nv">&lt;/p&gt;</span>
+<p>(let ((a 3))
+  (defun add-to-a (x)
+    (+ x a)))</p>
 
-<span class="nv">&lt;p&gt;</span><span class="p">(</span><span class="nv">add-to-a</span> <span class="mi">1</span><span class="p">)</span>
-  <span class="nv">=&gt;</span> <span class="nv">4&lt;/p&gt;</span>
+<p>(add-to-a 1)
+  => 4</p>
 
-<span class="nv">&lt;p&gt;</span><span class="p">(</span><span class="k">let</span> <span class="p">((</span><span class="nv">a</span> <span class="mi">4</span><span class="p">))</span>
-  <span class="p">(</span><span class="nb">list</span> <span class="p">(</span><span class="nv">add-to-a</span> <span class="mi">1</span><span class="p">)</span> <span class="nv">a</span><span class="p">))</span>
-<span class="nv">=&gt;</span> <span class="p">(</span><span class="mi">4</span> <span class="mi">4</span><span class="p">)</span></code></pre></div></p>
+<p>(let ((a 4))
+  (list (add-to-a 1) a))
+=> (4 4)
+{% endhighlight %}</p>
 
 <p><code>add-to-b</code>这个函数中使用的变量<code>b</code>是<code>special variable</code>，所以在调用<code>add-to-b</code>时，取的就是调用(called)这个函数时环境中的变量，所以：</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="k">let</span> <span class="p">((</span><span class="nv">b</span> <span class="mi">4</span><span class="p">))</span>
-  <span class="p">(</span><span class="nb">list</span> <span class="p">(</span><span class="nv">add-to-b</span> <span class="mi">1</span><span class="p">)</span> <span class="nv">b</span><span class="p">))</span>
-<span class="nv">=&gt;</span> <span class="p">(</span><span class="mi">5</span> <span class="mi">4</span><span class="p">)</span></code></pre></div></p>
+<p>{% highlight cl %}
+(let ((b 4))
+  (list (add-to-b 1) b))
+=> (5 4)
+{% endhighlight %}</p>
 
 <p>取的就是let中临时出现的<code>b</code>。而<code>add-to-a</code>这个函数中使用的变量<code>a</code>是<code>lexical variable</code>，所以调用这个函数时，取的就是这个函数定义(defined)时的<code>a</code>，所以无论在哪里调用<code>add-to-a</code>，都是取的：</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="k">let</span> <span class="p">((</span><span class="nv">a</span> <span class="mi">3</span><span class="p">))</span>
-  <span class="p">(</span><span class="nb">defun</span> <span class="nv">add-to-a</span> <span class="p">(</span><span class="nv">x</span><span class="p">)</span>
-    <span class="p">(</span><span class="nb">+</span> <span class="nv">x</span> <span class="nv">a</span><span class="p">)))</span></code></pre></div></p>
+<p>{% highlight cl %}
+(let ((a 3))
+  (defun add-to-a (x)
+    (+ x a)))
+{% endhighlight %}</p>
 
 <p>这里的<code>a</code>，也就是一直是3。</p>
 ]]></content>
@@ -269,19 +275,21 @@ API，因此可以使用一些博客客户端来发表文章（仅测过我自�
 
 <p>上已提及，RSS的实现其实就是个XML文件。这个XML文件格式非常简单，例如:</p>
 
-<p><div class="highlight"><pre><code class="language-xml" data-lang="xml"><span class="ni">&amp;lt;</span>?xml version=<span class="ni">&amp;ldquo;</span>1.0<span class="ni">&amp;rdquo;</span>?&gt;
-<span class="nt">&lt;rss</span> <span class="na">version=</span><span class="s">&quot;2.0&quot;</span><span class="nt">&gt;</span>
-   <span class="nt">&lt;channel&gt;</span>
-      <span class="nt">&lt;title&gt;</span>Liftoff News<span class="nt">&lt;/title&gt;</span>
-      <span class="nt">&lt;link&gt;&lt;a</span> <span class="na">href=</span><span class="s">&quot;http://liftoff.msfc.nasa.gov/&quot;</span><span class="nt">&gt;</span>http://liftoff.msfc.nasa.gov/<span class="nt">&lt;/a&gt;&lt;/link&gt;</span>
-      <span class="nt">&lt;description&gt;</span>Liftoff to Space Exploration.<span class="nt">&lt;/description&gt;</span>
-      <span class="nt">&lt;item&gt;</span>
-         <span class="nt">&lt;title&gt;</span>Star City<span class="nt">&lt;/title&gt;</span>
-         <span class="nt">&lt;link&gt;&lt;a</span> <span class="na">href=</span><span class="s">&quot;http://liftoff.msfc.nasa.gov/news/2003/news-starcity.asp&quot;</span><span class="nt">&gt;</span>http://liftoff.msfc.nasa.gov/news/2003/news-starcity.asp<span class="nt">&lt;/a&gt;&lt;/link&gt;</span>
-         <span class="nt">&lt;description&gt;</span>Oh no, you wrote another blog!<span class="nt">&lt;/description&gt;</span>
-      <span class="nt">&lt;/item&gt;</span>
-    <span class="nt">&lt;/channel&gt;</span>
-<span class="nt">&lt;/rss&gt;</span></code></pre></div></p>
+<p>{% highlight xml %}
+&lt;?xml version=&ldquo;1.0&rdquo;?>
+<rss version="2.0">
+   <channel>
+      <title>Liftoff News</title>
+      <link><a href="http://liftoff.msfc.nasa.gov/">http://liftoff.msfc.nasa.gov/</a></link>
+      <description>Liftoff to Space Exploration.</description>
+      <item>
+         <title>Star City</title>
+         <link><a href="http://liftoff.msfc.nasa.gov/news/2003/news-starcity.asp">http://liftoff.msfc.nasa.gov/news/2003/news-starcity.asp</a></link>
+         <description>Oh no, you wrote another blog!</description>
+      </item>
+    </channel>
+</rss>
+{% endhighlight %}</p>
 
 <p>我们身边到处都是RSS文件，例如
 <a href="http://www.cppblog.com/rss.aspx">http://www.cppblog.com/rss.aspx</a>
@@ -364,12 +372,14 @@ Host: www.cppblog.com
 中提到过。s-xml与我之前在C++ 领域见到的XML解析库最大的不同点在于，它提供的API是基于事件模式的。意思是说，你不
 要去查询某个element的值是多少，当我解析到的时候会告诉你。事件模式的编程方式自然 离不开回调函数:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nv">s-xml:start-parse-xml</span>
-  <span class="nc">stream</span>
-  <span class="p">(</span><span class="nb">make-instance</span> <span class="nv">&amp;rsquo</span><span class="c1">;s-xml:xml-parser-state</span>
-                 <span class="ss">:new-element-hook</span> <span class="err">#</span><span class="nv">&amp;lsquo</span><span class="c1">;decode-rss-new-element</span>
-                 <span class="ss">:finish-element-hook</span> <span class="err">#</span><span class="nv">&amp;#8217</span><span class="c1">;decode-rss-finish-element</span>
-                 <span class="ss">:text-hook</span> <span class="err">#</span><span class="nv">&amp;#8217</span><span class="c1">;decode-rss-text)))</span></code></pre></div></p>
+<p>{% highlight cl %}
+(s-xml:start-parse-xml
+  stream
+  (make-instance &rsquo;s-xml:xml-parser-state
+                 :new-element-hook #&lsquo;decode-rss-new-element
+                 :finish-element-hook #'decode-rss-finish-element
+                 :text-hook #'decode-rss-text)))
+{% endhighlight %}</p>
 
 <p>与s-xml交互的也就是上面代码里提到的三个函数：new-element-hook, finish-element-hook ,
 text-hook。这种类型的接口导致解析代码大量减少，但不利于理解。我们要在整个解析
@@ -393,15 +403,19 @@ generator正是这种东西大放异彩的地方。这种感觉有点像在C++�
 
 <p>因为我这里只是输出简单的HTML文件，何况我对HTML的标记了解的也不多，也懒得再花经历 。所以我暂时也就将就了些土方法:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nb">with-output-to-string</span> <span class="p">(</span><span class="nc">stream</span><span class="p">)</span>
-  <span class="p">(</span><span class="k">let</span> <span class="p">((</span><span class="nv">channel</span> <span class="p">(</span><span class="nv">rss-channel</span> <span class="nv">rss</span><span class="p">)))</span> <span class="c1">;取出channel对象</span>
-   <span class="p">(</span><span class="nb">format</span> <span class="nc">stream</span> <span class="nv">&amp;ldquo</span><span class="c1">;&lt;html&gt;&lt;head&gt;&lt;title&gt;~a&lt;/title&gt;&lt;/head&gt;&amp;rdquo;</span>
-           <span class="p">(</span><span class="nv">get-property</span> <span class="nv">channel</span> <span class="ss">:|title|</span><span class="p">))</span> <span class="c1">;取出channel的title</span></code></pre></div></p>
+<p>{% highlight cl %}
+(with-output-to-string (stream)
+  (let ((channel (rss-channel rss))) ;取出channel对象
+   (format stream &ldquo;<html><head><title>~a</title></head>&rdquo;
+           (get-property channel :|title|)) ;取出channel的title
+{% endhighlight %}</p>
 
 <p>最后组合一些接口，即可将整个过程联系起来，导出html文件:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nv">cl-rss-test:test-rss-http</span> <span class="ss">:uri</span> <span class="nv">&amp;ldquo</span><span class="c1">;/news/newshot/hotnewsrss.xml&amp;rdquo;</span>
-                           <span class="ss">:host</span> <span class="nv">&amp;ldquo</span><span class="c1">;cd.qq.com&amp;rdquo;)</span></code></pre></div></p>
+<p>{% highlight cl %}
+(cl-rss-test:test-rss-http :uri &ldquo;/news/newshot/hotnewsrss.xml&rdquo;
+                           :host &ldquo;cd.qq.com&rdquo;)
+{% endhighlight %}</p>
 
 <p>然后在浏览器里查看，如图:</p>
 
@@ -446,19 +460,25 @@ Reader里订阅的一些RSS。最大的问题，就是关于HTTP重定向的问�
 <!-- more -->
 
 
-<h2>Lisp中的“变量&#8221;</h2>
+<h2>Lisp中的“变量"</h2>
 
 <p>很多教授Lisp的书中，大概会简单地告诉我们可以使用如下的方式定义一个全局变量 [1]_.
-<div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nb">defparameter</span> <span class="nv">&lt;em&gt;var&lt;/em&gt;</span> <span class="mi">1</span><span class="p">)</span></code></pre></div>
+{% highlight cl %}
+(defparameter <em>var</em> 1)
+{% endhighlight %}
 如上代码，我们便定义了一个全局变量 <code>*var*</code> [2]_ ，它被初始化为数值1。同样，我们 还可以使用另一种基本相同的方式:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nb">defvar</span> <span class="nv">&lt;em&gt;var&lt;/em&gt;</span> <span class="mi">1</span><span class="p">)</span></code></pre></div></p>
+<p>{% highlight cl %}
+(defvar <em>var</em> 1)
+{% endhighlight %}</p>
 
 <p>除了全局变量，我们还可以定义局部变量。但局部变量的定义稍显麻烦（却可能是另一种
 设计考虑）。定义局部变量需要使用一些宏，或者特殊运算符，例如:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="k">let</span> <span class="p">((</span><span class="nv">var</span> <span class="mi">1</span><span class="p">))</span>
-  <span class="p">(</span><span class="nb">format</span> <span class="no">t</span> <span class="nv">&amp;ldquo</span><span class="c1">;~a&amp;rdquo; var))</span></code></pre></div></p>
+<p>{% highlight cl %}
+(let ((var 1))
+  (format t &ldquo;~a&rdquo; var))
+{% endhighlight %}</p>
 
 <p>好了，就这些了。Lisp中关于变量的细节，也就这些。你甚至能用你在C/C++中的经验来窥
 探一切。但是，我们很快就看到了很多困惑的地方。</p>
@@ -473,29 +493,37 @@ Reader里订阅的一些RSS。最大的问题，就是关于HTTP重定向的问�
 
 <p>Lisp中的函数就是first class type。这什么意思呢？直白来说，
 <strong>Lisp中的函数和变量 没什么区别，享有同等待遇</strong> 。进一步来说，变量fn的值可以是数值1，也可以是字符串
-&ldquo;hello&#8221;，甚至是某个函数。这其实就是C++程序员说的functor。</p>
+&ldquo;hello"，甚至是某个函数。这其实就是C++程序员说的functor。</p>
 
 <p>Lisp中定义函数非常简单:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nb">defun</span> <span class="nv">add2</span> <span class="p">(</span><span class="nv">x</span><span class="p">)</span>
-  <span class="p">(</span><span class="nb">+</span> <span class="mi">2</span> <span class="nv">x</span><span class="p">))</span></code></pre></div></p>
+<p>{% highlight cl %}
+(defun add2 (x)
+  (+ 2 x))
+{% endhighlight %}</p>
 
 <p>这样，我们就定义了一个名为add2，有1个参数，1个返回值的函数。要调用该函数时，只需 要 <code>(add2 2)</code>
 即可。这简直和我们在Lisp中完成一个加法一模一样:<code>(+ 2 3)</code></p>
 
 <p>Lisp作为一门函数式语言，其函数也能作为另一个函数的参数和返回值 [5]_</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nb">defun</span> <span class="nv">apply-fn</span> <span class="p">(</span><span class="nv">fn</span> <span class="nv">x</span><span class="p">)</span>
-  <span class="p">(</span><span class="nb">funcall</span> <span class="nv">fn</span> <span class="nv">x</span><span class="p">))</span></code></pre></div></p>
+<p>{% highlight cl %}
+(defun apply-fn (fn x)
+  (funcall fn x))
+{% endhighlight %}</p>
 
 <p>apply-fn函数第一个参数是一个函数，它使用funcall函数间接地调用fn指向的函数。作为
 一个C++程序员，这简直太好理解了，这完全就是一个函数指针的语法糖嘛。于是，假设我 们要使用apply-fn来间接调用add2函数:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nv">apply-fn</span> <span class="nv">add2</span> <span class="mi">2</span><span class="p">)</span> <span class="c1">;; wrong</span></code></pre></div></p>
+<p>{% highlight cl %}
+(apply-fn add2 2) ;; wrong
+{% endhighlight %}</p>
 
 <p>可是这是不对的。我们需要通过另一个特殊操作符来完成这件事:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nv">apply-fn</span> <span class="err">#</span><span class="nv">&amp;lsquo</span><span class="c1">;add2 2) ;; right</span></code></pre></div></p>
+<p>{% highlight cl %}
+(apply-fn #&lsquo;add2 2) ;; right
+{% endhighlight %}</p>
 
 <p>#&lsquo;操作符用于将add2对应的函数取出来，这么说当然不大准确。Again，作为一个C++程序员
 ，这简直就是个取地址操作符&amp;的语法糖嘛。好吧，这么理解起来似乎没问题了。</p>
@@ -503,23 +531,27 @@ Reader里订阅的一些RSS。最大的问题，就是关于HTTP重定向的问�
 <p>Lisp中能甚至能在任何地方定义一个函数，例如我们创建一个函数，该函数返回创建出来的 函数，这是一个典型的讲解什么是 <strong>闭包</strong>
 的例子:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nb">defun</span> <span class="nv">get-add-n</span> <span class="p">(</span><span class="nv">n</span><span class="p">)</span>
-  <span class="err">#</span><span class="nv">&amp;lsquo</span><span class="c1">; (lambda (x)</span>
-       <span class="p">(</span><span class="nb">+</span> <span class="nv">x</span> <span class="nv">n</span><span class="p">)))</span></code></pre></div></p>
+<p>{% highlight cl %}
+(defun get-add-n (n)
+  #&lsquo; (lambda (x)
+       (+ x n)))
+{% endhighlight %}</p>
 
 <p>无论如何，get-add-n函数返回一个函数，该函数是add2函数的泛型实现。它可以将你传入
 的参数加上n。这些代码里使用了lambda表达式。lambda表达式直白来说，就是创建一个字
-面上的函数。这又是什么意思呢？就像我们在代码中写出2，写出&#8221;hello&#8221;一样，2就是个字
-面上的数字，&#8221;hello&#8221;就是个字面上的字符串 [6]_ 。</p>
+面上的函数。这又是什么意思呢？就像我们在代码中写出2，写出"hello"一样，2就是个字
+面上的数字，"hello"就是个字面上的字符串 [6]_ 。</p>
 
 <p>那么，总而言之，通过lambda创建一个函数体，然后通过#&lsquo;操作符即可得到一个函数，虽然 没有名字。有了以上知识后，Again
 and again，作为一个C++程序员，很快我们就能得到一
 个程序：定义变量，用变量去保存一个函数，然后通过这个变量来调用这个函数。这是多么
 天经地义的事，就像之前那个通过参数调用其指向的函数一样:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="c1">;; wrong</span>
-<span class="p">(</span><span class="nb">defvar</span> <span class="nv">fn</span> <span class="err">#</span><span class="nv">&amp;lsquo</span><span class="c1">; (lambda (x) (+ x 2)))</span>
-<span class="p">(</span><span class="nv">fn</span> <span class="mi">3</span><span class="p">)</span></code></pre></div></p>
+<p>{% highlight cl %}
+;; wrong
+(defvar fn #&lsquo; (lambda (x) (+ x 2)))
+(fn 3)
+{% endhighlight %}</p>
 
 <p>这样的代码是不对的，错误发生于第二行，无论你使用的Lisp实现是哪种，大概会得到如下 的错误信息:</p>
 
@@ -539,10 +571,12 @@ and again，作为一个C++程序员，很快我们就能得到一
 <h3>Symbol的名字</h3>
 
 <p>就像很多语言的变量、函数名一样，Lisp中的Symbol比其他语言在命名方面更自由：
-<strong>只 要位于&#8217;|&lsquo;字符之间的字符串，就表示一个合法的Symbol名。</strong> 我们可以使用函数
+<strong>只 要位于'|&lsquo;字符之间的字符串，就表示一个合法的Symbol名。</strong> 我们可以使用函数
 symbol-name来获取一个Symbol的名字，例如:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nb">symbol-name</span> <span class="nv">&amp;lsquo</span><span class="c1">;|this is a symbol name|)</span></code></pre></div></p>
+<p>{% highlight cl %}
+(symbol-name &lsquo;|this is a symbol name|)
+{% endhighlight %}</p>
 
 <pre><code>输出："this is a symbol name"
 </code></pre>
@@ -583,11 +617,13 @@ fboundp;判定Function域是否被绑定
 
 <p>通过一些代码来回味以上结论:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nb">defvar</span> <span class="nv">&lt;em&gt;var&lt;/em&gt;</span> <span class="mi">1</span><span class="p">)</span>
-<span class="p">(</span><span class="nb">boundp</span> <span class="nv">&amp;lsquo</span><span class="c1">;&lt;em&gt;var&lt;/em&gt;) ; 返回真</span>
-<span class="p">(</span><span class="nb">fboundp</span> <span class="nv">&amp;rsquo</span><span class="c1">;&lt;em&gt;var&lt;/em&gt;) ; 返回假</span>
-<span class="p">(</span><span class="nb">defun</span> <span class="nv">&lt;em&gt;var&lt;/em&gt;</span> <span class="p">(</span><span class="nv">x</span><span class="p">)</span> <span class="nv">x</span><span class="p">)</span> <span class="c1">; 定义一个名为&lt;em&gt;var&lt;/em&gt;的函数，返回值即为参数</span>
-<span class="p">(</span><span class="nb">fboundp</span> <span class="nv">&amp;lsquo</span><span class="c1">;&lt;em&gt;var&lt;/em&gt;) ; 返回真</span></code></pre></div></p>
+<p>{% highlight cl %}
+(defvar <em>var</em> 1)
+(boundp &lsquo;<em>var</em>) ; 返回真
+(fboundp &rsquo;<em>var</em>) ; 返回假
+(defun <em>var</em> (x) x) ; 定义一个名为<em>var</em>的函数，返回值即为参数
+(fboundp &lsquo;<em>var</em>) ; 返回真
+{% endhighlight %}</p>
 
 <p>上面的代码简直揭秘了若干惊天地泣鬼神的真相。首先，我们使用我们熟知的defvar定义了 一个名为 <code>*var*</code>
 的变量，初值为1，然后使用boundp去判定 <code>*var*</code> 的Value域是否 发生了绑定。这其实是说：
@@ -609,59 +645,79 @@ C++中的对象一样，它出现时并不指代自己！不同应用环境下�
 它带进了Lisp中代码和数据之间的模糊边界特性。简单来说，就是当Symbol出现在一个括号
 表达式(s-expression)中第一个位置时，算是个函数，例如:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nv">add2</span> <span class="mi">3</span><span class="p">)</span> <span class="c1">; add2位于第一个位置，被当作函数处理</span>
-<span class="p">(</span><span class="nv">&lt;em&gt;var&lt;/em&gt;</span> <span class="mi">3</span><span class="p">)</span> <span class="c1">; 这里&lt;em&gt;var&lt;/em&gt;被当作函数调用，返回3</span></code></pre></div></p>
+<p>{% highlight cl %}
+(add2 3) ; add2位于第一个位置，被当作函数处理
+(<em>var</em> 3) ; 这里<em>var</em>被当作函数调用，返回3
+{% endhighlight %}</p>
 
 <p>除此之外，我能想到的其他大部分情况，一个Symbol都被指代为它的Value域，也就是被当 作变量，例如:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nv">&lt;em&gt;var&lt;/em&gt;</span> <span class="nv">&lt;em&gt;var&lt;/em&gt;</span><span class="p">)</span> <span class="c1">; 这是正确的语句，返回1</span></code></pre></div></p>
+<p>{% highlight cl %}
+(<em>var</em> <em>var</em>) ; 这是正确的语句，返回1
+{% endhighlight %}</p>
 
 <p>这看起来是多么古怪的代码。但是运用我们上面说的结论，便可轻易解释：表达式中第一个 <code>*var*</code>
 被当作函数处理，它需要一个参数；表达式第二部分的 <code>*var*</code> 被当作变量 处理，它的值为1，然后将其作为参数传入。</p>
 
-<p>再来说说&#8217;(quote)操作符，这个操作符用于防止其操作数被求值。而当一个Symbol出现时，
+<p>再来说说'(quote)操作符，这个操作符用于防止其操作数被求值。而当一个Symbol出现时，
 它总是会被求值，所以，我们可以分析以下代码:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nb">symbol-value</span> <span class="nv">&lt;em&gt;var&lt;/em&gt;</span><span class="p">)</span> <span class="c1">; wrong</span></code></pre></div></p>
+<p>{% highlight cl %}
+(symbol-value <em>var</em>) ; wrong
+{% endhighlight %}</p>
 
 <p>这个代码并不正确，因为 <code>*var*</code> 总是会被求值，就像 <code>(*var* *var*)</code> 一样，第二 个 <code>*var*</code>
 被求值，得到数字1。这里也会发生这种事情，那么最终就等同于:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nb">symbol-value</span> <span class="mi">1</span><span class="p">)</span> <span class="c1">; wrong</span></code></pre></div></p>
+<p>{% highlight cl %}
+(symbol-value 1) ; wrong
+{% endhighlight %}</p>
 
 <p>我们试图去取数字1的Value域，而数字1并不是一个Symbol。所以，我们需要quote运算符:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nb">symbol-value</span> <span class="nv">&amp;lsquo</span><span class="c1">;&lt;em&gt;var&lt;/em&gt;) ; right</span></code></pre></div></p>
+<p>{% highlight cl %}
+(symbol-value &lsquo;<em>var</em>) ; right
+{% endhighlight %}</p>
 
 <p>这句代码是说，取Symbol <code>*var*</code> 本身的Value域！而不是其他什么地方。至此，我们 便可以分析以下复杂情况:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nb">defvar</span> <span class="nv">&lt;em&gt;name&lt;/em&gt;</span> <span class="nv">&amp;ldquo</span><span class="c1">;kevin lynx&amp;rdquo;)</span>
-<span class="p">(</span><span class="nb">defvar</span> <span class="nv">&lt;em&gt;ref&lt;/em&gt;</span> <span class="nv">&amp;lsquo</span><span class="c1">;&lt;em&gt;name&lt;/em&gt;) ; &lt;em&gt;ref&lt;/em&gt;的Value保存的是另一个Symbol</span>
-<span class="p">(</span><span class="nb">symbol-value</span> <span class="nv">&lt;em&gt;ref&lt;/em&gt;</span><span class="p">)</span> <span class="c1">; 取&lt;em&gt;ref&lt;/em&gt;的Value，得到&lt;em&gt;name&lt;/em&gt;，再取&lt;em&gt;name&lt;/em&gt;的Value</span></code></pre></div></p>
+<p>{% highlight cl %}
+(defvar <em>name</em> &ldquo;kevin lynx&rdquo;)
+(defvar <em>ref</em> &lsquo;<em>name</em>) ; <em>ref</em>的Value保存的是另一个Symbol
+(symbol-value <em>ref</em>) ; 取<em>ref</em>的Value，得到<em>name</em>，再取<em>name</em>的Value
+{% endhighlight %}</p>
 
 <p>现在，我们甚至能解释上文留下的一个问题:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="c1">;; wrong</span>
-<span class="p">(</span><span class="nb">defvar</span> <span class="nv">fn</span> <span class="err">#</span><span class="nv">&amp;lsquo</span><span class="c1">; (lambda (x) (+ x 2)))</span>
-<span class="p">(</span><span class="nv">fn</span> <span class="mi">3</span><span class="p">)</span></code></pre></div></p>
+<p>{% highlight cl %}
+;; wrong
+(defvar fn #&lsquo; (lambda (x) (+ x 2)))
+(fn 3)
+{% endhighlight %}</p>
 
 <p>给fn的Value赋值一个函数， <code>(fn 3)</code> 当一个Symbol作为函数使用时，也就是取其
 Function域来做调用。但其Function域什么也没有，我们试图将一个Symbol的Value域当作
 Function来使用。如何解决这个问题？想想，symbol-function可以取到一个Symbol的 Function域:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nb">setf</span> <span class="p">(</span><span class="nb">symbol-function</span> <span class="nv">&amp;lsquo</span><span class="c1">;fn) #&amp;rsquo; (lambda (x) (+ x 2)))</span>
-<span class="p">(</span><span class="nv">fn</span> <span class="mi">3</span><span class="p">)</span></code></pre></div></p>
+<p>{% highlight cl %}
+(setf (symbol-function &lsquo;fn) #&rsquo; (lambda (x) (+ x 2)))
+(fn 3)
+{% endhighlight %}</p>
 
 <p>通过显示地给fn的Function域赋值，而不是通过defvar隐式地对其Value域赋值，就可以使 <code>(fn 3)</code>
 调用正确。还有另一个问题也能轻易解释:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nv">apply-fn</span> <span class="nv">add2</span> <span class="mi">2</span><span class="p">)</span> <span class="c1">; wrong</span></code></pre></div></p>
+<p>{% highlight cl %}
+(apply-fn add2 2) ; wrong
+{% endhighlight %}</p>
 
 <p>本意是想传入add2这个Symbol的function域，但是直接这样写的话，传入的其实是add2的 Value域 [7]_
 ，这当然是不正确的。对比正确的写法，我们甚至能猜测#&lsquo;运算符就是一个
 取Symbol的Function域的运算符。进一步，我们还可以给出另一种写法:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nv">apply-fn</span> <span class="p">(</span><span class="nb">symbol-function</span> <span class="nv">&amp;lsquo</span><span class="c1">;add2) 2)</span></code></pre></div></p>
+<p>{% highlight cl %}
+(apply-fn (symbol-function &lsquo;add2) 2)
+{% endhighlight %}</p>
 
 <p>深入理解事情的背后，你会发现你能写出多么灵活的代码。</p>
 
@@ -812,23 +868,27 @@ lisp里直接获取某个库。quicklisp检查该库是否存在，不存在直�
 <p>所以，基本上，整个过程还是非常简单。如何来将调用细节塞进http请求，则是以xml rpc
 标准来做，其格式正好是xml格式。举个例子吧:</p>
 
-<p><div class="highlight"><pre><code class="language-xml" data-lang="xml"><span class="ni">&amp;lt;</span>?xml version=<span class="ni">&amp;lsquo;</span>1.0<span class="ni">&amp;rsquo;</span>?&gt;
-<span class="nt">&lt;methodCall&gt;</span>
-    <span class="nt">&lt;methodName&gt;</span>title_or_id<span class="nt">&lt;/methodName&gt;</span>
-        <span class="nt">&lt;params&gt;</span>
-        <span class="nt">&lt;/params&gt;</span>
-<span class="nt">&lt;/methodCall&gt;</span></code></pre></div></p>
+<p>{% highlight xml %}
+&lt;?xml version=&lsquo;1.0&rsquo;?>
+<methodCall>
+    <methodName>title_or_id</methodName>
+        <params>
+        </params>
+</methodCall>
+{% endhighlight %}</p>
 
 <p>当然这部分数据之前就是若干http请求的数据。服务器回应也是以xml格式组织:</p>
 
-<p><div class="highlight"><pre><code class="language-xml" data-lang="xml"><span class="ni">&amp;lt;</span>?xml version=<span class="ni">&amp;lsquo;</span>1.0<span class="ni">&amp;rsquo;</span>?&gt;
-<span class="nt">&lt;methodResponse&gt;</span>
-    <span class="nt">&lt;params&gt;</span>
-        <span class="nt">&lt;param&gt;</span>
-            <span class="nt">&lt;value&gt;&lt;string&gt;</span>Welcome to Zope.org<span class="nt">&lt;/string&gt;&lt;/value&gt;</span>
-        <span class="nt">&lt;/param&gt;</span>
-    <span class="nt">&lt;/params&gt;</span>
-<span class="nt">&lt;/methodResponse&gt;</span></code></pre></div></p>
+<p>{% highlight xml %}
+&lt;?xml version=&lsquo;1.0&rsquo;?>
+<methodResponse>
+    <params>
+        <param>
+            <value><string>Welcome to Zope.org</string></value>
+        </param>
+    </params>
+</methodResponse>
+{% endhighlight %}</p>
 
 <p>我们的博客客户端所要做的，就是把这些博客发布相关的操作封装起来提供给使用者。底层
 实现主要包括http请求、xml-rpc的组织等。何况，这两部分在各个语言里都有大量的库存
@@ -837,36 +897,42 @@ lisp里直接获取某个库。quicklisp检查该库是否存在，不存在直�
 <p>我这里直接选取了lisp的一个xml-rpc库：s-xml-rpc，基本上百来行代码就可以把各个功
 能跑一遍。例如以下lisp代码就实现了通过s-xml-rpc删除CPPBLOG的一篇文章:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nb">defun</span> <span class="nv">delete-post</span> <span class="p">(</span><span class="nv">postid</span><span class="p">)</span>
-  <span class="p">(</span><span class="nv">rpc-call</span>
-    <span class="nv">&amp;ldquo</span><span class="c1">;blogger.deletePost&amp;rdquo;</span>
-    <span class="nv">postid</span>
-    <span class="nv">&amp;ldquo</span><span class="c1">;kevinlynx&amp;rdquo;</span>
-    <span class="nv">&amp;ldquo</span><span class="c1">;password&amp;rdquo;</span>
-    <span class="no">t</span><span class="p">))</span></code></pre></div></p>
+<p>{% highlight cl %}
+(defun delete-post (postid)
+  (rpc-call
+    &ldquo;blogger.deletePost&rdquo;
+    postid
+    &ldquo;kevinlynx&rdquo;
+    &ldquo;password&rdquo;
+    t))
+{% endhighlight %}</p>
 
 <p>发布博客也很简单，根据metaweblog API接口的说明，发布博客时需要填充一个结构体。但
 主要涉及到的数据仅包括：文章内容、文章标题、文章分类（可选）:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nb">defun</span> <span class="nv">new-post</span> <span class="p">(</span><span class="nv">title</span> <span class="nv">context</span> <span class="nv">&amp;amp</span><span class="c1">;optional (cates))</span>
-  <span class="p">(</span><span class="nv">rpc-call</span>
-    <span class="nv">&amp;ldquo</span><span class="c1">;metaWeblog.newPost&amp;rdquo;</span>
-    <span class="nv">&amp;ldquo</span><span class="c1">;&amp;rdquo;</span>
-    <span class="nv">&amp;ldquo</span><span class="c1">;kevinlynx&amp;rdquo;</span>
-    <span class="nv">&amp;ldquo</span><span class="c1">;password&amp;rdquo;</span>
-    <span class="p">(</span><span class="nv">new-post-struct</span> <span class="nv">title</span> <span class="nv">context</span> <span class="nv">cates</span><span class="p">)</span>
-    <span class="no">t</span><span class="p">))</span></code></pre></div></p>
+<p>{% highlight cl %}
+(defun new-post (title context &amp;optional (cates))
+  (rpc-call
+    &ldquo;metaWeblog.newPost&rdquo;
+    &ldquo;&rdquo;
+    &ldquo;kevinlynx&rdquo;
+    &ldquo;password&rdquo;
+    (new-post-struct title context cates)
+    t))
+{% endhighlight %}</p>
 
 <p>值得注意的是，如果文章中有贴图，则需要事先将图片文件上传到服务器。CPPBLOG的
 metaweblog API里恰有API提供:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nb">defun</span> <span class="nv">new-media-object</span> <span class="p">(</span><span class="nv">filename</span><span class="p">)</span>
-  <span class="p">(</span><span class="nv">rpc-call</span>
-    <span class="nv">&amp;ldquo</span><span class="c1">;metaWeblog.newMediaObject&amp;rdquo;</span>
-    <span class="nv">&amp;ldquo</span><span class="c1">;&amp;rdquo;</span>
-    <span class="nv">&amp;ldquo</span><span class="c1">;kevinlynx&amp;rdquo;</span>
-    <span class="nv">&amp;ldquo</span><span class="c1">;password&amp;rdquo;</span>
-    <span class="p">(</span><span class="nv">new-media-object-struct</span> <span class="nv">filename</span><span class="p">)))</span></code></pre></div></p>
+<p>{% highlight cl %}
+(defun new-media-object (filename)
+  (rpc-call
+    &ldquo;metaWeblog.newMediaObject&rdquo;
+    &ldquo;&rdquo;
+    &ldquo;kevinlynx&rdquo;
+    &ldquo;password&rdquo;
+    (new-media-object-struct filename)))
+{% endhighlight %}</p>
 
 <p>该函数读入图片文件，然后调用metaWeblog.newMediaObject接口，即可完成上传。上传成
 功后，服务器会返回该图片的URL。然后在我们的文章中就可以使用该图片了。</p>
@@ -903,13 +969,15 @@ s-xml库的接口设计。</p>
 <p>最终封装好的发布接口如下，从这里也可以看出，函数式语言锻炼我们写出功能单一代码度
 短小的接口:</p>
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nb">defun</span> <span class="nv">writer-post-new</span> <span class="p">(</span><span class="nv">post-file</span> <span class="nv">&amp;amp</span><span class="c1">;key (u (get-default-user))(cates))</span>
-  <span class="p">(</span><span class="nv">read-post-file</span> <span class="nv">u</span> <span class="nv">post-file</span> <span class="nv">context</span> <span class="nv">title</span>
-                  <span class="p">(</span><span class="nv">new-post</span> <span class="nv">u</span> <span class="nv">title</span> <span class="nv">context</span> <span class="nv">cates</span><span class="p">)))</span></code></pre></div></p>
+<p>{% highlight cl %}
+(defun writer-post-new (post-file &amp;key (u (get-default-user))(cates))
+  (read-post-file u post-file context title
+                  (new-post u title context cates)))
+{% endhighlight %}</p>
 
 <h2>END</h2>
 
-<p>别指望我发布的代码能够让你一键在你的博客上留下&#8221;this is a test&#8221;，你甚至别指望它能
+<p>别指望我发布的代码能够让你一键在你的博客上留下"this is a test"，你甚至别指望它能
 能够工作。但如果你本来就是一个资深的lisper，或者虽然不是lisper但却执意想看看结果
 。这里我就简要说说如何让这些代码欢乐起来:</p>
 
@@ -918,24 +986,28 @@ s-xml库的接口设计。</p>
 <li>下载安装quicklisp，官方文档hand by hand，简单不会有问题；</li>
 <li><p>SBCL交互环境中使用quicklisp安装s-xml-rpc:</p>
 
-<p> <div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nv">ql:quickload</span> <span class="nv">&amp;ldquo</span><span class="c1">;s-xml-rpc&amp;rdquo;)</span></code></pre></div></p></li>
+<p> {% highlight cl %}(ql:quickload &ldquo;s-xml-rpc&rdquo;) {% endhighlight %}</p></li>
 <li><p>装载我的代码:</p>
 
-<p> <div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nv">asdf:load-system</span> <span class="ss">:cl-writer</span><span class="p">)</span></code></pre></div></p></li>
+<p> {% highlight cl %}(asdf:load-system :cl-writer){% endhighlight %}</p></li>
 <li><p>在home下添加配置文件.cl-writer.lisp，配置你博客信息，例如:</p></li>
 </ul>
 
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nb">in-package</span> <span class="nv">cl-writer</span><span class="p">)</span>
-<span class="p">(</span><span class="nb">setf</span> <span class="nv">&lt;em&gt;default-user&lt;/em&gt;</span> <span class="p">(</span><span class="nv">make-cppblog-user</span> <span class="nv">&amp;ldquo</span><span class="c1">;账户名&amp;rdquo; &amp;ldquo;密码&amp;rdquo;))</span></code></pre></div></p>
+<p>{% highlight cl %}
+(in-package cl-writer)
+(setf <em>default-user</em> (make-cppblog-user &ldquo;账户名&rdquo; &ldquo;密码&rdquo;))
+{% endhighlight %}</p>
 
 <ul>
 <li>SBCL交互环境下测试:</li>
 </ul>
 
 
-<p><div class="highlight"><pre><code class="language-cl" data-lang="cl"><span class="p">(</span><span class="nb">in-package</span> <span class="nv">cl-writer</span><span class="p">)</span>
-<span class="p">(</span><span class="nv">new-post</span> <span class="p">(</span><span class="nv">get-default-user</span><span class="p">)</span> <span class="nv">&amp;ldquo</span><span class="c1">;this is a test&amp;rdquo; &amp;ldquo;title&amp;rdquo;)</span></code></pre></div></p>
+<p>{% highlight cl %}
+(in-package cl-writer)
+(new-post (get-default-user) &ldquo;this is a test&rdquo; &ldquo;title&rdquo;)
+{% endhighlight %}</p>
 
 <p><a href="http://www.cppblog.com/Files/kevinlynx/cl-writer.tar.gz">下载代码</a></p>
 

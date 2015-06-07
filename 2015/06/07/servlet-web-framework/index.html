@@ -1,0 +1,550 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>基于servlet实现一个web框架 - loop in codes</title>
+  <meta name="author" content="Kevin Lynx">
+
+  
+  <meta name="description" content="servlet作为一个web规范，其本身就算做一个web开发框架，但是其web action (响应某个URI的实现)的实现都是基于类的，不是很方便，并且3.0之前的版本还必须通过web.xml配置来增加新的action。servlet中有一个filter的功能， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://codemacro.com/2015/06/07/servlet-web-framework">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <!--script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script-->
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<!--link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css"-->
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">loop in codes</a></h1>
+  
+    <h2>Kevin Lynx BLOG</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:codemacro.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about.html">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">基于servlet实现一个web框架</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-06-07T00:00:00+08:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>7</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>servlet作为一个web规范，其本身就算做一个web开发框架，但是其web action (响应某个URI的实现)的实现都是基于类的，不是很方便，并且3.0之前的版本还必须通过web.xml配置来增加新的action。servlet中有一个filter的功能，可以配置所有URI的功能都经过filter。我们可以基于filter的功能来实现一个简单的web框架。在这个框架中，主要改进URI action的映射，就像<a href="https://www.playframework.com/">play framework</a>中route的配置：</p>
+
+<pre><code>GET     /hello      com.codemacro.webdemo.test.TestController.hello
+GET     /route      com.codemacro.webdemo.test.TestController.route
+POST    /hello      com.codemacro.webdemo.test.TestController.sayHello
+</code></pre>
+
+<p>即把某个URI映射到类接口级别。基于servlet实现web框架的好处不仅实现简单，还能运行在所有支持servlet容器规范的web server上，例如Tomcat、Jetty。</p>
+
+<p>本文提到的web framework demo可以从我的github 上取得：<a href="https://github.com/kevinlynx/servlet-web-framework-demo">servlet-web-framework-demo</a></p>
+
+<h2>功能</h2>
+
+<p>这个web framework URI action部分（或者说URI routing）如同前面描述，action的编写如：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestController</span> <span class="kd">extends</span> <span class="n">BaseController</span> <span class="o">{</span>
+  <span class="c1">// 返回字符串</span>
+  <span class="kd">public</span> <span class="n">Result</span> <span class="nf">index</span><span class="o">()</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="nf">ok</span><span class="o">(</span><span class="s">&quot;hello world&quot;</span><span class="o">);</span>
+  <span class="o">}</span>
+
+  <span class="c1">// HTTP 404</span>
+  <span class="kd">public</span> <span class="n">Result</span> <span class="nf">code404</span><span class="o">()</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="nf">status</span><span class="o">(</span><span class="mi">404</span><span class="o">,</span> <span class="s">&quot;not found&quot;</span><span class="o">);</span>
+  <span class="o">}</span>
+
+  <span class="c1">// 使用JSP模板渲染</span>
+  <span class="kd">public</span> <span class="n">Result</span> <span class="nf">template</span><span class="o">()</span> <span class="o">{</span>
+    <span class="n">String</span><span class="o">[]</span> <span class="n">langs</span> <span class="o">=</span> <span class="k">new</span> <span class="n">String</span><span class="o">[]</span> <span class="o">{</span><span class="s">&quot;c++&quot;</span><span class="o">,</span> <span class="s">&quot;java&quot;</span><span class="o">,</span> <span class="s">&quot;python&quot;</span><span class="o">};</span>
+    <span class="k">return</span> <span class="nf">ok</span><span class="o">(</span><span class="n">jsp</span><span class="o">(</span><span class="s">&quot;index.jsp&quot;</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="s">&quot;name&quot;</span><span class="o">,</span> <span class="s">&quot;kevin&quot;</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="s">&quot;langs&quot;</span><span class="o">,</span>  <span class="n">langs</span><span class="o">)</span>
+        <span class="o">);</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div>
+
+
+
+
+<!-- more -->
+
+
+<p>有了action之后，配置<code>route</code>文件映射URI即可：</p>
+
+<pre><code>GET /index  com.codemacro.webdemo.test.TestController.index
+GET /404    com.codemacro.webdemo.test.TestController.code404
+GET /index.jsp com.codemacro.webdemo.test.TestController.template
+</code></pre>
+
+<p>然后配置<code>web.xml</code>，增加一个filter：</p>
+
+<pre><code>&lt;filter&gt;
+  &lt;filter-name&gt;MyWebFilter&lt;/filter-name&gt;
+  &lt;filter-class&gt;com.codemacro.webdemo.MyServletFilter&lt;/filter-class&gt;
+&lt;/filter&gt;
+&lt;filter-mapping&gt;
+  &lt;filter-name&gt;MyWebFilter&lt;/filter-name&gt;
+  &lt;url-pattern&gt;/*&lt;/url-pattern&gt;
+&lt;/filter-mapping&gt;
+</code></pre>
+
+<p>最后以war的形式部署到Jetty <code>webapps</code>下即可运行。想想下次要再找个什么lightweight Java web framework，直接用这个demo就够了。接下来讲讲一些关键部分的实现。</p>
+
+<h2>servlet basic</h2>
+
+<p>基于servlet开发的话，引入servlet api是必须的：</p>
+
+<pre><code>&lt;dependency&gt;
+    &lt;groupId&gt;javax.servlet&lt;/groupId&gt;
+    &lt;artifactId&gt;servlet-api&lt;/artifactId&gt;
+    &lt;version&gt;2.5&lt;/version&gt;
+    &lt;type&gt;jar&lt;/type&gt;
+    &lt;scope&gt;compile&lt;/scope&gt;
+&lt;/dependency&gt;
+</code></pre>
+
+<p>servlet filter的接口包含：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MyServletFilter</span> <span class="kd">implements</span> <span class="n">Filter</span> <span class="o">{</span>
+  <span class="c1">// web app启动时调用一次，可用于web框架初始化</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">init</span><span class="o">(</span><span class="n">FilterConfig</span> <span class="n">conf</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">ServletException</span> <span class="o">{</span> <span class="o">}</span>
+
+  <span class="c1">// 满足filter url-pattern时就会调用；req/res分别对应HTTP请求和回应</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">doFilter</span><span class="o">(</span><span class="n">ServletRequest</span> <span class="n">req</span><span class="o">,</span> <span class="n">ServletResponse</span> <span class="n">res</span><span class="o">,</span>
+    <span class="n">FilterChain</span> <span class="n">chain</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">,</span> <span class="n">ServletException</span> <span class="o">{</span> <span class="o">}</span>
+
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">destroy</span><span class="o">()</span> <span class="o">{</span> <span class="o">}</span>
+<span class="o">}</span></code></pre></div>
+
+
+<p><code>init</code>接口可用于启动时载入<code>routes</code>配置文件，并建立URI到action的映射。</p>
+
+<h2>action manager</h2>
+
+<p><code>ActionManager</code>负责启动时载入<code>routes</code>配置，建立URI到action的映射。一个URI包含了HTTP method和URI String，例如<code>GET /index</code>。action既然映射到了类接口上，那么可以在启动时就同过Java反射找到对应的类及接口。简单起见，每次收到URI的请求时，就创建这个类对应的对象，然后调用映射的接口即可。</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="c1">// 例如：registerAction(&quot;com.codemacro.webdemo.test.TestController&quot;, &quot;index&quot;, &quot;/index&quot;, &quot;GET&quot;);</span>
+<span class="kd">public</span> <span class="kt">void</span> <span class="nf">registerAction</span><span class="o">(</span><span class="n">String</span> <span class="n">clazName</span><span class="o">,</span> <span class="n">String</span> <span class="n">methodName</span><span class="o">,</span> <span class="n">String</span> <span class="n">uri</span><span class="o">,</span> <span class="n">String</span> <span class="n">method</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">try</span> <span class="o">{</span>
+    <span class="n">uri</span> <span class="o">=</span> <span class="s">&quot;/&quot;</span> <span class="o">+</span> <span class="n">appName</span> <span class="o">+</span> <span class="n">uri</span><span class="o">;</span>
+    <span class="c1">// 载入对应的class</span>
+    <span class="n">Class</span><span class="o">&lt;?</span> <span class="kd">extends</span> <span class="n">BaseController</span><span class="o">&gt;</span> <span class="n">clazz</span> <span class="o">=</span> <span class="o">(</span><span class="n">Class</span><span class="o">&lt;?</span> <span class="kd">extends</span> <span class="n">BaseController</span><span class="o">&gt;)</span> <span class="n">loadClass</span><span class="o">(</span><span class="n">clazName</span><span class="o">);</span>
+    <span class="c1">// 取得对应的接口</span>
+    <span class="n">Method</span> <span class="n">m</span> <span class="o">=</span> <span class="n">clazz</span><span class="o">.</span><span class="na">getMethod</span><span class="o">(</span><span class="n">methodName</span><span class="o">,</span> <span class="o">(</span><span class="n">Class</span><span class="o">&lt;?&gt;[])</span><span class="kc">null</span><span class="o">);</span>
+    <span class="c1">// 接口要求必须返回Result</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">m</span><span class="o">.</span><span class="na">getReturnType</span><span class="o">()</span> <span class="o">!=</span> <span class="n">Result</span><span class="o">.</span><span class="na">class</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">&quot;action method return type mismatch: &quot;</span> <span class="o">+</span> <span class="n">uri</span><span class="o">);</span>
+    <span class="o">}</span>
+    <span class="n">ActionKey</span> <span class="n">k</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">ActionKey</span><span class="o">(</span><span class="n">uri</span><span class="o">,</span> <span class="n">getMethod</span><span class="o">(</span><span class="n">method</span><span class="o">));</span>
+    <span class="n">ActionValue</span> <span class="n">v</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">ActionValue</span><span class="o">(</span><span class="n">clazz</span><span class="o">,</span> <span class="n">m</span><span class="o">);</span>
+    <span class="n">logger</span><span class="o">.</span><span class="na">debug</span><span class="o">(</span><span class="s">&quot;register action {} {} {} {}&quot;</span><span class="o">,</span> <span class="n">clazName</span><span class="o">,</span> <span class="n">methodName</span><span class="o">,</span> <span class="n">uri</span><span class="o">,</span> <span class="n">method</span><span class="o">);</span>
+    <span class="c1">// 建立映射</span>
+    <span class="n">actions</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">k</span><span class="o">,</span> <span class="n">v</span><span class="o">);</span>
+  <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">&quot;registerAction failed: &quot;</span> <span class="o">+</span> <span class="n">uri</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div>
+
+
+<p>controller都要求派生于<code>BaseController</code>，这样才可以利用<code>BaseController</code>更方便地获取请求数据之类，例如query string/cookie 等。</p>
+
+<p>收到请求时，就需要根据请求的HTTP Method和URI string取得之前建立的映射，并调用之：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">invoke</span><span class="o">(</span><span class="n">HttpServletRequest</span> <span class="n">req</span><span class="o">,</span> <span class="n">HttpServletResponse</span> <span class="n">resp</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+  <span class="n">String</span> <span class="n">uri</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="na">getRequestURI</span><span class="o">();</span>
+  <span class="n">String</span> <span class="n">method</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="na">getMethod</span><span class="o">().</span><span class="na">toUpperCase</span><span class="o">();</span>
+  <span class="k">try</span> <span class="o">{</span>
+    <span class="c1">// 取得之前建立的映射，Map查找</span>
+    <span class="n">ActionValue</span> <span class="n">v</span> <span class="o">=</span> <span class="n">getAction</span><span class="o">(</span><span class="n">uri</span><span class="o">,</span> <span class="n">method</span><span class="o">);</span>
+    <span class="c1">// 创建新的controller对象</span>
+    <span class="n">BaseController</span> <span class="n">ctl</span> <span class="o">=</span> <span class="o">(</span><span class="n">BaseController</span><span class="o">)</span> <span class="n">v</span><span class="o">.</span><span class="na">clazz</span><span class="o">.</span><span class="na">newInstance</span><span class="o">();</span>
+    <span class="n">ctl</span><span class="o">.</span><span class="na">init</span><span class="o">(</span><span class="n">req</span><span class="o">,</span> <span class="n">resp</span><span class="o">,</span> <span class="k">this</span><span class="o">);</span>
+    <span class="n">logger</span><span class="o">.</span><span class="na">debug</span><span class="o">(</span><span class="s">&quot;invoke action {}&quot;</span><span class="o">,</span> <span class="n">uri</span><span class="o">);</span>
+    <span class="c1">// 调用绑定的接口</span>
+    <span class="n">Result</span> <span class="n">result</span> <span class="o">=</span> <span class="o">(</span><span class="n">Result</span><span class="o">)</span> <span class="n">v</span><span class="o">.</span><span class="na">method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">ctl</span><span class="o">,</span> <span class="o">(</span><span class="n">Object</span><span class="o">[])</span> <span class="kc">null</span><span class="o">);</span>
+    <span class="c1">// 渲染结果</span>
+    <span class="n">result</span><span class="o">.</span><span class="na">render</span><span class="o">();</span>
+  <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+    <span class="o">...</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div>
+
+
+<h2>结果渲染</h2>
+
+<p>结果渲染无非就是把框架用户返回的结果渲染为字符串，写进<code>HttpServletResponse</code>。这个渲染过程可以是直接的<code>Object.toString</code>，或者经过模板引擎渲染，或者格式化为JSON。</p>
+
+<p>通过实现具体的<code>Result</code>类，可以扩展不同的渲染方式，例如最基础的<code>Result</code>就是调用返回对象的<code>toString</code>：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Result</span> <span class="o">{</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">render</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">,</span> <span class="n">ServletException</span> <span class="o">{</span>
+    <span class="n">PrintWriter</span> <span class="n">writer</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="na">getWriter</span><span class="o">();</span>
+    <span class="c1">// result是controller action里返回的</span>
+    <span class="n">writer</span><span class="o">.</span><span class="na">append</span><span class="o">(</span><span class="n">result</span><span class="o">.</span><span class="na">toString</span><span class="o">());</span>
+    <span class="n">writer</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div>
+
+
+<p>为了简单，不引入第三方库，可以直接通过JSP来完成。JSP本身在servlet容器中就会被编译成一个servlet对象。</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">JSPResult</span> <span class="kd">extends</span> <span class="n">Result</span> <span class="o">{</span>
+  <span class="o">...</span>
+  <span class="nd">@Override</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">render</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">,</span> <span class="n">ServletException</span> <span class="o">{</span>
+    <span class="c1">// 传入一些对象到模板中</span>
+    <span class="k">for</span> <span class="o">(</span><span class="n">Map</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">String</span><span class="o">,</span> <span class="n">Object</span><span class="o">&gt;</span> <span class="n">entry</span> <span class="o">:</span> <span class="n">content</span><span class="o">.</span><span class="na">entrySet</span><span class="o">())</span> <span class="o">{</span>
+      <span class="n">request</span><span class="o">.</span><span class="na">setAttribute</span><span class="o">(</span><span class="n">entry</span><span class="o">.</span><span class="na">getKey</span><span class="o">(),</span> <span class="n">entry</span><span class="o">.</span><span class="na">getValue</span><span class="o">());</span>
+    <span class="o">}</span>
+    <span class="c1">// 委托给JSP来完成渲染</span>
+    <span class="n">request</span><span class="o">.</span><span class="na">getRequestDispatcher</span><span class="o">(</span><span class="n">file</span><span class="o">).</span><span class="na">forward</span><span class="o">(</span><span class="n">request</span><span class="o">,</span> <span class="n">response</span><span class="o">);</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div>
+
+
+<p>JSP中可以使用传统的scriptlets表达式，也可以使用新的EL方式，例如：</p>
+
+<pre><code>&lt;%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%&gt;
+&lt;h4&gt;By EL&lt;/h4&gt;
+&lt;c:forEach var="lang" items="${langs}"&gt;
+  &lt;span&gt;${lang}&lt;/span&gt;|
+&lt;/c:forEach&gt;
+
+&lt;% String[] langs = (String[]) request.getAttribute("langs"); %&gt;
+&lt;% if (langs != null) { %&gt;
+&lt;% for (String lang : langs) { %&gt;
+  &lt;span&gt;&lt;%= lang %&gt;&lt;/span&gt;|
+&lt;% } } %&gt;
+</code></pre>
+
+<p>使用EL的话需要引入<code>&lt;%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%&gt;</code></p>
+
+<h2>BaseController</h2>
+
+<p><code>BaseController</code>是一种template pattern实现，其包装了一些方便的接口给具体的controller使用，例如：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">BaseController</span> <span class="o">{</span>
+  <span class="c1">// 取得/index?name=kevin中的name参数值</span>
+  <span class="kd">protected</span> <span class="n">String</span> <span class="nf">getQueryString</span><span class="o">(</span><span class="n">String</span> <span class="n">key</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="na">getParameter</span><span class="o">(</span><span class="n">key</span><span class="o">);</span>
+  <span class="o">}</span>
+
+  <span class="kd">protected</span> <span class="n">Result</span> <span class="nf">status</span><span class="o">(</span><span class="kt">int</span> <span class="n">code</span><span class="o">,</span> <span class="n">String</span> <span class="n">text</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">response</span><span class="o">.</span><span class="na">setStatus</span><span class="o">(</span><span class="n">code</span><span class="o">);</span>
+    <span class="k">return</span> <span class="k">new</span> <span class="nf">Result</span><span class="o">(</span><span class="n">response</span><span class="o">,</span> <span class="n">text</span><span class="o">);</span>
+  <span class="o">}</span>
+
+  <span class="c1">// 默认是HTTP 200</span>
+  <span class="kd">protected</span> <span class="n">Result</span> <span class="nf">ok</span><span class="o">(</span><span class="n">Object</span> <span class="n">obj</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="k">new</span> <span class="nf">Result</span><span class="o">(</span><span class="n">response</span><span class="o">,</span> <span class="n">obj</span><span class="o">);</span>
+  <span class="o">}</span>
+
+  <span class="kd">protected</span> <span class="n">Result</span> <span class="nf">ok</span><span class="o">(</span><span class="n">Result</span> <span class="n">result</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="n">result</span><span class="o">;</span>
+  <span class="o">}</span>
+
+  <span class="kd">protected</span> <span class="n">JSPResult</span> <span class="nf">jsp</span><span class="o">(</span><span class="n">String</span> <span class="n">file</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="k">new</span> <span class="nf">JSPResult</span><span class="o">(</span><span class="n">request</span><span class="o">,</span> <span class="n">response</span><span class="o">,</span> <span class="n">file</span><span class="o">,</span> <span class="n">actionMgr</span><span class="o">);</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div>
+
+
+<h2>Reverse routing</h2>
+
+<p>Reverse routing指的是在开发web过程中，要引入某个URL时，我们不是直接写这个URL字符串，而是写其映射的接口，以使代码更易维护（因为URL可能会随着项目进展而改变）。并且，servlet app部署后URL会带上这个app的名字前缀，例如<code>/web-demo/index</code>中的<code>/web-demo</code>。在模板文件中，例如要链接到其他URI，更好的方式当然是直接写<code>/index</code>。</p>
+
+<p>这里的实现比较丑陋，还是基于字符串的形式，例如：</p>
+
+<pre><code>&lt;a href='&lt;route:reverse action="com.codemacro.webdemo.test.TestController.hello" name="kevin"/&gt;'&gt;index&lt;/a&gt;
+</code></pre>
+
+<p>通过自定义一个EL function <code>reverse</code>来实现。这里需要引入一个JSP的库：</p>
+
+<pre><code>&lt;dependency&gt;
+    &lt;groupId&gt;javax.servlet&lt;/groupId&gt;
+    &lt;artifactId&gt;jsp-api&lt;/artifactId&gt;
+    &lt;version&gt;2.0&lt;/version&gt;
+    &lt;optional&gt;true&lt;/optional&gt;
+&lt;/dependency&gt;
+</code></pre>
+
+<p>首先实现一个<code>SimpleTagSupport</code>，为了支持<code>?name=kevin</code>这种动态参数，还需要<code>implements DynamicAttributes</code>：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">JSPRouteTag</span> <span class="kd">extends</span> <span class="n">SimpleTagSupport</span> <span class="kd">implements</span> <span class="n">DynamicAttributes</span> <span class="o">{</span>
+  <span class="nd">@Override</span>
+  <span class="c1">// 输出最终的URL</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">doTag</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+    <span class="n">JspContext</span> <span class="n">context</span> <span class="o">=</span> <span class="n">getJspContext</span><span class="o">();</span>
+    <span class="n">ActionManager</span> <span class="n">actionMgr</span> <span class="o">=</span> <span class="o">(</span><span class="n">ActionManager</span><span class="o">)</span> <span class="n">context</span><span class="o">.</span><span class="na">findAttribute</span><span class="o">(</span><span class="n">ACTION_MGR</span><span class="o">);</span>
+    <span class="n">JspWriter</span> <span class="n">out</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="na">getOut</span><span class="o">();</span>
+    <span class="n">String</span> <span class="n">uri</span> <span class="o">=</span> <span class="n">actionMgr</span><span class="o">.</span><span class="na">getReverseAction</span><span class="o">(</span><span class="n">action</span><span class="o">,</span> <span class="n">attrMap</span><span class="o">);</span>
+    <span class="n">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">uri</span><span class="o">);</span>
+  <span class="o">}</span>
+
+  <span class="nd">@Override</span>
+  <span class="c1">// name=&quot;kevin&quot; 时调用</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setDynamicAttribute</span><span class="o">(</span><span class="n">String</span> <span class="n">uri</span><span class="o">,</span> <span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">Object</span> <span class="n">value</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">JspException</span> <span class="o">{</span>
+    <span class="n">attrMap</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">value</span><span class="o">);</span>
+  <span class="o">}</span>
+
+  <span class="c1">// `action=&quot;xxx&quot;` 时会调用`setAction`</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setAction</span><span class="o">(</span><span class="n">String</span> <span class="n">action</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">this</span><span class="o">.</span><span class="na">action</span> <span class="o">=</span> <span class="n">action</span><span class="o">;</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div>
+
+
+<p>为了访问到<code>ActionManager</code>，这里是通过写到<code>Request context</code>中实现的，相当hack。</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="nf">JSPResult</span><span class="o">(</span><span class="n">HttpServletRequest</span> <span class="n">req</span><span class="o">,</span> <span class="n">HttpServletResponse</span> <span class="n">resp</span><span class="o">,</span> <span class="n">String</span> <span class="n">file</span><span class="o">,</span> 
+    <span class="n">ActionManager</span> <span class="n">actionMgr</span><span class="o">)</span> <span class="o">{</span>
+  <span class="kd">super</span><span class="o">(</span><span class="n">resp</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+  <span class="o">..</span>
+  <span class="n">put</span><span class="o">(</span><span class="n">JSPRouteTag</span><span class="o">.</span><span class="na">ACTION_MGR</span><span class="o">,</span> <span class="n">actionMgr</span><span class="o">);</span>
+<span class="o">}</span></code></pre></div>
+
+
+<p>第二步增加一个描述这个新tag的文件 <code>WEB-INF/route_tag.tld</code>：</p>
+
+<pre><code>&lt;taglib&gt;
+    &lt;tlibversion&gt;1.0&lt;/tlibversion&gt;
+    &lt;jspversion&gt;1.1&lt;/jspversion&gt;
+    &lt;shortname&gt;URLRouteTags&lt;/shortname&gt;
+    &lt;uri&gt;/myweb-router&lt;/uri&gt;
+    &lt;info&gt;&lt;/info&gt;
+
+    &lt;tag&gt;
+        &lt;name&gt;reverse&lt;/name&gt;
+        &lt;tagclass&gt;com.codemacro.webdemo.result.JSPRouteTag&lt;/tagclass&gt;
+        &lt;bodycontent&gt;&lt;/bodycontent&gt;
+        &lt;info&gt;&lt;/info&gt;
+        &lt;attribute&gt;
+            &lt;name&gt;action&lt;/name&gt;
+            &lt;required&gt;true&lt;/required&gt;
+        &lt;/attribute&gt;
+        &lt;dynamic-attributes&gt;true&lt;/dynamic-attributes&gt;
+    &lt;/tag&gt;
+&lt;/taglib&gt;
+</code></pre>
+
+<p>最后在需要使用的JSP中引入这个自定义tag：</p>
+
+<pre><code>&lt;%@ taglib prefix="route" uri="/myweb-router" %&gt;
+</code></pre>
+
+<h2>参考资料</h2>
+
+<ul>
+<li><a href="http://www.cnblogs.com/cuiliang/archive/2011/10/21/2220671.html">Servlet生命周期与工作原理</a></li>
+<li><a href="http://www.blogjava.net/fancydeepin/archive/2013/09/30/fan_servlet.html">JSP/Servlet工作原理</a></li>
+<li><a href="http://www.cnblogs.com/xushuai123/archive/2013/03/24/2979711.html">EL表达式</a></li>
+<li><a href="http://www.codedata.com.tw/java/java-tutorial-the-3rd-class-3-servlet-jsp/">使用Servlet、JSP开发Web程序</a></li>
+<li><a href="http://www.itzhai.com/java-web-notes-servlet-filters-in-the-filter-writing-the-introduction-and-use-of-filters.html#read-more">Java Web笔记 – Servlet中的Filter过滤器的介绍和使用 编写过滤器</a></li>
+<li><a href="http://blog.csdn.net/bingduanlbd/article/details/38349737">实现一个简单的Servlet容器</a></li>
+</ul>
+
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2015/06/07/servlet-web-framework/'>http://codemacro.com/2015/06/07/servlet-web-framework/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-06-07T00:00:00+08:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>7</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/categories/java/'>java</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/2015/05/31/java-refect-ioc/" title="Previous Post: Java中的反射及Bean容器的实现">&laquo; Java中的反射及Bean容器的实现</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (25)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (4)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2015/06/07/servlet-web-framework/">基于servlet实现一个web框架</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2015/05/31/java-refect-ioc/">Java中的反射及Bean容器的实现</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2015/05/30/drill-http-plugin/">Drill中实现HTTP storage plugin</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2015/05/05/lock_free_list/">无锁有序链表的实现</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2015/05/03/hazard-pointer/">并行编程中的内存回收Hazard Pointer</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+<div id="recentcomments" class="dsq-widget">
+<h1 class="dsq-widget-title">Recent Comments</h1>
+<script type="text/javascript" src="http://loopincodes.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
+</div>
+<a href="http://disqus.com/">Powered by Disqus</a>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(25)</a> <a href='/categories/clang' style='font-size: 102.4%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 119.2%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.6%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.8%'>ice(2)</a> <a href='/categories/java' style='font-size: 109.6%'>java(4)</a> <a href='/categories/javascript' style='font-size: 102.4%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 112.0%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 112.0%'>lua(5)</a> <a href='/categories/module' style='font-size: 107.2%'>module(3)</a> <a href='/categories/network' style='font-size: 128.8%'>network(12)</a> <a href='/categories/other' style='font-size: 116.8%'>other(7)</a> <a href='/categories/ruby' style='font-size: 109.6%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.4%'>scala(1)</a> <a href='/categories/tips' style='font-size: 150.4%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.6%'>web(4)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - Kevin Lynx -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
+<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
+
+</p>
+
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'loopincodes';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://codemacro.com/2015/06/07/servlet-web-framework/';
+        var disqus_url = 'http://codemacro.com/2015/06/07/servlet-web-framework/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>
