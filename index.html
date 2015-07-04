@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="servlet作为一个web规范，其本身就算做一个web开发框架，但是其web action (响应某个URI的实现)的实现都是基于类的，不是很方便，并且3.0之前的版本还必须通过web.xml配置来增加新的action。servlet中有一个filter的功能， &hellip;">
+  <meta name="description" content="之前在公司里维护了一个名字服务，这个名字服务日常管理了近4000台机器，有4000个左右的客户端连接上来获取机器信息，由于其基本是一个单点服务，所以某些模块接近瓶颈。后来倒是有重构计划，详细设计做了，代码都写了一部分，结果由于某些原因重构就被终止了。 JCM是我业余时间用Java重写的一个版本， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,78 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2015/07/04/jcm/">写了一个分布式名字服务JCM</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-07-04T00:00:00+08:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>4</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>之前在公司里维护了一个名字服务，这个名字服务日常管理了近4000台机器，有4000个左右的客户端连接上来获取机器信息，由于其基本是一个单点服务，所以某些模块接近瓶颈。后来倒是有重构计划，详细设计做了，代码都写了一部分，结果由于某些原因重构就被终止了。</p>
+
+<p><a href="https://github.com/kevinlynx/jcm">JCM</a>是我业余时间用Java重写的一个版本，功能上目前只实现了基础功能。由于它是个完全分布式的架构，所以理论上可以横向扩展，大大增强系统的服务能力。</p>
+
+<h2>名字服务</h2>
+
+<p>在分布式系统中，某个服务为了提升整体服务能力，通常部署了很多实例。这里我把这些提供相同服务的实例统称为集群(<code>cluster</code>)，每个实例称为一个节点(<code>Node</code>)。一个应用可能会使用很多cluster，每次访问一个cluster时，就通过名字服务获取该cluster下一个可用的node。那么，名字服务至少需要包含的功能：</p>
+
+<ul>
+<li>根据cluster名字获取可用的node</li>
+<li>对管理的所有cluster下的所有node进行健康度的检测，以保证始终返回可用的node</li>
+</ul>
+
+
+<p>有些名字服务仅对node管理，不参与应用与node间的通信，而有些则可能作为应用与node间的通信转发器。虽然名字服务功能简单，但是要做一个分布式的名字服务还是比较复杂的，因为数据一旦分布式了，就会存在同步、一致性问题的考虑等。</p>
+
+<h2>What&rsquo;s JCM</h2>
+
+<p>JCM围绕前面说的名字服务基础功能实现。包含的功能：</p>
+
+<ul>
+<li>管理cluster到node的映射</li>
+<li>分布式架构，可水平扩展以实现管理10,000个node的能力，足以管理一般公司的后台服务集群</li>
+<li>对每个node进行健康检查，健康检查可基于HTTP协议层的检测或TCP连接检测</li>
+<li>持久化cluster/node数据，通过zookeeper保证数据一致性</li>
+<li>提供JSON HTTP API管理cluster/node数据，后续可提供Web管理系统</li>
+<li>以库的形式提供与server的交互，库本身提供各种负载均衡策略，保证对一个cluster下node的访问达到负载均衡</li>
+</ul>
+
+
+<p>项目地址<a href="https://github.com/kevinlynx/jcm">git jcm</a></p>
+
+<p>JCM主要包含两部分：</p>
+
+<ul>
+<li>jcm.server，JCM名字服务，需要连接zookeeper以持久化数据</li>
+<li>jcm.subscriber，客户端库，负责与jcm.server交互，提供包装了负载均衡的API给应用使用</li>
+</ul>
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2015/07/04/jcm/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -647,63 +719,6 @@ add ax, 2    # 取ax中的值1与立即数2进行相加，存放结果到ax
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2014/11/04/linux-dynamic-library/">linux动态库的种种要点</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2014-11-04T00:00:00+08:00'><span class='date'><span class='date-month'>Nov</span> <span class='date-day'>4</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>linux下使用动态库，基本用起来还是很容易。但如果我们的程序中大量使用动态库来实现各种框架/插件，那么就会遇到一些坑，掌握这些坑才有利于程序更稳健地运行。</p>
-
-<p>本篇先谈谈动态库符号方面的问题。</p>
-
-<p>测试代码可以在<a href="https://github.com/kevinlynx/test/tree/master/dytest">github上找到</a></p>
-
-<h2>符号查找</h2>
-
-<p>一个应用程序<code>test</code>会链接一个动态库<code>libdy.so</code>，如果一个符号，例如函数<code>callfn</code>定义于libdy.so中，test要使用该函数，简单地声明即可：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// dy.cpp libdy.so</span>
-<span class="kt">void</span> <span class="nf">callfn</span><span class="p">()</span> <span class="p">{</span>
-    <span class="p">...</span>
-<span class="p">}</span>
-
-<span class="c1">// main.cpp test</span>
-<span class="k">extern</span> <span class="kt">void</span> <span class="nf">callfn</span><span class="p">();</span>
-
-<span class="n">callfn</span><span class="p">();</span></code></pre></div>
-
-
-<p>在链接test的时候，链接器会统一进行检查。</p>
-
-<p>同样，在libdy.so中有相同的规则，它可以使用一个外部的符号，<strong>在它被链接/载入进一个可执行程序时才会进行符号存在与否的检查</strong>。这个符号甚至可以定义在test中，形成一种双向依赖，或定义在其他动态库中：</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2014/11/04/linux-dynamic-library/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/2">&larr; Older</a>
@@ -716,11 +731,15 @@ add ax, 2    # 取ax中的值1与立即数2进行相加，存放结果到ax
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (25)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (4)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (25)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (5)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2015/07/04/jcm/">写了一个分布式名字服务JCM</a>
+      </li>
     
       <li class="post">
         <a href="/2015/06/07/servlet-web-framework/">基于servlet实现一个web框架</a>
@@ -738,10 +757,6 @@ add ax, 2    # 取ax中的值1与立即数2进行相加，存放结果到ax
         <a href="/2015/05/05/lock_free_list/">无锁有序链表的实现</a>
       </li>
     
-      <li class="post">
-        <a href="/2015/05/03/hazard-pointer/">并行编程中的内存回收Hazard Pointer</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -753,7 +768,7 @@ add ax, 2    # 取ax中的值1与立即数2进行相加，存放结果到ax
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(25)</a> <a href='/categories/clang' style='font-size: 102.4%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 119.2%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.6%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.8%'>ice(2)</a> <a href='/categories/java' style='font-size: 109.6%'>java(4)</a> <a href='/categories/javascript' style='font-size: 102.4%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 112.0%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 112.0%'>lua(5)</a> <a href='/categories/module' style='font-size: 107.2%'>module(3)</a> <a href='/categories/network' style='font-size: 128.8%'>network(12)</a> <a href='/categories/other' style='font-size: 116.8%'>other(7)</a> <a href='/categories/ruby' style='font-size: 109.6%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.4%'>scala(1)</a> <a href='/categories/tips' style='font-size: 150.4%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.6%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(25)</a> <a href='/categories/clang' style='font-size: 102.4%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 119.2%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.6%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.8%'>ice(2)</a> <a href='/categories/java' style='font-size: 112.0%'>java(5)</a> <a href='/categories/javascript' style='font-size: 102.4%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 112.0%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 112.0%'>lua(5)</a> <a href='/categories/module' style='font-size: 107.2%'>module(3)</a> <a href='/categories/network' style='font-size: 128.8%'>network(12)</a> <a href='/categories/other' style='font-size: 116.8%'>other(7)</a> <a href='/categories/ruby' style='font-size: 109.6%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.4%'>scala(1)</a> <a href='/categories/tips' style='font-size: 150.4%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.6%'>web(4)</a> </span>
 </section>
 
   

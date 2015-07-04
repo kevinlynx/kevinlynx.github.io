@@ -1,0 +1,435 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>写了一个分布式名字服务JCM - loop in codes</title>
+  <meta name="author" content="Kevin Lynx">
+
+  
+  <meta name="description" content="之前在公司里维护了一个名字服务，这个名字服务日常管理了近4000台机器，有4000个左右的客户端连接上来获取机器信息，由于其基本是一个单点服务，所以某些模块接近瓶颈。后来倒是有重构计划，详细设计做了，代码都写了一部分，结果由于某些原因重构就被终止了。 JCM是我业余时间用Java重写的一个版本， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://codemacro.com/2015/07/04/jcm">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <!--script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script-->
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<!--link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css"-->
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">loop in codes</a></h1>
+  
+    <h2>Kevin Lynx BLOG</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:codemacro.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about.html">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">写了一个分布式名字服务JCM</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-07-04T00:00:00+08:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>4</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>之前在公司里维护了一个名字服务，这个名字服务日常管理了近4000台机器，有4000个左右的客户端连接上来获取机器信息，由于其基本是一个单点服务，所以某些模块接近瓶颈。后来倒是有重构计划，详细设计做了，代码都写了一部分，结果由于某些原因重构就被终止了。</p>
+
+<p><a href="https://github.com/kevinlynx/jcm">JCM</a>是我业余时间用Java重写的一个版本，功能上目前只实现了基础功能。由于它是个完全分布式的架构，所以理论上可以横向扩展，大大增强系统的服务能力。</p>
+
+<h2>名字服务</h2>
+
+<p>在分布式系统中，某个服务为了提升整体服务能力，通常部署了很多实例。这里我把这些提供相同服务的实例统称为集群(<code>cluster</code>)，每个实例称为一个节点(<code>Node</code>)。一个应用可能会使用很多cluster，每次访问一个cluster时，就通过名字服务获取该cluster下一个可用的node。那么，名字服务至少需要包含的功能：</p>
+
+<ul>
+<li>根据cluster名字获取可用的node</li>
+<li>对管理的所有cluster下的所有node进行健康度的检测，以保证始终返回可用的node</li>
+</ul>
+
+
+<p>有些名字服务仅对node管理，不参与应用与node间的通信，而有些则可能作为应用与node间的通信转发器。虽然名字服务功能简单，但是要做一个分布式的名字服务还是比较复杂的，因为数据一旦分布式了，就会存在同步、一致性问题的考虑等。</p>
+
+<h2>What&rsquo;s JCM</h2>
+
+<p>JCM围绕前面说的名字服务基础功能实现。包含的功能：</p>
+
+<ul>
+<li>管理cluster到node的映射</li>
+<li>分布式架构，可水平扩展以实现管理10,000个node的能力，足以管理一般公司的后台服务集群</li>
+<li>对每个node进行健康检查，健康检查可基于HTTP协议层的检测或TCP连接检测</li>
+<li>持久化cluster/node数据，通过zookeeper保证数据一致性</li>
+<li>提供JSON HTTP API管理cluster/node数据，后续可提供Web管理系统</li>
+<li>以库的形式提供与server的交互，库本身提供各种负载均衡策略，保证对一个cluster下node的访问达到负载均衡</li>
+</ul>
+
+
+<p>项目地址<a href="https://github.com/kevinlynx/jcm">git jcm</a></p>
+
+<p>JCM主要包含两部分：</p>
+
+<ul>
+<li>jcm.server，JCM名字服务，需要连接zookeeper以持久化数据</li>
+<li>jcm.subscriber，客户端库，负责与jcm.server交互，提供包装了负载均衡的API给应用使用</li>
+</ul>
+
+
+<!-- more -->
+
+
+<h3>架构</h3>
+
+<p>基于JCM的系统整体架构如下：</p>
+
+<p><img src="https://raw.githubusercontent.com/kevinlynx/jcm/master/doc/asset/simple-arch.jpg" alt="simple-arch.jpg" /></p>
+
+<p>cluster本身是不需要依赖JCM的，要通过JCM使用这些cluster，只需要通过JCM HTTP API注册这些cluster到jcm.server上。要通过jcm.server使用这些cluster，则是通过jcm.subscriber来完成。</p>
+
+<h3>使用</h3>
+
+<p>可参考<a href="https://github.com/kevinlynx/jcm/blob/master/README.md">git READMe.md</a></p>
+
+<p>需要jre1.7+</p>
+
+<ol>
+<li>启动zookeeper</li>
+<li>下载jcm.server <a href="https://github.com/kevinlynx/jcm/tree/master/dist">git jcm.server-0.1.0.jar</a></li>
+<li>在<code>jcm.server-0.1.0.jar</code>目录下建立<code>config/application.properties</code>文件进行配置，参考<a href="https://github.com/kevinlynx/jcm/blob/master/jcm.server/config/application.properties">config/application.properties</a></li>
+<li><p>启动jcm.server</p>
+
+<pre><code> java -jar jcm.server-0.1.0.jar
+</code></pre></li>
+<li><p>注册需要管理的集群，参考cluster描述：<a href="https://github.com/kevinlynx/jcm/blob/master/doc/cluster_sample.json">doc/cluster_sample.json</a>，通过HTTP API注册：</p>
+
+<pre><code> curl -i -X POST http://10.181.97.106:8080/c -H "Content-Type:application/json" --data-binary @./doc/cluster_sample.json
+</code></pre></li>
+</ol>
+
+
+<p>部署好了jcm.server，并注册了cluster后，就可以通过jcm.subscriber使用：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="c1">// 传入需要使用的集群名hello9/hello，以及传入jcm.server地址，可以多个：127.0.0.1:8080</span>
+<span class="n">Subscriber</span> <span class="n">subscriber</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">Subscriber</span><span class="o">(</span> <span class="n">Arrays</span><span class="o">.</span><span class="na">asList</span><span class="o">(</span><span class="s">&quot;127.0.0.1:8080&quot;</span><span class="o">),</span> <span class="n">Arrays</span><span class="o">.</span><span class="na">asList</span><span class="o">(</span><span class="s">&quot;hello9&quot;</span><span class="o">,</span> <span class="s">&quot;hello&quot;</span><span class="o">));</span>
+<span class="c1">// 使用轮询负载均衡策略</span>
+<span class="n">RRAllocator</span> <span class="n">rr</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">RRAllocator</span><span class="o">();</span>
+<span class="n">subscriber</span><span class="o">.</span><span class="na">addListener</span><span class="o">(</span><span class="n">rr</span><span class="o">);</span>
+<span class="n">subscriber</span><span class="o">.</span><span class="na">startup</span><span class="o">();</span>
+<span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="o">;</span> <span class="o">++</span><span class="n">i</span><span class="o">)</span> <span class="o">{</span>
+  <span class="c1">// rr.alloc 根据cluster名字获取可用的node</span>
+  <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">rr</span><span class="o">.</span><span class="na">alloc</span><span class="o">(</span><span class="s">&quot;hello9&quot;</span><span class="o">,</span> <span class="n">ProtoType</span><span class="o">.</span><span class="na">HTTP</span><span class="o">));</span>
+<span class="o">}</span>
+<span class="n">subscriber</span><span class="o">.</span><span class="na">shutdown</span><span class="o">();</span></code></pre></div>
+
+
+<h2>JCM实现</h2>
+
+<p>JCM目前的实现比较简单，参考模块图：</p>
+
+<p><img src="https://raw.githubusercontent.com/kevinlynx/jcm/master/doc/asset/impl-module.jpg" alt="impl-module" /></p>
+
+<ul>
+<li>model，即cluster/node这些数据结构的描述，同时被jcm.server和jcm.subscriber依赖</li>
+<li>storage，持久化数据到zookeeper，同时包含jcm.server实例之间的数据同步</li>
+<li>health check，健康检查模块，对各个node进行健康检查</li>
+</ul>
+
+
+<p>以上模块都不依赖Spring，基于以上模块又有：</p>
+
+<ul>
+<li>http api，使用spring-mvc，包装了一些JSON HTTP API</li>
+<li>Application，基于spring-boot，将各个基础模块组装起来，提供standalone的模式启动，不用部署到tomcat之类的servlet容器中</li>
+</ul>
+
+
+<p>jcm.subscriber的实现更简单，主要是负责与jcm.server进行通信，以更新自己当前的model层数据，同时提供各种负载均衡策略接口：</p>
+
+<ul>
+<li>subscriber，与jcm.server通信，定期增量拉取数据</li>
+<li>node allocator，通过listener方式从subscriber中获取数据，同时实现各种负载均衡策略，对外统一提供<code>alloc node</code>的接口</li>
+</ul>
+
+
+<p>接下来看看关键功能的实现</p>
+
+<h3>数据同步</h3>
+
+<p>既然jcm.server是分布式的，每一个jcm.server instance(实例)都是支持数据读和写的，那么当jcm.server管理着一堆cluster上万个node时，每一个instance是如何进行数据同步的？jcm.server中的数据主要有两类：</p>
+
+<ul>
+<li>cluster本身的数据，包括cluster/node的描述，例如cluster name、node IP、及其他附属数据</li>
+<li>node健康检查的数据</li>
+</ul>
+
+
+<p>对于cluster数据，因为cluster对node的管理是一个两层的树状结构，而对cluster有增删node的操作，所以并不能在每一个instance上都提供真正的数据写入，这样会导致数据丢失。假设同一时刻在instance A和instance B上同时对cluster c1添加节点N1和N2，那么instance A写入c1(N1)，而instance B还没等到数据同步就写入c1(N2)，那么c1(N1)就被覆盖为c1(N2)，从而导致添加的节点N1丢失。</p>
+
+<p>所以，jcm.server instance是分为<code>leader</code>和<code>follower</code>的，真正的写入操作只有leader进行，follower收到写操作请求时转发给leader。leader写数据优先更新内存中的数据再写入zookeeper，内存中的数据更新当然是需要加锁互斥的，从而保证数据的正确性。</p>
+
+<p><img src="https://raw.githubusercontent.com/kevinlynx/jcm/master/doc/asset/write-watch.jpg" alt="write-watch.jpg" /></p>
+
+<p>leader和follower是如何确定角色的？这个很简单，标准的利用zookeeper来进行主从<a href="https://github.com/kevinlynx/jcm/blob/master/jcm.server/src/main/java/com/codemacro/jcm/util/ZookeeperLeaderElector.java">选举的实现</a>。</p>
+
+<p>jcm.server instance数据间的同步是基于zookeeper watch机制的。这个可以算做是一个JCM的一个瓶颈，每一个instance都会作为一个watch，使得实际上jcm.server并不能无限水平扩展，扩展到一定程度后，watch的效率就可能不足以满足性能了，参考<a href="http://codemacro.com/2014/09/21/zk-watch-benchmark/">zookeeper节点数与watch的性能测试</a> (那个时候我就在考虑对我们系统的重构了) 。</p>
+
+<p>jcm.server中对node健康检查的数据采用同样的同步机制，但node健康检查数据是每一个instance都会写入的，下面看看jcm.server是如何通过分布式架构来分担压力的。</p>
+
+<h3>健康检查</h3>
+
+<p>jcm.server的另一个主要功能的是对node的健康检查，jcm.server集群可以管理几万的node，既然已经是分布式了，那么显然是要把node均分到多个instance的。这里我是以cluster来分配的，方法就是简单的使用一致性哈希。通过一致性哈希，决定一个cluster是否属于某个instance负责。每个instance都有一个server spec，也就是该instance对外提供服务的地址(IP+port)，这样在任何一个instance上，它看到的所有instance server spec都是相同的，从而保证在每一个instance上计算cluster的分配得到的结果都是一致的。</p>
+
+<p>健康检查按cluster划分，可以简化数据的写冲突问题，在正常情况下，每个instance写入的健康检查结果都是不同的。</p>
+
+<p><img src="https://raw.githubusercontent.com/kevinlynx/jcm/master/doc/asset/health-check.jpg" alt="health-check.jpg" /></p>
+
+<p>健康检查一般以1秒的频率进行，jcm.server做了优化，当检查结果和上一次一样时，并不写入zookeeper。写入的数据包含了node的完整key (IP+Port+Spec)，这样可以简化很多地方的数据同步问题，但会增加写入数据的大小，写入数据的大小是会影响zookeeper的性能的，所以这里简单地对数据进行了压缩。</p>
+
+<p>健康检查是可以支持多种检查实现的，目前只实现了HTTP协议层的检查。健康检查自身是单个线程，在该线程中基于异步HTTP库，发起异步请求，实际的请求在其他线程中发出。</p>
+
+<h3>jcm.subscriber通信</h3>
+
+<p>jcm.subscriber与jcm.server通信，主要是为了获取最新的cluster数据。subscriber初始化时会拿到一个jcm.server instance的地址列表，访问时使用轮询策略以平衡jcm.server在处理请求时的负载。subscriber每秒都会请求一次数据，请求中描述了本次请求想获取哪些cluster数据，同时携带一个cluster的version。每次cluster在server变更时，version就变更（时间戳）。server回复请求时，如果version已最新，只需要回复node的状态。</p>
+
+<p>subscriber可以拿到所有状态的node，后面可以考虑只拿正常状态的node，进一步减少数据大小。</p>
+
+<h2>压力测试</h2>
+
+<p>目前只对健康检查部分做了压测，详细参考<a href="https://github.com/kevinlynx/jcm/blob/master/test/beanchmark/benchmark.md">test/benchmark.md</a>。在A7服务器上测试，发现写zookeeper及zookeeper的watch足以满足要求，jcm.server发起的HTTP请求是主要的性能热点，单jcm.server instance大概可以承载20000个node的健康监测。</p>
+
+<p>网络带宽：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Time              ---------------------traffic--------------------
+</span><span class='line'>Time               bytin  bytout   pktin  pktout  pkterr  pktdrp
+</span><span class='line'>01/07/15-21:30:48   3.2M    4.1M   33.5K   34.4K    0.00    0.00
+</span><span class='line'>01/07/15-21:30:50   3.3M    4.2M   33.7K   35.9K    0.00    0.00
+</span><span class='line'>01/07/15-21:30:52   2.8M    4.1M   32.6K   41.6K    0.00    0.00</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>CPU，通过jstack查看主要的CPU消耗在HTTP库实现层，以及健康检查线程：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>  PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND
+</span><span class='line'>13301 admin     20   0 13.1g 1.1g  12m R 76.6  2.3   2:40.74 java         httpchecker
+</span><span class='line'>13300 admin     20   0 13.1g 1.1g  12m S 72.9  2.3   0:48.31 java
+</span><span class='line'>13275 admin     20   0 13.1g 1.1g  12m S 20.1  2.3   0:18.49 java</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>代码中增加了些状态监控：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>checker HttpChecker stat count 20 avg check cost(ms) 542.05, avg flush cost(ms) 41.35</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>表示平均每次检查耗时542毫秒，写数据因为开启了cache没有参考价值。</p>
+
+<p>虽然还可以从我自己的代码中做不少优化，但既然单机可以承载20000个节点的检测，一般的应用远远足够了。</p>
+
+<h2>总结</h2>
+
+<p>名字服务在分布式系统中虽然是基础服务，但往往承担了非常重要的角色，数据同步出现错误、节点状态出现瞬时的错误，都可能对整套系统造成较大影响，业务上出现较大故障。所以名字服务的健壮性、可用性非常重要。实现中需要考虑很多异常情况，包括网络不稳定、应用层的错误等。为了提高足够的可用性，一般还会加多层的数据cache，例如subscriber端的本地cache，server端的本地cache，以保证在任何情况下都不会影响应用层的服务。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2015/07/04/jcm/'>http://codemacro.com/2015/07/04/jcm/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-07-04T00:00:00+08:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>4</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/categories/java/'>java</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/2015/06/07/servlet-web-framework/" title="Previous Post: 基于servlet实现一个web框架">&laquo; 基于servlet实现一个web框架</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (25)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (5)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2015/07/04/jcm/">写了一个分布式名字服务JCM</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2015/06/07/servlet-web-framework/">基于servlet实现一个web框架</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2015/05/31/java-refect-ioc/">Java中的反射及Bean容器的实现</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2015/05/30/drill-http-plugin/">Drill中实现HTTP storage plugin</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2015/05/05/lock_free_list/">无锁有序链表的实现</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+<div id="recentcomments" class="dsq-widget">
+<h1 class="dsq-widget-title">Recent Comments</h1>
+<script type="text/javascript" src="http://loopincodes.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
+</div>
+<a href="http://disqus.com/">Powered by Disqus</a>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(25)</a> <a href='/categories/clang' style='font-size: 102.4%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 119.2%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.6%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.8%'>ice(2)</a> <a href='/categories/java' style='font-size: 112.0%'>java(5)</a> <a href='/categories/javascript' style='font-size: 102.4%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 112.0%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 112.0%'>lua(5)</a> <a href='/categories/module' style='font-size: 107.2%'>module(3)</a> <a href='/categories/network' style='font-size: 128.8%'>network(12)</a> <a href='/categories/other' style='font-size: 116.8%'>other(7)</a> <a href='/categories/ruby' style='font-size: 109.6%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.4%'>scala(1)</a> <a href='/categories/tips' style='font-size: 150.4%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.6%'>web(4)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - Kevin Lynx -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
+<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
+
+</p>
+
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'loopincodes';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://codemacro.com/2015/07/04/jcm/';
+        var disqus_url = 'http://codemacro.com/2015/07/04/jcm/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="zookeeper配置为集群模式时，在启动或异常情况时会选举出一个实例作为Leader。其默认选举算法为FastLeaderElection。 不知道zookeeper的可以考虑这样一个问题：某个服务可以配置为多个实例共同构成一个集群对外提供服务。其每一个实例本地都存有冗余数据， &hellip;">
+  <meta name="description" content="linux下使用动态库，基本用起来还是很容易。但如果我们的程序中大量使用动态库来实现各种框架/插件，那么就会遇到一些坑，掌握这些坑才有利于程序更稳健地运行。 本篇先谈谈动态库符号方面的问题。 测试代码可以在github上找到 符号查找 一个应用程序test会链接一个动态库libdy.so， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,63 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2014/11/04/linux-dynamic-library/">linux动态库的种种要点</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-11-04T00:00:00+08:00'><span class='date'><span class='date-month'>Nov</span> <span class='date-day'>4</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>linux下使用动态库，基本用起来还是很容易。但如果我们的程序中大量使用动态库来实现各种框架/插件，那么就会遇到一些坑，掌握这些坑才有利于程序更稳健地运行。</p>
+
+<p>本篇先谈谈动态库符号方面的问题。</p>
+
+<p>测试代码可以在<a href="https://github.com/kevinlynx/test/tree/master/dytest">github上找到</a></p>
+
+<h2>符号查找</h2>
+
+<p>一个应用程序<code>test</code>会链接一个动态库<code>libdy.so</code>，如果一个符号，例如函数<code>callfn</code>定义于libdy.so中，test要使用该函数，简单地声明即可：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// dy.cpp libdy.so</span>
+<span class="kt">void</span> <span class="nf">callfn</span><span class="p">()</span> <span class="p">{</span>
+    <span class="p">...</span>
+<span class="p">}</span>
+
+<span class="c1">// main.cpp test</span>
+<span class="k">extern</span> <span class="kt">void</span> <span class="nf">callfn</span><span class="p">();</span>
+
+<span class="n">callfn</span><span class="p">();</span></code></pre></div>
+
+
+<p>在链接test的时候，链接器会统一进行检查。</p>
+
+<p>同样，在libdy.so中有相同的规则，它可以使用一个外部的符号，<strong>在它被链接/载入进一个可执行程序时才会进行符号存在与否的检查</strong>。这个符号甚至可以定义在test中，形成一种双向依赖，或定义在其他动态库中：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/11/04/linux-dynamic-library/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -562,68 +619,6 @@ FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2014/08/31/protobuf-rpc/">基于protobuf的RPC实现</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2014-08-31T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>31</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>可以对照<a href="http://www.codedump.info/?p=169">使用google protobuf RPC实现echo service</a>一文看，细节本文不再描述。</p>
-
-<p>google protobuf只负责消息的打包和解包，并不包含RPC的实现，但其包含了RPC的定义。假设有下面的RPC定义：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">service</span> <span class="n">MyService</span> <span class="p">{</span>
-        <span class="n">rpc</span> <span class="n">Echo</span><span class="p">(</span><span class="n">EchoReqMsg</span><span class="p">)</span> <span class="n">returns</span><span class="p">(</span><span class="n">EchoRespMsg</span><span class="p">)</span> 
-    <span class="p">}</span></code></pre></div>
-
-
-<p>那么要实现这个RPC需要最少做哪些事？总结起来需要完成以下几步：</p>
-
-<h2>客户端</h2>
-
-<p>RPC客户端需要实现<code>google::protobuf::RpcChannel</code>。主要实现<code>RpcChannel::CallMethod</code>接口。客户端调用任何一个RPC接口，最终都是调用到<code>CallMethod</code>。这个函数的典型实现就是将RPC调用参数序列化，然后投递给网络模块进行发送。</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">CallMethod</span><span class="p">(</span><span class="k">const</span> <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">MethodDescriptor</span><span class="o">*</span> <span class="n">method</span><span class="p">,</span>
-                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">RpcController</span><span class="o">*</span> <span class="n">controller</span><span class="p">,</span>
-                  <span class="k">const</span> <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Message</span><span class="o">*</span> <span class="n">request</span><span class="p">,</span>
-                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Message</span><span class="o">*</span> <span class="n">response</span><span class="p">,</span>
-                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Closure</span><span class="o">*</span> <span class="n">done</span><span class="p">)</span> <span class="p">{</span>
-        <span class="p">...</span>
-        <span class="n">DataBufferOutputStream</span> <span class="n">outputStream</span><span class="p">(...)</span> <span class="c1">// 取决于你使用的网络实现</span>
-        <span class="n">request</span><span class="o">-&gt;</span><span class="n">SerializeToZeroCopyStream</span><span class="p">(</span><span class="o">&amp;</span><span class="n">outputStream</span><span class="p">);</span>
-        <span class="n">_connection</span><span class="o">-&gt;</span><span class="n">postData</span><span class="p">(</span><span class="n">outputStream</span><span class="p">.</span><span class="n">getData</span><span class="p">(),</span> <span class="p">...</span>
-        <span class="p">...</span>
-    <span class="p">}</span></code></pre></div>
-
-
-
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2014/08/31/protobuf-rpc/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/3">&larr; Older</a>
@@ -638,11 +633,15 @@ FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (25)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (4)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (25)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (5)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2015/07/04/jcm/">写了一个分布式名字服务JCM</a>
+      </li>
     
       <li class="post">
         <a href="/2015/06/07/servlet-web-framework/">基于servlet实现一个web框架</a>
@@ -660,10 +659,6 @@ FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
         <a href="/2015/05/05/lock_free_list/">无锁有序链表的实现</a>
       </li>
     
-      <li class="post">
-        <a href="/2015/05/03/hazard-pointer/">并行编程中的内存回收Hazard Pointer</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -675,7 +670,7 @@ FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(25)</a> <a href='/categories/clang' style='font-size: 102.4%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 119.2%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.6%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.8%'>ice(2)</a> <a href='/categories/java' style='font-size: 109.6%'>java(4)</a> <a href='/categories/javascript' style='font-size: 102.4%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 112.0%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 112.0%'>lua(5)</a> <a href='/categories/module' style='font-size: 107.2%'>module(3)</a> <a href='/categories/network' style='font-size: 128.8%'>network(12)</a> <a href='/categories/other' style='font-size: 116.8%'>other(7)</a> <a href='/categories/ruby' style='font-size: 109.6%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.4%'>scala(1)</a> <a href='/categories/tips' style='font-size: 150.4%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.6%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(25)</a> <a href='/categories/clang' style='font-size: 102.4%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 119.2%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.6%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.8%'>ice(2)</a> <a href='/categories/java' style='font-size: 112.0%'>java(5)</a> <a href='/categories/javascript' style='font-size: 102.4%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 112.0%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 112.0%'>lua(5)</a> <a href='/categories/module' style='font-size: 107.2%'>module(3)</a> <a href='/categories/network' style='font-size: 128.8%'>network(12)</a> <a href='/categories/other' style='font-size: 116.8%'>other(7)</a> <a href='/categories/ruby' style='font-size: 109.6%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.4%'>scala(1)</a> <a href='/categories/tips' style='font-size: 150.4%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.6%'>web(4)</a> </span>
 </section>
 
   
