@@ -103,6 +103,8 @@ def fix_code(content)
     pre.inner_html = Rack::Utils::escape_html(code.text)
     if code['data-lang'] == 'c++'
       pre['class'] = 'cpp'
+    elsif code['data-lang'] == 'java'
+      pre['class'] = 'java'
     end
   }
 end
