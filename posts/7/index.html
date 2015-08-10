@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="参考How to write a switch statement in Ruby? 其实用Rails写个业务逻辑不算复杂的app根本用不上ruby的很多高级语法，更别说\中的东西了（凡是打上meta programming标签的都不是什么简单的东西，参考c++/lisp）。ruby中的case& &hellip;">
+  <meta name="description" content="当你的博客文章被转载时，你肯定希望转载者能添加一个原始地址。或者你的文章被各种RSS抓取器抓取时，你也希望能在明显的位置显示这个原始地址。使用octopress写博客时，可以通过插件来做这件事。最开始，我只是想单纯地添加这个“原始地址“，一番google未能找到现成的插件，所以只好动手。 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,42 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2012/07/26/post-footer-plugin-for-octopress/">为octopress每篇文章添加一个文章信息</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2012-07-26T14:27:00+08:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>26</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>2:27 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>当你的博客文章被转载时，你肯定希望转载者能添加一个原始地址。或者你的文章被各种RSS抓取器抓取时，你也希望能在明显的位置显示这个原始地址。使用octopress写博客时，可以通过插件来做这件事。最开始，我只是想单纯地添加这个“原始地址“，一番google未能找到现成的插件，所以只好动手。</p>
+
+<p>话说编写octopress真不是件容易事，因为我实在没找到编写插件的文档。octopress基于jekyll，jekyll又使用了liquid。最后我把这几个项目的文档都翻了下，也仅仅看到几个代码示例，而且liquid的API页面居然出错。无奈之下只好多翻了些现有插件的代码，摸索着来写。写octopress的插件，主要分为generator/tag/filter几种。tag很好理解，就是在文章中插入一个插件注册的tag，然后生成页面时就会调用到对应的插件。filter大概就是把文章内容过滤一遍转换成其他内容输出。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2012/07/26/post-footer-plugin-for-octopress/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -448,44 +484,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/04/23/game-server-info-1/">谈谈我们的游戏逻辑服务器实现（一）</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2012-04-23T00:00:00+08:00'><span class='date'><span class='date-month'>Apr</span> <span class='date-day'>23</span><span class='date-suffix'>rd</span>, <span class='date-year'>2012</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>我们的逻辑服务器(Game Server，以下简称GS)主要逻辑大概是从去年夏天开始写的。因为很多基础模块，包括整体结构沿用了上个项目的代码，所以算不上从头开始做。转眼又快一年，我觉得回头总结下对于经验的积累太有必要。</p>
-
-<h2>整体架构</h2>
-
-<p>GS的架构很大程度取决于游戏的功能需求，当然更受限于上个项目的基础架构。基础架构包括场景、对象的关系管理，消息广播等。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/04/23/game-server-info-1/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/8">&larr; Older</a>
@@ -500,11 +498,15 @@
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (25)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (5)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (25)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (6)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2015/08/10/java-gc-summary/">Java GC总结</a>
+      </li>
     
       <li class="post">
         <a href="/2015/07/04/jcm/">写了一个分布式名字服务JCM</a>
@@ -522,10 +524,6 @@
         <a href="/2015/05/30/drill-http-plugin/">Drill中实现HTTP storage plugin</a>
       </li>
     
-      <li class="post">
-        <a href="/2015/05/05/lock_free_list/">无锁有序链表的实现</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -537,7 +535,7 @@
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(25)</a> <a href='/categories/clang' style='font-size: 102.4%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 119.2%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.6%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.8%'>ice(2)</a> <a href='/categories/java' style='font-size: 112.0%'>java(5)</a> <a href='/categories/javascript' style='font-size: 102.4%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 112.0%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 112.0%'>lua(5)</a> <a href='/categories/module' style='font-size: 107.2%'>module(3)</a> <a href='/categories/network' style='font-size: 128.8%'>network(12)</a> <a href='/categories/other' style='font-size: 116.8%'>other(7)</a> <a href='/categories/ruby' style='font-size: 109.6%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.4%'>scala(1)</a> <a href='/categories/tips' style='font-size: 150.4%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.6%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(25)</a> <a href='/categories/clang' style='font-size: 102.4%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 119.2%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.6%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.8%'>ice(2)</a> <a href='/categories/java' style='font-size: 114.4%'>java(6)</a> <a href='/categories/javascript' style='font-size: 102.4%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 112.0%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 112.0%'>lua(5)</a> <a href='/categories/module' style='font-size: 107.2%'>module(3)</a> <a href='/categories/network' style='font-size: 128.8%'>network(12)</a> <a href='/categories/other' style='font-size: 116.8%'>other(7)</a> <a href='/categories/ruby' style='font-size: 109.6%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.4%'>scala(1)</a> <a href='/categories/tips' style='font-size: 150.4%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.6%'>web(4)</a> </span>
 </section>
 
   

@@ -5,12 +5,13 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>使用memcmp比较两个变量结果一定吗？ - loop in codes</title>
+  <title>Java GC总结 - loop in codes</title>
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="c语言中的赋值运算符（=）被定义为基于值的复制，而不是基于内存内容的复制。">
-  <meta name="keywords" content="memcmp, c/c++">
+  <meta name="description" content="Java GC相关的文章有很多，本文只做概要性总结，主要内容来源于&lt;深入理解Java虚拟机>。 对象存活性判定 对象存活性判定用于确定一个对象是死是活，死掉的对象则需要被垃圾回收。主要包括的方法： 引用计数
+可达性分析 可达性分析的基本思想是： 通过一系列的称为"GC Roots" &hellip;">
+  
 
   <!-- http://t.co/dKP3o1e -->
   <meta name="HandheldFriendly" content="True">
@@ -18,7 +19,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://codemacro.com/2012/08/17/memcmp-on-copy-value">
+  <link rel="canonical" href="http://codemacro.com/2015/08/10/java-gc-summary">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
@@ -67,7 +68,7 @@
   
   <header>
     
-      <h1 class="entry-title">使用memcmp比较两个变量结果一定吗？</h1>
+      <h1 class="entry-title">Java GC总结</h1>
     
     
       <p class="meta">
@@ -76,65 +77,118 @@
 
 
 
-<time class='entry-date' datetime='2012-08-17T11:37:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>17</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>11:37 am</span></time>
+<time class='entry-date' datetime='2015-08-10T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>10</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
         
       </p>
     
   </header>
 
 
-<div class="entry-content"><p>参考<a href="http://stackoverflow.com/questions/11994513/is-using-memcmp-on-array-of-int-strictly-conforming">Is using memcmp on array of int strictly conforming?</a></p>
+<div class="entry-content"><p>Java GC相关的文章有很多，本文只做概要性总结，主要内容来源于&lt;深入理解Java虚拟机>。</p>
 
-<p>以下代码一定会输出ok吗？</p>
+<h2>对象存活性判定</h2>
 
-<div class="highlight"><pre><code class="language-c" data-lang="c"><span class="cp">#include &lt;stdio.h&gt;</span>
-<span class="cp">#include &lt;string.h&gt;</span>
+<p>对象存活性判定用于确定一个对象是死是活，死掉的对象则需要被垃圾回收。主要包括的方法：</p>
 
-<span class="k">struct</span> <span class="n">S</span> <span class="p">{</span> <span class="kt">int</span> <span class="n">array</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span> <span class="p">};</span>
-
-<span class="kt">int</span> <span class="nf">main</span> <span class="p">()</span> <span class="p">{</span>
-    <span class="k">struct</span> <span class="n">S</span> <span class="n">a</span> <span class="o">=</span> <span class="p">{</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="p">}</span> <span class="p">};</span>
-    <span class="k">struct</span> <span class="n">S</span> <span class="n">b</span><span class="p">;</span>
-    <span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="p">;</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">memcmp</span><span class="p">(</span><span class="n">b</span><span class="p">.</span><span class="n">array</span><span class="p">,</span> <span class="n">a</span><span class="p">.</span><span class="n">array</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">b</span><span class="p">.</span><span class="n">array</span><span class="p">))</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-        <span class="n">puts</span><span class="p">(</span><span class="s">&quot;ok&quot;</span><span class="p">);</span>
-    <span class="p">}</span>
-    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span></code></pre></div>
+<ul>
+<li>引用计数</li>
+<li>可达性分析</li>
+</ul>
 
 
+<p>可达性分析的基本思想是：</p>
+
+<blockquote><p>通过一系列的称为"GC Roots"的对象作为起始点，从这些节点开始向下搜索，搜索所走过的路径称为引用链，当一个对象到GC Roots没有任何引用链项链时，则证明此对象是不可用的。</p></blockquote>
+
+<p>在Java中有很多种类的对象可以作为GC Roots，例如类静态属性引用的对象。</p>
+
+<h2>垃圾收集算法</h2>
+
+<p>确定了哪些对象是需要回收之后，就可以运用各种垃圾收集算法收集这些对象，例如直接回收内存，或者回收并移动整理内存。</p>
+
+<p>主要包括：</p>
+
+<ul>
+<li>标记清除(Mark-Sweep)算法：首先标记出需要回收的对象，然后统一回收被标记的对象</li>
+<li>复制(Copying)算法：将可用内存分块，当一块内存用完后将存活对象复制到其他块，并统一回收不使用的块。Java中新生代对象一般使用该方法</li>
+<li>标记整理(Mark-Compact)算法：基本同标记清除，不同的是回收时是把可用对象进行移动，以避免内存碎片问题</li>
+<li>分代收集，将内存分区域，不同区域采用不同的算法，例如Java中的新生代及老年代</li>
+</ul>
 
 
 <!-- more -->
 
 
-<p>我在vs2005以及gcc4.4.3上做了测试，都输出了ok。但这并不意味这个代码会永远输出ok。问题主要集中于这里使用了赋值语句来复制值，但却使用了memcmp这个基于内存数据比较的函数来比较值。</p>
+<p><img src="/assets/res/heap-structure.png" alt="" /></p>
 
-<p>c语言中的赋值运算符（=）被定义为基于值的复制，而不是基于内存内容的复制。</p>
+<p>如上，Java Hotspot虚拟机实现中将堆内存分为3大区域，即新生代、老年代、永久代。新生代中又分了eden、survivor0及survivor1，采用复制算法；老年代则采用标记清除及标记整理；永久代存放加载的类，类似于代码段，但同样会发生GC。</p>
 
-<blockquote><p><strong>C99 section 6.5.16.1 p2:</strong> In simple assignment (=), the value of the right operand is converted to the type of the assignment expression and replaces the value stored in the object designated by the left operand.</p></blockquote>
+<h2>垃圾收集器</h2>
 
-<p>这个其实很好理解，尤其在不同类型的数字类型间复制时，例如：</p>
+<p>垃圾收集算法在实现时会略有不同，不同的实现称为垃圾收集器。不同的垃圾收集器适用的范围还不一样，有些收集器仅能用于新生代，有些用于老年代，有些新生代老年代都可以被使用。垃圾收集器可通过JVM启动参数指定。</p>
 
-<div class="highlight"><pre><code class="language-c" data-lang="c"><span class="kt">float</span> <span class="n">a</span> <span class="o">=</span> <span class="mf">1.1</span><span class="p">;</span>
-<span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="p">;</span></code></pre></div>
+<p><img src="/assets/res/hotspot-gc-collectors.png" alt="" /></p>
+
+<p>上图中展示了新生代（年轻代）和老年代可用的各种垃圾收集器，图中的连线表示两种收集器可以配合使用。</p>
+
+<ul>
+<li>Serial收集器，单线程收集，复制算法</li>
+<li>ParNew收集器，Serial收集器的多线程版本</li>
+<li>Parallel Scavenge收集器，复制算法，吞吐量优先的收集器，更高效率地利用CPU时间，适合用于服务器程序</li>
+<li>Serial Old收集器，单线程收集，标记整理算法</li>
+<li>Parallel Old收集器，标记整理算法，Parallel Scavenge收集器的老年代版本</li>
+<li>CMS(Concurrent Mark Sweep)收集器，标记清除算法，以获取最短停顿时间为目标的收集器</li>
+<li>G1收集器，较新的收集器实现</li>
+</ul>
 
 
-<p>因为浮点数和整形数的内存布局不一样，所以肯定是基于值的一种复制。另外，按照语言标准的思路来看，内存布局这种东西一般都属于实现相关的，所以语言标准是不会依赖实现去定义语言的。</p>
+<p>JVM有些参数组合了各种收集器，例如：</p>
 
-<p>上面的定理同样用于复杂数据类型，例如结构体。我们都知道结构体每个成员之间可能会有字节补齐，而使用赋值运算符来复制时，会不会复制这些补齐字节的内容，是语言标准未规定的。这意味着使用memcmp比较两个通过赋值运算符复制的两个结构体时，其结果是未定的。</p>
+<ul>
+<li><code>UseConcMarkSweepGC</code>：使用ParNew + CMS + Serial Old收集器</li>
+<li><code>UseParallelGC</code>，运行在server模式下的默认值，使用Parallel Scavenge + Serial Old 收集器</li>
+</ul>
 
-<p>但是上面的代码例子中，比较的其实是两个int数组。这也无法确认结果吗？这个问题最终集中于，难道int也会有不确定的补齐字节数据？</p>
 
-<blockquote><p><strong>C99 6.2.6.2 integer types</strong> For signed integer types, the bits of the object representation shall be divided into three groups: value bits, padding bits, and the sign bit. [&hellip;] The values of any padding bits are unspecified.</p></blockquote>
+<h2>GC日志</h2>
 
-<p>这话其实我也不太懂。一个有符号整数int，其内也有补齐二进制位(bits)？</p>
+<p>生产服务器一般会配置GC日志，以在故障时能够分析问题所在，一般的应用可配置以下JVM参数：</p>
 
-<p>但无论如何，这个例子都不算严谨的代码。人们的建议是使用memcpy来复制这种数据，因为memcpy和memcmp都是基于内存内容来工作的。</p>
+<pre><code>-XX:+UseParallelGC -XX:+DisableExplicitGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./logs/gc.log 
+</code></pre>
+
+<p>输出日志类似：</p>
+
+<pre><code>1456772.057: [GC [PSYoungGen: 33824K-&gt;96K(33920K)] 53841K-&gt;20113K(102208K), 0.0025050 secs] [Times: user=0.00 sys=0.00, real=0.00 secs]
+1456863.534: [GC [PSYoungGen: 33824K-&gt;96K(33920K)] 53841K-&gt;20113K(102208K), 0.0020050 secs] [Times: user=0.00 sys=0.00, real=0.00 secs]
+1456962.061: [GC [PSYoungGen: 33824K-&gt;128K(33920K)] 53841K-&gt;20145K(102208K), 0.0014150 secs] [Times: user=0.01 sys=0.00, real=0.00 secs]
+</code></pre>
+
+<ul>
+<li><code>1456772.057</code>，自JVM启动后的时间值</li>
+<li><code>GC</code> 表示本次进行的是一次minor GC，即年轻代中的GC</li>
+<li><code>PSYoungGen</code> 垃圾收集器类型，这里是Parallel Scavenge</li>
+<li><code>33824K-&gt;96K(33920K)</code>，收集前后新生代大小，<code>33920K</code>为新生代总大小(eden+ 1 survivor)</li>
+<li><code>53841K-&gt;20113K(102208K)</code>，堆总大小及GC前后大小</li>
+<li><code>0.0025050 secs</code>，GC时停顿时间</li>
+</ul>
+
+
+<h2>常见策略</h2>
+
+<p>JVM GC相关的有一些策略值得注意：</p>
+
+<ul>
+<li>对象优先在eden分配，当回收时（Eden区可用内存不够），将Eden和当前Survivor还存活着的对象一次性复制到另外一块Survivor，最后清理Eden和刚才用过的Survivor。这个过程称为一次MinorGC，每次MinorGC就会增加活着对象的年龄，当年龄超过某值(-XX:MaxTenuringThreashold)时，就会被转移到老年代(Tenured)。老年代发生GC时被称为FullGC</li>
+<li>每一次发生MinorGC而存活下来的对象其年龄都会加1，较老的对象会进入老年代</li>
+<li>当分配大对象(> PretenureSizeThreshold)时，其就会直接进入老年代</li>
+<li>当年轻代(Eden+Survivor)不足以容纳存活对象时，这些对象会被全部放入老年代(分配担保机制)</li>
+</ul>
+
 
 <p class='post-footer'>
             原文地址：
-            <a href='http://codemacro.com/2012/08/17/memcmp-on-copy-value/'>http://codemacro.com/2012/08/17/memcmp-on-copy-value/</a><br/>
+            <a href='http://codemacro.com/2015/08/10/java-gc-summary/'>http://codemacro.com/2015/08/10/java-gc-summary/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
@@ -154,12 +208,12 @@
 
 
 
-<time class='entry-date' datetime='2012-08-17T11:37:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>17</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>11:37 am</span></time>
+<time class='entry-date' datetime='2015-08-10T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>10</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/categories/c-slash-c-plus-plus/'>c/c++</a>, <a class='category' href='/categories/tips/'>tips</a>
+    <a class='category' href='/categories/java/'>java</a>
   
 </span>
 
@@ -175,10 +229,8 @@
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/2012/08/14/dynamic-scope-in-lisp/" title="Previous Post: Lisp中定义变量*var*和var有什么不同？">&laquo; Lisp中定义变量*var*和var有什么不同？</a>
+        <a class="basic-alignment left" href="/2015/07/04/jcm/" title="Previous Post: 写了一个分布式名字服务JCM">&laquo; 写了一个分布式名字服务JCM</a>
       
-      
-        <a class="basic-alignment right" href="/2012/08/21/c-plus-plus-11-lambda-overview/" title="Next Post: C++11中lambda概览">C++11中lambda概览 &raquo;</a>
       
     </p>
   </footer>
@@ -259,8 +311,8 @@
       
         
         // var disqus_developer = 1;
-        var disqus_identifier = 'http://codemacro.com/2012/08/17/memcmp-on-copy-value/';
-        var disqus_url = 'http://codemacro.com/2012/08/17/memcmp-on-copy-value/';
+        var disqus_identifier = 'http://codemacro.com/2015/08/10/java-gc-summary/';
+        var disqus_url = 'http://codemacro.com/2015/08/10/java-gc-summary/';
         var disqus_script = 'embed.js';
       
     (function () {
