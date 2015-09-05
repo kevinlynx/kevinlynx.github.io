@@ -1,0 +1,417 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Java中隔离容器的实现 - loop in codes</title>
+  <meta name="author" content="Kevin Lynx">
+
+  
+  <meta name="description" content="Java中隔离容器用于隔离各个依赖库环境，解决Jar包冲突问题。 问题 应用App依赖库LibA和LibB，而LibA和LibB又同时依赖LibBase，而LibA和LibB都是其他团队开发的，其中LibA发布了一个重要的修复版本，但是依赖LibBase v2.0，而LibB还没有升级版本， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://codemacro.com/2015/09/05/java-lightweight-container">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <!--script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script-->
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<!--link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css"-->
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">loop in codes</a></h1>
+  
+    <h2>Kevin Lynx BLOG</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:codemacro.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about.html">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Java中隔离容器的实现</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-09-05T00:00:00+08:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>5</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Java中隔离容器用于隔离各个依赖库环境，解决Jar包冲突问题。</p>
+
+<h2>问题</h2>
+
+<p>应用App依赖库LibA和LibB，而LibA和LibB又同时依赖LibBase，而LibA和LibB都是其他团队开发的，其中LibA发布了一个重要的修复版本，但是依赖LibBase v2.0，而LibB还没有升级版本，LibBase还不是兼容的，那么此时升级就会面临困难。在生产环境中这种情况往往更恶劣，可能是好几层的间接依赖关系。</p>
+
+<p>隔离容器用于解决这种问题。它把LibA和LibB的环境完全隔离开来，LibBase即使类名完全相同也不互相冲突，使得LibA和LibB的升级互不影响。众所周知，Java中判定两个类是否相同，看的是类名和其对应的class loader，两者同时相同才表示相等。隔离容器正是利用这种特性实现的。</p>
+
+<h2>KContainer</h2>
+
+<p>这里我实现了一个demo，称为KContainer，源码见<a href="https://github.com/kevinlynx/kcontainer">github kcontainer</a>。这个container模仿了一些OSGI的东西，这里把LibA和LibB看成是两个bundle，bundle之间是互相隔离的，每个bundle有自己所依赖的第三方库，bundle之间的第三方库完全对外隐藏。bundle可以导出一些类给其他bundle用，bundle可以开启自己的服务。由于是个demo，我只实现关键的部分。</p>
+
+<p>KContainer的目录结构类似：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>.
+</span><span class='line'>|-- bundle
+</span><span class='line'>    |-- test1
+</span><span class='line'>        |-- test1.prop
+</span><span class='line'>        |-- classes
+</span><span class='line'>        |-- lib
+</span><span class='line'>            |-- a.jar
+</span><span class='line'>            |-- b.jar
+</span><span class='line'>    |-- test2
+</span><span class='line'>        |-- test2.prop
+</span><span class='line'>        |-- classes
+</span><span class='line'>|-- lib
+</span><span class='line'>    |-- kcontainer.jar
+</span><span class='line'>    |-- kcontainer.interface.jar</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>bundle目录存放了所有会被自动载入的bundle。每一个bundle都有一个配置文件<code>bundle-name.prop</code>，用于描述自己导出哪些类，例如：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>init=com.codemacro.test.B
+</span><span class='line'>export-class=com.codemacro.test.Export; com.codemacro.test.Export2</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p><code>init</code>指定bundle启动时需要调用的类，用户可以在这个类里开启自己的服务；<code>export-class</code>描述需要导出的类列表。bundle之间的所有类都是隔离的，但<code>export-class</code>会被统一放置，作为所有bundle共享的类。后面会描述KContainer如何处理类加载问题，这也是隔离容器的主要内容。</p>
+
+<!-- more -->
+
+
+<p>bundle依赖的类可以直接以<code>*.class</code>文件存放到<code>classes</code>目录，也可以作为<code>*.jar</code>放到<code>lib</code>目录。作为extra pratice，我还会把<code>*.jar</code>中的jar解压同时作为类加载的路径。</p>
+
+<p>KContainer本身可以作为一个framework被使用。为了示例，我写了一个入口类，加载启动完所有bundle后就退出了，这个仅作为例子，用不了生产。</p>
+
+<h2>隔离的核心实现</h2>
+
+<p>隔离的目的是分开各个bundle中的类。利用的语言特性包括：</p>
+
+<ul>
+<li>class的区分由class name和载入其的class loader共同决定</li>
+<li>当在class A中使用了class B时，JVM默认会用class A的class loader去加载class B</li>
+<li>class loader中的双亲委托机制</li>
+<li><code>URLClassLoader</code>会从指定的目录及*.jar中加载类</li>
+</ul>
+
+
+<p>KContainer的主要任务，就是为bundle实现一个自定义的class loader。</p>
+
+<p>当KContainer加载一个bundle时，在处理其<code>export-class</code>或<code>init</code>时，都是需要加载bundle中的类的。在这之前，我给每一个bundle关联一个独立的<code>BundleClassLoader</code>。然后用这个class loader去加载bundle中的类，利用class loader传递特性，使得一个bundle中的所有类都是由其关联的class loader加载的，从而实现bundle之间类隔离效果。</p>
+
+<p>实现class loader时，是实现<code>loadClass</code>还是<code>findClass</code>？通过实现<code>loadClass</code>我们可以改变class loader的双亲委托模式，制定加载类的具体顺序。但我的目的仅仅是隔离bundle，想了下其实实现<code>findClass</code>就可以达成目的。关于<code>loadClass</code>和<code>findClass</code>的区别可以参考这里 (<a href="http://blog.csdn.net/fenglibing/article/details/17471659">实现自己的类加载时，重写方法loadClass与findClass的区别</a>)。简单来说，就是<code>findClass</code>只有在类确实找不到的情况下才会被调用，在此之前，<code>loadClass</code>默认都是走的双亲委托模式。</p>
+
+<p><code>BundleClassLoader</code>派生于<code>URLClassLoader</code>，默认的parent class loader就是<code>system class loader</code> (<code>app class loader</code>)。这使得KContainer中的bundle类加载有三层选择：自己的class path；其他bundle共享的classes；jvm的class path。通过实现<code>findClass</code>，在默认路径都无法加载到类时，才尝试bundle共享的class，优先级最低。</p>
+
+<p>其实现大概为：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">BundleClassLoader</span> <span class="kd">extends</span> <span class="n">URLClassLoader</span> <span class="o">{</span>
+  <span class="kd">public</span> <span class="nf">BundleClassLoader</span><span class="o">(</span><span class="n">File</span> <span class="n">home</span><span class="o">,</span> <span class="n">SharedClassList</span> <span class="n">sharedClasses</span><span class="o">)</span> <span class="o">{</span>
+    <span class="c1">// getClassPath将bundle目录下的classes和各个jar作为class path传给URLClassLoader</span>
+    <span class="kd">super</span><span class="o">(</span><span class="n">getClassPath</span><span class="o">(</span><span class="n">home</span><span class="o">));</span> 
+    <span class="k">this</span><span class="o">.</span><span class="na">sharedClasses</span> <span class="o">=</span> <span class="n">sharedClasses</span><span class="o">;</span>
+  <span class="o">}</span>
+
+  <span class="nd">@Override</span>
+  <span class="kd">protected</span> <span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">findClass</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">ClassNotFoundException</span> <span class="o">{</span>
+    <span class="n">logger</span><span class="o">.</span><span class="na">debug</span><span class="o">(</span><span class="s">&quot;try find class {}&quot;</span><span class="o">,</span> <span class="n">name</span><span class="o">);</span>
+    <span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">claz</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+    <span class="k">try</span> <span class="o">{</span>
+      <span class="n">claz</span> <span class="o">=</span> <span class="kd">super</span><span class="o">.</span><span class="na">findClass</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
+    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">ClassNotFoundException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">claz</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+    <span class="o">}</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">claz</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">logger</span><span class="o">.</span><span class="na">debug</span><span class="o">(</span><span class="s">&quot;load from class path for {}&quot;</span><span class="o">,</span> <span class="n">name</span><span class="o">);</span>
+      <span class="k">return</span> <span class="n">claz</span><span class="o">;</span>
+    <span class="o">}</span>
+    <span class="n">claz</span> <span class="o">=</span> <span class="n">sharedClasses</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">claz</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">logger</span><span class="o">.</span><span class="na">debug</span><span class="o">(</span><span class="s">&quot;load from shared class for {}&quot;</span><span class="o">,</span> <span class="n">name</span><span class="o">);</span>
+      <span class="k">return</span> <span class="n">claz</span><span class="o">;</span>
+    <span class="o">}</span>
+    <span class="n">logger</span><span class="o">.</span><span class="na">warn</span><span class="o">(</span><span class="s">&quot;not found class {}&quot;</span><span class="o">,</span> <span class="n">name</span><span class="o">);</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nf">ClassNotFoundException</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div>
+
+
+<p>完整代码参看<a href="https://github.com/kevinlynx/kcontainer/blob/master/kcontainer/src/main/java/com/codemacro/container/BundleClassLoader.java">BundleClassLoader.java</a></p>
+
+<p>创建bundle时，会为其创建自己的class loader，并使用这个class loader来载入<code>export-class</code>和<code>init-class</code>：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">static</span> <span class="n">Bundle</span> <span class="nf">create</span><span class="o">(</span><span class="n">File</span> <span class="n">home</span><span class="o">,</span> <span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">SharedClassList</span> <span class="n">sharedClasses</span><span class="o">,</span> 
+      <span class="n">BundleConf</span> <span class="n">conf</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">BundleClassLoader</span> <span class="n">loader</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">BundleClassLoader</span><span class="o">(</span><span class="n">home</span><span class="o">,</span> <span class="n">sharedClasses</span><span class="o">);</span>
+    <span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">exports</span> <span class="o">=</span> <span class="n">conf</span><span class="o">.</span><span class="na">getExportClassNames</span><span class="o">();</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">exports</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">logger</span><span class="o">.</span><span class="na">info</span><span class="o">(</span><span class="s">&quot;load exported classes for {}&quot;</span><span class="o">,</span> <span class="n">name</span><span class="o">);</span>
+      <span class="n">loadExports</span><span class="o">(</span><span class="n">loader</span><span class="o">,</span> <span class="n">sharedClasses</span><span class="o">,</span> <span class="n">exports</span><span class="o">);</span>
+    <span class="o">}</span>
+    <span class="k">return</span> <span class="k">new</span> <span class="nf">Bundle</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">conf</span><span class="o">.</span><span class="na">getInitClassName</span><span class="o">(),</span> <span class="n">loader</span><span class="o">);</span>
+  <span class="o">}</span>
+  
+  <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">loadExports</span><span class="o">(</span><span class="n">ClassLoader</span> <span class="n">loader</span><span class="o">,</span> <span class="n">SharedClassList</span> <span class="n">sharedClasses</span><span class="o">,</span>
+      <span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">exports</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">for</span> <span class="o">(</span><span class="n">String</span> <span class="nl">claz_name:</span> <span class="n">exports</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">try</span> <span class="o">{</span>
+          <span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">claz</span> <span class="o">=</span> <span class="n">loader</span><span class="o">.</span><span class="na">loadClass</span><span class="o">(</span><span class="n">claz_name</span><span class="o">);</span> <span class="c1">// 载入class</span>
+          <span class="n">sharedClasses</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">claz_name</span><span class="o">,</span> <span class="n">claz</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">ClassNotFoundException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+          <span class="n">logger</span><span class="o">.</span><span class="na">warn</span><span class="o">(</span><span class="s">&quot;load class {} failed&quot;</span><span class="o">,</span> <span class="n">claz_name</span><span class="o">);</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+  <span class="o">}</span></code></pre></div>
+
+
+<p>以上。</p>
+
+<h2>扩展</h2>
+
+<p>扩展的地方有很多，例如支持导出package，导出一个完整的jar。当然可能需要实现<code>loadClass</code>，以改变类加载的优先级，让共享类的优先级高于jvm class path的优先级。</p>
+
+<h2>其他</h2>
+
+<h3>线程ContextClassLoader</h3>
+
+<p>提到class loader，我们看下最常接触的几类：</p>
+
+<ul>
+<li><code>XX.class.getClassLoader</code>，获取加载类<code>XX</code>的class loader</li>
+<li><code>Thread.currentThread().getContextClassLoader()</code>，获取当前线程的ContextClassLoader</li>
+<li><code>ClassLoader.getSystemClassLoader()</code>，获取system class loader</li>
+</ul>
+
+
+<p>system class loader的parent就是ext class loader，再上面就是bootstrap class loader了 (不是java类，实际获取不到)。默认情况下以上三个class loader都是一个：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">ClassLoader</span><span class="o">.</span><span class="na">getSystemClassLoader</span><span class="o">());</span>
+<span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">Main</span><span class="o">.</span><span class="na">class</span><span class="o">.</span><span class="na">getClassLoader</span><span class="o">());</span>
+<span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">().</span><span class="na">getContextClassLoader</span><span class="o">());</span></code></pre></div>
+
+
+<p>Output:</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sun.misc.Launcher$AppClassLoader@157c2bd
+</span><span class='line'>sun.misc.Launcher$AppClassLoader@157c2bd
+</span><span class='line'>sun.misc.Launcher$AppClassLoader@157c2bd</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>创建线程时，新的线程ContextClassLoader就是父线程的ContextClassLoader。在载入一个新的class时，推荐优先使用线程context class loader，例如框架<a href="http://jodd.org/">Jodd</a>中包装的。关于线程context class loader和<code>Class.getClassLoader</code>这里有个解释算是相对合理：<a href="http://www.xcoder.cn/html/web/j2ee/2013/0506/5557.html">ContextClassLoader浅析</a></p>
+
+<p>即，当你把一个对象A传递到另一个线程中，这个线程由对象B创建，A/B两个对象对应的类关联的class loader不同，在B的线程中调用A.some_method，some_method加载资源或类时，如果使用了<code>Class.getClassLoader</code>或<code>Class.forName</code>时，实际使用的是A的class loader，而这个行为可能不是预期的。这个时候就需要将代码改为<code>Thread.currentThread().getContextClassLoader()</code>。</p>
+
+<p>完。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2015/09/05/java-lightweight-container/'>http://codemacro.com/2015/09/05/java-lightweight-container/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-09-05T00:00:00+08:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>5</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/categories/java/'>java</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/2015/08/10/java-gc-summary/" title="Previous Post: Java GC总结">&laquo; Java GC总结</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (25)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (7)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2015/09/05/java-lightweight-container/">Java中隔离容器的实现</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2015/08/10/java-gc-summary/">Java GC总结</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2015/07/04/jcm/">写了一个分布式名字服务JCM</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2015/06/07/servlet-web-framework/">基于servlet实现一个web框架</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2015/05/31/java-refect-ioc/">Java中的反射及Bean容器的实现</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+<div id="recentcomments" class="dsq-widget">
+<h1 class="dsq-widget-title">Recent Comments</h1>
+<script type="text/javascript" src="http://loopincodes.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
+</div>
+<a href="http://disqus.com/">Powered by Disqus</a>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(25)</a> <a href='/categories/clang' style='font-size: 102.4%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 119.2%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.6%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.8%'>ice(2)</a> <a href='/categories/java' style='font-size: 116.8%'>java(7)</a> <a href='/categories/javascript' style='font-size: 102.4%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 112.0%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 112.0%'>lua(5)</a> <a href='/categories/module' style='font-size: 107.2%'>module(3)</a> <a href='/categories/network' style='font-size: 128.8%'>network(12)</a> <a href='/categories/other' style='font-size: 116.8%'>other(7)</a> <a href='/categories/ruby' style='font-size: 109.6%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.4%'>scala(1)</a> <a href='/categories/tips' style='font-size: 150.4%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.6%'>web(4)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - Kevin Lynx -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
+<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
+
+</p>
+
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'loopincodes';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://codemacro.com/2015/09/05/java-lightweight-container/';
+        var disqus_url = 'http://codemacro.com/2015/09/05/java-lightweight-container/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

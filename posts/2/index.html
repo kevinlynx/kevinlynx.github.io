@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="有时候在线上使用gdb调试程序core问题时，可能没有符号文件，拿到的仅是一个内存地址，如果这个指向的是一个STL对象，那么如何查看这个对象的内容呢？ 只需要知道STL各个容器的数据结构实现，就可以查看其内容。本文描述了SGI STL实现中常用容器的数据结构，以及如何在gdb中查看其内容。 &hellip;">
+  <meta name="description" content="关于JVM和其上的byte code，网上其实有足够多的资料了，我这里就简单做个提纲和介绍，权当记录吧。 stack-based VM Java byte code运行在JVM上，就像机器指令运行在物理机上，是需要遵循这个机器的指令规范的。所以认识JVM byte code， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,60 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2015/03/31/intro-java-bytecode/">初识JVM byte code</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-03-31T00:00:00+08:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>31</span><span class='date-suffix'>st</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>关于JVM和其上的byte code，网上其实有足够多的资料了，我这里就简单做个提纲和介绍，权当记录吧。</p>
+
+<h2>stack-based VM</h2>
+
+<p>Java byte code运行在JVM上，就像机器指令运行在物理机上，是需要遵循这个机器的指令规范的。所以认识JVM byte code，是需要稍微了解下JVM的。JVM是一个基于栈(stack-based)的虚拟机。很久以前我还写过类似<a href="http://www.cppblog.com/kevinlynx/archive/2010/04/15/112704.html">简单的虚拟机</a>。</p>
+
+<p>基于栈的虚拟机其操作数和指令运算的中间结果全部都在一个虚拟栈中，与之对应的是基于寄存器(register-based)的虚拟机，其操作数和指令运算结果会存放在若干个寄存器（也就是存储单元）里。x86机器就可以理解为基于寄存器的机器。</p>
+
+<p>byte code其实和x86汇编代码本质一样，无非是对应机器制定的一堆指令，这里可以举例说明下两类虚拟机的不同：</p>
+
+<pre><code># stack-based 
+push 1       # 压立即数1到栈顶
+push 2       # 压立即数2到栈顶
+add          # 弹出栈顶2个数相加，将结果3压到栈顶
+
+# register-based
+mov ax, 1    # 写立即数到寄存器ax
+add ax, 2    # 取ax中的值1与立即数2进行相加，存放结果到ax
+</code></pre>
+
+<p>关于两类实现的比较，网上也有不少资料，例如<a href="http://www.zhihu.com/question/20207106">Dalvik 虚拟机和 Sun JVM 在架构和执行方面有什么本质区别？</a>。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2015/03/31/intro-java-bytecode/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -600,48 +654,6 @@ FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2014/09/06/necessary-dtor/">C++构造/析构函数中的多态(二)</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2014-09-06T00:00:00+08:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>6</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>本来是几年以前写的一篇博客：<a href="http://codemacro.com/2012/09/17/c-plus-plus-ctor-virtual/">C++陷阱：构造函数中的多态</a>。然后有同学在评论中讨论了起来，为了记录我就在这里单独写一篇，基本上就是用编译器的实现去证明了早就被大家熟知的一些结论。</p>
-
-<p><strong>默认构造函数/析构函数不是在所有情况下都会被生成出来的。</strong>为此我还特地翻出《Inside C++ object model》：</p>
-
-<blockquote><p>2.1 Default Constructor Construction</p>
-
-<p>The C++ Annotated Reference Manual (ARM) [ELLIS90] (Section 12.1) tells us that &ldquo;default constructors…are generated (by the compiler) where needed….&rdquo;</p></blockquote>
-
-<p>后面别人还罗列了好些例子告诉你哪些情况才算<code>needed</code>。本文我就解释<code>构造函数中的多态</code>评论中的问题。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2014/09/06/necessary-dtor/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/3">&larr; Older</a>
@@ -656,11 +668,15 @@ FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (25)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (6)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (25)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (7)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2015/09/05/java-lightweight-container/">Java中隔离容器的实现</a>
+      </li>
     
       <li class="post">
         <a href="/2015/08/10/java-gc-summary/">Java GC总结</a>
@@ -678,10 +694,6 @@ FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
         <a href="/2015/05/31/java-refect-ioc/">Java中的反射及Bean容器的实现</a>
       </li>
     
-      <li class="post">
-        <a href="/2015/05/30/drill-http-plugin/">Drill中实现HTTP storage plugin</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -693,7 +705,7 @@ FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(25)</a> <a href='/categories/clang' style='font-size: 102.4%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 119.2%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.6%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.8%'>ice(2)</a> <a href='/categories/java' style='font-size: 114.4%'>java(6)</a> <a href='/categories/javascript' style='font-size: 102.4%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 112.0%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 112.0%'>lua(5)</a> <a href='/categories/module' style='font-size: 107.2%'>module(3)</a> <a href='/categories/network' style='font-size: 128.8%'>network(12)</a> <a href='/categories/other' style='font-size: 116.8%'>other(7)</a> <a href='/categories/ruby' style='font-size: 109.6%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.4%'>scala(1)</a> <a href='/categories/tips' style='font-size: 150.4%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.6%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(25)</a> <a href='/categories/clang' style='font-size: 102.4%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 119.2%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.6%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.8%'>ice(2)</a> <a href='/categories/java' style='font-size: 116.8%'>java(7)</a> <a href='/categories/javascript' style='font-size: 102.4%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 112.0%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 112.0%'>lua(5)</a> <a href='/categories/module' style='font-size: 107.2%'>module(3)</a> <a href='/categories/network' style='font-size: 128.8%'>network(12)</a> <a href='/categories/other' style='font-size: 116.8%'>other(7)</a> <a href='/categories/ruby' style='font-size: 109.6%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.4%'>scala(1)</a> <a href='/categories/tips' style='font-size: 150.4%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.6%'>web(4)</a> </span>
 </section>
 
   

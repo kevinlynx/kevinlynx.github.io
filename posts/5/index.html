@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="本文基于ICE Manual及相关文档就ICE的一些主要特性做一个概览，它不是一个tutorial，不是一个guid，更不是manual。 概览 ICE，Internet Communications Engine，按照官方介绍，是一个支持C++、.Net、Java、Python、 &hellip;">
+  <meta name="description" content="前言 因为之前一直处在游戏开发行业，由于种种原因一直对软件工程中的项目管理、项目开发方法缺乏体验。虽然项目中也曾倡导编写更多的文档，无论是模块说明文档还是设计文档，但效果一直不好。不甚理想的地方主要体现在文档的规范性欠缺、不统一、浮于表面没有实质内容。文档的编写缺乏详尽的方法指导， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,54 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2013/03/21/rup/">浅析软件工程开发方法学RUP</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-03-21T00:00:00+08:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>前言</h2>
+
+<p>因为之前一直处在游戏开发行业，由于种种原因一直对软件工程中的项目管理、项目开发方法缺乏体验。虽然项目中也曾倡导编写更多的文档，无论是模块说明文档还是设计文档，但效果一直不好。不甚理想的地方主要体现在文档的规范性欠缺、不统一、浮于表面没有实质内容。文档的编写缺乏详尽的方法指导，那么所谓的设计文档要么是用来敷衍上级要么就是随着开发人员的水平不一而千差万别。</p>
+
+<p>当我开始目前这个非游戏项目时，我也曾想，前期做好结构设计，制定好关键问题的解决方案，那么要完成这个项目就不在话下了。但是我很快就面临了一个问题：需求不定。回想身处游戏公司的那些日子，程序员总是抱怨策划需求变更过快过多，在每一次策划提出一个需求变更时，谨慎的程序员都会再三让策划保证：放心，不会变了。而我面临的问题则更为严峻。我意识到，项目的需求，就连用户也无法一一罗列出来。我们需要的是需求调研。但就算你将客户的所有需求全部挖掘出来后（这几乎不可能，因为他们自己也不太清楚自己想要什么），当你交付了第一个软件版本，几乎可以肯定客户会提出一大堆的需求变更：我要的不是这个，我要的那个怎么没有，哦，我当初以为你说的是另一个意思。</p>
+
+<p>当然，需求调研这种工作不是让程序员去做的（那会更悲剧，无论是对客户还是对程序员而言，他们都是在对牛弹琴）。但需求的不确定性也总是存在的。</p>
+
+<p>事实上，需求变化本身就是一个很正常的现象。我一向愿意更悲观地处理软件开发方面的问题，所谓小心使得万年船。基于此，我决定摆好心态学学软件开发的方法学。</p>
+
+<h2>概要</h2>
+
+<p>本文简要描述、总结了RUP开发方法学的主要内容，结合我自己的感受阐述了一些RUP的核心原则。我相信我所理解的内容是肤浅的，对于非代码的表达我更相信其是存在歧义的。所以本文仅当是一种经验参考，不必当真。</p>
+
+<p>RUP据传是用于指导大型甚至超大型项目开发的，我们做的不是这样规模的项目。但是我们需要记录下整个项目的开发过程，通过这个过程中产出的<strong>工件</strong>任何一个人可以看出这个项目是如何实现出来的，其目的在于规避唯有从海量代码中才能熟悉项目实现这种问题。这里出现了一个概念：工件，其指的是软件项目开发过程中任何留下记录的事物，例如文档、图、代码等。<strong>RUP的一个重要思想，在于其整个软件开发过程都是可推导的</strong>。例如我们通常说的软件架构，或小一点的模块结构，都是通过开发过程中前面阶段产出的工件推导得出，而<strong>不是凭借程序员的经验拍脑袋想出来的</strong>（经验不太可靠，并且千差万别，而<strong>推导</strong>意味着将每个环节变得可靠）。我们借助RUP的这个特性，创建这些工件，用以建立起软件实现的可靠知识库。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/03/21/rup/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -515,46 +563,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/08/29/mmo-chat-server/">MMO聊天服务器设计</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2012-08-29T09:54:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>29</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>9:54 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>MMO中的聊天服务主要功能就是做客户端之间的聊天内容转发。但是聊天的形式有很多，例如私聊、同场景聊、队伍内聊、工会内聊、全服务器聊、甚至临时组建房间聊。这些逻辑功能其实都是可以做在逻辑服务器上的，最多改改世界服务器，但是这样完成功能的话，不免将聊天本身的逻辑与游戏逻辑关联起来。我们希望做得更上一层，将聊天服务本身脱离开来。但是独立聊天服务还不够，因为就算独立出来了，也有可能在实现上与具体的游戏逻辑相关联。所以，我们做了进一步的抽象，想实现一个更为通用的聊天服务器。</p>
-
-<h2>设计实现</h2>
-
-<h3>实体设计</h3>
-
-<p>聊天这个过程，我们将其抽象为实体(entity)与实体间的对话。这个实体概念其实很宽泛。任何可接收聊天消息的都算做实体，例如单个玩家、一个场景、一个队伍、一个房间、一个工会、甚至整个服务器。这个思想其实就是支持整个聊天服务器设计的最根本思想。最开始，我将聊天服务器分为个体和组两个概念，其实这个抽象程度都太低，并且会导致实现上的复杂。相反，将整个系统完全使用实体这个概念来组装，就简单很多。当然，实体是有很多种类的，在处理接收聊天消息这个动作时，其处理方式就不同。例如单个玩家实体仅做消息的发送，场景实体则是将消息发给场景内的所有玩家，队伍实体就是将消息发给队伍内的所有玩家。从这一点来看，我们的实体种类其实并不多，因为场景、队伍这些，都是组实体(group entity)。用C++来描述：</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/08/29/mmo-chat-server/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/6">&larr; Older</a>
@@ -569,11 +577,15 @@
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (25)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (6)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (25)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (7)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2015/09/05/java-lightweight-container/">Java中隔离容器的实现</a>
+      </li>
     
       <li class="post">
         <a href="/2015/08/10/java-gc-summary/">Java GC总结</a>
@@ -591,10 +603,6 @@
         <a href="/2015/05/31/java-refect-ioc/">Java中的反射及Bean容器的实现</a>
       </li>
     
-      <li class="post">
-        <a href="/2015/05/30/drill-http-plugin/">Drill中实现HTTP storage plugin</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -606,7 +614,7 @@
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(25)</a> <a href='/categories/clang' style='font-size: 102.4%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 119.2%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.6%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.8%'>ice(2)</a> <a href='/categories/java' style='font-size: 114.4%'>java(6)</a> <a href='/categories/javascript' style='font-size: 102.4%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 112.0%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 112.0%'>lua(5)</a> <a href='/categories/module' style='font-size: 107.2%'>module(3)</a> <a href='/categories/network' style='font-size: 128.8%'>network(12)</a> <a href='/categories/other' style='font-size: 116.8%'>other(7)</a> <a href='/categories/ruby' style='font-size: 109.6%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.4%'>scala(1)</a> <a href='/categories/tips' style='font-size: 150.4%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.6%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(25)</a> <a href='/categories/clang' style='font-size: 102.4%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 119.2%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.6%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.8%'>ice(2)</a> <a href='/categories/java' style='font-size: 116.8%'>java(7)</a> <a href='/categories/javascript' style='font-size: 102.4%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 112.0%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 112.0%'>lua(5)</a> <a href='/categories/module' style='font-size: 107.2%'>module(3)</a> <a href='/categories/network' style='font-size: 128.8%'>network(12)</a> <a href='/categories/other' style='font-size: 116.8%'>other(7)</a> <a href='/categories/ruby' style='font-size: 109.6%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.4%'>scala(1)</a> <a href='/categories/tips' style='font-size: 150.4%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.6%'>web(4)</a> </span>
 </section>
 
   
