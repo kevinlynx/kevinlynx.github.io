@@ -45,6 +45,7 @@ comments: true
 喜欢有闭包有高阶函数的语言。
 
 * C/C++(2004-今)
+* Java
 * Python
 * Lua(2009-2012)
 * Common Lisp(2011)
@@ -52,33 +53,32 @@ comments: true
 * Erlang(2013)
 * Scala(2013-2014)
 * Javascript(2014)
-* Java
-* 汇编(破解；C++编译器实现)
 * HTML/CSS
+* 汇编(破解；C++编译器实现)
 
 ### 业余项目
 
-* [games](http://www.cppblog.com/kevinlynx/archive/2008/05/14/49783.html)，每个4000行
-* [edge2d](http://edge2d.googlecode.com/)(2007-2008)，想做个牛逼的引擎
-* [luaFeiq](https://github.com/kevinlynx/luafeiq)，想在Linux下使用飞秋
-* [ext-blog](https://github.com/kevinlynx/ext-blog)，Common Lisp写的博客系统
+* [JCM](https://github.com/kevinlynx/jcm)，分布式名字服务
+* [dy800.net](http://dy800.net)，电影页面爬虫&网站
+* [btrabbit](http://btrabbit.com)，P2P DHT种子爬虫&网站，看片神奇
+* [dhtcrawler2](https://github.com/kevinlynx/dhtcrawler2)，看片神器原型
 * [codertrace](https://github.com/kevinlynx/codertrace)，想聚合程序员信息的网站
-* [dhtcrawler2](https://github.com/kevinlynx/dhtcrawler2)，看片神器
-* [dy800.net](http://dy800.net)
-* [btrabbit](http://btrabbit.com)
-* 杂项若干
+* [ext-blog](https://github.com/kevinlynx/ext-blog)，Common Lisp写的博客系统
+* [luaFeiq](https://github.com/kevinlynx/luafeiq)，想在Linux下使用飞秋
+* [edge2d](http://edge2d.googlecode.com/)(2007-2008)，想做个牛逼的引擎
+* [games](http://www.cppblog.com/kevinlynx/archive/2008/05/14/49783.html)，每个4000行
 
 更多参考[github](http://github.com/kevinlynx)
 
 ### 经历
 
-* 高中，GVBasic/C/瞎折腾
-* 大学，C++/DirectX/HGE/PopcapFramework/Irrlicht，各种小游戏
 * 工作，网游网游，瞎折腾，非网游，瞎折腾
+* 大学，C++/DirectX/HGE/PopcapFramework/Irrlicht，各种小游戏
+* 高中，GVBasic/C/瞎折腾
 
 ### 坐标
 
-中国四川成都
+杭州/成都
 
 ### 链接
 
