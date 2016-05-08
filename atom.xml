@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2015-09-05T10:50:31+08:00</updated>
+  <updated>2016-05-08T21:11:47+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,69 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[记一次线程局部存储与动态库引起的core]]></title>
+    <link href="http://codemacro.com/2016/05/08/tls_so_coredump/"/>
+    <updated>2016-05-08T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2016/05/08/tls_so_coredump</id>
+    <content type="html"><![CDATA[<p>线上的服务退出时coredump，显示堆栈为：</p>
+
+<p><img src="http://codemacro.com/assets/res/tls_so_core/core.JPG" alt="" /></p>
+
+<p>google一下发现<a href="http://www.tuicool.com/articles/YJ3A7f">有人遇到过</a>，产生这个core的条件为：</p>
+
+<ul>
+<li>使用TLS时注册了destructor (<code>pthread_key_create</code>)，这个回调函数会在线程退出时被调用</li>
+<li>这个destructor符号位于.so中</li>
+<li>在线程退出时，这个.so已经被dlclose</li>
+</ul>
+
+
+<p>我们的程序模型中，类似于一个Web App server，有一个线程池包装了IO处理，将请求派发给应用插件，处理完后回应给客户端。应用插件是一个.so，被动态载入(dlopen)，该.so由于实现需要引入了较多的第三方.so(隐式载入)。初步排查时，整个实现是没有问题的，线程池是在.so close前关闭的。</p>
+
+<p>没有线索，于是尝试找到该TLS是哪个模块引入的。通过gdb断<code>pthread_key_create</code>，以及不为空的destructor回调可以确定几个模块，但范围不够小，这些模块基本还是些基础模块，如zookeeper/mxml以及网络模块。</p>
+
+<p>多看了几个core，发现这个回调的偏移地址都是固定的960，如上图中的<code>0x7f0f26c9f960</code>。.so被载入时，基址是会变的，但偏移是不会变的，例如通过nm查看.so中的符号时：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$nm lib/libsp_kit.so | grep loadConfig
+</span><span class='line'>00000000002de170 T _ZN8sp_basic14SortRailConfig10loadConfigEPKc</span></code></pre></td></tr></table></div></figure>
+
+
+<!-- more -->
+
+
+<p>其中<code>2de170</code>中<code>170</code>是确定不变的。所以范围可以进一步缩小，destructor是<code>pthread_key_create</code>第二个参数，每次断点触发时查看<code>rsi</code>寄存器的值就可以确定，然后发现落在了mxml库里的符号：</p>
+
+<p><img src="http://codemacro.com/assets/res/tls_so_core/mxml.JPG" alt="" /></p>
+
+<p>程序在启动时载入配置，触发了mxml在当前线程创建了TLS，这个线程是程序主线程。主线程当然是在.so被close后才退出的。如果这是问题，那应该很早前就会暴露。这是一个问题，后面会解释。但是问题排查到这个地方，又陷入了僵局。</p>
+
+<p>回头再看下core环境，可以从线程环境确定是哪个模块：</p>
+
+<p><img src="http://codemacro.com/assets/res/tls_so_core/arpc-threads.JPG" alt="" /></p>
+
+<p>core的线程31956和线程31955靠近，查看31955堆栈，发现是我们内部的rpc库(arpc)线程。那可以确定core的线程有可能和arpc有关系。函数在调用时，返回地址留在堆栈中，堆栈不一定会被其他内容覆盖，所以可以查看线程堆栈里的符号地址，大概确定是什么模块。<code>x/200a $rsp-0x300</code>查看core线程堆栈：</p>
+
+<p><img src="http://codemacro.com/assets/res/tls_so_core/arpc-stack.JPG" alt="" /></p>
+
+<p>可以看到其中确实有arpc库里的符号信息，综合线程号关系，基本可以确定core的线程是arpc线程。这个时候就突然灵关一闪，想起我们程序中有热切换机制。该机制会在收到arpc请求时，重新载入所有配置，而这个动作是发生在arpc开的线程里。查看相关代码，发现arpc资源释放确实是晚于.so的close的。于是做了下实验，程序开启后进行一次热切换，退出后果然必core。程序在生产环境时，只在业务上线时进行一次热切换，而每天又会被自动重启，重启后并不进行热切换，所以线上基本上没有暴露出来，只在部分灰度环境偶尔触发(连续两次业务上线)。</p>
+
+<p>回过头来，主线程问题怎么解释？google一圈发现，<strong>主线程退出，是不会调用TLS destructor的</strong>。参考<a href="https://github.com/rust-lang/rust/issues/28129">这里</a>，<a href="http://stackoverflow.com/questions/6357154/destruction-order-of-the-main-thread-and-the-use-of-pthread-key-create">这里</a>，以及<a href="https://github.com/rust-lang/rust/issues/19776">这里</a>。但是可以在主线程中显示调用<code>pthread_exit</code>来触发，普通线程会默认调用<code>pthread_exit</code>。</p>
+
+<p>完。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2016/05/08/tls_so_coredump/'>http://codemacro.com/2016/05/08/tls_so_coredump/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Java中隔离容器的实现]]></title>
@@ -4006,210 +4069,6 @@ rw-r--r-- 60833/100   2448 Sep 14 02:16 2014 lib.o
 <p class='post-footer'>
             原文地址：
             <a href='http://codemacro.com/2014/09/15/inside-static-library/'>http://codemacro.com/2014/09/15/inside-static-library/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[理解git常用命令原理]]></title>
-    <link href="http://codemacro.com/2014/09/09/understand-git/"/>
-    <updated>2014-09-09T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2014/09/09/understand-git</id>
-    <content type="html"><![CDATA[<p>git不同于类似SVN这种版本管理系统，虽然熟悉常用的操作就可以满足大部分需求，但为了在遇到麻烦时不至于靠蛮力去尝试，了解git的原理还是很有必要。</p>
-
-<h2>文件</h2>
-
-<p>通过git管理的文件版本信息全部存放在根目录<code>.git</code>下，稍微看下：</p>
-
-<pre><code>$ ls .git
-COMMIT_EDITMSG  HEAD       branches  description  index  logs     packed-refs
-FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
-</code></pre>
-
-<p>git除了提供给我们平时常用的一些命令之外，还有很多底层命令，可以用于查看以上部分文件表示的东西。</p>
-
-<h2>三个区域/三类对象</h2>
-
-<p>理解git里的三个区域概念非常重要。git里很多常用的命令都是围绕着这三个区域来做的。它们分别为：</p>
-
-<ul>
-<li>working directory，也就是你所操作的那些文件</li>
-<li>history，你所提交的所有记录，文件历史内容等等。<strong>git是个分布式版本管理系统，在你本地有项目的所有历史提交记录；文件历史记录；提交日志等等。</strong></li>
-<li>stage(index)，暂存区域，本质上是个文件，也就是<code>.git/index</code></li>
-</ul>
-
-
-<!-- more -->
-
-
-<p>git中还有三类常用对象（实际不止三种），理解这三类对象也很重要。分别为：</p>
-
-<ul>
-<li>blob，用于表示一个文件</li>
-<li>tree，用于表示一个目录，索引到若干文件或子目录</li>
-<li>commit，用于表示一次提交(commit)</li>
-</ul>
-
-
-<p>所有对象都会以文件的形式保存在<code>.git/objects</code>目录，一个对象一个文件。</p>
-
-<p>接下来把上面所有的内容关联起来。做以下操作：</p>
-
-<pre><code>$ mkdir test &amp;&amp; cd test
-$ git init
-$ ls -a .git/objects             # 没有文件
-.  ..  info  pack
-$ touch readme                   # working directory里增加了一个readme文件
-$ git add readme                 # 添加一个文件到stage区域
-$ git ls-files --stage           # 这个命令可以查看stage区域里的内容，可以看到有readme
-100644 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 0       readme
-$ ls -a .git/objects             # 同时.git/objects增加了一个e6的目录
-.  ..  e6  info  pack
-$ ls -a .git/objects/e6/         # e6目录下增加了一个文件
-.  ..  9de29bb2d1d6434b8b29ae775ad8c2e48c5391
-</code></pre>
-
-<p>上面的操作展示了git中三个区域三个对象的部分关联关系。git中每个对象都以一个40个字符长度的SHA-1哈希值为标识，以这40个字符的前2个字符作为文件夹，以后38个字符为文件名。</p>
-
-<p>基于以上继续操作：</p>
-
-<pre><code>$ git commit -m 'first commit'   # commit会将stage里标识的文件提交到history区域
-[master (root-commit) 8bf6969] first commit
- 0 files changed, 0 insertions(+), 0 deletions(-)
- create mode 100644 readme
-
-$ ls -a .git/objects             # 增加了2个文件，也就是2个对象
-.  ..  8b  e6  e8  info  pack
-$ git ls-files --stage           # stage仅表示当前被版本管理的文件，所以内容不变
-100644 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 0       readme
-
-# git cat-file 命令可以用于查看.git/objects下的文件，意即可用于查看对象
-$ git cat-file -t e69de29bb2d1d6434b8b29ae775ad8c2e48c5391      # 这个是之前git add readme产生的文件对象 blob
-blob
-
-# 同样我们来查看git commit -m后新增的两个对象
-
-$ ls .git/objects/8b/
-f696927c17526eb8f0c6dae8badb968a001ed0
-$ git cat-file -t 8bf696927c17526eb8f0c6dae8badb968a001ed0  # 记得带上8b这个文件夹名，才算一个完整的对象ID。这是一个commit对象
-commit
-$ ls .git/objects/e8
-0ad49ace82167de62e498622d70377d913c79e
-$ git cat-file -t e80ad49ace82167de62e498622d70377d913c79e  # tree对象
-tree
-</code></pre>
-
-<p>区域和对象如何交互的可以用下图描述：</p>
-
-<p><img src="http://codemacro.com/assets/res/git-objects.png" alt="" /></p>
-
-<p>通过<code>git cat-file -p</code>可以查看对象的更多描述，<code>git cat-file -t</code>仅获取对象的类型。做以下操作获得更深的认识：</p>
-
-<pre><code># 这个commit对象记录了提交者的信息，还包括指向的tree对象
-$  git cat-file -p 8bf696927c17526eb8f0c6dae8badb968a001ed0
-tree e80ad49ace82167de62e498622d70377d913c79e
-author Kevin Lynx &lt;kevinlynx@gmail.com&gt; 1410090424 +0800
-committer Kevin Lynx &lt;kevinlynx@gmail.com&gt; 1410090424 +0800
-
-first commit
-
-# 查看tree对象可以看出tree指向的blob对象 
-$ git cat-file -p e80ad49ace82167de62e498622d70377d913c79e
-100644 blob e69de29bb2d1d6434b8b29ae775ad8c2e48c5391    readme
-</code></pre>
-
-<p>即使是已经被版本管理的文件，发生改动后（正常改动或合并）都使用<code>git add</code>来重新mark它。创建第二次提交进一步认识：</p>
-
-<pre><code>$ echo 'hello git' &gt; readme
-$ touch install
-$ git ls-files --stage       # 不使用git add，暂存区域内容没变
-100644 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 0       readme
-
-# 此时stage里内容未变，提示no changes added to commit
-$ git commit
-# On branch master
-# Changed but not updated:
-#   (use "git add &lt;file&gt;..." to update what will be committed)
-#   (use "git checkout -- &lt;file&gt;..." to discard changes in working directory)
-#
-#       modified:   readme
-#
-# Untracked files:
-#   (use "git add &lt;file&gt;..." to include in what will be committed)
-#
-#       install
-no changes added to commit (use "git add" and/or "git commit -a")
-
-$ git add readme
-$ ls .git/objects/  # git add之后.git/objects下新增文件
-8b  8d  e6  e8  info  pack
-$ ls .git/objects/8d/
-0e41234f24b6da002d962a26c2495ea16a425f
-$ git cat-file -p 8d0e41234f24b6da002d962a26c2495ea16a425f # 查看该新增对象
-hello git
-
-# 这个时候还可以在提交前撤销git add readme
-$ git reset readme  # 从history到stage
-Unstaged changes after reset:
-M       readme
-$ cat readme
-hello git
-$ git checkout readme # 从stage到working directory
-$ cat readme # 没有内容，回到第一个版本
-
-$ git add install # 添加新创建的文件
-$ git ls-files --stage # stage中的内容是最新的readme和新添加的install
-100644 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 0       install
-100644 8d0e41234f24b6da002d962a26c2495ea16a425f 0       readme
-$ ls .git/objects/
-8b  8d  e6  e8  info  pack
-</code></pre>
-
-<p>以上，发现一个有趣的现象：新加的<code>install</code>文件的SHA-1哈希值和之前的<code>readme</code>相同，这是因为这2个文件都是空的，内容相同。继续：</p>
-
-<pre><code>$ git commit -m 'second commit'
-$ ls .git/objects/  # 提交后新增2个对象
-45  72  8b  8d  e6  e8  info  pack
-
-$ ls .git/objects/72/
-b94e949c5fca6092cc74c751a7bb35ee71c283
-$ git cat-file -p 72b94e949c5fca6092cc74c751a7bb35ee71c283
-tree 45cf0bd049d7eea4558b14f33a894db27c7c1130                    # 新创建的tree对象
-parent 8bf696927c17526eb8f0c6dae8badb968a001ed0                  # commit对象有parent，正是上一次提交
-author Kevin Lynx &lt;kevinlynx@gmail.com&gt; 1410094456 +0800
-committer Kevin Lynx &lt;kevinlynx@gmail.com&gt; 1410094456 +0800
-
-second commit
-# 新创建的tree对象指向了2个文件
-$ git cat-file -p 45cf0bd049d7eea4558b14f33a894db27c7c1130
-100644 blob e69de29bb2d1d6434b8b29ae775ad8c2e48c5391    install
-100644 blob 8d0e41234f24b6da002d962a26c2495ea16a425f    readme
-</code></pre>
-
-<p>需要注意，有时候我们使用<code>git commit -a</code>，它会直接将已经加入版本管理的文件一起提交，从而跳过了<code>git add</code>这个过程。同git很多操作一样，它只是一个快捷操作。</p>
-
-<h2>总结</h2>
-
-<p>从上面的内容其实已经可以看出git的优势所在，它可以完全不需要服务器就完成一个版本控制系统的所有事情。在.git文件中它记录了所有的文件的所有历史提交，记录了每一次提交的信息。</p>
-
-<p>git的常用操作中还会涉及到分支、远端仓库等，空了再写。</p>
-
-<h2>参考文档</h2>
-
-<ul>
-<li><a href="http://www.nowamagic.net/academy/detail/48160210">Git的思想和基本工作原理</a></li>
-<li><a href="http://marklodato.github.io/visual-git-guide/index-zh-cn.html?no-svg">图解Git</a></li>
-<li><a href="http://blog.jobbole.com/26209/">Git详解之九：Git内部原理</a></li>
-<li><a href="http://www.oschina.net/translate/git-fetch-and-merge">Git 少用 Pull 多用 Fetch 和 Merge</a></li>
-</ul>
-
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2014/09/09/understand-git/'>http://codemacro.com/2014/09/09/understand-git/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>

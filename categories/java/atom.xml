@@ -4,7 +4,7 @@
   <title><![CDATA[Category: java | loop in codes]]></title>
   <link href="http://codemacro.com/categories/java/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2015-09-05T10:51:24+08:00</updated>
+  <updated>2016-05-08T21:11:47+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -85,65 +85,61 @@ export-class=com.codemacro.test.Export; com.codemacro.test.Export2
 
 <p>其实现大概为：</p>
 
-<p>{% highlight java %}
-public class BundleClassLoader extends URLClassLoader {
-  public BundleClassLoader(File home, SharedClassList sharedClasses) {
-    // getClassPath将bundle目录下的classes和各个jar作为class path传给URLClassLoader
-    super(getClassPath(home));
-    this.sharedClasses = sharedClasses;
-  }</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">BundleClassLoader</span> <span class="kd">extends</span> <span class="n">URLClassLoader</span> <span class="o">{</span>
+  <span class="kd">public</span> <span class="nf">BundleClassLoader</span><span class="o">(</span><span class="n">File</span> <span class="n">home</span><span class="o">,</span> <span class="n">SharedClassList</span> <span class="n">sharedClasses</span><span class="o">)</span> <span class="o">{</span>
+    <span class="c1">// getClassPath将bundle目录下的classes和各个jar作为class path传给URLClassLoader</span>
+    <span class="kd">super</span><span class="o">(</span><span class="n">getClassPath</span><span class="o">(</span><span class="n">home</span><span class="o">));</span>
+    <span class="k">this</span><span class="o">.</span><span class="na">sharedClasses</span> <span class="o">=</span> <span class="n">sharedClasses</span><span class="o">;</span>
+  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>  @Override
-  protected Class&lt;?> findClass(String name) throws ClassNotFoundException {
-    logger.debug(&ldquo;try find class {}&rdquo;, name);
-    Class&lt;?> claz = null;
-    try {
-      claz = super.findClass(name);
-    } catch (ClassNotFoundException e) {
-      claz = null;
-    }
-    if (claz != null) {
-      logger.debug(&ldquo;load from class path for {}&rdquo;, name);
-      return claz;
-    }
-    claz = sharedClasses.get(name);
-    if (claz != null) {
-      logger.debug(&ldquo;load from shared class for {}&rdquo;, name);
-      return claz;
-    }
-    logger.warn(&ldquo;not found class {}&rdquo;, name);
-    throw new ClassNotFoundException(name);
-  }
-}
-{% endhighlight %}
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="nd">@Override</span>
+  <span class="kd">protected</span> <span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;</span> <span class="n">findClass</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">ClassNotFoundException</span> <span class="o">{</span>
+    <span class="n">logger</span><span class="o">.</span><span class="na">debug</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="k">try</span> <span class="n">find</span> <span class="kd">class</span> <span class="err">{}&amp;</span><span class="nc">rdquo</span><span class="o">;,</span> <span class="n">name</span><span class="o">);</span>
+    <span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;</span> <span class="n">claz</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+    <span class="k">try</span> <span class="o">{</span>
+      <span class="n">claz</span> <span class="o">=</span> <span class="kd">super</span><span class="o">.</span><span class="na">findClass</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
+    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">ClassNotFoundException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">claz</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+    <span class="o">}</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">claz</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">logger</span><span class="o">.</span><span class="na">debug</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">load</span> <span class="n">from</span> <span class="kd">class</span> <span class="nc">path</span> <span class="k">for</span> <span class="o">{}&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">name</span><span class="o">);</span>
+      <span class="k">return</span> <span class="n">claz</span><span class="o">;</span>
+    <span class="o">}</span>
+    <span class="n">claz</span> <span class="o">=</span> <span class="n">sharedClasses</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">claz</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">logger</span><span class="o">.</span><span class="na">debug</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">load</span> <span class="n">from</span> <span class="n">shared</span> <span class="kd">class</span> <span class="nc">for</span> <span class="o">{}&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">name</span><span class="o">);</span>
+      <span class="k">return</span> <span class="n">claz</span><span class="o">;</span>
+    <span class="o">}</span>
+    <span class="n">logger</span><span class="o">.</span><span class="na">warn</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">not</span> <span class="n">found</span> <span class="kd">class</span> <span class="err">{}&amp;</span><span class="nc">rdquo</span><span class="o">;,</span> <span class="n">name</span><span class="o">);</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nf">ClassNotFoundException</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div>
 完整代码参看<a href="https://github.com/kevinlynx/kcontainer/blob/master/kcontainer/src/main/java/com/codemacro/container/BundleClassLoader.java">BundleClassLoader.java</a></p>
 
 <p>创建bundle时，会为其创建自己的class loader，并使用这个class loader来载入<code>export-class</code>和<code>init-class</code>：</p>
 
-<p>{% highlight java %}
-  public static Bundle create(File home, String name, SharedClassList sharedClasses,
-      BundleConf conf) {
-    BundleClassLoader loader = new BundleClassLoader(home, sharedClasses);
-    List<String> exports = conf.getExportClassNames();
-    if (exports != null) {
-      logger.info(&ldquo;load exported classes for {}&rdquo;, name);
-      loadExports(loader, sharedClasses, exports);
-    }
-    return new Bundle(name, conf.getInitClassName(), loader);
-  }</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">static</span> <span class="n">Bundle</span> <span class="nf">create</span><span class="o">(</span><span class="n">File</span> <span class="n">home</span><span class="o">,</span> <span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">SharedClassList</span> <span class="n">sharedClasses</span><span class="o">,</span>
+      <span class="n">BundleConf</span> <span class="n">conf</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">BundleClassLoader</span> <span class="n">loader</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">BundleClassLoader</span><span class="o">(</span><span class="n">home</span><span class="o">,</span> <span class="n">sharedClasses</span><span class="o">);</span>
+    <span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">exports</span> <span class="o">=</span> <span class="n">conf</span><span class="o">.</span><span class="na">getExportClassNames</span><span class="o">();</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">exports</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">logger</span><span class="o">.</span><span class="na">info</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">load</span> <span class="n">exported</span> <span class="n">classes</span> <span class="k">for</span> <span class="o">{}&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">name</span><span class="o">);</span>
+      <span class="n">loadExports</span><span class="o">(</span><span class="n">loader</span><span class="o">,</span> <span class="n">sharedClasses</span><span class="o">,</span> <span class="n">exports</span><span class="o">);</span>
+    <span class="o">}</span>
+    <span class="k">return</span> <span class="k">new</span> <span class="nf">Bundle</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">conf</span><span class="o">.</span><span class="na">getInitClassName</span><span class="o">(),</span> <span class="n">loader</span><span class="o">);</span>
+  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>  private static void loadExports(ClassLoader loader, SharedClassList sharedClasses,
-      List<String> exports) {
-      for (String claz_name: exports) {
-        try {
-          Class&lt;?> claz = loader.loadClass(claz_name); // 载入class
-          sharedClasses.put(claz_name, claz);
-        } catch (ClassNotFoundException e) {
-          logger.warn(&ldquo;load class {} failed&rdquo;, claz_name);
-        }
-      }
-  }
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">loadExports</span><span class="o">(</span><span class="n">ClassLoader</span> <span class="n">loader</span><span class="o">,</span> <span class="n">SharedClassList</span> <span class="n">sharedClasses</span><span class="o">,</span>
+      <span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">exports</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">for</span> <span class="o">(</span><span class="n">String</span> <span class="nl">claz_name:</span> <span class="n">exports</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">try</span> <span class="o">{</span>
+          <span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;</span> <span class="n">claz</span> <span class="o">=</span> <span class="n">loader</span><span class="o">.</span><span class="na">loadClass</span><span class="o">(</span><span class="n">claz_name</span><span class="o">);</span> <span class="c1">// 载入class</span>
+          <span class="n">sharedClasses</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">claz_name</span><span class="o">,</span> <span class="n">claz</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">ClassNotFoundException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+          <span class="n">logger</span><span class="o">.</span><span class="na">warn</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">load</span> <span class="kd">class</span> <span class="err">{} </span><span class="nc">failed</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">claz_name</span><span class="o">);</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+  <span class="o">}</span></code></pre></div></p>
 
 <p>以上。</p>
 
@@ -166,11 +162,9 @@ public class BundleClassLoader extends URLClassLoader {
 
 <p>system class loader的parent就是ext class loader，再上面就是bootstrap class loader了 (不是java类，实际获取不到)。默认情况下以上三个class loader都是一个：</p>
 
-<p>{% highlight java %}
-System.out.println(ClassLoader.getSystemClassLoader());
-System.out.println(Main.class.getClassLoader());
-System.out.println(Thread.currentThread().getContextClassLoader());
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">ClassLoader</span><span class="o">.</span><span class="na">getSystemClassLoader</span><span class="o">());</span>
+<span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">Main</span><span class="o">.</span><span class="na">class</span><span class="o">.</span><span class="na">getClassLoader</span><span class="o">());</span>
+<span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">().</span><span class="na">getContextClassLoader</span><span class="o">());</span></code></pre></div></p>
 
 <p>Output:</p>
 
@@ -206,7 +200,7 @@ sun.misc.Launcher$AppClassLoader@157c2bd
 
 <p>可达性分析的基本思想是：</p>
 
-<blockquote><p>通过一系列的称为"GC Roots"的对象作为起始点，从这些节点开始向下搜索，搜索所走过的路径称为引用链，当一个对象到GC Roots没有任何引用链项链时，则证明此对象是不可用的。</p></blockquote>
+<blockquote><p>通过一系列的称为&#8221;GC Roots&#8221;的对象作为起始点，从这些节点开始向下搜索，搜索所走过的路径称为引用链，当一个对象到GC Roots没有任何引用链项链时，则证明此对象是不可用的。</p></blockquote>
 
 <p>在Java中有很多种类的对象可以作为GC Roots，例如类静态属性引用的对象。</p>
 
@@ -375,19 +369,17 @@ sun.misc.Launcher$AppClassLoader@157c2bd
 
 <p>部署好了jcm.server，并注册了cluster后，就可以通过jcm.subscriber使用：</p>
 
-<p>{% highlight java %}
-// 传入需要使用的集群名hello9/hello，以及传入jcm.server地址，可以多个：127.0.0.1:8080
-Subscriber subscriber = new Subscriber( Arrays.asList(&ldquo;127.0.0.1:8080&rdquo;), Arrays.asList(&ldquo;hello9&rdquo;, &ldquo;hello&rdquo;));
-// 使用轮询负载均衡策略
-RRAllocator rr = new RRAllocator();
-subscriber.addListener(rr);
-subscriber.startup();
-for (int i = 0; i &lt; 2; ++i) {
-  // rr.alloc 根据cluster名字获取可用的node
-  System.out.println(rr.alloc(&ldquo;hello9&rdquo;, ProtoType.HTTP));
-}
-subscriber.shutdown();
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="c1">// 传入需要使用的集群名hello9/hello，以及传入jcm.server地址，可以多个：127.0.0.1:8080</span>
+<span class="n">Subscriber</span> <span class="n">subscriber</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">Subscriber</span><span class="o">(</span> <span class="n">Arrays</span><span class="o">.</span><span class="na">asList</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="mf">127.0</span><span class="o">.</span><span class="mf">0.1</span><span class="o">:</span><span class="mi">8080</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;),</span> <span class="n">Arrays</span><span class="o">.</span><span class="na">asList</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">hello9</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">hello</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;));</span>
+<span class="c1">// 使用轮询负载均衡策略</span>
+<span class="n">RRAllocator</span> <span class="n">rr</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">RRAllocator</span><span class="o">();</span>
+<span class="n">subscriber</span><span class="o">.</span><span class="na">addListener</span><span class="o">(</span><span class="n">rr</span><span class="o">);</span>
+<span class="n">subscriber</span><span class="o">.</span><span class="na">startup</span><span class="o">();</span>
+<span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&amp;</span><span class="n">lt</span><span class="o">;</span> <span class="mi">2</span><span class="o">;</span> <span class="o">++</span><span class="n">i</span><span class="o">)</span> <span class="o">{</span>
+  <span class="c1">// rr.alloc 根据cluster名字获取可用的node</span>
+  <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">rr</span><span class="o">.</span><span class="na">alloc</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">hello9</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">ProtoType</span><span class="o">.</span><span class="na">HTTP</span><span class="o">));</span>
+<span class="o">}</span>
+<span class="n">subscriber</span><span class="o">.</span><span class="na">shutdown</span><span class="o">();</span></code></pre></div></p>
 
 <h2>JCM实现</h2>
 
@@ -516,28 +508,26 @@ POST    /hello      com.codemacro.webdemo.test.TestController.sayHello
 
 <p>这个web framework URI action部分（或者说URI routing）如同前面描述，action的编写如：</p>
 
-<p>{% highlight java %}
-public class TestController extends BaseController {
-  // 返回字符串
-  public Result index() {
-    return ok(&ldquo;hello world&rdquo;);
-  }</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestController</span> <span class="kd">extends</span> <span class="n">BaseController</span> <span class="o">{</span>
+  <span class="c1">// 返回字符串</span>
+  <span class="kd">public</span> <span class="n">Result</span> <span class="nf">index</span><span class="o">()</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="nf">ok</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">hello</span> <span class="n">world</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;);</span>
+  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>  // HTTP 404
-  public Result code404() {
-    return status(404, &ldquo;not found&rdquo;);
-  }</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="c1">// HTTP 404</span>
+  <span class="kd">public</span> <span class="n">Result</span> <span class="nf">code404</span><span class="o">()</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="nf">status</span><span class="o">(</span><span class="mi">404</span><span class="o">,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">not</span> <span class="n">found</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;);</span>
+  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>  // 使用JSP模板渲染
-  public Result template() {
-    String[] langs = new String[] {&ldquo;c++&rdquo;, &ldquo;java&rdquo;, &ldquo;python&rdquo;};
-    return ok(jsp(&ldquo;index.jsp&rdquo;)
-        .put(&ldquo;name&rdquo;, &ldquo;kevin&rdquo;)
-        .put(&ldquo;langs&rdquo;,  langs)
-        );
-  }
-}
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="c1">// 使用JSP模板渲染</span>
+  <span class="kd">public</span> <span class="n">Result</span> <span class="nf">template</span><span class="o">()</span> <span class="o">{</span>
+    <span class="n">String</span><span class="o">[]</span> <span class="n">langs</span> <span class="o">=</span> <span class="k">new</span> <span class="n">String</span><span class="o">[]</span> <span class="o">{&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">c</span><span class="o">++&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">java</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">python</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;};</span>
+    <span class="k">return</span> <span class="nf">ok</span><span class="o">(</span><span class="n">jsp</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">index</span><span class="o">.</span><span class="na">jsp</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;)</span>
+        <span class="o">.</span><span class="na">put</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">name</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">kevin</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;)</span>
+        <span class="o">.</span><span class="na">put</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">langs</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span>  <span class="n">langs</span><span class="o">)</span>
+        <span class="o">);</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div></p>
 
 <!-- more -->
 
@@ -578,18 +568,16 @@ GET /index.jsp com.codemacro.webdemo.test.TestController.template
 
 <p>servlet filter的接口包含：</p>
 
-<p>{% highlight java %}
-public class MyServletFilter implements Filter {
-  // web app启动时调用一次，可用于web框架初始化
-  public void init(FilterConfig conf) throws ServletException { }</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MyServletFilter</span> <span class="kd">implements</span> <span class="n">Filter</span> <span class="o">{</span>
+  <span class="c1">// web app启动时调用一次，可用于web框架初始化</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">init</span><span class="o">(</span><span class="n">FilterConfig</span> <span class="n">conf</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">ServletException</span> <span class="o">{</span> <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>  // 满足filter url-pattern时就会调用；req/res分别对应HTTP请求和回应
-  public void doFilter(ServletRequest req, ServletResponse res,
-    FilterChain chain) throws IOException, ServletException { }</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="c1">// 满足filter url-pattern时就会调用；req/res分别对应HTTP请求和回应</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">doFilter</span><span class="o">(</span><span class="n">ServletRequest</span> <span class="n">req</span><span class="o">,</span> <span class="n">ServletResponse</span> <span class="n">res</span><span class="o">,</span>
+    <span class="n">FilterChain</span> <span class="n">chain</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">,</span> <span class="n">ServletException</span> <span class="o">{</span> <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>  public void destroy() { }
-}
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">destroy</span><span class="o">()</span> <span class="o">{</span> <span class="o">}</span>
+<span class="o">}</span></code></pre></div></p>
 
 <p><code>init</code>接口可用于启动时载入<code>routes</code>配置文件，并建立URI到action的映射。</p>
 
@@ -597,54 +585,50 @@ public class MyServletFilter implements Filter {
 
 <p><code>ActionManager</code>负责启动时载入<code>routes</code>配置，建立URI到action的映射。一个URI包含了HTTP method和URI String，例如<code>GET /index</code>。action既然映射到了类接口上，那么可以在启动时就同过Java反射找到对应的类及接口。简单起见，每次收到URI的请求时，就创建这个类对应的对象，然后调用映射的接口即可。</p>
 
-<p>{% highlight java %}
-// 例如：registerAction(&ldquo;com.codemacro.webdemo.test.TestController&rdquo;, &ldquo;index&rdquo;, &ldquo;/index&rdquo;, &ldquo;GET&rdquo;);
-public void registerAction(String clazName, String methodName, String uri, String method) {
-  try {
-    uri = &ldquo;/&rdquo; + appName + uri;
-    // 载入对应的class
-    Class&lt;? extends BaseController> clazz = (Class&lt;? extends BaseController>) loadClass(clazName);
-    // 取得对应的接口
-    Method m = clazz.getMethod(methodName, (Class&lt;?>[])null);
-    // 接口要求必须返回Result
-    if (m.getReturnType() != Result.class) {
-      throw new RuntimeException(&ldquo;action method return type mismatch: &rdquo; + uri);
-    }
-    ActionKey k = new ActionKey(uri, getMethod(method));
-    ActionValue v = new ActionValue(clazz, m);
-    logger.debug(&ldquo;register action {} {} {} {}&rdquo;, clazName, methodName, uri, method);
-    // 建立映射
-    actions.put(k, v);
-  } catch (Exception e) {
-    throw new RuntimeException(&ldquo;registerAction failed: &rdquo; + uri, e);
-  }
-}
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="c1">// 例如：registerAction(&amp;ldquo;com.codemacro.webdemo.test.TestController&amp;rdquo;, &amp;ldquo;index&amp;rdquo;, &amp;ldquo;/index&amp;rdquo;, &amp;ldquo;GET&amp;rdquo;);</span>
+<span class="kd">public</span> <span class="kt">void</span> <span class="nf">registerAction</span><span class="o">(</span><span class="n">String</span> <span class="n">clazName</span><span class="o">,</span> <span class="n">String</span> <span class="n">methodName</span><span class="o">,</span> <span class="n">String</span> <span class="n">uri</span><span class="o">,</span> <span class="n">String</span> <span class="n">method</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">try</span> <span class="o">{</span>
+    <span class="n">uri</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;/&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">+</span> <span class="n">appName</span> <span class="o">+</span> <span class="n">uri</span><span class="o">;</span>
+    <span class="c1">// 载入对应的class</span>
+    <span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?</span> <span class="kd">extends</span> <span class="n">BaseController</span><span class="o">&gt;</span> <span class="n">clazz</span> <span class="o">=</span> <span class="o">(</span><span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?</span> <span class="kd">extends</span> <span class="n">BaseController</span><span class="o">&gt;)</span> <span class="n">loadClass</span><span class="o">(</span><span class="n">clazName</span><span class="o">);</span>
+    <span class="c1">// 取得对应的接口</span>
+    <span class="n">Method</span> <span class="n">m</span> <span class="o">=</span> <span class="n">clazz</span><span class="o">.</span><span class="na">getMethod</span><span class="o">(</span><span class="n">methodName</span><span class="o">,</span> <span class="o">(</span><span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;[])</span><span class="kc">null</span><span class="o">);</span>
+    <span class="c1">// 接口要求必须返回Result</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">m</span><span class="o">.</span><span class="na">getReturnType</span><span class="o">()</span> <span class="o">!=</span> <span class="n">Result</span><span class="o">.</span><span class="na">class</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">action</span> <span class="n">method</span> <span class="k">return</span> <span class="n">type</span> <span class="nl">mismatch:</span> <span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">+</span> <span class="n">uri</span><span class="o">);</span>
+    <span class="o">}</span>
+    <span class="n">ActionKey</span> <span class="n">k</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">ActionKey</span><span class="o">(</span><span class="n">uri</span><span class="o">,</span> <span class="n">getMethod</span><span class="o">(</span><span class="n">method</span><span class="o">));</span>
+    <span class="n">ActionValue</span> <span class="n">v</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">ActionValue</span><span class="o">(</span><span class="n">clazz</span><span class="o">,</span> <span class="n">m</span><span class="o">);</span>
+    <span class="n">logger</span><span class="o">.</span><span class="na">debug</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">register</span> <span class="n">action</span> <span class="o">{}</span> <span class="o">{}</span> <span class="o">{}</span> <span class="o">{}&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">clazName</span><span class="o">,</span> <span class="n">methodName</span><span class="o">,</span> <span class="n">uri</span><span class="o">,</span> <span class="n">method</span><span class="o">);</span>
+    <span class="c1">// 建立映射</span>
+    <span class="n">actions</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">k</span><span class="o">,</span> <span class="n">v</span><span class="o">);</span>
+  <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">registerAction</span> <span class="nl">failed:</span> <span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">+</span> <span class="n">uri</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div></p>
 
 <p>controller都要求派生于<code>BaseController</code>，这样才可以利用<code>BaseController</code>更方便地获取请求数据之类，例如query string/cookie 等。</p>
 
 <p>收到请求时，就需要根据请求的HTTP Method和URI string取得之前建立的映射，并调用之：</p>
 
-<p>{% highlight java %}
-public boolean invoke(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-  String uri = req.getRequestURI();
-  String method = req.getMethod().toUpperCase();
-  try {
-    // 取得之前建立的映射，Map查找
-    ActionValue v = getAction(uri, method);
-    // 创建新的controller对象
-    BaseController ctl = (BaseController) v.clazz.newInstance();
-    ctl.init(req, resp, this);
-    logger.debug(&ldquo;invoke action {}&rdquo;, uri);
-    // 调用绑定的接口
-    Result result = (Result) v.method.invoke(ctl, (Object[]) null);
-    // 渲染结果
-    result.render();
-  } catch (Exception e) {
-    &hellip;
-  }
-}
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">invoke</span><span class="o">(</span><span class="n">HttpServletRequest</span> <span class="n">req</span><span class="o">,</span> <span class="n">HttpServletResponse</span> <span class="n">resp</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+  <span class="n">String</span> <span class="n">uri</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="na">getRequestURI</span><span class="o">();</span>
+  <span class="n">String</span> <span class="n">method</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="na">getMethod</span><span class="o">().</span><span class="na">toUpperCase</span><span class="o">();</span>
+  <span class="k">try</span> <span class="o">{</span>
+    <span class="c1">// 取得之前建立的映射，Map查找</span>
+    <span class="n">ActionValue</span> <span class="n">v</span> <span class="o">=</span> <span class="n">getAction</span><span class="o">(</span><span class="n">uri</span><span class="o">,</span> <span class="n">method</span><span class="o">);</span>
+    <span class="c1">// 创建新的controller对象</span>
+    <span class="n">BaseController</span> <span class="n">ctl</span> <span class="o">=</span> <span class="o">(</span><span class="n">BaseController</span><span class="o">)</span> <span class="n">v</span><span class="o">.</span><span class="na">clazz</span><span class="o">.</span><span class="na">newInstance</span><span class="o">();</span>
+    <span class="n">ctl</span><span class="o">.</span><span class="na">init</span><span class="o">(</span><span class="n">req</span><span class="o">,</span> <span class="n">resp</span><span class="o">,</span> <span class="k">this</span><span class="o">);</span>
+    <span class="n">logger</span><span class="o">.</span><span class="na">debug</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">invoke</span> <span class="n">action</span> <span class="o">{}&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">uri</span><span class="o">);</span>
+    <span class="c1">// 调用绑定的接口</span>
+    <span class="n">Result</span> <span class="n">result</span> <span class="o">=</span> <span class="o">(</span><span class="n">Result</span><span class="o">)</span> <span class="n">v</span><span class="o">.</span><span class="na">method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">ctl</span><span class="o">,</span> <span class="o">(</span><span class="n">Object</span><span class="o">[])</span> <span class="kc">null</span><span class="o">);</span>
+    <span class="c1">// 渲染结果</span>
+    <span class="n">result</span><span class="o">.</span><span class="na">render</span><span class="o">();</span>
+  <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+    <span class="o">&amp;</span><span class="n">hellip</span><span class="o">;</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div></p>
 
 <h2>结果渲染</h2>
 
@@ -652,33 +636,29 @@ public boolean invoke(HttpServletRequest req, HttpServletResponse resp) throws I
 
 <p>通过实现具体的<code>Result</code>类，可以扩展不同的渲染方式，例如最基础的<code>Result</code>就是调用返回对象的<code>toString</code>：</p>
 
-<p>{% highlight java %}
-public class Result {
-  public void render() throws IOException, ServletException {
-    PrintWriter writer = response.getWriter();
-    // result是controller action里返回的
-    writer.append(result.toString());
-    writer.close();
-  }
-}
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Result</span> <span class="o">{</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">render</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">,</span> <span class="n">ServletException</span> <span class="o">{</span>
+    <span class="n">PrintWriter</span> <span class="n">writer</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="na">getWriter</span><span class="o">();</span>
+    <span class="c1">// result是controller action里返回的</span>
+    <span class="n">writer</span><span class="o">.</span><span class="na">append</span><span class="o">(</span><span class="n">result</span><span class="o">.</span><span class="na">toString</span><span class="o">());</span>
+    <span class="n">writer</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div></p>
 
 <p>为了简单，不引入第三方库，可以直接通过JSP来完成。JSP本身在servlet容器中就会被编译成一个servlet对象。</p>
 
-<p>{% highlight java %}
-public class JSPResult extends Result {
-  &hellip;
-  @Override
-  public void render() throws IOException, ServletException {
-    // 传入一些对象到模板中
-    for (Map.Entry&lt;String, Object> entry : content.entrySet()) {
-      request.setAttribute(entry.getKey(), entry.getValue());
-    }
-    // 委托给JSP来完成渲染
-    request.getRequestDispatcher(file).forward(request, response);
-  }
-}
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">JSPResult</span> <span class="kd">extends</span> <span class="n">Result</span> <span class="o">{</span>
+  <span class="o">&amp;</span><span class="n">hellip</span><span class="o">;</span>
+  <span class="nd">@Override</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">render</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">,</span> <span class="n">ServletException</span> <span class="o">{</span>
+    <span class="c1">// 传入一些对象到模板中</span>
+    <span class="k">for</span> <span class="o">(</span><span class="n">Map</span><span class="o">.</span><span class="na">Entry</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;</span><span class="n">String</span><span class="o">,</span> <span class="n">Object</span><span class="o">&gt;</span> <span class="n">entry</span> <span class="o">:</span> <span class="n">content</span><span class="o">.</span><span class="na">entrySet</span><span class="o">())</span> <span class="o">{</span>
+      <span class="n">request</span><span class="o">.</span><span class="na">setAttribute</span><span class="o">(</span><span class="n">entry</span><span class="o">.</span><span class="na">getKey</span><span class="o">(),</span> <span class="n">entry</span><span class="o">.</span><span class="na">getValue</span><span class="o">());</span>
+    <span class="o">}</span>
+    <span class="c1">// 委托给JSP来完成渲染</span>
+    <span class="n">request</span><span class="o">.</span><span class="na">getRequestDispatcher</span><span class="o">(</span><span class="n">file</span><span class="o">).</span><span class="na">forward</span><span class="o">(</span><span class="n">request</span><span class="o">,</span> <span class="n">response</span><span class="o">);</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div></p>
 
 <p>JSP中可以使用传统的scriptlets表达式，也可以使用新的EL方式，例如：</p>
 
@@ -701,32 +681,30 @@ public class JSPResult extends Result {
 
 <p><code>BaseController</code>是一种template pattern实现，其包装了一些方便的接口给具体的controller使用，例如：</p>
 
-<p>{% highlight java %}
-public class BaseController {
-  // 取得/index?name=kevin中的name参数值
-  protected String getQueryString(String key) {
-    return request.getParameter(key);
-  }</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">BaseController</span> <span class="o">{</span>
+  <span class="c1">// 取得/index?name=kevin中的name参数值</span>
+  <span class="kd">protected</span> <span class="n">String</span> <span class="nf">getQueryString</span><span class="o">(</span><span class="n">String</span> <span class="n">key</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="na">getParameter</span><span class="o">(</span><span class="n">key</span><span class="o">);</span>
+  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>  protected Result status(int code, String text) {
-    response.setStatus(code);
-    return new Result(response, text);
-  }</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="kd">protected</span> <span class="n">Result</span> <span class="nf">status</span><span class="o">(</span><span class="kt">int</span> <span class="n">code</span><span class="o">,</span> <span class="n">String</span> <span class="n">text</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">response</span><span class="o">.</span><span class="na">setStatus</span><span class="o">(</span><span class="n">code</span><span class="o">);</span>
+    <span class="k">return</span> <span class="k">new</span> <span class="nf">Result</span><span class="o">(</span><span class="n">response</span><span class="o">,</span> <span class="n">text</span><span class="o">);</span>
+  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>  // 默认是HTTP 200
-  protected Result ok(Object obj) {
-    return new Result(response, obj);
-  }</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="c1">// 默认是HTTP 200</span>
+  <span class="kd">protected</span> <span class="n">Result</span> <span class="nf">ok</span><span class="o">(</span><span class="n">Object</span> <span class="n">obj</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="k">new</span> <span class="nf">Result</span><span class="o">(</span><span class="n">response</span><span class="o">,</span> <span class="n">obj</span><span class="o">);</span>
+  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>  protected Result ok(Result result) {
-    return result;
-  }</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="kd">protected</span> <span class="n">Result</span> <span class="nf">ok</span><span class="o">(</span><span class="n">Result</span> <span class="n">result</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="n">result</span><span class="o">;</span>
+  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>  protected JSPResult jsp(String file) {
-    return new JSPResult(request, response, file, actionMgr);
-  }
-}
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="kd">protected</span> <span class="n">JSPResult</span> <span class="nf">jsp</span><span class="o">(</span><span class="n">String</span> <span class="n">file</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="k">new</span> <span class="nf">JSPResult</span><span class="o">(</span><span class="n">request</span><span class="o">,</span> <span class="n">response</span><span class="o">,</span> <span class="n">file</span><span class="o">,</span> <span class="n">actionMgr</span><span class="o">);</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div></p>
 
 <h2>Reverse routing</h2>
 
@@ -749,41 +727,37 @@ public class BaseController {
 
 <p>首先实现一个<code>SimpleTagSupport</code>，为了支持<code>?name=kevin</code>这种动态参数，还需要<code>implements DynamicAttributes</code>：</p>
 
-<p>{% highlight java %}
-public class JSPRouteTag extends SimpleTagSupport implements DynamicAttributes {
-  @Override
-  // 输出最终的URL
-  public void doTag() throws IOException {
-    JspContext context = getJspContext();
-    ActionManager actionMgr = (ActionManager) context.findAttribute(ACTION_MGR);
-    JspWriter out = context.getOut();
-    String uri = actionMgr.getReverseAction(action, attrMap);
-    out.println(uri);
-  }</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">JSPRouteTag</span> <span class="kd">extends</span> <span class="n">SimpleTagSupport</span> <span class="kd">implements</span> <span class="n">DynamicAttributes</span> <span class="o">{</span>
+  <span class="nd">@Override</span>
+  <span class="c1">// 输出最终的URL</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">doTag</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+    <span class="n">JspContext</span> <span class="n">context</span> <span class="o">=</span> <span class="n">getJspContext</span><span class="o">();</span>
+    <span class="n">ActionManager</span> <span class="n">actionMgr</span> <span class="o">=</span> <span class="o">(</span><span class="n">ActionManager</span><span class="o">)</span> <span class="n">context</span><span class="o">.</span><span class="na">findAttribute</span><span class="o">(</span><span class="n">ACTION_MGR</span><span class="o">);</span>
+    <span class="n">JspWriter</span> <span class="n">out</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="na">getOut</span><span class="o">();</span>
+    <span class="n">String</span> <span class="n">uri</span> <span class="o">=</span> <span class="n">actionMgr</span><span class="o">.</span><span class="na">getReverseAction</span><span class="o">(</span><span class="n">action</span><span class="o">,</span> <span class="n">attrMap</span><span class="o">);</span>
+    <span class="n">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">uri</span><span class="o">);</span>
+  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>  @Override
-  // name=&ldquo;kevin&rdquo; 时调用
-  public void setDynamicAttribute(String uri, String name, Object value) throws JspException {
-    attrMap.put(name, value);
-  }</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="nd">@Override</span>
+  <span class="c1">// name=&amp;ldquo;kevin&amp;rdquo; 时调用</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setDynamicAttribute</span><span class="o">(</span><span class="n">String</span> <span class="n">uri</span><span class="o">,</span> <span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">Object</span> <span class="n">value</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">JspException</span> <span class="o">{</span>
+    <span class="n">attrMap</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">value</span><span class="o">);</span>
+  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>  // <code>action="xxx"</code> 时会调用<code>setAction</code>
-  public void setAction(String action) {
-    this.action = action;
-  }
-}
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="c1">// &lt;code&gt;action=&quot;xxx&quot;&lt;/code&gt; 时会调用&lt;code&gt;setAction&lt;/code&gt;</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setAction</span><span class="o">(</span><span class="n">String</span> <span class="n">action</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">this</span><span class="o">.</span><span class="na">action</span> <span class="o">=</span> <span class="n">action</span><span class="o">;</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div></p>
 
 <p>为了访问到<code>ActionManager</code>，这里是通过写到<code>Request context</code>中实现的，相当hack。</p>
 
-<p>{% highlight java %}
-public JSPResult(HttpServletRequest req, HttpServletResponse resp, String file,
-    ActionManager actionMgr) {
-  super(resp, null);
-  ..
-  put(JSPRouteTag.ACTION_MGR, actionMgr);
-}
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="nf">JSPResult</span><span class="o">(</span><span class="n">HttpServletRequest</span> <span class="n">req</span><span class="o">,</span> <span class="n">HttpServletResponse</span> <span class="n">resp</span><span class="o">,</span> <span class="n">String</span> <span class="n">file</span><span class="o">,</span>
+    <span class="n">ActionManager</span> <span class="n">actionMgr</span><span class="o">)</span> <span class="o">{</span>
+  <span class="kd">super</span><span class="o">(</span><span class="n">resp</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+  <span class="o">..</span>
+  <span class="n">put</span><span class="o">(</span><span class="n">JSPRouteTag</span><span class="o">.</span><span class="na">ACTION_MGR</span><span class="o">,</span> <span class="n">actionMgr</span><span class="o">);</span>
+<span class="o">}</span></code></pre></div></p>
 
 <p>第二步增加一个描述这个新tag的文件 <code>WEB-INF/route_tag.tld</code>：</p>
 
@@ -842,18 +816,14 @@ public JSPResult(HttpServletRequest req, HttpServletResponse resp, String file,
 
 <p>可以简单地使用<code>Class.forName</code>，传入某个class的完整名：</p>
 
-<p>{% highlight java %}
-public Class&lt;?> loadClass(String fullName) throws ClassNotFoundException {
-  return Class.forName(fullName);
-}
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;</span> <span class="n">loadClass</span><span class="o">(</span><span class="n">String</span> <span class="n">fullName</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">ClassNotFoundException</span> <span class="o">{</span>
+  <span class="k">return</span> <span class="n">Class</span><span class="o">.</span><span class="na">forName</span><span class="o">(</span><span class="n">fullName</span><span class="o">);</span>
+<span class="o">}</span></code></pre></div></p>
 
 <p>类的加载涉及到class loader，这块内容是可以进一步深化的。加载了类之后就可以创建出类的实例，但还没有完成依赖注入的功能：</p>
 
-<p>{% highlight java %}
-Class&lt;?> c = loadClass(&ldquo;com.codemacro.bean.test.Test1&rdquo;);
-Object o = c.newInstance();
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;</span> <span class="n">c</span> <span class="o">=</span> <span class="n">loadClass</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">com</span><span class="o">.</span><span class="na">codemacro</span><span class="o">.</span><span class="na">bean</span><span class="o">.</span><span class="na">test</span><span class="o">.</span><span class="na">Test1</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;);</span>
+<span class="n">Object</span> <span class="n">o</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">newInstance</span><span class="o">();</span></code></pre></div></p>
 
 <!-- more -->
 
@@ -862,57 +832,51 @@ Object o = c.newInstance();
 
 <p>我们的类可以包含<code>set</code>接口，用于设置某个成员：</p>
 
-<p>{% highlight java %}
-public class Test2 {
-  public Test1 test1;</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Test2</span> <span class="o">{</span>
+  <span class="kd">public</span> <span class="n">Test1</span> <span class="n">test1</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>  public void setTest1(Test1 t) {
-    test1 = t;
-  }
-}
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setTest1</span><span class="o">(</span><span class="n">Test1</span> <span class="n">t</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">test1</span> <span class="o">=</span> <span class="n">t</span><span class="o">;</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div></p>
 
 <p>那么可以通过<code>setXXX</code>接口将<code>Test1</code>注入到<code>Test2</code>中：</p>
 
-<p>{% highlight java %}
-// props指定哪些成员需要注入，例如{&ldquo;Test1&rdquo;, &ldquo;test1&rdquo;}，Test1指的是setTest1，test1指的是bean名字
-public Object buildWithSetters(String name, Class&lt;?> c, Map&lt;String, String> props) {
-  try {
-    // ClassSetMethods 类获取Class&lt;?>中所有setXX这种接口
-    ClassSetMethods setMethods = new ClassSetMethods&copy;;
-    Object obj = c.newInstance();
-    for (Map.Entry&lt;String, String> entrys : props.entrySet()) {
-      String pname = entrys.getKey();
-      String beanName = entrys.getValue();
-      // 取得setXXX这个Method
-      Method m = setMethods.get(pname);
-      Object val = getBean(beanName);
-      // 调用
-      m.invoke(obj, val);
-    }
-    beans.put(name, obj);
-    return obj;
-  } catch (Exception e) {
-    throw new RuntimeException(&ldquo;build bean failed&rdquo;, e);
-  }
-}  <br/>
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="c1">// props指定哪些成员需要注入，例如{&amp;ldquo;Test1&amp;rdquo;, &amp;ldquo;test1&amp;rdquo;}，Test1指的是setTest1，test1指的是bean名字</span>
+<span class="kd">public</span> <span class="n">Object</span> <span class="nf">buildWithSetters</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;</span> <span class="n">c</span><span class="o">,</span> <span class="n">Map</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;</span><span class="n">String</span><span class="o">,</span> <span class="n">String</span><span class="o">&gt;</span> <span class="n">props</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">try</span> <span class="o">{</span>
+    <span class="c1">// ClassSetMethods 类获取Class&amp;lt;?&gt;中所有setXX这种接口</span>
+    <span class="n">ClassSetMethods</span> <span class="n">setMethods</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ClassSetMethods</span><span class="o">&amp;</span><span class="n">copy</span><span class="o">;;</span>
+    <span class="n">Object</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">newInstance</span><span class="o">();</span>
+    <span class="k">for</span> <span class="o">(</span><span class="n">Map</span><span class="o">.</span><span class="na">Entry</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;</span><span class="n">String</span><span class="o">,</span> <span class="n">String</span><span class="o">&gt;</span> <span class="n">entrys</span> <span class="o">:</span> <span class="n">props</span><span class="o">.</span><span class="na">entrySet</span><span class="o">())</span> <span class="o">{</span>
+      <span class="n">String</span> <span class="n">pname</span> <span class="o">=</span> <span class="n">entrys</span><span class="o">.</span><span class="na">getKey</span><span class="o">();</span>
+      <span class="n">String</span> <span class="n">beanName</span> <span class="o">=</span> <span class="n">entrys</span><span class="o">.</span><span class="na">getValue</span><span class="o">();</span>
+      <span class="c1">// 取得setXXX这个Method</span>
+      <span class="n">Method</span> <span class="n">m</span> <span class="o">=</span> <span class="n">setMethods</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">pname</span><span class="o">);</span>
+      <span class="n">Object</span> <span class="n">val</span> <span class="o">=</span> <span class="n">getBean</span><span class="o">(</span><span class="n">beanName</span><span class="o">);</span>
+      <span class="c1">// 调用</span>
+      <span class="n">m</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">obj</span><span class="o">,</span> <span class="n">val</span><span class="o">);</span>
+    <span class="o">}</span>
+    <span class="n">beans</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">obj</span><span class="o">);</span>
+    <span class="k">return</span> <span class="n">obj</span><span class="o">;</span>
+  <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">build</span> <span class="n">bean</span> <span class="n">failed</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">e</span><span class="o">);</span>
+  <span class="o">}</span>
+<span class="o">}</span>  <span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span></code></pre></div></p>
 
 <p><code>ClassSetMethod</code>自省出一个Class中所有的<code>setXXX(xx)</code>接口：</p>
 
-<p>{% highlight java %}
-public ClassSetMethods(Class&lt;?> c) {
-  Method[] methods = c.getMethods();
-  for (Method m : methods) {
-    String mname = m.getName();
-    Class&lt;?>[] ptypes = m.getParameterTypes();
-    if (mname.startsWith(&ldquo;set&rdquo;) &amp;&amp; ptypes.length == 1 &amp;&amp; m.getReturnType() == Void.TYPE) {
-      String name = mname.substring(&ldquo;set&rdquo;.length());
-      this.methods.put(name, m);
-    }
-  }
-}
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="nf">ClassSetMethods</span><span class="o">(</span><span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;</span> <span class="n">c</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">Method</span><span class="o">[]</span> <span class="n">methods</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">getMethods</span><span class="o">();</span>
+  <span class="k">for</span> <span class="o">(</span><span class="n">Method</span> <span class="n">m</span> <span class="o">:</span> <span class="n">methods</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">String</span> <span class="n">mname</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="na">getName</span><span class="o">();</span>
+    <span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;[]</span> <span class="n">ptypes</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="na">getParameterTypes</span><span class="o">();</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">mname</span><span class="o">.</span><span class="na">startsWith</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">set</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;)</span> <span class="o">&amp;</span><span class="n">amp</span><span class="o">;&amp;</span><span class="n">amp</span><span class="o">;</span> <span class="n">ptypes</span><span class="o">.</span><span class="na">length</span> <span class="o">==</span> <span class="mi">1</span> <span class="o">&amp;</span><span class="n">amp</span><span class="o">;&amp;</span><span class="n">amp</span><span class="o">;</span> <span class="n">m</span><span class="o">.</span><span class="na">getReturnType</span><span class="o">()</span> <span class="o">==</span> <span class="n">Void</span><span class="o">.</span><span class="na">TYPE</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">String</span> <span class="n">name</span> <span class="o">=</span> <span class="n">mname</span><span class="o">.</span><span class="na">substring</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">set</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;.</span><span class="na">length</span><span class="o">());</span>
+      <span class="k">this</span><span class="o">.</span><span class="na">methods</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">m</span><span class="o">);</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div></p>
 
 <p>以上就可以看出Java中的自省能力，例如<code>Class&lt;?&gt;.getMethods</code>、<code>Method.getReturnType</code>、<code>Method.getParameterTypes</code>。</p>
 
@@ -929,34 +893,30 @@ public ClassSetMethods(Class&lt;?> c) {
 
 <p>可以将依赖的Bean通过构造函数参数注入到目标对象中：</p>
 
-<p>{% highlight java %}
-List<String> params = new ArrayList<String>();
-params.add(&ldquo;test1&rdquo;);
-bf.buildWithConstructor(&ldquo;test2&rdquo;, Test2.class, params);
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">params</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;();</span>
+<span class="n">params</span><span class="o">.</span><span class="na">add</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">test1</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;);</span>
+<span class="n">bf</span><span class="o">.</span><span class="na">buildWithConstructor</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">test2</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">Test2</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="n">params</span><span class="o">);</span></code></pre></div></p>
 
 <p>其实现：</p>
 
-<p>{% highlight java %}
-public Object buildWithConstructor(String name, Class&lt;?> c, List<String> beanNames) {
-  try {
-    Constructor&lt;?>[] ctors = c.getConstructors(); // 取得Class构造函数列表
-    assert ctors.length == 1;
-    Constructor&lt;?> cc = ctors[0];
-    Class&lt;?>[] ptypes = cc.getParameterTypes(); // 取得构造函数参数类型列表
-    assert ptypes.length == beans.size();
-    Object[] args = new Object[ptypes.length];
-    for (int i = 0; i &lt; beanNames.size(); ++i) {
-      args[i] = getBean(beanNames.get(i)); // 构造调用构造函数的实参列表
-    }
-    Object obj = cc.newInstance(args); // 通过构造函数创建对象
-    beans.put(name, obj);
-    return obj;
-  } catch (Exception e) {
-    throw new RuntimeException(&ldquo;build bean failed&rdquo;, e);
-  }
-}
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="n">Object</span> <span class="nf">buildWithConstructor</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;</span> <span class="n">c</span><span class="o">,</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">beanNames</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">try</span> <span class="o">{</span>
+    <span class="n">Constructor</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;[]</span> <span class="n">ctors</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">getConstructors</span><span class="o">();</span> <span class="c1">// 取得Class构造函数列表</span>
+    <span class="k">assert</span> <span class="n">ctors</span><span class="o">.</span><span class="na">length</span> <span class="o">==</span> <span class="mi">1</span><span class="o">;</span>
+    <span class="n">Constructor</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;</span> <span class="n">cc</span> <span class="o">=</span> <span class="n">ctors</span><span class="o">[</span><span class="mi">0</span><span class="o">];</span>
+    <span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;[]</span> <span class="n">ptypes</span> <span class="o">=</span> <span class="n">cc</span><span class="o">.</span><span class="na">getParameterTypes</span><span class="o">();</span> <span class="c1">// 取得构造函数参数类型列表</span>
+    <span class="k">assert</span> <span class="n">ptypes</span><span class="o">.</span><span class="na">length</span> <span class="o">==</span> <span class="n">beans</span><span class="o">.</span><span class="na">size</span><span class="o">();</span>
+    <span class="n">Object</span><span class="o">[]</span> <span class="n">args</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Object</span><span class="o">[</span><span class="n">ptypes</span><span class="o">.</span><span class="na">length</span><span class="o">];</span>
+    <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&amp;</span><span class="n">lt</span><span class="o">;</span> <span class="n">beanNames</span><span class="o">.</span><span class="na">size</span><span class="o">();</span> <span class="o">++</span><span class="n">i</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">args</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="n">getBean</span><span class="o">(</span><span class="n">beanNames</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">));</span> <span class="c1">// 构造调用构造函数的实参列表</span>
+    <span class="o">}</span>
+    <span class="n">Object</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">cc</span><span class="o">.</span><span class="na">newInstance</span><span class="o">(</span><span class="n">args</span><span class="o">);</span> <span class="c1">// 通过构造函数创建对象</span>
+    <span class="n">beans</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">obj</span><span class="o">);</span>
+    <span class="k">return</span> <span class="n">obj</span><span class="o">;</span>
+  <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">build</span> <span class="n">bean</span> <span class="n">failed</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">e</span><span class="o">);</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div></p>
 
 <p>这个接口的使用约定<code>beanNames</code>保存的是bean名称，并与构造函数参数一一对应。</p>
 
@@ -966,47 +926,42 @@ public Object buildWithConstructor(String name, Class&lt;?> c, List<String> bean
 
 <p>一个空的注解即可：</p>
 
-<p>{% highlight java %}
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.FIELD)
-public @interface Inject {
-}
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="nd">@Retention</span><span class="o">(</span><span class="n">RetentionPolicy</span><span class="o">.</span><span class="na">RUNTIME</span><span class="o">)</span>
+<span class="nd">@Target</span><span class="o">(</span><span class="n">ElementType</span><span class="o">.</span><span class="na">FIELD</span><span class="o">)</span>
+<span class="kd">public</span> <span class="nd">@interface</span> <span class="n">Inject</span> <span class="o">{</span>
+<span class="o">}</span></code></pre></div></p>
 
 <p>实现：</p>
 
-<p>{% highlight java %}</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>public Object buildWithInject(String name, Class&lt;?> c) {
-  try {
-    Object obj = c.newInstance();
-    Field[] fields = c.getDeclaredFields(); // 获取该类所有定义的成员
-    for (Field f :fields) {
-      Inject inject = f.getAnnotation(Inject.class); // 获取数据成员的注解
-      if (inject != null) { // 如果被Inject注解标注
-        Object bean = getBeanByType(f.getType()); // 根据成员的类型找到对应的Bean
-        f.set(obj, bean); // 注入
-      } else {
-        throw new RuntimeException(&ldquo;not found bean &rdquo; + f.getName());
-      }
-    }
-    beans.put(name, obj);
-    return obj;
-  } catch (Exception e) {
-    throw new RuntimeException(&ldquo;build bean failed&rdquo;, e);
-  }
-}
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kd">public</span> <span class="n">Object</span> <span class="nf">buildWithInject</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;</span> <span class="n">c</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">try</span> <span class="o">{</span>
+    <span class="n">Object</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">newInstance</span><span class="o">();</span>
+    <span class="n">Field</span><span class="o">[]</span> <span class="n">fields</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">getDeclaredFields</span><span class="o">();</span> <span class="c1">// 获取该类所有定义的成员</span>
+    <span class="k">for</span> <span class="o">(</span><span class="n">Field</span> <span class="n">f</span> <span class="o">:</span><span class="n">fields</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">Inject</span> <span class="n">inject</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="na">getAnnotation</span><span class="o">(</span><span class="n">Inject</span><span class="o">.</span><span class="na">class</span><span class="o">);</span> <span class="c1">// 获取数据成员的注解</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">inject</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span> <span class="c1">// 如果被Inject注解标注</span>
+        <span class="n">Object</span> <span class="n">bean</span> <span class="o">=</span> <span class="n">getBeanByType</span><span class="o">(</span><span class="n">f</span><span class="o">.</span><span class="na">getType</span><span class="o">());</span> <span class="c1">// 根据成员的类型找到对应的Bean</span>
+        <span class="n">f</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="n">obj</span><span class="o">,</span> <span class="n">bean</span><span class="o">);</span> <span class="c1">// 注入</span>
+      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">not</span> <span class="n">found</span> <span class="n">bean</span> <span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">+</span> <span class="n">f</span><span class="o">.</span><span class="na">getName</span><span class="o">());</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="n">beans</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">obj</span><span class="o">);</span>
+    <span class="k">return</span> <span class="n">obj</span><span class="o">;</span>
+  <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">build</span> <span class="n">bean</span> <span class="n">failed</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">e</span><span class="o">);</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div></p>
 
 <p><code>getBeanByType</code>就是根据<code>Class</code>匹配所有的Bean。使用时：</p>
 
-<p>{% highlight java %}
-public class Test2 {
-  @Inject
-  public Test1 test1;
-  &hellip;
-}
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Test2</span> <span class="o">{</span>
+  <span class="nd">@Inject</span>
+  <span class="kd">public</span> <span class="n">Test1</span> <span class="n">test1</span><span class="o">;</span>
+  <span class="o">&amp;</span><span class="n">hellip</span><span class="o">;</span>
+<span class="o">}</span></code></pre></div></p>
 
 <p>完。</p>
 ]]></content>

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: c/c++ | loop in codes]]></title>
   <link href="http://codemacro.com/categories/c-slash-c-plus-plus/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2015-09-05T10:51:24+08:00</updated>
+  <updated>2016-05-08T21:11:47+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,59 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[记一次线程局部存储与动态库引起的core]]></title>
+    <link href="http://codemacro.com/2016/05/08/tls_so_coredump/"/>
+    <updated>2016-05-08T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2016/05/08/tls_so_coredump</id>
+    <content type="html"><![CDATA[<p>线上的服务退出时coredump，显示堆栈为：</p>
+
+<p><img src="/assets/res/tls_so_core/core.JPG" alt="" /></p>
+
+<p>google一下发现<a href="http://www.tuicool.com/articles/YJ3A7f">有人遇到过</a>，产生这个core的条件为：</p>
+
+<ul>
+<li>使用TLS时注册了destructor (<code>pthread_key_create</code>)，这个回调函数会在线程退出时被调用</li>
+<li>这个destructor符号位于.so中</li>
+<li>在线程退出时，这个.so已经被dlclose</li>
+</ul>
+
+
+<p>我们的程序模型中，类似于一个Web App server，有一个线程池包装了IO处理，将请求派发给应用插件，处理完后回应给客户端。应用插件是一个.so，被动态载入(dlopen)，该.so由于实现需要引入了较多的第三方.so(隐式载入)。初步排查时，整个实现是没有问题的，线程池是在.so close前关闭的。</p>
+
+<p>没有线索，于是尝试找到该TLS是哪个模块引入的。通过gdb断<code>pthread_key_create</code>，以及不为空的destructor回调可以确定几个模块，但范围不够小，这些模块基本还是些基础模块，如zookeeper/mxml以及网络模块。</p>
+
+<p>多看了几个core，发现这个回调的偏移地址都是固定的960，如上图中的<code>0x7f0f26c9f960</code>。.so被载入时，基址是会变的，但偏移是不会变的，例如通过nm查看.so中的符号时：</p>
+
+<pre><code>$nm lib/libsp_kit.so | grep loadConfig
+00000000002de170 T _ZN8sp_basic14SortRailConfig10loadConfigEPKc
+</code></pre>
+
+<!-- more -->
+
+
+<p>其中<code>2de170</code>中<code>170</code>是确定不变的。所以范围可以进一步缩小，destructor是<code>pthread_key_create</code>第二个参数，每次断点触发时查看<code>rsi</code>寄存器的值就可以确定，然后发现落在了mxml库里的符号：</p>
+
+<p><img src="/assets/res/tls_so_core/mxml.JPG" alt="" /></p>
+
+<p>程序在启动时载入配置，触发了mxml在当前线程创建了TLS，这个线程是程序主线程。主线程当然是在.so被close后才退出的。如果这是问题，那应该很早前就会暴露。这是一个问题，后面会解释。但是问题排查到这个地方，又陷入了僵局。</p>
+
+<p>回头再看下core环境，可以从线程环境确定是哪个模块：</p>
+
+<p><img src="/assets/res/tls_so_core/arpc-threads.JPG" alt="" /></p>
+
+<p>core的线程31956和线程31955靠近，查看31955堆栈，发现是我们内部的rpc库(arpc)线程。那可以确定core的线程有可能和arpc有关系。函数在调用时，返回地址留在堆栈中，堆栈不一定会被其他内容覆盖，所以可以查看线程堆栈里的符号地址，大概确定是什么模块。<code>x/200a $rsp-0x300</code>查看core线程堆栈：</p>
+
+<p><img src="/assets/res/tls_so_core/arpc-stack.JPG" alt="" /></p>
+
+<p>可以看到其中确实有arpc库里的符号信息，综合线程号关系，基本可以确定core的线程是arpc线程。这个时候就突然灵关一闪，想起我们程序中有热切换机制。该机制会在收到arpc请求时，重新载入所有配置，而这个动作是发生在arpc开的线程里。查看相关代码，发现arpc资源释放确实是晚于.so的close的。于是做了下实验，程序开启后进行一次热切换，退出后果然必core。程序在生产环境时，只在业务上线时进行一次热切换，而每天又会被自动重启，重启后并不进行热切换，所以线上基本上没有暴露出来，只在部分灰度环境偶尔触发(连续两次业务上线)。</p>
+
+<p>回过头来，主线程问题怎么解释？google一圈发现，<strong>主线程退出，是不会调用TLS destructor的</strong>。参考<a href="https://github.com/rust-lang/rust/issues/28129">这里</a>，<a href="http://stackoverflow.com/questions/6357154/destruction-order-of-the-main-thread-and-the-use-of-pthread-key-create">这里</a>，以及<a href="https://github.com/rust-lang/rust/issues/19776">这里</a>。但是可以在主线程中显示调用<code>pthread_exit</code>来触发，普通线程会默认调用<code>pthread_exit</code>。</p>
+
+<p>完。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[无锁有序链表的实现]]></title>
@@ -26,65 +79,64 @@
 
 <p>链表的主要操作包含<code>insert</code>和<code>remove</code>，先简单实现一个版本，就会看到问题所在，以下代码只用作示例：</p>
 
-<p>{% highlight c++ %}
-    struct node_t {
-        key_t key;
-        value_t val;
-        node_t *next;
-    };</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">struct</span> <span class="kt">node_t</span> <span class="p">{</span>
+        <span class="kt">key_t</span> <span class="n">key</span><span class="p">;</span>
+        <span class="kt">value_t</span> <span class="n">val</span><span class="p">;</span>
+        <span class="kt">node_t</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span>
+    <span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>int l_find(node_t **pred_ptr, node_t **item_ptr, node_t *head, key_t key) {
-    node_t *pred = head;
-    node_t *item = head-&gt;next;
-    while (item) {
-        int d = KEY_CMP(item-&gt;key, key);
-        if (d &gt;= 0) {
-            *pred_ptr = pred;
-            *item_ptr = item;
-            return d == 0 ? TRUE : FALSE;
-        }
-        pred = item;
-        item = item-&gt;next;
-    } 
-    *pred_ptr = pred;
-    *item_ptr = NULL;
-    return FALSE;
-}
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">l_find</span><span class="p">(</span><span class="kt">node_t</span> <span class="o">**</span><span class="n">pred_ptr</span><span class="p">,</span> <span class="kt">node_t</span> <span class="o">**</span><span class="n">item_ptr</span><span class="p">,</span> <span class="kt">node_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">key_t</span> <span class="n">key</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">node_t</span> <span class="o">*</span><span class="n">pred</span> <span class="o">=</span> <span class="n">head</span><span class="p">;</span>
+    <span class="kt">node_t</span> <span class="o">*</span><span class="n">item</span> <span class="o">=</span> <span class="n">head</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">next</span><span class="p">;</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">int</span> <span class="n">d</span> <span class="o">=</span> <span class="n">KEY_CMP</span><span class="p">(</span><span class="n">item</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">key</span><span class="p">,</span> <span class="n">key</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">d</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="o">*</span><span class="n">pred_ptr</span> <span class="o">=</span> <span class="n">pred</span><span class="p">;</span>
+            <span class="o">*</span><span class="n">item_ptr</span> <span class="o">=</span> <span class="n">item</span><span class="p">;</span>
+            <span class="k">return</span> <span class="n">d</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">?</span> <span class="nl">TRUE</span> <span class="p">:</span> <span class="n">FALSE</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="n">pred</span> <span class="o">=</span> <span class="n">item</span><span class="p">;</span>
+        <span class="n">item</span> <span class="o">=</span> <span class="n">item</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">next</span><span class="p">;</span>
+    <span class="p">}</span> 
+    <span class="o">*</span><span class="n">pred_ptr</span> <span class="o">=</span> <span class="n">pred</span><span class="p">;</span>
+    <span class="o">*</span><span class="n">item_ptr</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="k">return</span> <span class="n">FALSE</span><span class="p">;</span>
+<span class="p">}</span>
 
-int l_insert(node_t *head, key_t key, value_t val) {
-    node_t *pred, *item, *new_item;
-    while (TRUE) {
-        if (l_find(&amp;pred, &amp;item, head, key)) {
-            return FALSE;
-        }
-        new_item = (node_t*) malloc(sizeof(node_t));
-        new_item-&gt;key = key;
-        new_item-&gt;val = val;
-        new_item-&gt;next = item;
-        // A. 如果pred本身被移除了
-        if (CAS(&amp;pred-&gt;next, item, new_item)) {
-            return TRUE;
-        }
-        free(new_item);
-    }
-}
+<span class="kt">int</span> <span class="n">l_insert</span><span class="p">(</span><span class="kt">node_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">key_t</span> <span class="n">key</span><span class="p">,</span> <span class="kt">value_t</span> <span class="n">val</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">node_t</span> <span class="o">*</span><span class="n">pred</span><span class="p">,</span> <span class="o">*</span><span class="n">item</span><span class="p">,</span> <span class="o">*</span><span class="n">new_item</span><span class="p">;</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">TRUE</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">l_find</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">pred</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">item</span><span class="p">,</span> <span class="n">head</span><span class="p">,</span> <span class="n">key</span><span class="p">))</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">FALSE</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="n">new_item</span> <span class="o">=</span> <span class="p">(</span><span class="kt">node_t</span><span class="o">*</span><span class="p">)</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">node_t</span><span class="p">));</span>
+        <span class="n">new_item</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="p">;</span>
+        <span class="n">new_item</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">val</span> <span class="o">=</span> <span class="n">val</span><span class="p">;</span>
+        <span class="n">new_item</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">next</span> <span class="o">=</span> <span class="n">item</span><span class="p">;</span>
+        <span class="c1">// A. 如果pred本身被移除了</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">pred</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">next</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">new_item</span><span class="p">))</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="n">free</span><span class="p">(</span><span class="n">new_item</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
 
-int l_remove(node_t *head, key_t key) {
-    node_t *pred, *item;
-    while (TRUE) {
-        if (!l_find(&amp;pred, &amp;item, head, key)) {
-            return TRUE;
-        }
-        // B. 如果pred被移除；如果item也被移除
-        if (CAS(&amp;pred-&gt;next, item, item-&gt;next)) {
-            haz_free(item);
-            return TRUE;
-        }
-    }
-}
-</code></pre>
+<span class="kt">int</span> <span class="n">l_remove</span><span class="p">(</span><span class="kt">node_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">key_t</span> <span class="n">key</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">node_t</span> <span class="o">*</span><span class="n">pred</span><span class="p">,</span> <span class="o">*</span><span class="n">item</span><span class="p">;</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">TRUE</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">l_find</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">pred</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">item</span><span class="p">,</span> <span class="n">head</span><span class="p">,</span> <span class="n">key</span><span class="p">))</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="c1">// B. 如果pred被移除；如果item也被移除</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">pred</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">next</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">item</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">next</span><span class="p">))</span> <span class="p">{</span>
+            <span class="n">haz_free</span><span class="p">(</span><span class="n">item</span><span class="p">);</span>
+            <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <!-- more -->
 
@@ -99,84 +151,83 @@ int l_remove(node_t *head, key_t key) {
 
 <p>CAS的互斥性，在若干个线程CAS相同的对象时，只有一个线程会成功，失败的线程就可以以此判定目标对象发生了变更。改进后的代码（代码仅做示例用，不保证正确）：</p>
 
-<p>{% highlight c++ %}
-    typedef size_t markable_t;
-    // 最低位置1，表示元素被删除
-    #define HAS_MARK(p) ((markable_t)p &amp; 0x01)
-    #define MARK(p) ((markable_t)p | 0x01)
-    #define STRIP_MARK(p) ((markable_t)p &amp; ~0x01)</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">typedef</span> <span class="kt">size_t</span> <span class="kt">markable_t</span><span class="p">;</span>
+    <span class="c1">// 最低位置1，表示元素被删除</span>
+    <span class="cp">#define HAS_MARK(p) ((markable_t)p &amp;amp; 0x01)</span>
+    <span class="cp">#define MARK(p) ((markable_t)p | 0x01)</span>
+    <span class="cp">#define STRIP_MARK(p) ((markable_t)p &amp;amp; ~0x01)&lt;/p&gt;</span>
 
-<pre><code>int l_insert(node_t *head, key_t key, value_t val) {
-    node_t *pred, *item, *new_item;
-    while (TRUE) {
-        if (l_find(&amp;pred, &amp;item, head, key)) { 
-            return FALSE;
-        }
-        new_item = (node_t*) malloc(sizeof(node_t));
-        new_item-&gt;key = key;
-        new_item-&gt;val = val;
-        new_item-&gt;next = item;
-        // A. 虽然find拿到了合法的pred，但是在以下代码之前pred可能被删除，此时pred-&gt;next被标记
-        //    pred-&gt;next != item，该CAS会失败，失败后重试
-        if (CAS(&amp;pred-&gt;next, item, new_item)) {
-            return TRUE;
-        }
-        free(new_item);
-    }
-    return FALSE;
-}
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">l_insert</span><span class="p">(</span><span class="kt">node_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">key_t</span> <span class="n">key</span><span class="p">,</span> <span class="kt">value_t</span> <span class="n">val</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">node_t</span> <span class="o">*</span><span class="n">pred</span><span class="p">,</span> <span class="o">*</span><span class="n">item</span><span class="p">,</span> <span class="o">*</span><span class="n">new_item</span><span class="p">;</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">TRUE</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">l_find</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">pred</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">item</span><span class="p">,</span> <span class="n">head</span><span class="p">,</span> <span class="n">key</span><span class="p">))</span> <span class="p">{</span> 
+            <span class="k">return</span> <span class="n">FALSE</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="n">new_item</span> <span class="o">=</span> <span class="p">(</span><span class="kt">node_t</span><span class="o">*</span><span class="p">)</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">node_t</span><span class="p">));</span>
+        <span class="n">new_item</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="p">;</span>
+        <span class="n">new_item</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">val</span> <span class="o">=</span> <span class="n">val</span><span class="p">;</span>
+        <span class="n">new_item</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">next</span> <span class="o">=</span> <span class="n">item</span><span class="p">;</span>
+        <span class="c1">// A. 虽然find拿到了合法的pred，但是在以下代码之前pred可能被删除，此时pred-&amp;gt;next被标记</span>
+        <span class="c1">//    pred-&amp;gt;next != item，该CAS会失败，失败后重试</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">pred</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">next</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">new_item</span><span class="p">))</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="n">free</span><span class="p">(</span><span class="n">new_item</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">FALSE</span><span class="p">;</span>
+<span class="p">}</span>
 
-int l_remove(node_t *head, key_t key) {
-    node_t *pred, *item;
-    while (TRUE) {
-        if (!l_find(&amp;pred, &amp;item, head, key)) {
-            return FALSE;
-        }
-        node_t *inext = item-&gt;next;
-        // B. 删除item前先标记item-&gt;next，如果CAS失败，那么情况同insert一样，有其他线程在find之后
-        //    删除了item，失败后重试
-        if (!CAS(&amp;item-&gt;next, inext, MARK(inext))) {
-            continue;
-        }
-        // C. 对同一个元素item删除时，只会有一个线程成功走到这里
-        if (CAS(&amp;pred-&gt;next, item, STRIP_MARK(item-&gt;next))) {
-            haz_defer_free(item);
-            return TRUE;
-        }
-    }
-    return FALSE;
-}
+<span class="kt">int</span> <span class="n">l_remove</span><span class="p">(</span><span class="kt">node_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">key_t</span> <span class="n">key</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">node_t</span> <span class="o">*</span><span class="n">pred</span><span class="p">,</span> <span class="o">*</span><span class="n">item</span><span class="p">;</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">TRUE</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">l_find</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">pred</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">item</span><span class="p">,</span> <span class="n">head</span><span class="p">,</span> <span class="n">key</span><span class="p">))</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">FALSE</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="kt">node_t</span> <span class="o">*</span><span class="n">inext</span> <span class="o">=</span> <span class="n">item</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">next</span><span class="p">;</span>
+        <span class="c1">// B. 删除item前先标记item-&amp;gt;next，如果CAS失败，那么情况同insert一样，有其他线程在find之后</span>
+        <span class="c1">//    删除了item，失败后重试</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">item</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">next</span><span class="p">,</span> <span class="n">inext</span><span class="p">,</span> <span class="n">MARK</span><span class="p">(</span><span class="n">inext</span><span class="p">)))</span> <span class="p">{</span>
+            <span class="k">continue</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="c1">// C. 对同一个元素item删除时，只会有一个线程成功走到这里</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">pred</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">next</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">STRIP_MARK</span><span class="p">(</span><span class="n">item</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">next</span><span class="p">)))</span> <span class="p">{</span>
+            <span class="n">haz_defer_free</span><span class="p">(</span><span class="n">item</span><span class="p">);</span>
+            <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">FALSE</span><span class="p">;</span>
+<span class="p">}</span>
 
-int l_find(node_t **pred_ptr, node_t **item_ptr, node_t *head, key_t key) {
-    node_t *pred = head;
-    node_t *item = head-&gt;next;
-    hazard_t *hp1 = haz_get(0);
-    hazard_t *hp2 = haz_get(1);
-    while (item) {
-        haz_set_ptr(hp1, pred);
-        haz_set_ptr(hp2, item);
-        /* 
-         如果已被标记，那么紧接着item可能被移除链表甚至释放，所以需要重头查找
-        */
-        if (HAS_MARK(item-&gt;next)) { 
-            return l_find(pred_ptr, item_ptr, head, key);
-        }
-        int d = KEY_CMP(item-&gt;key, key);
-        if (d &gt;= 0) {
-            *pred_ptr = pred;
-            *item_ptr = item;
-            return d == 0 ? TRUE : FALSE;
-        }
-        pred = item;
-        item = item-&gt;next;
-    } 
-    *pred_ptr = pred;
-    *item_ptr = NULL;
-    return FALSE;
-}
-</code></pre>
+<span class="kt">int</span> <span class="n">l_find</span><span class="p">(</span><span class="kt">node_t</span> <span class="o">**</span><span class="n">pred_ptr</span><span class="p">,</span> <span class="kt">node_t</span> <span class="o">**</span><span class="n">item_ptr</span><span class="p">,</span> <span class="kt">node_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">key_t</span> <span class="n">key</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">node_t</span> <span class="o">*</span><span class="n">pred</span> <span class="o">=</span> <span class="n">head</span><span class="p">;</span>
+    <span class="kt">node_t</span> <span class="o">*</span><span class="n">item</span> <span class="o">=</span> <span class="n">head</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">next</span><span class="p">;</span>
+    <span class="kt">hazard_t</span> <span class="o">*</span><span class="n">hp1</span> <span class="o">=</span> <span class="n">haz_get</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="kt">hazard_t</span> <span class="o">*</span><span class="n">hp2</span> <span class="o">=</span> <span class="n">haz_get</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">haz_set_ptr</span><span class="p">(</span><span class="n">hp1</span><span class="p">,</span> <span class="n">pred</span><span class="p">);</span>
+        <span class="n">haz_set_ptr</span><span class="p">(</span><span class="n">hp2</span><span class="p">,</span> <span class="n">item</span><span class="p">);</span>
+        <span class="cm">/* </span>
+<span class="cm">         如果已被标记，那么紧接着item可能被移除链表甚至释放，所以需要重头查找</span>
+<span class="cm">        */</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">HAS_MARK</span><span class="p">(</span><span class="n">item</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">next</span><span class="p">))</span> <span class="p">{</span> 
+            <span class="k">return</span> <span class="n">l_find</span><span class="p">(</span><span class="n">pred_ptr</span><span class="p">,</span> <span class="n">item_ptr</span><span class="p">,</span> <span class="n">head</span><span class="p">,</span> <span class="n">key</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="kt">int</span> <span class="n">d</span> <span class="o">=</span> <span class="n">KEY_CMP</span><span class="p">(</span><span class="n">item</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">key</span><span class="p">,</span> <span class="n">key</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">d</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span><span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="o">*</span><span class="n">pred_ptr</span> <span class="o">=</span> <span class="n">pred</span><span class="p">;</span>
+            <span class="o">*</span><span class="n">item_ptr</span> <span class="o">=</span> <span class="n">item</span><span class="p">;</span>
+            <span class="k">return</span> <span class="n">d</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">?</span> <span class="nl">TRUE</span> <span class="p">:</span> <span class="n">FALSE</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="n">pred</span> <span class="o">=</span> <span class="n">item</span><span class="p">;</span>
+        <span class="n">item</span> <span class="o">=</span> <span class="n">item</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">next</span><span class="p">;</span>
+    <span class="p">}</span> 
+    <span class="o">*</span><span class="n">pred_ptr</span> <span class="o">=</span> <span class="n">pred</span><span class="p">;</span>
+    <span class="o">*</span><span class="n">item_ptr</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="k">return</span> <span class="n">FALSE</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p><code>haz_get</code>、<code>haz_set_ptr</code>之类的函数是一个hazard pointer实现，用于支持多线程下内存的GC。上面的代码中，要删除一个元素<code>item</code>时，会标记<code>item-&gt;next</code>，从而使得<code>insert</code>时中那个<code>CAS</code>不需要做任何调整。总结下这里的线程竞争情况：</p>
 
@@ -193,42 +244,37 @@ int l_find(node_t **pred_ptr, node_t **item_ptr, node_t *head, key_t key) {
 
 <p>ABA问题还是存在的，<code>insert</code>中：</p>
 
-<p>{% highlight c++ %}
-    if (CAS(&amp;pred->next, item, new_item)) {
-        return TRUE;
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">if</span> <span class="p">(</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">pred</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">new_item</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <p>如果<code>CAS</code>之前，<code>pred</code>后的<code>item</code>被移除，又以相同的地址值加进来，但其value变了，此时<code>CAS</code>会成功，但链表可能就不是有序的了。<code>pred-&gt;val &lt; new_item-&gt;val &gt; item-&gt;val</code></p>
 
 <p>为了解决这个问题，可以利用指针值地址对齐的其他位来存储一个计数，用于表示<code>pred-&gt;next</code>的改变次数。当<code>insert</code>拿到<code>pred</code>时，<code>pred-&gt;next</code>中存储的计数假设是0，<code>CAS</code>之前其他线程移除了<code>pred-&gt;next</code>又新增回了<code>item</code>，此时<code>pred-&gt;next</code>中的计数增加，从而导致<code>insert</code>中<code>CAS</code>失败。</p>
 
-<p>{% highlight c++ %}
-    // 最低位留作删除标志
-    #define MASK ((sizeof(node_t) - 1) &amp; ~0x01)</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// 最低位留作删除标志</span>
+    <span class="cp">#define MASK ((sizeof(node_t) - 1) &amp;amp; ~0x01)&lt;/p&gt;</span>
 
-<pre><code>#define GET_TAG(p) ((markable_t)p &amp; MASK)
-#define TAG(p, tag) ((markable_t)p | (tag))
-#define MARK(p) ((markable_t)p | 0x01)
-#define HAS_MARK(p) ((markable_t)p &amp; 0x01)
-#define STRIP_MARK(p) ((node_t*)((markable_t)p &amp; ~(MASK | 0x01)))
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="err">#</span><span class="n">define</span> <span class="n">GET_TAG</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="p">((</span><span class="kt">markable_t</span><span class="p">)</span><span class="n">p</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">MASK</span><span class="p">)</span>
+<span class="cp">#define TAG(p, tag) ((markable_t)p | (tag))</span>
+<span class="cp">#define MARK(p) ((markable_t)p | 0x01)</span>
+<span class="cp">#define HAS_MARK(p) ((markable_t)p &amp;amp; 0x01)</span>
+<span class="cp">#define STRIP_MARK(p) ((node_t*)((markable_t)p &amp;amp; ~(MASK | 0x01)))</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p><code>remove</code>的实现：</p>
 
-<p>{% highlight c++ %}
-    /<em> 先标记再删除 </em>/
-    if (!CAS(&amp;sitem->next, inext, MARK(inext))) {
-        continue;
-    }
-    int tag = GET_TAG(pred->next) + 1;
-    if (CAS(&amp;pred->next, item, TAG(STRIP_MARK(sitem->next), tag))) {
-        haz_defer_free(sitem);
-        return TRUE;
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="err">先标记再删除</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">sitem</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">,</span> <span class="n">inext</span><span class="p">,</span> <span class="n">MARK</span><span class="p">(</span><span class="n">inext</span><span class="p">)))</span> <span class="p">{</span>
+        <span class="k">continue</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="kt">int</span> <span class="n">tag</span> <span class="o">=</span> <span class="n">GET_TAG</span><span class="p">(</span><span class="n">pred</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">pred</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">TAG</span><span class="p">(</span><span class="n">STRIP_MARK</span><span class="p">(</span><span class="n">sitem</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">),</span> <span class="n">tag</span><span class="p">)))</span> <span class="p">{</span>
+        <span class="n">haz_defer_free</span><span class="p">(</span><span class="n">sitem</span><span class="p">);</span>
+        <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <p><code>insert</code>中也可以更新<code>pred-&gt;next</code>的计数。</p>
 
@@ -264,46 +310,41 @@ int l_find(node_t **pred_ptr, node_t **item_ptr, node_t *head, key_t key) {
 <!-- more -->
 
 
-<p>{% highlight c++ %}
-    struct HazardPointer {
-        void *real_ptr; // 包装的指针
-        &hellip; // 不同的实现有不同的成员
-    };</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">struct</span> <span class="n">HazardPointer</span> <span class="p">{</span>
+        <span class="kt">void</span> <span class="o">*</span><span class="n">real_ptr</span><span class="p">;</span> <span class="c1">// 包装的指针</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span> <span class="c1">// 不同的实现有不同的成员</span>
+    <span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>void func() {
-    HazardPointer *hp = accquire(_real_ptr);
-    ... // use _real_ptr
-    release(hp);
-}
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">func</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">HazardPointer</span> <span class="o">*</span><span class="n">hp</span> <span class="o">=</span> <span class="n">accquire</span><span class="p">(</span><span class="n">_real_ptr</span><span class="p">);</span>
+    <span class="p">...</span> <span class="c1">// use _real_ptr</span>
+    <span class="n">release</span><span class="p">(</span><span class="n">hp</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p><code>Thread Free List</code>：每个线程都有一个这样的列表，保存着将要释放的指针列表，这个列表仅对应的线程读写</p>
 
-<p>{% highlight c++ %}
-    void defer_free(void *ptr) {
-        _free_list.push_back(ptr);
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">defer_free</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">_free_list</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">ptr</span><span class="p">);</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <p>当某个线程要尝试释放Free List中的指针时，例如指针<code>ptr</code>，就检查所有其他线程使用的Hazard pointer，检查是否存在包装了<code>ptr</code>的Hazard pointer，如果没有则说明没有读线程正在使用<code>ptr</code>，可以安全释放<code>ptr</code>。</p>
 
-<p>{% highlight c++ %}
-    void gc() {
-        for(ptr in <em>free_list) {
-            conflict = false
-            for (hp in </em>all_hazard_pointers) {
-                if (hp->_real_ptr == ptr) {
-                    confilict = true
-                    break
-                }
-            }
-            if (!conflict)
-                delete ptr
-        }
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">gc</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">for</span><span class="p">(</span><span class="n">ptr</span> <span class="n">in</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">free_list</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">conflict</span> <span class="o">=</span> <span class="nb">false</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">hp</span> <span class="n">in</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">all_hazard_pointers</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">hp</span><span class="o">-&gt;</span><span class="n">_real_ptr</span> <span class="o">==</span> <span class="n">ptr</span><span class="p">)</span> <span class="p">{</span>
+                    <span class="n">confilict</span> <span class="o">=</span> <span class="nb">true</span>
+                    <span class="k">break</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+            <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">conflict</span><span class="p">)</span>
+                <span class="k">delete</span> <span class="n">ptr</span>
+        <span class="p">}</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <p>以上，其实就是<code>Hazard Pointer</code>的主要内容。</p>
 
@@ -317,26 +358,25 @@ int l_find(node_t **pred_ptr, node_t **item_ptr, node_t *head, key_t key) {
 
 <p>在<a href="https://code.google.com/p/nbds/">nbds</a>项目中也有一个Hazard Pointer的实现，相对要弱一点。它为每个线程都设置了自己的Hazard Pointer池，写线程要释放指针时，就访问所有其他线程的Hazard Pointer池。</p>
 
-<p>{% highlight c++ %}
-    typedef struct haz_local {
-        // Free List
-        pending_t *pending; // to be freed
-        int pending_size;
-        int pending_count;</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">typedef</span> <span class="k">struct</span> <span class="n">haz_local</span> <span class="p">{</span>
+        <span class="c1">// Free List</span>
+        <span class="kt">pending_t</span> <span class="o">*</span><span class="n">pending</span><span class="p">;</span> <span class="c1">// to be freed</span>
+        <span class="kt">int</span> <span class="n">pending_size</span><span class="p">;</span>
+        <span class="kt">int</span> <span class="n">pending_count</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>    // Hazard Pointer 池，动态和静态两种
-    haz_t static_haz[STATIC_HAZ_PER_THREAD];
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="c1">// Hazard Pointer 池，动态和静态两种</span>
+    <span class="kt">haz_t</span> <span class="n">static_haz</span><span class="p">[</span><span class="n">STATIC_HAZ_PER_THREAD</span><span class="p">];</span>
 
-    haz_t **dynamic;
-    int dynamic_size;
-    int dynamic_count;
+    <span class="kt">haz_t</span> <span class="o">**</span><span class="n">dynamic</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">dynamic_size</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">dynamic_count</span><span class="p">;</span>
 
-} __attribute__ ((aligned(CACHE_LINE_SIZE))) haz_local_t;
+<span class="p">}</span> <span class="n">__attribute__</span> <span class="p">((</span><span class="n">aligned</span><span class="p">(</span><span class="n">CACHE_LINE_SIZE</span><span class="p">)))</span> <span class="kt">haz_local_t</span><span class="p">;</span>
 
-static haz_local_t haz_local_[MAX_NUM_THREADS] = {};
-</code></pre>
+<span class="k">static</span> <span class="kt">haz_local_t</span> <span class="n">haz_local_</span><span class="p">[</span><span class="n">MAX_NUM_THREADS</span><span class="p">]</span> <span class="o">=</span> <span class="p">{};</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>每个线程当然就涉及到<code>haz_local_</code>索引(ID)的分配，就像<a href="http://codemacro.com/2015/04/19/rw_thread_gc/">使用RCU技术实现读写线程无锁</a>中的一样。这个实现为了支持线程动态创建，就需要一套线程ID的重用机制，相对复杂多了。</p>
 
@@ -447,47 +487,42 @@ defer_free(old_ptr)
 
 <p>写线程负责标识内存需要被释放，以及检查何时可以真正释放内存。其维护了一个释放内存队列：</p>
 
-<p>{% highlight c++ %}
-    void *<em>pending[8]
-    uint64_t </em>head, _tail</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="o">*&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pending</span><span class="p">[</span><span class="mi">8</span><span class="p">]</span>
+    <span class="kt">uint64_t</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">head</span><span class="p">,</span> <span class="n">_tail</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>void defer_free(void *p) {
-    _head ++
-    _pending[PENDING_POS(_head)] = p
-}
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">defer_free</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">p</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">_head</span> <span class="o">++</span>
+    <span class="n">_pending</span><span class="p">[</span><span class="n">PENDING_POS</span><span class="p">(</span><span class="n">_head</span><span class="p">)]</span> <span class="o">=</span> <span class="n">p</span>
+<span class="p">}</span>
 
-gc() {
-    for (_tail -&gt; find_free_pos())
-        free(_pending[_tail])
-}
-</code></pre>
+<span class="n">gc</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">_tail</span> <span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="n">find_free_pos</span><span class="p">())</span>
+        <span class="n">free</span><span class="p">(</span><span class="n">_pending</span><span class="p">[</span><span class="n">_tail</span><span class="p">])</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p><code>find_free_pos</code>找到一个可释放内存位置，在<code>[_tail, find_free_pos())</code>这个区间内所有内存是可以安全被释放的。</p>
 
 <p>队列位置<code>_head/_tail</code>一直增大，<code>PENDING_POS</code>就是对这个位置取模，限定在队列大小范围内也是可行的，无论哪种方式，<code>_head</code>从逻辑上说一直<code>&gt;=_tail</code>，但在实际中可能小于<code>_tail</code>，所以实现时不使用大小判定，而是：</p>
 
-<p>{% highlight c++ %}
-    gc() {
-        pos = find_free_pos()
-        while (<em>tail != pos) {
-            free(</em>pending[PENDING_POS(<em>tail)])
-            </em>tail ++
-        }
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">gc</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">find_free_pos</span><span class="p">()</span>
+        <span class="k">while</span> <span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tail</span> <span class="o">!=</span> <span class="n">pos</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">free</span><span class="p">(</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">pending</span><span class="p">[</span><span class="n">PENDING_POS</span><span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tail</span><span class="p">)])</span>
+            <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tail</span> <span class="o">++</span>
+        <span class="p">}</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <h3>读线程</h3>
 
 <p>读线程不再使用共享内存时，就标识自己：</p>
 
-<p>{% highlight c++ %}
-    update() {
-        static <em><em>thread int tid
-        </em>tmark[tid] = </em>head
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">update</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">static</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="kr">thread</span> <span class="kt">int</span> <span class="n">tid</span>
+        <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tmark</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">head</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <p>读线程的状态会影响写线程的回收逻辑，其状态分为：</p>
 
@@ -501,44 +536,40 @@ gc() {
 
 <p>读线程处于活跃状态时，它会不断地更新自己可释放内存位置(<code>_tmark[tid]</code>)。写线程检查所有读线程的<code>_tmark[tid]</code>，<code>[_tail, min(_tmark[]))</code>是所有读线程都不再使用的内存区间，可以被安全释放。</p>
 
-<p>{% highlight c++ %}
-    find_free_pos() {
-        min = MAX_INTEGER
-        pos = 0
-        for (tid = 0; tid &lt; max_threads; ++tid) {
-            tpos = _tmark[tid]
-            offset = tpos - tail
-            if (offset &lt; min) {
-                min = offset
-                pos = tpos
-            }
-        }
-        return pos
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">find_free_pos</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">min</span> <span class="o">=</span> <span class="n">MAX_INTEGER</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">tid</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">tid</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">max_threads</span><span class="p">;</span> <span class="o">++</span><span class="n">tid</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">tpos</span> <span class="o">=</span> <span class="n">_tmark</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="n">tpos</span> <span class="o">-</span> <span class="n">tail</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">offset</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">min</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">min</span> <span class="o">=</span> <span class="n">offset</span>
+                <span class="n">pos</span> <span class="o">=</span> <span class="n">tpos</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">pos</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <p>当读线程暂停时，其<code>_tmark[tid]</code>可能会在很长一段时间里得不到更新，此时会阻碍写线程释放内存。所以需要方法来标识读线程是否进入暂停状态。通过设置一个上次释放内存位置<code>_tfreeds[tid]</code>，标识每个线程当前内存释放到的位置。如果一个线程处于暂停状态了，那么在一定时间后，<code>_tfreeds[tid] == _tmark[tid]</code>。在查找可释放位置时，就需要忽略暂停状态的读线程：</p>
 
-<p>{% highlight c++ %}
-    find_free_pos() {
-        min = MAX_INTEGER
-        pos = <em>head
-        for (tid = 0; tid &lt; max_threads; ++tid) {
-            tpos = </em>tmark[tid]
-            if (tpos == <em>tfreeds[tid]) continue
-            offset = tpos - tail
-            if (offset &lt; min) {
-                min = offset
-                pos = tpos
-            }
-        }
-        for (tid = 0; tid &lt; max_threads; ++tid) {
-            if (</em>tfreeds[tid] != <em>tmark[tid])
-                </em>tfreeds[tid] = pos
-        }
-        return pos
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">find_free_pos</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">min</span> <span class="o">=</span> <span class="n">MAX_INTEGER</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">head</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">tid</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">tid</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">max_threads</span><span class="p">;</span> <span class="o">++</span><span class="n">tid</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">tpos</span> <span class="o">=</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tmark</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">tpos</span> <span class="o">==</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tfreeds</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span> <span class="k">continue</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="n">tpos</span> <span class="o">-</span> <span class="n">tail</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">offset</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">min</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">min</span> <span class="o">=</span> <span class="n">offset</span>
+                <span class="n">pos</span> <span class="o">=</span> <span class="n">tpos</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">tid</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">tid</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">max_threads</span><span class="p">;</span> <span class="o">++</span><span class="n">tid</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tfreeds</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">!=</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tmark</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span>
+                <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tfreeds</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">pos</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">pos</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <p>但是当所有线程都处于暂停状态时，写线程可能还在工作，上面的实现就会返回<code>_head</code>，此时写线程依然可以正常释放内存。</p>
 
@@ -550,24 +581,20 @@ gc() {
 
 <p>如果读线程可能中途退出，中途动态增加，那么<code>_tmark[]</code>就需要被复用，此时线程<code>tid</code>的分配调整为动态的即可：</p>
 
-<p>{% highlight c++ %}
-    class ThreadIdPool {
-    public:
-        // 动态获取一个线程tid，某线程每次调用该接口返回相同的值
-        int get()
-        // 线程退出时回收该tid
-        void put(int id)
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">class</span> <span class="nc">ThreadIdPool</span> <span class="p">{</span>
+    <span class="k">public</span><span class="o">:</span>
+        <span class="c1">// 动态获取一个线程tid，某线程每次调用该接口返回相同的值</span>
+        <span class="kt">int</span> <span class="n">get</span><span class="p">()</span>
+        <span class="c1">// 线程退出时回收该tid</span>
+        <span class="kt">void</span> <span class="n">put</span><span class="p">(</span><span class="kt">int</span> <span class="n">id</span><span class="p">)</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <p><code>ThreadIdPool</code>的实现无非就是利用TLS，以及在线程退出时得到通知以回收tid。那么对于读线程的<code>update</code>实现变为：</p>
 
-<p>{% highlight c++ %}
-    update() {
-        tid = <em>idPool->get()
-        </em>tmark[tid] = _head
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">update</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">tid</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">idPool</span><span class="o">-&gt;</span><span class="n">get</span><span class="p">()</span>
+        <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">tmark</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">_head</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <p>当某个线程退出时，<code>_tmark[tid]</code>和<code>_tfreeds[tid]</code>不需要做任何处理，当新创建的线程复用了该<code>tid</code>时，可以立即复用<code>_tmark[tid]</code>和<code>_tfreeds[tid]</code>，此时这2个值必然是相等的。</p>
 
@@ -581,30 +608,29 @@ gc() {
 
 <p>当某个线程尝试内存回收时，它需要知道所有其他线程的空闲位置（相当于<code>_tmark[tid]</code>），它通知下一个线程我需要释放的范围。当下一个线程<code>update</code>时（离开临界区），它会将上个线程的通知继续告诉下一个线程，直到最后这个通知回到发起线程。那么对于发起线程而言，这个释放请求在所有线程中走了一遍，得到了大家的认可，可以安全释放。每个线程都以这样的方式工作。</p>
 
-<p>{% highlight c++ %}
-    void rcu_defer_free (void *x) {
-        &hellip;
-        rcu<em>[next_thread_id][tid</em>] = rcu_last_posted<em>[tid</em>][tid<em>] = pending</em>[tid_]->head;
-        &hellip;
-    }</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">rcu_defer_free</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">x</span><span class="p">)</span> <span class="p">{</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="n">rcu</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">[</span><span class="n">next_thread_id</span><span class="p">][</span><span class="n">tid</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rcu_last_posted</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">[</span><span class="n">tid</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">][</span><span class="n">tid</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pending</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">[</span><span class="n">tid_</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">head</span><span class="p">;</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+    <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>void rcu_update (void) {
-    ...
-    for (i = 0; i &lt; num_threads_; ++i) {
-        ...     
-        uint64_t x = rcu_[tid_][i]; // 其它线程发给自己的通知
-        rcu_[next_thread_id][i] = rcu_last_posted_[tid_][i] = x; // 扩散出去
-        ...
-    }
-    ...
-    while (q-&gt;tail != rcu_[tid_][tid_]) {
-        free
-    }     
-    ...
-}
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="kt">void</span> <span class="n">rcu_update</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="p">{</span>
+    <span class="p">...</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">num_threads_</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+        <span class="p">...</span>     
+        <span class="kt">uint64_t</span> <span class="n">x</span> <span class="o">=</span> <span class="n">rcu_</span><span class="p">[</span><span class="n">tid_</span><span class="p">][</span><span class="n">i</span><span class="p">];</span> <span class="c1">// 其它线程发给自己的通知</span>
+        <span class="n">rcu_</span><span class="p">[</span><span class="n">next_thread_id</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">rcu_last_posted_</span><span class="p">[</span><span class="n">tid_</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span> <span class="c1">// 扩散出去</span>
+        <span class="p">...</span>
+    <span class="p">}</span>
+    <span class="p">...</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">q</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">tail</span> <span class="o">!=</span> <span class="n">rcu_</span><span class="p">[</span><span class="n">tid_</span><span class="p">][</span><span class="n">tid_</span><span class="p">])</span> <span class="p">{</span>
+        <span class="n">free</span>
+    <span class="p">}</span>     
+    <span class="p">...</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>这个实现相对简单，不支持线程暂停，以及线程动态增加和减少。</p>
 ]]></content>
@@ -667,54 +693,52 @@ $10 = 0x4e73aa58
 
 <p><code>stacktrace_x86-inl.h</code>里使用了一些宏来生成函数名和参数，精简后代码大概为：</p>
 
-<p>{% highlight c++ %}
-    int GET_STACK_TRACE_OR_FRAMES {
-      void <strong>sp;
-      unsigned long rbp;
-      <strong>asm</strong> volatile (&ldquo;mov %%rbp, %0&rdquo; : &ldquo;=r&rdquo; (rbp));
-      sp = (void </strong>) rbp;</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">int</span> <span class="n">GET_STACK_TRACE_OR_FRAMES</span> <span class="p">{</span>
+      <span class="kt">void</span> <span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">sp</span><span class="p">;</span>
+      <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">rbp</span><span class="p">;</span>
+      <span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="k">asm</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span> <span class="k">volatile</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">mov</span> <span class="o">%%</span><span class="n">rbp</span><span class="p">,</span> <span class="o">%</span><span class="mi">0</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span> <span class="o">:</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">=</span><span class="n">r</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span> <span class="p">(</span><span class="n">rbp</span><span class="p">));</span>
+      <span class="n">sp</span> <span class="o">=</span> <span class="p">(</span><span class="kt">void</span> <span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span><span class="p">)</span> <span class="n">rbp</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>  int n = 0;
-  while (sp &amp;&amp; n &lt; max_depth) {
-    if (*(sp+1) == reinterpret_cast&lt;void *&gt;(0)) {
-      break;
-    }
-    void **next_sp = NextStackFrame&lt;!IS_STACK_FRAMES, IS_WITH_CONTEXT&gt;(sp, ucp);
-    if (skip_count &gt; 0) {
-      skip_count--;
-    } else {
-      result[n] = *(sp+1);
-      n++;
-    }
-    sp = next_sp;
-  }
-  return n;
-}
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>  <span class="kt">int</span> <span class="n">n</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="k">while</span> <span class="p">(</span><span class="n">sp</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">n</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">max_depth</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">sp</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="k">reinterpret_cast</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="kt">void</span> <span class="o">*&amp;</span><span class="n">gt</span><span class="p">;(</span><span class="mi">0</span><span class="p">))</span> <span class="p">{</span>
+      <span class="k">break</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="kt">void</span> <span class="o">**</span><span class="n">next_sp</span> <span class="o">=</span> <span class="n">NextStackFrame</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">!</span><span class="n">IS_STACK_FRAMES</span><span class="p">,</span> <span class="n">IS_WITH_CONTEXT</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;(</span><span class="n">sp</span><span class="p">,</span> <span class="n">ucp</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">skip_count</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">skip_count</span><span class="o">--</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="n">result</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="n">sp</span><span class="o">+</span><span class="mi">1</span><span class="p">);</span>
+      <span class="n">n</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">sp</span> <span class="o">=</span> <span class="n">next_sp</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="n">n</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p><code>NextStackFrame</code>是一个模板函数，包含一大堆代码，精简后非常简单：</p>
 
-<p>{% highlight c++ %}
-    template<bool STRICT_UNWINDING, bool WITH_CONTEXT>
-    static void <strong>NextStackFrame(void </strong>old_sp, const void <em>uc) {
-      void <strong>new_sp = (void </strong>) </em>old_sp;
-      if (STRICT_UNWINDING) {
-        if (new_sp &lt;= old_sp) return NULL;
-        if ((uintptr_t)new_sp - (uintptr_t)old_sp > 100000) return NULL;
-      } else {
-        if (new_sp == old_sp) return NULL;
-        if ((new_sp > old_sp)
-            &amp;&amp; ((uintptr_t)new_sp - (uintptr_t)old_sp > 1000000)) return NULL;
-      }
-      if ((uintptr_t)new_sp &amp; (sizeof(void *) - 1)) return NULL;</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">template</span><span class="o">&lt;</span><span class="kt">bool</span> <span class="n">STRICT_UNWINDING</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">WITH_CONTEXT</span><span class="o">&gt;</span>
+    <span class="k">static</span> <span class="kt">void</span> <span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">NextStackFrame</span><span class="p">(</span><span class="kt">void</span> <span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">old_sp</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">uc</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kt">void</span> <span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">new_sp</span> <span class="o">=</span> <span class="p">(</span><span class="kt">void</span> <span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span><span class="p">)</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">old_sp</span><span class="p">;</span>
+      <span class="k">if</span> <span class="p">(</span><span class="n">STRICT_UNWINDING</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">new_sp</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">=</span> <span class="n">old_sp</span><span class="p">)</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">((</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">new_sp</span> <span class="o">-</span> <span class="p">(</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">old_sp</span> <span class="o">&gt;</span> <span class="mi">100000</span><span class="p">)</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">new_sp</span> <span class="o">==</span> <span class="n">old_sp</span><span class="p">)</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">new_sp</span> <span class="o">&gt;</span> <span class="n">old_sp</span><span class="p">)</span>
+            <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="p">((</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">new_sp</span> <span class="o">-</span> <span class="p">(</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">old_sp</span> <span class="o">&gt;</span> <span class="mi">1000000</span><span class="p">))</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+      <span class="p">}</span>
+      <span class="k">if</span> <span class="p">((</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">new_sp</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>  return new_sp;
-}
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>  <span class="k">return</span> <span class="n">new_sp</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>上面这个代码到汇编的对比过程还是花了些时间，其中汇编中出现的一些常量可以大大缩短对比时间，例如上面出现了<code>100000</code>，汇编中就有：</p>
 
@@ -790,14 +814,12 @@ last func RBP
 
 <p>总之，<strong>一般情况下，任何一个函数中，RBP寄存器指向了当前函数的栈基址，该栈基址中又存储了调用者的栈基址，同时该栈基址前面还存储了调用者的返回地址</strong>。所以，<code>GetStackTrace</code>的实现，简单来说大概就是：</p>
 
-<p>{% highlight c++ %}
-    sp = rbp  // 取得当前函数GetStackTrace的栈基址
-    while (n &lt; max_depth) {
-        new_sp = <em>sp
-        result[n] = </em>(new_sp+1)
-        n++
-    }
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">sp</span> <span class="o">=</span> <span class="n">rbp</span>  <span class="c1">// 取得当前函数GetStackTrace的栈基址</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">n</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">max_depth</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">new_sp</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">sp</span>
+        <span class="n">result</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">(</span><span class="n">new_sp</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">n</span><span class="o">++</span>
+    <span class="p">}</span></code></pre></div></p>
 
 <p>以上，最终就知道了以下关键信息：</p>
 
@@ -854,21 +876,20 @@ buf[len] = 0;
 
 <p>所以这里就会怀疑是<code>tcmalloc</code>这个函数里有把堆栈破坏，这个时候就是读代码，看看有没有疑似危险的地方，未果。这里就陷入了僵局，怀疑又遇到了跨栈帧破坏的情况，这个时候就只能<code>__conhash_get_rbnode</code>调用栈中周围的函数翻翻，例如调用<code>__conhash_get_rbnode</code>的函数<code>__conhash_add_replicas</code>中恰好有字符串操作：</p>
 
-<p>{% highlight c++ %}
-    void <strong>conhash_add_replicas(conhash_t <em>conhash, int32_t iden)
-    {
-        node_t</em> node = </strong>conhash_create_node(iden, conhash->replica);
-        &hellip;
-        char buf[buf_len]; // buf_len = 64
-        &hellip;
-        snprintf(buf, buf_len, VIRT_NODE_HASH_FMT, node->iden, i);
-        uint32_t hash = conhash->cb_hashfunc(buf);
-        if(util_rbtree_search(&amp;(conhash->vnode_tree), hash) == NULL)
-        {
-            util_rbtree_node_t* rbnode = __conhash_get_rbnode(node, hash);
-            &hellip;</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">conhash_add_replicas</span><span class="p">(</span><span class="kt">conhash_t</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">conhash</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">iden</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="kt">node_t</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">node</span> <span class="o">=</span> <span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">conhash_create_node</span><span class="p">(</span><span class="n">iden</span><span class="p">,</span> <span class="n">conhash</span><span class="o">-&gt;</span><span class="n">replica</span><span class="p">);</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="n">buf_len</span><span class="p">];</span> <span class="c1">// buf_len = 64</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="n">snprintf</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="n">buf_len</span><span class="p">,</span> <span class="n">VIRT_NODE_HASH_FMT</span><span class="p">,</span> <span class="n">node</span><span class="o">-&gt;</span><span class="n">iden</span><span class="p">,</span> <span class="n">i</span><span class="p">);</span>
+        <span class="kt">uint32_t</span> <span class="n">hash</span> <span class="o">=</span> <span class="n">conhash</span><span class="o">-&gt;</span><span class="n">cb_hashfunc</span><span class="p">(</span><span class="n">buf</span><span class="p">);</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">util_rbtree_search</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;(</span><span class="n">conhash</span><span class="o">-&gt;</span><span class="n">vnode_tree</span><span class="p">),</span> <span class="n">hash</span><span class="p">)</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+        <span class="p">{</span>
+            <span class="kt">util_rbtree_node_t</span><span class="o">*</span> <span class="n">rbnode</span> <span class="o">=</span> <span class="n">__conhash_get_rbnode</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">hash</span><span class="p">);</span>
+            <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>这段代码最终发现是没有问题的，这里又耗费了不少时间。后来发现若干个函数里的RBP都有点奇怪，这个调用栈比较正常的范围是：0x4e738c90</p>
 
@@ -928,21 +949,20 @@ mov    %rsp,%rbp
 
 <p>这里打印RSI寄存器的值可能会被误导，因为任何时候打印寄存器的值可能都是错的，除非它有被显示保存。不过这里可以看出RSI的值来源于参数(RSI对应第二个参数)：</p>
 
-<p>{% highlight c++ %}
-    void <strong>conhash_add_replicas(conhash_t <em>conhash, int32_t iden)
-    {
-        node_t</em> node = </strong>conhash_create_node(iden, conhash->replica);
-        &hellip;
-        char buf[buf_len]; // buf_len = 64
-        &hellip;
-        snprintf(buf, buf_len, VIRT_NODE_HASH_FMT, node->iden, i);
-        uint32_t hash = conhash->cb_hashfunc(buf); // hash值由一个字符串哈希函数计算
-        if(util_rbtree_search(&amp;(conhash->vnode_tree), hash) == NULL)
-        {
-            util_rbtree_node_t* rbnode = __conhash_get_rbnode(node, hash);  // hash值
-            &hellip;</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">conhash_add_replicas</span><span class="p">(</span><span class="kt">conhash_t</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">conhash</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">iden</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="kt">node_t</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">node</span> <span class="o">=</span> <span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">conhash_create_node</span><span class="p">(</span><span class="n">iden</span><span class="p">,</span> <span class="n">conhash</span><span class="o">-&gt;</span><span class="n">replica</span><span class="p">);</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="n">buf_len</span><span class="p">];</span> <span class="c1">// buf_len = 64</span>
+        <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span>
+        <span class="n">snprintf</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="n">buf_len</span><span class="p">,</span> <span class="n">VIRT_NODE_HASH_FMT</span><span class="p">,</span> <span class="n">node</span><span class="o">-&gt;</span><span class="n">iden</span><span class="p">,</span> <span class="n">i</span><span class="p">);</span>
+        <span class="kt">uint32_t</span> <span class="n">hash</span> <span class="o">=</span> <span class="n">conhash</span><span class="o">-&gt;</span><span class="n">cb_hashfunc</span><span class="p">(</span><span class="n">buf</span><span class="p">);</span> <span class="c1">// hash值由一个字符串哈希函数计算</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">util_rbtree_search</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;(</span><span class="n">conhash</span><span class="o">-&gt;</span><span class="n">vnode_tree</span><span class="p">),</span> <span class="n">hash</span><span class="p">)</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+        <span class="p">{</span>
+            <span class="kt">util_rbtree_node_t</span><span class="o">*</span> <span class="n">rbnode</span> <span class="o">=</span> <span class="n">__conhash_get_rbnode</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">hash</span><span class="p">);</span>  <span class="c1">// hash值</span>
+            <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>追到<code>__conhash_add_replicas</code>：</p>
 
@@ -968,15 +988,15 @@ $12 = 0x4e73aa58      # 0x4e73aa58
 
 <p>以上，既然只要某个库<code>omit-frame-pointer</code>，那tcmalloc就可能出错，为什么发生的频率并不高呢？这个可以回到<code>GetStackTrace</code>尤其是<code>NextStackFrame</code>的实现，其中包含了几个合法RBP的判定：</p>
 
-<p>{% highlight c++ %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<pre><code>    if (new_sp &lt;= old_sp) return NULL;  // 上一个栈帧的RBP肯定比当前的大
-    if ((uintptr_t)new_sp - (uintptr_t)old_sp &gt; 100000) return NULL; // 指针值范围还必须在100000内
-    ...
-if ((uintptr_t)new_sp &amp; (sizeof(void *) - 1)) return NULL; // 由于本身保存的是指针，所以还必须是sizeof(void*)的整数倍，对齐
-</code></pre>
+<span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="k">if</span> <span class="p">(</span><span class="n">new_sp</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">=</span> <span class="n">old_sp</span><span class="p">)</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>  <span class="c1">// 上一个栈帧的RBP肯定比当前的大</span>
+    <span class="k">if</span> <span class="p">((</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">new_sp</span> <span class="o">-</span> <span class="p">(</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">old_sp</span> <span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span> <span class="mi">100000</span><span class="p">)</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span> <span class="c1">// 指针值范围还必须在100000内</span>
+    <span class="p">...</span>
+<span class="k">if</span> <span class="p">((</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">new_sp</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span> <span class="c1">// 由于本身保存的是指针，所以还必须是sizeof(void*)的整数倍，对齐</span>
+<span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>有了以上条件，才使得这个core几率变得很低。</p>
 
@@ -1004,395 +1024,6 @@ if ((uintptr_t)new_sp &amp; (sizeof(void *) - 1)) return NULL; // 由于本身�
 </code></pre>
 
 <p>最开始我觉得<code>buf</code>占64字节，也就是整个[0x4e738bd0, 0x4e738c10)内存，但是这块内存里居然有函数地址，这一度使我怀疑这里有问题。后来醒悟这些地址是定义<code>buf</code>前调用<code>__conhash_create_node</code>产生的，调用过程中写到堆栈里，调用完后栈指针改变，但并不需要清空栈中的内容。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[基于内存查看STL常用容器内容]]></title>
-    <link href="http://codemacro.com/2014/12/03/gdb_stl/"/>
-    <updated>2014-12-03T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2014/12/03/gdb_stl</id>
-    <content type="html"><![CDATA[<p>有时候在线上使用gdb调试程序core问题时，可能没有符号文件，拿到的仅是一个内存地址，如果这个指向的是一个STL对象，那么如何查看这个对象的内容呢？</p>
-
-<p>只需要知道STL各个容器的数据结构实现，就可以查看其内容。本文描述了SGI STL实现中常用容器的数据结构，以及如何在gdb中查看其内容。</p>
-
-<h2>string</h2>
-
-<p>string，即<code>basic_string</code> <code>bits/basic_string.h</code>：</p>
-
-<p>{% highlight c++ %}
-    mutable <em>Alloc_hider  </em>M_dataplus;
-    &hellip;
-      const <em>CharT*
-      c_str() const
-      { return </em>M_data(); }
-    &hellip;  <br/>
-      <em>CharT*
-      </em>M_data() const
-      { return  <em>M_dataplus.</em>M_p; }</p>
-
-<pre><code>...
-  struct _Alloc_hider : _Alloc
-  {
-_Alloc_hider(_CharT* __dat, const _Alloc&amp; __a)
-: _Alloc(__a), _M_p(__dat) { }
-
-_CharT* _M_p; // The actual data.
-  };
-
-  size_type
-  length() const
-  { return _M_rep()-&gt;_M_length; }
-
-  _Rep*
-  _M_rep() const
-  { return &amp;((reinterpret_cast&lt;_Rep*&gt; (_M_data()))[-1]); }
-
-  ...
-   struct _Rep_base
-  {
-size_type       _M_length;
-size_type       _M_capacity;
-_Atomic_word        _M_refcount;
-  };
-
-  struct _Rep : _Rep_base
-</code></pre>
-
-<p>{% endhighlight %}</p>
-
-<p>即，string内有一个指针，指向实际的字符串位置，这个位置前面有一个<code>_Rep</code>结构，其内保存了字符串的长度、可用内存以及引用计数。当我们拿到一个string对象的地址时，可以通过以下代码获取相关值：</p>
-
-<!-- more -->
-
-
-<p>{% highlight c++ %}
-    void ds_str_i(void <em>p) {
-        char <strong>raw = (char</strong>)p;
-        char </em>s = <em>raw;
-        size_t len = </em>(size_t*)(s - sizeof(size_t) * 3);
-        printf(&ldquo;str: %s (%zd)\n&rdquo;, s, len);
-    }</p>
-
-<pre><code>size_t ds_str() {
-    std::string s = "hello";
-    ds_str_i(&amp;s);
-    return s.size();
-}
-</code></pre>
-
-<p>{% endhighlight %}</p>
-
-<p>在gdb中拿到一个string的地址时，可以以下打印出该字符串及长度：</p>
-
-<pre><code>(gdb) x/1a p
-0x7fffffffe3a0: 0x606028
-(gdb) p (char*)0x606028
-$2 = 0x606028 "hello"
-(gdb) x/1dg 0x606028-24
-0x606010:       5
-</code></pre>
-
-<h2>vector</h2>
-
-<p>众所周知vector实现就是一块连续的内存，<code>bits/stl_vector.h</code>。</p>
-
-<p>{% highlight c++ %}
-    template<typename _Tp, typename _Alloc = std::allocator<_Tp> >
-    class vector : protected <em>Vector_base&lt;</em>Tp, _Alloc></p>
-
-<pre><code>...
-template&lt;typename _Tp, typename _Alloc&gt;
-struct _Vector_base
-{
-  typedef typename _Alloc::template rebind&lt;_Tp&gt;::other _Tp_alloc_type;
-
-  struct _Vector_impl
-  : public _Tp_alloc_type
-  {
-_Tp*           _M_start;
-_Tp*           _M_finish;
-_Tp*           _M_end_of_storage;
-_Vector_impl(_Tp_alloc_type const&amp; __a)
-: _Tp_alloc_type(__a), _M_start(0), _M_finish(0), _M_end_of_storage(0)
-{ }
-  };
-
-
-  _Vector_impl _M_impl;
-</code></pre>
-
-<p>{% endhighlight %}</p>
-
-<p>可以看出<code>sizeof(vector&lt;xxx&gt;)=24</code>，其内也就是3个指针，<code>_M_start</code>指向首元素地址，<code>_M_finish</code>指向最后一个节点+1，<code>_M_end_of_storage</code>是可用空间最后的位置。</p>
-
-<p>{% highlight c++ %}
-      iterator
-      end()
-      { return iterator (this-><em>M_impl.</em>M_finish); }
-      const_iterator
-      &hellip;
-      begin() const
-      { return const_iterator (this-><em>M_impl.</em>M_start); }
-      &hellip;
-      size_type
-      capacity() const
-      { return size_type(const_iterator(this-><em>M_impl.</em>M_end_of_storage)
-             - begin()); }
-{% endhighlight %}</p>
-
-<p>可以通过代码从一个vector对象地址输出其信息：</p>
-
-<p>{% highlight c++ %}
-    template <typename T>
-    void ds_vec_i(void <em>p) {
-        T </em>start = <em>(T**)p;
-        T </em>finish = <em>(T**)((char</em>)p + sizeof(void<em>));
-        T </em>end_storage = <em>(T**)((char</em>)p + 2 * sizeof(void*));
-        printf(&ldquo;vec size: %ld, avaiable size: %ld\n&rdquo;, finish - start, end_storage - start);
-    }</p>
-
-<pre><code>size_t ds_vec() {
-    std::vector&lt;int&gt; vec;
-    vec.push_back(0x11);
-    vec.push_back(0x22);
-    vec.push_back(0x33);
-    ds_vec_i&lt;int&gt;(&amp;vec);
-    return vec.size();
-}
-</code></pre>
-
-<p>{% endhighlight %}</p>
-
-<p>使用gdb输出一个vector中的内容：</p>
-
-<pre><code>(gdb) p p
-$3 = (void *) 0x7fffffffe380
-(gdb) x/1a p
-0x7fffffffe380: 0x606080
-(gdb) x/3xw 0x606080
-0x606080:       0x00000011      0x00000022      0x00000033
-</code></pre>
-
-<h2>list</h2>
-
-<p>众所周知list被实现为一个链表。准确来说是一个双向链表。list本身是一个特殊节点，其代表end，其指向的下一个元素才是list真正的第一个节点：</p>
-
-<p><code>bits/stl_list.h</code></p>
-
-<p>{% highlight c++ %}
-      bool
-      empty() const
-      { return this-><em>M_impl.</em>M_node.<em>M_next == &amp;this-></em>M_impl._M_node; }</p>
-
-<pre><code>  const_iterator
-  begin() const
-  { return const_iterator(this-&gt;_M_impl._M_node._M_next); }
-
-  iterator
-  end()
-  { return iterator(&amp;this-&gt;_M_impl._M_node); }
-
-  ...
-
-struct _List_node_base
-{
-    _List_node_base* _M_next;   ///&lt; Self-explanatory
-    _List_node_base* _M_prev;   ///&lt; Self-explanatory
-    ...
-};
-
-template&lt;typename _Tp&gt;
-struct _List_node : public _List_node_base
-{
-  _Tp _M_data;                ///&lt; User's data.
-};
-
-template&lt;typename _Tp, typename _Alloc&gt;
-class _List_base
-{
-    ...
-  struct _List_impl
-  : public _Node_alloc_type
-  {
-_List_node_base _M_node;
-    ...
-  };
-
-  _List_impl _M_impl;
-
-
-template&lt;typename _Tp, typename _Alloc = std::allocator&lt;_Tp&gt; &gt;
-class list : protected _List_base&lt;_Tp, _Alloc&gt;
-</code></pre>
-
-<p>{% endhighlight %}</p>
-
-<p>所以<code>sizeof(list&lt;xx&gt;)=16</code>，两个指针。每一个真正的节点首先是包含两个指针，然后是元素内容(<code>_List_node</code>)。</p>
-
-<p>通过代码输出list的内容：</p>
-
-<p>{% highlight c++ %}
-    #define NEXT(ptr, T) do { \
-        void <em>n = </em>(char<strong>)ptr; \
-        T val = <em>(T</em>)((char</strong>)ptr + 2); \
-        printf(&ldquo;list item %p val: 0x%x\n&rdquo;, ptr, val); \
-        ptr = n; \
-    } while (0)</p>
-
-<pre><code>template &lt;typename T&gt;
-void ds_list_i(void *p) {
-    void *ptr = *(char**)p;
-
-    NEXT(ptr, T);
-    NEXT(ptr, T);
-    NEXT(ptr, T);
-}
-
-size_t ds_list() {
-    std::list&lt;int&gt; lst;
-    lst.push_back(0x11);
-    lst.push_back(0x22);
-    lst.push_back(0x33);
-    ds_list_i&lt;int&gt;(&amp;lst);
-    return lst.size();
-}
-</code></pre>
-
-<p>{% endhighlight %}</p>
-
-<p>在gdb中可以以下方式遍历该list：</p>
-
-<pre><code>(gdb) p p
-$4 = (void *) 0x7fffffffe390
-(gdb) x/1a p
-0x7fffffffe390: 0x606080
-(gdb) x/1xw 0x606080+16         # 元素1 
-0x606090:       0x00000011
-(gdb) x/1a 0x606080
-0x606080:       0x6060a0
-(gdb) x/1xw 0x6060a0+16         # 元素2
-0x6060b0:       0x00000022
-</code></pre>
-
-<h2>map</h2>
-
-<p>map使用的是红黑树实现，实际使用的是<code>stl_tree.h</code>实现：</p>
-
-<p><code>bits/stl_map.h</code></p>
-
-<p>{% highlight c++ %}
-      typedef <em>Rb_tree&lt;key_type, value_type, </em>Select1st<value_type>,
-               key_compare, <em>Pair_alloc_type> </em>Rep_type;
-    &hellip;
-     <em>Rep_type </em>M_t;
-    &hellip;</p>
-
-<pre><code>  iterator
-  begin()
-  { return _M_t.begin(); }
-</code></pre>
-
-<p>{% endhighlight %}</p>
-
-<p><code>bits/stl_tree.h</code></p>
-
-<p>{% highlight c++ %}
-     struct <em>Rb_tree_node_base
-      {
-        typedef </em>Rb_tree_node_base<em> <em>Base_ptr;
-        typedef const </em>Rb_tree_node_base</em> _Const_Base_ptr;</p>
-
-<pre><code>    _Rb_tree_color  _M_color;
-    _Base_ptr       _M_parent;
-    _Base_ptr       _M_left;
-    _Base_ptr       _M_right;
-
-    ...
-  };
-
-template&lt;typename _Val&gt;
-struct _Rb_tree_node : public _Rb_tree_node_base
-{
-  typedef _Rb_tree_node&lt;_Val&gt;* _Link_type;
-  _Val _M_value_field;
-};
-
-
-template&lt;typename _Key_compare,
-       bool _Is_pod_comparator = std::__is_pod&lt;_Key_compare&gt;::__value&gt;
-    struct _Rb_tree_impl : public _Node_allocator
-    {
-  _Key_compare      _M_key_compare;
-  _Rb_tree_node_base    _M_header;
-  size_type         _M_node_count; // Keeps track of size of tree.
-  ...
-    }
-
-_Rb_tree_impl&lt;_Compare&gt; _M_impl;
-...
-
-  iterator
-  begin()
-  {
-return iterator(static_cast&lt;_Link_type&gt;
-        (this-&gt;_M_impl._M_header._M_left));
-  }
-</code></pre>
-
-<p>{% endhighlight %}</p>
-
-<p>所以可以看出，大部分时候(取决于<code>_M_key_compare</code>) <code>sizeof(map&lt;xx&gt;)=48</code>，主要的元素是：</p>
-
-<p>{% highlight c++ %}
-        <em>Rb_tree_color  </em>M_color; // 节点颜色
-        <em>Base_ptr       </em>M_parent; // 父节点
-        <em>Base_ptr       </em>M_left; // 左节点
-        <em>Base_ptr       </em>M_right; // 右节点
-        <em>Val            </em>M_value_field // 同list中节点技巧一致，后面是实际的元素
-{% endhighlight %}</p>
-
-<p>同list中的实现一致，map本身作为一个节点，其不是一个存储数据的节点，</p>
-
-<p><code>_Rb_tree::end</code></p>
-
-<p>{% highlight c++ %}
-      iterator
-      end()
-      { return iterator(static_cast<_Link_type>(&amp;this-><em>M_impl.</em>M_header)); }
-{% endhighlight %}</p>
-
-<p>由于节点值在<code>_Rb_tree_node_base</code>后，所以任意时候拿到节点就可以偏移这个结构体拿到节点值，节点的值是一个pair，包含了key和value。</p>
-
-<p>在gdb中打印以下map的内容：</p>
-
-<p>{% highlight c++ %}
-    size_t ds_map() {
-        std::map&lt;std::string, int> imap;
-        imap[&ldquo;abc&rdquo;] = 0xbbb;
-        return imap.size();
-    }
-{% endhighlight %}</p>
-
-<pre><code>(gdb) p/x &amp;imap
-$7 = 0x7fffffffe370
-(gdb) x/1a (char*)&amp;imap+24       # _M_left 真正的节点
-0x7fffffffe388: 0x606040          
-(gdb) x/1xw 0x606040+32+8        # 偏移32字节是节点值的地址，再偏移8则是value的地址
-0x606068:       0x00000bbb
-(gdb) p *(char**)(0x606040+32)   # 偏移32字节是string的地址
-$8 = 0x606028 "abc"
-</code></pre>
-
-<p>或者很多时候没有必要这么装逼+蛋疼：</p>
-
-<pre><code>(gdb) p *(char**)(imap._M_t._M_impl._M_header._M_left+1)
-$9 = 0x606028 "abc"
-(gdb) x/1xw (char*)(imap._M_t._M_impl._M_header._M_left+1)+8
-0x606068:       0x00000bbb
-</code></pre>
-
-<p><em>完</em></p>
 ]]></content>
   </entry>
   

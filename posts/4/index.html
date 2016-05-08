@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="最近在一个使用Visual Studio开发的C++程序中，出现了如下错误： Run-Time Check Failure #0 - The value of ESP was not properly saved across a function call. This is usually a &hellip;">
+  <meta name="description" content="Lexical Structure In JavaScript, identifiers are used to name variables and functions and to provide labels for certain loops in JavaScript code. A &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,71 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2013/08/21/javascript-overview/">Javascript Overview</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-08-21T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>Lexical Structure</h2>
+
+<p>In JavaScript, identifiers are used to name variables and functions and to provide labels for certain loops in JavaScript code. A JavaScript identifier must begin with a letter, an underscore (_), or a dollar sign ($). Subsequent characters can be letters, digits, underscores, or dollar signs</p>
+
+<pre><code>i
+abc
+v1
+$str
+</code></pre>
+
+<p>JavaScript allows identifiers to contain letters and digits from the entire Unicode character set.</p>
+
+<p>Like many programming languages, JavaScript uses the semicolon (;) to separate statements from each other. In JavaScript, you can usually omit the semicolon between two statements if those statements are written on separate lines.</p>
+
+<h2>Types/Values/Variables</h2>
+
+<h3>Numbers</h3>
+
+<p>Unlike many languages, JavaScript does not make a distinction between integer values and floating-point values. All numbers in JavaScript are represented as floating-point values.</p>
+
+<pre><code>0
+3
+0xff
+3.14
+</code></pre>
+
+<h3>Strings</h3>
+
+<pre><code>"hello world"
+'hello world'
+"Wouldn't you prefer O'Reilly's book?"  
+</code></pre>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/08/21/javascript-overview/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -528,64 +593,6 @@ Obj-&gt;func(args)
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2013/04/11/rabbitmq-erlang/">erlang和RabbitMQ学习总结</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2013-04-11T00:00:00+08:00'><span class='date'><span class='date-month'>Apr</span> <span class='date-day'>11</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>AMQP和RabbitMQ概述</h2>
-
-<p><a href="http://www.amqp.org/">AMQP</a>(Advanced Message Queue Protocol)定义了一种消息系统规范。这个规范描述了在一个分布式的系统中各个子系统如何通过消息交互。而<a href="http://www.rabbitmq.com/">RabbitMQ</a>则是AMQP的一种基于erlang的实现。</p>
-
-<p>AMQP将分布式系统中各个子系统隔离开来，子系统之间不再有依赖。子系统仅依赖于消息。子系统不关心消息的发送者，也不关心消息的接受者。</p>
-
-<p>AMQP中有一些概念，用于定义与应用层的交互。这些概念包括：message、queue、exchange、channel, connection, broker、vhost。</p>
-
-<p><em>注：到目前为止我并没有打算使用AMQP，所以没有做更深入的学习，仅为了找个机会写写erlang代码，以下信息仅供参考。</em></p>
-
-<ul>
-<li>message，即消息，简单来说就是应用层需要发送的数据</li>
-<li>queue，即队列，用于存储消息</li>
-<li>exchange，有翻译为“路由”，它用于投递消息，<strong>应用程序在发送消息时并不是指定消息被发送到哪个队列，而是将消息投递给路由，由路由投递到队列</strong></li>
-<li>channel，几乎所有操作都在channel中进行，有点类似一个沟通通道</li>
-<li>connection，应用程序与broker的网络连接</li>
-<li>broker，可简单理解为实现AMQP的服务，例如RabbitMQ服务</li>
-</ul>
-
-
-<p>关于AMQP可以通过一篇很有名的文章了解更多：<a href="http://blog.ftofficer.com/2010/03/translation-rabbitmq-python-rabbits-and-warrens/">RabbitMQ+Python入门经典 兔子和兔子窝</a></p>
-
-<p>RabbitMQ的运行需要erlang的支持，erlang和RabbitMQ在windows下都可以直接使用安装程序，非常简单。RabbitMQ还支持网页端的管理，这需要开启一些RabbitMQ的插件，可以参考<a href="http://www.rabbitmq.com/management.html">官方文档</a>。</p>
-
-<p>RabbitMQ本质上其实是一个服务器，与这个服务器做交互则是通过AMQP定义的协议，应用可以使用一个实现了AMQP协议的库来与服务器交互。这里我使用erlang的一个客户端，对应着RabbitMQ的tutorial，使用erlang实现了一遍。基于这个过程我将一些关键实现罗列出来以供记忆：</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2013/04/11/rabbitmq-erlang/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/5">&larr; Older</a>
@@ -600,11 +607,15 @@ Obj-&gt;func(args)
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (25)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (7)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (7)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (7)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2016/05/08/tls_so_coredump/">记一次线程局部存储与动态库引起的core</a>
+      </li>
     
       <li class="post">
         <a href="/2015/09/05/java-lightweight-container/">Java中隔离容器的实现</a>
@@ -622,10 +633,6 @@ Obj-&gt;func(args)
         <a href="/2015/06/07/servlet-web-framework/">基于servlet实现一个web框架</a>
       </li>
     
-      <li class="post">
-        <a href="/2015/05/31/java-refect-ioc/">Java中的反射及Bean容器的实现</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -637,7 +644,7 @@ Obj-&gt;func(args)
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(25)</a> <a href='/categories/clang' style='font-size: 102.4%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 119.2%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.6%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.8%'>ice(2)</a> <a href='/categories/java' style='font-size: 116.8%'>java(7)</a> <a href='/categories/javascript' style='font-size: 102.4%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 112.0%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 112.0%'>lua(5)</a> <a href='/categories/module' style='font-size: 107.2%'>module(3)</a> <a href='/categories/network' style='font-size: 128.8%'>network(12)</a> <a href='/categories/other' style='font-size: 116.8%'>other(7)</a> <a href='/categories/ruby' style='font-size: 109.6%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.4%'>scala(1)</a> <a href='/categories/tips' style='font-size: 150.4%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.6%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 116.15384615384616%'>java(7)</a> <a href='/categories/javascript' style='font-size: 102.3076923076923%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 127.6923076923077%'>network(12)</a> <a href='/categories/other' style='font-size: 116.15384615384616%'>other(7)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
 </section>
 
   
@@ -646,7 +653,7 @@ Obj-&gt;func(args)
     </div>
   </div>
   <footer role="contentinfo"><p>
-  Copyright &copy; 2015 - Kevin Lynx -
+  Copyright &copy; 2016 - Kevin Lynx -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 <script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
 <noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
