@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2016-05-08T21:11:47+08:00</updated>
+  <updated>2016-08-16T20:44:30+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,151 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[一次逆向网页内容加密]]></title>
+    <link href="http://codemacro.com/2016/08/16/reverse_html/"/>
+    <updated>2016-08-16T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2016/08/16/reverse_html</id>
+    <content type="html"><![CDATA[<p>最近写一个爬虫要从这个<a href="http://cpquery.sipo.gov.cn/txnQueryFeeData.do?select-key:shenqingh=2007200071873&amp;select-key:zhuanlilx=2&amp;select-key:gonggaobj=&amp;select-key:backPage=http%3A%2F%2Fcpquery.sipo.gov.cn%2FtxnQueryOrdinaryPatents.do%3Fselect-key%3Ashenqingh%3D2015204531832%26select-key%3Azhuanlimc%3D%26select-key%3Ashenqingrxm%3D%26select-key%3Azhuanlilx%3D%26select-key%3Ashenqingr_from%3D%26select-key%3Ashenqingr_to%3D%26inner-flag%3Aopen-type%3Dwindow%26inner-flag%3Aflowno%3D1470846836440&amp;inner-flag:open-type=window&amp;inner-flag:flowno=1471142917509">网页</a>爬取内容。以往爬取网页内容复杂点的，一般就是处理下页面内容动态载入，动态载入的内容可能会要求复杂奇怪的参数，或者找到这个动态载入的HTTP接口在哪里麻烦点。但是这个网页不同。类似：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;td&gt;&lt;span name="record_yijiaof:feiyongzldm" title="pos||"&gt;&lt;span id="5d299905633d4aa288b65f5bf74e414c" class="nlkfqirnlfjerldfgzxcyiuro"&gt;专&lt;/span&gt;&lt;span id="546c73d012f74931aa5d45707121eb50" class="nlkfqirnlfjerldfgzxcyiuro"&gt;实&lt;/span&gt;&lt;span id="e0285e05974b4577b23b2ced8e453005" class="nlkfqirnlfjerldfgzxcyiuro"&gt;新&lt;/span&gt;&lt;span id="82b9e003de4e4577aa7617681a0d3777" class="nlkfqirnlfjerldfgzxcyiuro"&gt;用&lt;/span&gt;&lt;span id="417aaf4c6ad14b7781db02a688a4f885" class="nlkfqirnlfjerldfgzxcyiuro"&gt;用&lt;/span&gt;&lt;span id="a3f326efa35e4fe898d2f751e77d6777" class="nlkfqirnlfjerldfgzxcyiuro"&gt;新&lt;/span&gt;&lt;span id="c6c5135b931c48c09c6529735f4c6434" class="nlkfqirnlfjerldfgzxcyiuro"&gt;型&lt;/span&gt;&lt;span id="8c55b119929147ddbe178776903554e5" class="nlkfqirnlfjerldfgzxcyiuro"&gt;专&lt;/span&gt;&lt;span id="f8e47702c9f5420198a6f9b9aa132c9c" class="nlkfqirnlfjerldfgzxcyiuro"&gt;利&lt;/span&gt;&lt;span id="60cc2e23682e4ca2b850a92f55029458" class="nlkfqirnlfjerldfgzxcyiuro"&gt;第9年年费&lt;/span&gt;&lt;/span&gt;&lt;/td&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>最终希望得到的内容其实是<code>实用新型专利第9年年费</code>，但是得到的网页确实乱序后的字符串，并且每次刷新得到的乱序还不一样，试过几次也看不出规律。</p>
+
+<p>按照以往的思路，猜测肯定是某个js文件中包含了还原算法，我的目的，就是找出这个算法，在爬虫程序中实现这个算法，以还原出可读的字符串。</p>
+
+<p>js中要完成这样的事，首先得找到网页元素，包括：根据外层span <code>name=record_yijiaof:feiyongzldm</code>；根据再外层的table；根据内层span <code>class='nlkfqirnlfjerldfgzxcyiuro'</code>。以前我一直想要个工具，可以在某网页载入的所有js文件中搜索特定字符串，从而帮助逆向，但是一直没有这个工具。所以这次也只有人肉看每个js。根据js的名字猜测这个逻辑会放在哪里。</p>
+
+<!-- more -->
+
+
+<p>看了几个可能的js文件，在文件中都没有搜索出我认为可能的字符串。于是我又人肉搜索其他不太可能的js文件，均未果。此时陷入死胡同。</p>
+
+<p>网页文件末尾会有个超长id的span元素，类似：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;span style="display: none" id="3535346033366237393b6c3c38343d3e71702777202021272f28282a797f2b2f0c1910411d4016171b4d4f1f49191b18075053040204010100085b0b580e0908776d2370227674712d2f2b7879287a2935696b6b306730606d683f6c6b39686857564e00520653565b5c08525f5c0d5b4812424a17434345414e494e1a491d49b4b2b6afbce6b3b2eab8bbb2b5bfb7bea4a6f6f7f6f0a7a0a0aeadada5adadaa9595c79688c39ec29c9e9d9b9ece97c985858083858c8ed68edf83d985dcdf8ef3f3a1faa7e9f0f7abaaf8aefefef8f7e2b4e6b0b5e7b4efede9bbe2eebbebead0d3dbd7d1ddcad2d0d88fdfd88fdddc9695c6c79693c595cd9fcbcacb989f9b32303a373236372b3039383f3e34683a71262b2120237722207b2279792c2d2d1043411b131017170411181a48151a4b0307570a01015255015b5e5e5e0d0f0624767374222377232d65282f2a282c2d69656a35626362663b3d633f3f39673e53555a015c04545f505a460d5f585a5a13464015174c14434f4a49434845184fb5b9e6b5e7e4e5e1bbbdeca7eab9bdb6f6a5a4f1a4a3a0f6acaaaaadfda5aea890c4c6c696c6c797999d92c980cbc89ad5828383848dd2828e8dd88ed984d88aa1a4f0a0a5a3a3f6abf8acaaf5e1fcfce2e3b0b5edb6e6efeabbeeeabebee6eb8685d0d186848486dbd18edcd8dfc2d7c39593cac6cdc7cecaccc9cfcb9e9f9d31623b3a61303465383132336a3f372322297322702d21717a782b7d287c287e194041161417431e104d4c124e491b181c005355025153540d09025d5e090b5d727973717d75277278797c7a2f7b792a347d6061306630606d6e696d3e386a3a58575a01545351515c5b09095c0f0a5744175e10454743144a1d42484948484be3b8b5bbb7e3bfb5bdebbebdbdebb9b8a6a7f3bff2f7a3a5abffaffdafacfdab9494c193c5929196c99bcb9c94c89c9dd2818ad5988c8680d98d8fda8b8b8adca6f5f4a6a2a7a5a1faadabfcaaf8f9adb2e2b0b2e5f</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这个字符串不像base64加密，看这个网页带了md5的js，怀疑跟md5有关，但md5不应该用来加密字符内容，js文件中也未看到可能的API。</p>
+
+<p>后来发现乱序的字符串中有些字符是不显示的，通过这个css控制：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nlkfqirnlfjerldfgzxcyiuro {
+</span><span class='line'>    display: none!important;
+</span><span class='line'>    visibility: hidden!important;
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>网页载入经过js处理后，显示出来的字符看起来是相同的css class <code>nlkfqirnlfjer1dfgzxcyiuro</code>，开始觉得奇怪，研究了下这个的差异。折腾了好久发现被人戏弄了：nlkfqirnlfje<strong>r1d</strong>fgzxcyiuro与nlkfqirnlfje<strong>rld</strong>fgzxcyiuro，前一个是<code>r1d</code>后一个是<code>rld</code>，分别是数字1和字母L！WTF</p>
+
+<p>原始网页中所有字符的css class都是不显示的，所以可以推测js中经过一定算法将需要显示的字符改了css class。但是此刻还是没有思路。</p>
+
+<p>后来尝试了chrome的DOM breakpoint，可以在DOM元素被改变时断点，但是用起来不是特别好用，没有带来任何帮助。</p>
+
+<p>绝望之际把整个网页另存下来，另存下来的网页是经过js处理后的，手工将css改回原始内容，本地载入网页发现还是可以正常显示，证明处理逻辑真的还在js文件中。然后我逐个删除每一个js文件，还是想找出具体是哪个js文件包含了这个还原算法。</p>
+
+<p>然后发现竟然是jquery-1.7.2.min.js。但我想这不能说明问题，因为作者肯定是通过jQuery来获取元素的，删除jQuery.js作者的代码不能work，当然就显示不出来。这个时候我开始清理html中的js代码，发现所有js代码都被清除完后，网页内容依然可以还原，所以断定还原算法就在jQuery.js中。然而这个文件是min版本的，网上找了个还原工具，其实就是重新格式化方便阅读。</p>
+
+<p>但是此刻发现在这个文件中依然搜索不到可能的字符串，例如前面提到的找元素的一些线索，如span css，如span name等等。此时重新通过chrome的DOM断点来获取调用堆栈。这次直接断css class会被改变的span元素，竟然发现可行。此时无非是断点，看效果，继续下更精确的断点，最后发现源头：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>b(function() {
+</span><span class='line'>    b.mix()
+</span><span class='line'>});
+</span><span class='line'>
+</span><span class='line'>...
+</span><span class='line'>mix: function() {
+</span><span class='line'>    var b0 = bF("s" + "p" + "a" + "n");
+</span><span class='line'>    if (b0 && b0[b0.length - 1]) {
+</span><span class='line'>        var b5 = b0[b0.length - 1].getAttribute("i" + "d");
+</span><span class='line'>        if (!b5) {
+</span><span class='line'>            return
+</span><span class='line'>        }
+</span><span class='line'>        var b2 = "";
+</span><span class='line'>        var b4 = 0;
+</span><span class='line'>        for (var b3 = 0; b3 &lt; b5.length; b3 += 2) {
+</span><span class='line'>            if (b4 &gt; 255) {
+</span><span class='line'>                b4 = 0
+</span><span class='line'>            }
+</span><span class='line'>            var b1 = parseInt(parseInt(b5.substring(b3, b3 + 2), 16) ^ b4++);
+</span><span class='line'>            b2 += String.fromCharCode(b1)
+</span><span class='line'>        }
+</span><span class='line'>        if (b2) {
+</span><span class='line'>            // ... 省略
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>首先看到的是<code>"s" + "p" + "a" + "n"</code>，这不就是<code>span</code>！看前面几行代码很快就明白这是在取网页的最后一个<code>span</code>元素，也就是那个包含超长id属性的span元素。此时需要提下，之前也是对这个页尾span元素做过实验，发现必须是span元素且为最后一个元素才能正确还原网页内容，可以推断这个span是多么关键的一个线索。感兴趣的可以把这个网页的jQuery-1.7.2.min.js还原后查看<code>mix</code>函数实现。</p>
+
+<p>翻译过来还原函数非常简单，写一个java版本：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>public static String parseSipoIds(String enStr) {
+</span><span class='line'>  int b4 = 0;
+</span><span class='line'>  StringBuilder sb = new StringBuilder();
+</span><span class='line'>  for (int i = 0; i &lt; enStr.length(); i += 2) {
+</span><span class='line'>    if (b4 &gt; 255) b4 = 0;
+</span><span class='line'>    int c = Integer.parseInt(enStr.substring(i, i + 2), 16) ^ b4++;
+</span><span class='line'>    sb.append((char)c);
+</span><span class='line'>  }
+</span><span class='line'>  return sb.toString();
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>即这个span元素就是需要显示出来的span元素id集合，以逗号分隔。</p>
+
+<p>以前还爬过一个日本政府网站，防爬也是做得很过分，不过主要是配合服务器，每一个网页的url是动态变化的，且需要从最原始的网页经过一定的操作才能获得。流程复杂让人痛苦不堪，最后还是一路携带cookie，真的模拟人的操作流程走下来。具体也记不清了。</p>
+
+<p>最后吐槽一下，作者把还原算法写到jQuery.js里，也真是苦费心机。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2016/08/16/reverse_html/'>http://codemacro.com/2016/08/16/reverse_html/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[记一次线程局部存储与动态库引起的core]]></title>
@@ -3828,247 +3973,6 @@ OpenJDK (Taobao) 64-Bit Server VM (build 20.0-b12-internal, mixed mode)
 <p class='post-footer'>
             原文地址：
             <a href='http://codemacro.com/2014/09/21/zk-watch-benchmark/'>http://codemacro.com/2014/09/21/zk-watch-benchmark/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[浅析静态库链接原理]]></title>
-    <link href="http://codemacro.com/2014/09/15/inside-static-library/"/>
-    <updated>2014-09-15T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2014/09/15/inside-static-library</id>
-    <content type="html"><![CDATA[<p>静态库的链接基本上同链接目标文件<code>.obj/.o</code>相同，但也有些不同的地方。本文简要描述linux下静态库在链接过程中的一些细节。</p>
-
-<h2>静态库文件格式</h2>
-
-<p>静态库远远不同于动态库，不涉及到符号重定位之类的问题。静态库本质上只是将一堆目标文件进行打包而已。静态库没有标准，不同的linux下都会有些细微的差别。大致的格式<a href="http://en.wikipedia.org/wiki/Ar_%28Unix%29#File_format_details">wiki</a>上描述的较清楚：</p>
-
-<pre><code>Global header
------------------        +-------------------------------
-File header 1       ---&gt; | File name
-File content 1  |        | File modification timestamp 
------------------        | Owner ID
-File header 2            | Group ID
-File content 2           | File mode
------------------        | File size in bytes
-...                      | File magic
-                         +-------------------------------
-</code></pre>
-
-<p><code>File header</code>很多字段都是以ASCII码表示，所以可以用文本编辑器打开。</p>
-
-<p>静态库本质上就是使用<code>ar</code>命令打包一堆<code>.o</code>文件。我们甚至可以用<code>ar</code>随意打包一些文件：</p>
-
-<pre><code>$ echo 'hello' &gt; a.txt &amp;&amp; echo 'world' &gt; b.txt
-$ ar -r test.a a.txt b.txt
-$ cat test.a
-!&lt;arch&gt;
-a.txt/          1410628755  60833 100   100644  6         `
-hello
-b.txt/          1410628755  60833 100   100644  6         `
-world
-</code></pre>
-
-<!-- more -->
-
-
-<h2>链接过程</h2>
-
-<p>链接器在链接静态库时，同链接一般的<code>.o</code>基本相似。链接过程大致可以归纳下图：</p>
-
-<p><img src="http://codemacro.com/assets/res/link-process.png" alt="" /></p>
-
-<p>总结为：</p>
-
-<ul>
-<li><strong>所有传入链接器的<code>.o</code>都会被链接进最终的可执行程序</strong>；链接<code>.o</code>时，会将<code>.o</code>中的<code>global symbol</code>和<code>unresolved symbol</code>放入一个临时表</li>
-<li>如果多个<code>.o</code>定义了相同的<code>global symbol</code>，那么就会得到多重定义的链接错误</li>
-<li>如果链接结束了，<code>unresolved symbol</code>表不为空，那么就会得到符号未定义的链接错误</li>
-<li><code>.a</code>静态库处理本质上就是处理其中的每一个<code>.o</code>，不同的是，如果某个<code>.o</code>中没有一个符号属于<code>unresolved symbol</code>表，也就是链接器此时怀疑该<code>.o</code>没有必要，那么其就会被忽略</li>
-</ul>
-
-
-<p>可以通过一些代码来展示以上过程。在开发C++程序时，可以利用文件静态变量会先于<code>main</code>之前执行做一些可能利于程序结构的事情。如果某个<code>.o</code>（包含静态库中打包的<code>.o</code>）被链接进程序，那么其文件静态变量就会先于<code>main</code>初始化。</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// test.cpp</span>
-<span class="cp">#include &lt;stdio.h&gt;</span>
-
-<span class="k">class</span> <span class="nc">Test</span> <span class="p">{</span>
-<span class="k">public</span><span class="o">:</span>
-    <span class="n">Test</span><span class="p">()</span> <span class="p">{</span>
-        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Test ctor</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-    <span class="p">}</span>
-<span class="p">};</span>
-
-<span class="k">static</span> <span class="n">Test</span> <span class="n">s_test</span><span class="p">;</span>
-
-<span class="c1">// lib.cpp</span>
-<span class="cp">#include &lt;stdio.h&gt;</span>
-
-<span class="k">class</span> <span class="nc">Lib</span> <span class="p">{</span>
-<span class="k">public</span><span class="o">:</span>
-    <span class="n">Lib</span><span class="p">()</span> <span class="p">{</span>
-        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Lib ctor</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-    <span class="p">}</span>
-<span class="p">};</span>
-
-<span class="k">static</span> <span class="n">Lib</span> <span class="n">s_lib</span><span class="p">;</span>
-
-<span class="c1">// main.cpp</span>
-<span class="cp">#include &lt;stdio.h&gt;</span>
-
-<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;main</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span></code></pre></div>
-
-
-<p>以上代码<code>main.cpp</code>中未引用任何<code>test.cpp``lib.cpp</code>中的符号：</p>
-
-<pre><code>$ g++ -o test test.o lib.o main.o
-$ ./test
-Lib ctor
-Test ctor
-main
-</code></pre>
-
-<p>生成的可执行程序执行如预期，其链接了<code>test.o``lib.o</code>。但是如果把<code>lib.o</code>以静态库的形式进行链接，情况就不一样了：为了做对比，基于以上的代码再加一个文件，及修改<code>main.cpp</code>：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// libfn.cpp</span>
-<span class="kt">int</span> <span class="nf">sum</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">,</span> <span class="kt">int</span> <span class="n">b</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">;</span>
-<span class="p">}</span>
-
-<span class="c1">// main.cpp</span>
-<span class="cp">#include &lt;stdio.h&gt;</span>
-
-<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;main</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-    <span class="k">extern</span> <span class="kt">int</span> <span class="n">sum</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">);</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;sum: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">sum</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">));</span>
-    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span></code></pre></div>
-
-
-<p>将<code>libfn.o</code>和<code>lib.o</code>创建为静态库：</p>
-
-<pre><code>$ ar -r libfn.a libfn.o lib.o
-$ g++ -o test main.o test.o -lfn -L.
-$ ./test
-Test ctor
-main
-sum: 5
-</code></pre>
-
-<p>因为<code>lib.o</code>没有被链接，导致其文件静态变量也未得到初始化。</p>
-
-<p>调整链接顺序，可以进一步检验前面的链接过程：</p>
-
-<pre><code># 将libfn.a的链接放在main.o前面
-
-$ g++ -o test test.o -lfn main.o  -L.
-main.o: In function `main':
-main.cpp:(.text+0x19): undefined reference to `sum(int, int)'
-collect2: ld returned 1 exit status
-</code></pre>
-
-<p>这个问题遇到得比较多，也有点让人觉得莫名其妙。其原因就在于链接器在链接<code>libfn.a</code>的时候，发现<code>libfn.o</code>依然没有<strong>被之前链接的<code>*.o</code>引用到，也就是没有任何符号在<code>unresolved symbol table</code>中</strong>，所以<code>libfn.o</code>也被忽略。</p>
-
-<h2>一些实践</h2>
-
-<p>在实际开发中还会遇到一些静态库相关的问题。</p>
-
-<h3>链接顺序问题</h3>
-
-<p>前面的例子已经展示了这个问题。<strong>调整库的链接顺序</strong>可以解决大部分问题，但当静态库之间存在环形依赖时，则无法通过调整顺序来解决。</p>
-
-<h4>-whole-archive</h4>
-
-<p><code>-whole-archive</code>选项告诉链接器把静态库中的所有<code>.o</code>都进行链接，针对以上例子：</p>
-
-<pre><code>$ g++ -o test -L. test.o -Wl,--whole-archive -lfn main.o -Wl,--no-whole-archive
-$ ./test
-Lib ctor
-Test ctor
-main
-sum: 5
-</code></pre>
-
-<p>连<code>lib.o</code>也被链接了进来。<em><code>-Wl</code>选项告诉gcc将其作为链接器参数传入；之所以在命令行结尾加上<code>--no-whole-archive</code>是为了告诉编译器不要链接gcc默认的库</em></p>
-
-<p>可以看出这个方法还是有点暴力了。</p>
-
-<h4>&ndash;start-group</h4>
-
-<p>格式为：</p>
-
-<pre><code>--start-group archives --end-group
-</code></pre>
-
-<p>位于<code>--start-group</code>  <code>--end-group</code>中的所有静态库将被反复搜索，而不是默认的只搜索一次，直到不再有新的<code>unresolved symbol</code>产生为止。也就是说，出现在这里的<code>.o</code>如果发现有<code>unresolved symbol</code>，则可能回到之前的静态库中继续搜索。</p>
-
-<pre><code>$ g++ -o test -L. test.o -Wl,--start-group -lfn main.o -Wl,--end-group
-$ ./test
-Test ctor
-main
-sum: 5
-</code></pre>
-
-<p>查看<code>ldd</code>关于该参数的man page还可以一窥链接过程的细节：</p>
-
-<blockquote><p>The specified archives are searched repeatedly until no new undefined references are created. Normally, an archive is searched only once in the order that it is specified on the command line. If a symbol in that archive is needed to resolve an undefined symbol referred to by an object in an archive that appears later on the command line, the linker would not be able to resolve that reference. By grouping the archives, they all be searched repeatedly until all possible references are resolved.</p></blockquote>
-
-<h3>嵌套静态库</h3>
-
-<p>由于<code>ar</code>创建静态库时本质上只是对文件进行打包，所以甚至可以创建一个嵌套的静态库，从而测试链接器是否会递归处理静态库中的<code>.o</code>：</p>
-
-<pre><code>$ ar -r libfn.a libfn.o
-$ ar -r liboutfn.a libfn.a lib.o
-$ g++ -o test -L. test.o main.o -loutfn
-main.o: In function `main':
-main.cpp:(.text+0x19): undefined reference to `sum(int, int)'
-collect2: ld returned 1 exit status
-</code></pre>
-
-<p><strong>可见链接器并不会递归处理静态库中的文件</strong></p>
-
-<p>之所以要提到嵌套静态库这个问题，是因为我发现很多时候我们喜欢为一个静态库工程链接其他静态库。当然，这里的链接并非真正的链接（仅是打包），这个过程当然可以聪明到将其他静态库里的<code>.o</code>提取出来然后打包到新的静态库。</p>
-
-<p>如果我们使用的是类似<a href="http://www.scons.org/">scons</a>这种封装更高的依赖项管理工具，那么它是否会这样干呢？</p>
-
-<p>基于之前的例子，我们使用scons来创建<code>liboutfn.a</code>：</p>
-
-<pre><code># Sconstruct
-StaticLibrary('liboutfn.a', ['libfn.a', 'lib.o'])
-</code></pre>
-
-<p>使用文本编辑器打开<code>liboutfn.a</code>就可以看到其内容，或者使用：</p>
-
-<pre><code>$ ar -tv liboutfn.a
-rw-r--r-- 60833/100   1474 Sep 14 02:59 2014 libfn.a
-rw-r--r-- 60833/100   2448 Sep 14 02:16 2014 lib.o
-</code></pre>
-
-<p>可见scons也只是单纯地打包。<strong>所以，在scons中构建一个静态库时，再<code>链接</code>其他静态库是没有意义的</strong></p>
-
-<h2>参考文档</h2>
-
-<ul>
-<li><a href="http://en.wikipedia.org/wiki/Ar_%28Unix%29#File_format_details">ar (Unix)</a></li>
-<li><a href="http://linux.die.net/man/1/ld">ld man page</a></li>
-<li><a href="http://wen00072-blog.logdown.com/posts/188339-study-on-the-gnu-ld">GNU ld初探</a></li>
-<li><a href="http://eli.thegreenplace.net/2013/07/09/library-order-in-static-linking/">Library order in static linking</a></li>
-<li><a href="http://www.linuxjournal.com/article/6463?page=0,1">Linkers and Loaders</a></li>
-<li><a href="http://www.scons.org/doc/0.96.1/HTML/scons-user/c549.html">scons Building and Linking with Libraries</a></li>
-</ul>
-
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2014/09/15/inside-static-library/'>http://codemacro.com/2014/09/15/inside-static-library/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
