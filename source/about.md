@@ -58,6 +58,8 @@ comments: true
 
 ### 业余项目
 
+* [千搜资源网](http://www.1000so.me)，自动从网页提取BT\电驴\迅雷\磁力等下载资源，下载资源整合站点，基于爬虫及搜索引擎技术
+* [快搜美剧](http://www.ksmeiju.com)，美剧下载资源整合站点，基于爬虫及搜索引擎技术
 * [JCM](https://github.com/kevinlynx/jcm)，分布式名字服务
 * [dy800.net](http://dy800.net)，电影页面爬虫&网站
 * [btrabbit](http://btrabbit.com)，P2P DHT种子爬虫&网站，看片神奇
