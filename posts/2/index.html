@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="在一个系统中有一个写线程和若干个读线程，读写线程通过一个指针共用了一个数据结构，写线程改写这个结构，读线程读取该结构。在写线程改写这个数据结构的过程中，加锁情况下读线程由于等待锁耗时会增加。 可以利用RCU (Read Copy Update What is rcu)的思想来去除这个锁。 &hellip;">
+  <meta name="description" content="接上篇使用RCU技术实现读写线程无锁，在没有GC机制的语言中，要实现Lock free的算法，就免不了要自己处理内存回收的问题。 Hazard Pointer是另一种处理这个问题的算法，而且相比起来不但简单，功能也很强大。锁无关的数据结构与Hazard指针中讲得很好，Wikipedia &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,56 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2015/05/03/hazard-pointer/">并行编程中的内存回收Hazard Pointer</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-05-03T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>3</span><span class='date-suffix'>rd</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>接上篇<a href="http://codemacro.com/2015/04/19/rw_thread_gc/">使用RCU技术实现读写线程无锁</a>，在没有GC机制的语言中，要实现Lock free的算法，就免不了要自己处理内存回收的问题。</p>
+
+<p>Hazard Pointer是另一种处理这个问题的算法，而且相比起来不但简单，功能也很强大。<a href="http://blog.csdn.net/pongba/article/details/589864">锁无关的数据结构与Hazard指针</a>中讲得很好，<a href="http://en.wikipedia.org/wiki/Hazard_pointer">Wikipedia Hazard pointer</a>也描述得比较清楚，所以我这里就不讲那么细了。</p>
+
+<p>一个简单的实现可以参考<a href="https://github.com/kevinlynx/lockfree-list/blob/master/haz_ptr.c">我的github haz_ptr.c</a></p>
+
+<h2>原理</h2>
+
+<p>基本原理无非也是读线程对指针进行标识，指针(指向的内存)要释放时都会缓存起来延迟到确认没有读线程了才对其真正释放。</p>
+
+<p><code>&lt;Lock-Free Data Structures with Hazard Pointers&gt;</code>中的描述：</p>
+
+<blockquote><p>Each reader thread owns a single-writer/multi-reader shared pointer called &ldquo;hazard pointer.&rdquo; When a reader thread assigns the address of a map to its hazard pointer, it is basically announcing to other threads (writers), &ldquo;I am reading this map. You can replace it if you want, but don&rsquo;t change its contents and certainly keep your deleteing hands off it.&rdquo;</p></blockquote>
+
+<p>关键的结构包括：<code>Hazard pointer</code>、<code>Thread Free list</code></p>
+
+<p><code>Hazard pointer</code>：一个读线程要使用一个指针时，就会创建一个Hazard pointer包装这个指针。一个Hazard pointer会被一个线程写，多个线程读。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2015/05/03/hazard-pointer/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -583,70 +633,6 @@ GNU C Library stable release version 2.5, by Roland McGrath et al.
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2014/09/21/zk-watch-benchmark/">zookeeper节点数与watch的性能测试</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2014-09-21T00:00:00+08:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>zookeeper中节点数量理论上仅受限于内存，但一个节点下的子节点数量<a href="http://zookeeper-user.578899.n2.nabble.com/ZooKeeper-Limitation-td6675643.html">受限于request/response 1M数据</a> (<a href="http://web.archiveorange.com/archive/v/AQXskdBodZB7kWpjpjHw">size of data / number of znodes</a>)</p>
-
-<p>zookeeper的watch机制用于数据变更时zookeeper的主动通知。watch可以被附加到每一个节点上，那么如果一个应用有10W个节点，那zookeeper中就可能有10W个watch（甚至更多）。每一次在zookeeper完成改写节点的操作时就会检测是否有对应的watch，有的话则会通知到watch。<a href="http://shift-alt-ctrl.iteye.com/blog/1847320">Zookeeper-Watcher机制与异步调用原理</a></p>
-
-<p>本文将关注以下内容：</p>
-
-<ul>
-<li>zookeeper的性能是否会受节点数量的影响</li>
-<li>zookeeper的性能是否会受watch数量的影响</li>
-</ul>
-
-
-<h2>测试方法</h2>
-
-<p>在3台机器上分别部署一个zookeeper，版本为<code>3.4.3</code>，机器配置：</p>
-
-<pre><code>Intel(R) Xeon(R) CPU E5-2430 0 @ 2.20GHz
-
-16G
-
-java version "1.6.0_32"
-Java(TM) SE Runtime Environment (build 1.6.0_32-b05)
-OpenJDK (Taobao) 64-Bit Server VM (build 20.0-b12-internal, mixed mode)
-</code></pre>
-
-<p>大部分实验JVM堆大小使用默认，也就是<code>1/4 RAM</code>：</p>
-
-<pre><code>java -XX:+PrintFlagsFinal -version | grep HeapSize
-</code></pre>
-
-<p>测试客户端使用<a href="https://github.com/phunt/zk-smoketest">zk-smoketest</a>，针对watch的测试则是我自己写的。基于zk-smoketest我写了些脚本可以自动跑数据并提取结果，相关脚本可以在这里找到：<a href="https://github.com/kevinlynx/zk-benchmark">https://github.com/kevinlynx/zk-benchmark</a></p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2014/09/21/zk-watch-benchmark/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/3">&larr; Older</a>
@@ -661,11 +647,15 @@ OpenJDK (Taobao) 64-Bit Server VM (build 20.0-b12-internal, mixed mode)
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (7)</a></li><li><a href='/categories/javascript/'>javascript (1)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (7)</a></li><li><a href='/categories/javascript/'>javascript (2)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/01/08/react-plugin/">ReactJS项目中基于webpack实现页面插件</a>
+      </li>
     
       <li class="post">
         <a href="/2016/08/16/reverse_html/">一次逆向网页内容加密</a>
@@ -683,10 +673,6 @@ OpenJDK (Taobao) 64-Bit Server VM (build 20.0-b12-internal, mixed mode)
         <a href="/2015/08/10/java-gc-summary/">Java GC总结</a>
       </li>
     
-      <li class="post">
-        <a href="/2015/07/04/jcm/">写了一个分布式名字服务JCM</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -698,7 +684,7 @@ OpenJDK (Taobao) 64-Bit Server VM (build 20.0-b12-internal, mixed mode)
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 116.15384615384616%'>java(7)</a> <a href='/categories/javascript' style='font-size: 102.3076923076923%'>javascript(1)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 127.6923076923077%'>network(12)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 116.15384615384616%'>java(7)</a> <a href='/categories/javascript' style='font-size: 104.61538461538461%'>javascript(2)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 127.6923076923077%'>network(12)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
 </section>
 
   
@@ -707,7 +693,7 @@ OpenJDK (Taobao) 64-Bit Server VM (build 20.0-b12-internal, mixed mode)
     </div>
   </div>
   <footer role="contentinfo"><p>
-  Copyright &copy; 2016 - Kevin Lynx -
+  Copyright &copy; 2017 - Kevin Lynx -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 <script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
 <noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
