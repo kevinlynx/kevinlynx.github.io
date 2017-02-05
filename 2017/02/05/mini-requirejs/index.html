@@ -1,0 +1,494 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>RequireJS最简实现 - loop in codes</title>
+  <meta name="author" content="Kevin Lynx">
+
+  
+  <meta name="description" content="网上有不少解析RequireJS源码的文章，我觉得意义不大。阅读源代码的目的不是为了熟悉代码，而是为了学习核心实现原理。相对RequireJS的源码，kitty.js的实现更简单，更容易理解。本文正是抄了kitty.js的实现，是一个更精简的RequireJS，用于理解RequireJS的实现原理 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://codemacro.com/2017/02/05/mini-requirejs">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <!--script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script-->
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<!--link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css"-->
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">loop in codes</a></h1>
+  
+    <h2>Kevin Lynx BLOG</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:codemacro.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about.html">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">RequireJS最简实现</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2017-02-05T00:00:00+08:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>5</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>网上有不少解析RequireJS源码的文章，我觉得意义不大。阅读源代码的目的不是为了熟悉代码，而是为了学习核心实现原理。相对RequireJS的源码，<a href="https://github.com/zengjialuo/kittyjs">kitty.js</a>的实现更简单，更容易理解。本文正是抄了kitty.js的实现，是一个更精简的RequireJS，用于理解RequireJS的实现原理。</p>
+
+<p><a href="https://github.com/kevinlynx/dummy-requirejs">github dummy-requirejs</a>。这个实现仅支持核心feature：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>require(deps, callback) // deps 是依赖数组
+</span><span class='line'>define(id, deps, factory) // factory是一个函数
+</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>例子参考git中rect.js/main.js。</p>
+
+<p>从实现来看，require/define是基本一致的，require的callback等同于define的factory：都会要求deps被加载且被执行，获得deps的exports作为整个module传入callback/factory。不同的是，factory的返回值会被作为define出来的模块的export，可被视为模块本身；而callback返回值被忽略。</p>
+
+<p>从用法来看，define仅是定义了模块，这个模块可能被作为deps被其他模块依赖，但define传入的factory此时是不执行的；而require则会触发各个模块的factory执行。</p>
+
+<!-- more -->
+
+
+<h2>实现</h2>
+
+<p>主要实现分为3部分内容，其中关键的地方在于模块载入。</p>
+
+<h3>数据结构</h3>
+
+<p>既然是模块加载器，并且需要处理模块之间的依赖问题，所以设置一个哈希表保存所有的模块。</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>var mods = {} // &lt;id, Module&gt;
+</span><span class='line'>
+</span><span class='line'>function Module(id) {
+</span><span class='line'>    var mod = this
+</span><span class='line'>    mod.id = id
+</span><span class='line'>    mod.uri = id // 简单起见，根据id拼出uri: abc.js
+</span><span class='line'>    mod.deps = []  // 依赖的模块id列表
+</span><span class='line'>    mod.factory = blank // 定义模块时的factory
+</span><span class='line'>    mod.callback = blank // 模块加载完毕后回调
+</span><span class='line'>    mod.exports = {} // 模块导出的对象
+</span><span class='line'>}
+</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>define的实现就比较简单，主要就是往<code>mods</code>里添加一个<code>Module</code>对象，简单来说就是：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>function define(id, deps, factory) {
+</span><span class='line'>    var mod = getModule(id) // mods存在就返回，否则就往mods里新增
+</span><span class='line'>    mod.deps = deps
+</span><span class='line'>    mod.factory = factory
+</span><span class='line'>}
+</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<h3>模块载入</h3>
+
+<p>遇到require时就会产生模块载入的动作。模块载入时可能发生以下动作：</p>
+
+<ul>
+<li>往页面添加script标签以让浏览器从服务端拉取js文件</li>
+<li>js文件中可能遇到define从而立即添加模块 (非AMD模块不考虑)</li>
+<li>define定义的模块可能有其他依赖模块，递归载入这些模块，直到所有模块载入完毕</li>
+</ul>
+
+
+<p>这里的模块载入只是把模块js文件载入到浏览器环境中。以上过程对应的大概代码为：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Module.prototype.load = function() {
+</span><span class='line'>    var mod = this
+</span><span class='line'>    if (mod.status == STATUS.FETCHING) return
+</span><span class='line'>    if (mod.status == STATUS.UNFETCH) {
+</span><span class='line'>        return mod.fetch() // 添加script标签从服务端拉取文件
+</span><span class='line'>    }
+</span><span class='line'>    mod.status = STATUS.LOADING
+</span><span class='line'>    mod.remain = mod.deps.length // 所有依赖载入完毕后通知回调
+</span><span class='line'>    function callback() {
+</span><span class='line'>        mod.remain--
+</span><span class='line'>        if (mod.remain === 0) {
+</span><span class='line'>            mod.onload() // 通知回调
+</span><span class='line'>        }
+</span><span class='line'>    }
+</span><span class='line'>    each(mod.deps, function (dep) {
+</span><span class='line'>        var m = getModule(dep)  // 获取依赖模块对象，依赖模块可能已经被载入也可能没有
+</span><span class='line'>        if (m.status &gt;= STATUS.LOADED || m.status == STATUS.LOADING) { // 已经载入
+</span><span class='line'>            mod.remain--
+</span><span class='line'>            return
+</span><span class='line'>        }
+</span><span class='line'>        m.listeners.push(callback)
+</span><span class='line'>        if (m.status &lt; STATUS.LOADING) {
+</span><span class='line'>            m.load()
+</span><span class='line'>        }
+</span><span class='line'>    })
+</span><span class='line'>    if (mod.remain == 0) {
+</span><span class='line'>        mod.onload()
+</span><span class='line'>    }
+</span><span class='line'>}
+</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p><code>load</code>的实现由于混合了异步问题，所以理解起来会有点难。<code>fetch</code>的实现就是一般的往页面添加script及设置回调的过程。在fetch完毕后会重新调用<code>load</code>以完成递归载入该模块的依赖：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// 该函数回调时，该js文件已经被浏览器执行，其内容包含define则会添加模块（当然已经被添加过了）
+</span><span class='line'>// 可以回头看上面的define调用的是getModule，此时会重新设置deps/factory等属性
+</span><span class='line'>function onloadListener() {
+</span><span class='line'>    var readyState = script.readyState;
+</span><span class='line'>    if (typeof readyState === 'undefined' || /^(loaded|complete)$/.test(readyState)) {
+</span><span class='line'>        mod.status = STATUS.FETCHED
+</span><span class='line'>        mod.load()
+</span><span class='line'>    }
+</span><span class='line'>}
+</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<h3>模块生效</h3>
+
+<p>模块载入后模块其实还没生效，还无法使用模块中定义的各种符号。要让模块生效，就得执行模块定义的factory函数。在直接间接依赖的模块被全部载入完成后，最终回调到我们的callback。此时可以看看require的实现：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// 前面提到require/define实现类似，所以这里创建了Module对象，只是复用代码
+</span><span class='line'>function require(deps, callback) {
+</span><span class='line'>    var mod = new Module(getId())
+</span><span class='line'>    mod.deps = deps
+</span><span class='line'>    mod.factory = callback
+</span><span class='line'>    mod.callback = function () {
+</span><span class='line'>        mod.exec()
+</span><span class='line'>    }
+</span><span class='line'>    mod.status = STATUS.FETCHED
+</span><span class='line'>    mod.load()
+</span><span class='line'>}
+</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>就是简单地调用了<code>load</code>，完成后调用了<code>exec</code>。<code>exec</code>又是一个涉及到递归的函数，它会递归执行所有模块的factory。factory的执行需要各个模块的exports对象，只有模块exec后才会得到exports对象。</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Module.prototype.exec = function() {
+</span><span class='line'>    var mod = this
+</span><span class='line'>    if (mod.status &gt;= STATUS.EXECUTED) { return mod.exports }
+</span><span class='line'>    // 获取依赖模块的exports列表
+</span><span class='line'>    var args = mod.getDepsExport()
+</span><span class='line'>    var ret = mod.factory.apply(null, args)
+</span><span class='line'>    // factory 返回值作为该模块的exports
+</span><span class='line'>    mod.exports = ret 
+</span><span class='line'>    mod.status = STATUS.EXECUTED
+</span><span class='line'>    return mod.exports
+</span><span class='line'>}
+</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>上面的代码主要是实现这样的功能：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// 将依赖[d1, d2]的exports作为参数d1,d2传入
+</span><span class='line'>define('my-module', ['d1', 'd2'], function (d1, d2) {
+</span><span class='line'>    return {func: function() {}}
+</span><span class='line'>})</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p><code>getDepsExport</code>就是一个取依赖模块exports的过程：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Module.prototype.getDepsExport = function() {
+</span><span class='line'>    var mod = this
+</span><span class='line'>    var exports = []
+</span><span class='line'>    var deps = mod.deps
+</span><span class='line'>    var argsLen = mod.factory.length &lt; deps.length ? mod.factory.length : deps.length
+</span><span class='line'>    for (var i = 0; i &lt; argsLen; i++) {
+</span><span class='line'>        exports.push(mod.require(deps[i]))
+</span><span class='line'>    }
+</span><span class='line'>    return exports
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p><code>Module.require(id)</code>用于exec目标模块并返回其exports：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Module.prototype.require = function(dep) {
+</span><span class='line'>    // 由于之前已经递归载入过所有模块，所以该依赖模块必然是已经存在的，可以被exec的
+</span><span class='line'>    var mod = getModule(dep)
+</span><span class='line'>    return mod.exec()
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>于是又回到了<code>exec</code>，实现了递归执行所有依赖模块的功能。<code>exec</code>主要是获取依赖模块exports并调用factory，所以最初的require将用户的callback作为factory传入那个临时Module，最终使得调用到用户的callback。</p>
+
+<p>通过以上过程，实际上就已经走通了从define到require实现的整个过程。整个代码不到200行。基于此可以添加更多RequireJS的附加功能。完。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2017/02/05/mini-requirejs/'>http://codemacro.com/2017/02/05/mini-requirejs/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2017-02-05T00:00:00+08:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>5</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/categories/javascript/'>javascript</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/2017/01/08/react-plugin/" title="Previous Post: ReactJS项目中基于webpack实现页面插件">&laquo; ReactJS项目中基于webpack实现页面插件</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><!-- UY BEGIN -->
+<div id="uyan_frame"></div>
+<script type="text/javascript" src="http://v2.uyan.cc/code/uyan.js?uid=1537634"></script>
+<!-- UY END -->
+
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (7)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/02/05/mini-requirejs/">RequireJS最简实现</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/01/08/react-plugin/">ReactJS项目中基于webpack实现页面插件</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2016/08/16/reverse_html/">一次逆向网页内容加密</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2016/05/08/tls_so_coredump/">记一次线程局部存储与动态库引起的core</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2015/09/05/java-lightweight-container/">Java中隔离容器的实现</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+<div id="recentcomments" class="dsq-widget">
+<h1 class="dsq-widget-title">Recent Comments</h1>
+</div>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 116.15384615384616%'>java(7)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 127.6923076923077%'>network(12)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - Kevin Lynx -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
+<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
+
+</p>
+
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

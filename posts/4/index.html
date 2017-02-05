@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="技术 这一年里个人的技术感觉进步不是那么大。一方面技术之外的事情多了起来，另一方面由于工作原因接触的技术也较为杂乱，没有机会专注。技术的提升还是得靠业余时间。 系统分析设计 学了些RUP的方法，对规范化的系统分析设计算是有了一定认识。但这个东西在实践的过程中往往较难运用， &hellip;">
+  <meta name="description" content="距离写dhtcrawler已经有半年时间。半年前就想总结点心得经验，但最后写出来的并没有表达出我特别有感慨的地方。最近又被人问到这方面的经验问题，才静下心来思考整理了下。 我的经验是关于在写一个网络项目时所涉及到的架构（或者说是模型）。 在dhtcrawler中，一个主要的问题是： &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,48 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2014/02/21/dhtcrawler-process/">dhtcrawler的进程模型经验</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-02-21T00:00:00+08:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>距离写<a href="http://codemacro.com/2013/07/02/dhtcrawler2/">dhtcrawler</a>已经有半年时间。半年前就想总结点心得经验，但最后写出来的并没有表达出我特别有感慨的地方。最近又被人问到这方面的经验问题，才静下心来思考整理了下。</p>
+
+<p>我的经验是关于在写一个网络项目时所涉及到的架构（或者说是模型）。</p>
+
+<p>在dhtcrawler中，一个主要的问题是：程序在网络中需要尽可能快尽可能多地收集请求，然后程序需要尽可能快地加工处理这些信息。本质上就这么简单，我觉得很多网络系统面临的都可能是类似的问题。</p>
+
+<p>详细点说，dhtcrawler高峰期每天会收到2000万的DHT协议请求，收到这些请求后，dhtcrawler需要对这些请求做处理，包括：合并相同的请求；从外部网站请求下载种子文件；新增/更新种子信息到数据库；建立种子sphinx索引等。在实际运行期间，高峰期每天能新录入14万个种子。</p>
+
+<p>那么如何架构这个系统来让处理速度尽可能地快呢？首先，毫无疑问这个系统是多线程/多进程，甚至是分布式的。写一个多线程程序学几个API谁都会，但是如何组织这些线程以让系统最优则是一个较困难的问题。根据dhtcrawler的经验，我简单总结了以下几种模型/架构：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/02/21/dhtcrawler-process/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -561,53 +603,6 @@ $str
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2013/06/03/erlang-code-snippets/">erlang编程技巧若干</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2013-06-03T21:53:00+08:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>3</span><span class='date-suffix'>rd</span>, <span class='date-year'>2013</span></span> <span class='time'>9:53 pm</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>guard</h2>
-
-<p>guard可以以逗号或者分号分隔，以逗号分隔表示最终的结果为各个guard的and结果，以分号则是只要任意一个guard为true则最终结果为true。</p>
-
-<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nf">guard</span><span class="p">(</span><span class="nv">X</span><span class="p">,</span> <span class="nv">Y</span><span class="p">)</span> <span class="k">when</span> <span class="ow">not</span><span class="p">(</span><span class="nv">X</span><span class="o">&gt;</span><span class="nv">Y</span><span class="p">),</span> <span class="nb">is_atom</span><span class="p">(</span><span class="nv">X</span><span class="p">)</span> <span class="o">-&gt;</span>
-    <span class="nv">X</span> <span class="o">+</span> <span class="nv">Y</span><span class="p">.</span></code></pre></div>
-
-
-<p>guard在list comprehension中可以筛选元素：</p>
-
-<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nv">NewNodes</span>  <span class="o">=</span> <span class="p">[</span><span class="nv">Node</span> <span class="p">||</span> <span class="nv">Node</span> <span class="o">&lt;-</span> <span class="nv">AllNodes</span><span class="p">,</span> <span class="ow">not</span> <span class="nn">gb_sets</span><span class="p">:</span><span class="nf">is_member</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="nv">NewQueried</span><span class="p">)],</span></code></pre></div>
-
-
-<p>guard中不能使用自定义函数，因为guard应该保证没有副作用，但自定义函数无法保证这一点，所以erlang禁止在guard中使用自定义函数。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2013/06/03/erlang-code-snippets/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/5">&larr; Older</a>
@@ -622,11 +617,15 @@ $str
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (7)</a></li><li><a href='/categories/javascript/'>javascript (2)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (7)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/02/05/mini-requirejs/">RequireJS最简实现</a>
+      </li>
     
       <li class="post">
         <a href="/2017/01/08/react-plugin/">ReactJS项目中基于webpack实现页面插件</a>
@@ -644,22 +643,16 @@ $str
         <a href="/2015/09/05/java-lightweight-container/">Java中隔离容器的实现</a>
       </li>
     
-      <li class="post">
-        <a href="/2015/08/10/java-gc-summary/">Java GC总结</a>
-      </li>
-    
   </ul>
 </section>
 <section>
 <div id="recentcomments" class="dsq-widget">
 <h1 class="dsq-widget-title">Recent Comments</h1>
-<script type="text/javascript" src="http://loopincodes.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
 </div>
-<a href="http://disqus.com/">Powered by Disqus</a>
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 116.15384615384616%'>java(7)</a> <a href='/categories/javascript' style='font-size: 104.61538461538461%'>javascript(2)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 127.6923076923077%'>network(12)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 116.15384615384616%'>java(7)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 127.6923076923077%'>network(12)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
 </section>
 
   
@@ -678,19 +671,6 @@ $str
 
 </footer>
   
-
-<script type="text/javascript">
-      var disqus_shortname = 'loopincodes';
-      
-        
-        var disqus_script = 'count.js';
-      
-    (function () {
-      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
-      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    }());
-</script>
 
 
 
