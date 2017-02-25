@@ -11,8 +11,6 @@ comments: true
 
 2014.4 - 
 
-一大波牛人的世界
-
 ### 计算机科学业余爱好者
 
 2003.7 - 
@@ -83,8 +81,6 @@ comments: true
 杭州/成都
 
 ### 链接
-
-我的邮箱：kevinlynx at gmail dot com。
 
 我的微博：[kevinlynx](http://weibo.com/kevinlynx)
 
