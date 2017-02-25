@@ -3,6 +3,12 @@
   
   
   <url>
+    <loc>http://codemacro.com/2017/02/25/toy-jvm/</loc>
+    <lastmod>2017-02-25T00:00:00+08:00</lastmod>
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
     <loc>http://codemacro.com/2017/02/05/mini-requirejs/</loc>
     <lastmod>2017-02-05T00:00:00+08:00</lastmod>
     <priority>0.8</priority>
@@ -521,28 +527,28 @@
   
   <url>
     <loc>http://codemacro.com/about.html</loc>
-    <lastmod>2017-02-05T20:26:17+08:00</lastmod>
+    <lastmod>2017-02-25T15:48:08+08:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   
   <url>
     <loc>http://codemacro.com/</loc>
-    <lastmod>2017-02-05T20:26:17+08:00</lastmod>
+    <lastmod>2017-02-25T15:48:08+08:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   
   <url>
     <loc>http://codemacro.com/blog/archives/</loc>
-    <lastmod>2017-02-05T20:26:17+08:00</lastmod>
+    <lastmod>2017-02-25T15:48:08+08:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   
   <url>
     <loc>http://codemacro.com/tips/</loc>
-    <lastmod>2017-02-05T20:26:17+08:00</lastmod>
+    <lastmod>2017-02-25T15:48:08+08:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>

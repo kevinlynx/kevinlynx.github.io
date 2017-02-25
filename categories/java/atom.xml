@@ -4,7 +4,7 @@
   <title><![CDATA[Category: java | loop in codes]]></title>
   <link href="http://codemacro.com/categories/java/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2017-02-05T20:26:17+08:00</updated>
+  <updated>2017-02-25T15:48:08+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,238 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[写一个玩具Java虚拟机]]></title>
+    <link href="http://codemacro.com/2017/02/25/toy-jvm/"/>
+    <updated>2017-02-25T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2017/02/25/toy-jvm</id>
+    <content type="html"><![CDATA[<p>本文描述了一个用Java实现的玩具JVM，用Java实现的好处是可以不用处理JVM中的垃圾回收。</p>
+
+<p>Java虚拟机是基于栈的虚拟机。栈虚拟机的特点是所有临时操作数都存放在栈中。编译器生成的指令都会围绕着这个栈展开，相对而言，解释执行这些指令会比较容易。基于栈的虚拟机可能会生成如下指令：</p>
+
+<pre><code>push 3   # 把立即数3压栈
+push 4   # 把立即数4压栈
+add      # 从栈中弹出两个操作数进行相加，结果压回栈中
+</code></pre>
+
+<p>Java .class文件存储的主要就是编译后的指令，一个玩具JVM，简单来说就是解释执行这里面的指令。接下来就说说为了让这个JVM跑起来需要实现哪些功能。</p>
+
+<h2>class 文件解析</h2>
+
+<p>推荐一下 <a href="https://www.codeproject.com/articles/35915/java-class-viewer">Java class viewer</a>，里面有个工具可以可视化class文件内容。另外我直接复用了他解析class文件的代码。</p>
+
+<p>class文件描述的信息是以class为单位的，一个类如果有嵌套类，这个嵌套类也会生成为单独的class文件。从c/c++程序员的视角来看，class文件的生成有点类似编译，编译器在编译期间只做依赖符号存在与否的检查。所有引用其他class的地方，不同于c/c++，java class的引用都是在运行期定位的。这里看看一个简单的类class文件结构是怎样的：</p>
+
+<!-- more -->
+
+
+<pre><code>package test;
+
+public class Simple {
+  private int data;
+
+  public int add(int a, int b) {
+    return a + b;
+  }
+}
+</code></pre>
+
+<p><img src="http://i.imgur.com/VCk3vGO.jpg" alt="" /></p>
+
+<p>一个class文件比较重要的有：</p>
+
+<ul>
+<li>constant pool(常量池)：存储字符串字面量、函数原型描述、类成员描述、class引用描述。字节码中经常会引用常量池中的内容，例如要设置某个成员变量，字节码中的操作数就是常量池索引，从索引中获取出具体是哪个成员变量</li>
+<li>fields：描述类成员变量</li>
+<li>methods: 描述类成员函数</li>
+<li>attributes: 分布在很多地方，可能嵌套，用于描述method字节码、调试符号信息等。</li>
+</ul>
+
+
+<p>常量池非常重要，这里看看class文件中是如何使用常量池的。例如，一个field描述：</p>
+
+<p><img src="http://i.imgur.com/dUnFttG.jpg" alt="" /></p>
+
+<p>其中<code>name_index</code>和<code>descriptor_index</code>的值，指向的就是常量池索引，通过前面推荐的class viewer去常量池中找就会找到对应的值：</p>
+
+<p><img src="http://i.imgur.com/8uqslfH.jpg" alt="" /></p>
+
+<p><code>descriptor_index</code>描述field类型，<code>I</code>指的是整数。Java里有一套描述类型的规则，这个规则在函数定义的地方也会看到。</p>
+
+<p>methods只要有实现，就都会有一个Code attribute，也就是这个函数的具体实现字节码，例如前面的add函数字节码为：</p>
+
+<pre><code>opcode [1B] - 0000: iload_1     # 将第1个局部变量值压栈
+opcode [1C] - 0001: iload_2     # 将第2个局部变量值压栈
+opcode [60] - 0002: iadd        # 弹出2个操作数相加，结果压栈
+opcode [AC] - 0003: ireturn     # 弹出1个操作数作为函数返回值
+</code></pre>
+
+<p>解析出class文件中的信息后，玩具JVM就完成一半了。</p>
+
+<h2>JVM指令</h2>
+
+<p>JVM中已经有200多条指令了。但是这些指令很多都是相似的。具体实现这些指令时可以参考<a href="https://en.wikipedia.org/wiki/Java_bytecode_instruction_listings">指令表</a>。JVM指令就像x86指令一样，由操作码以及可选的操作数组成。操作码表示具体是哪条指令，占1个字节；操作数表示该操作码需要的参数，变长。class文件中字节码连续存放，像上一节的例子就是4条指令，每条指令只有操作码没有操作数，他们存放在class文件中就是：1B 1C 60 AC。</p>
+
+<p>JVM依次读取这些指令并解释执行。这个过程同真实计算机CPU执行过程类似。用代码描述为：</p>
+
+<pre><code>while (true) {
+  code = fetchOpCode()
+  if (code == iload_1) {
+    push(1)
+  } elif (code == iadd) {
+    i1 = pop()
+    i2 = pop()
+    push(i1 + i2)
+  } elif (code == bipush) { // 需要操作数的指令
+    b = fetchOpValue()
+    push(b)
+  }
+  ...
+}
+</code></pre>
+
+<p>程序执行过程中有一个虚拟指针PC，用于指示当前字节码处理到哪个位置了。有些跳转指令会强制改变PC。不同于c/c++程序，JVM中跳转指令跳转的都是相对位移。JVM启动时，不同于c/c++，也没有地址重定位的过程(修正相对地址为实际地址)。</p>
+
+<h2>执行环境</h2>
+
+<h3>线程执行环境</h3>
+
+<p>JVM中每个线程都是独立的执行单元。但是对于类符号等信息则是全局共享，堆上创建的对象也是全局可访问的。单个线程中调用函数会产生帧(frame)，每一帧都有一个独立的栈用于存储该帧执行的临时数据。从main函数开始执行，每进入一个函数创建一个帧，函数退出(执行return系列指令)清除当前帧。这里的帧也可以被实现为一个栈，当这个栈里没有帧时就表示这个线程退出。这个过程可以描述为：</p>
+
+<pre><code>while (thread.topFrame() != null) {
+  thread.topFrame().run() // 内部实现就是从Code属性处不断地取指令执行
+}
+
+// 执行到return语句时，就弹出该帧
+if (code == op_return) {
+  frame.getThread().popFrame()
+}
+
+// 遇到函数调用时，就根据目标函数创建出一帧
+if (code == op_invoke) {
+  method = findMethod(ref) // 函数调用时操作数是常量池索引，需要加载目标类，获取目标方法
+  newFrame = createFrame(method) // 每个方法都会描述该方法内有多少局部变量，所需栈多大，根据这些信息初始化帧
+  frame.getThread().pushFrame(newFrame) 
+}
+</code></pre>
+
+<p>注释中提到了，class文件中method包含了“有多少局部变”、“需要多大的栈”等信息。局部变量的实现是一个数组，数组的下标表示局部变量是第几个。字节码中要访问局部变量时，全部是以这个下标来查找的。例如指令<code>istore_1</code>，表示从栈中弹出一个整数，并写到局部变量1中。</p>
+
+<p><img src="http://i.imgur.com/dUW6ukh.jpg" alt="" /></p>
+
+<h3>全局环境</h3>
+
+<p>由于使用Java实现，堆内存的管理完全不用操心。如果我们代码中创建了一个类对象，或者简单点调用了另一个类的静态方法，这个时候会发生什么以及如何处理？例如以下代码：</p>
+
+<pre><code>int a = Simple2.inc(2);
+</code></pre>
+
+<p>生成以下字节码：</p>
+
+<pre><code>opcode [05] - 0004: iconst_2  # 压入常量2到栈，作为函数调用的参数
+opcode [B8] - 0005: invokestatic 2 [Methodref: test.Simple2.inc, parameter = (int), returns = int]
+</code></pre>
+
+<p>可以看出调用静态函数<code>invokestatic</code>的操作数是2，指向的是常量池中的2。工具直接显示了常量池2是一个method，及该method的原型。</p>
+
+<p>遇到这样的指令时，我们就需要找到并加载目标类。所以，全局信息里需要维护类列表。考虑到Java中类与类之间是否相同，除了看类名（全限定名）外，还得看类的加载器(class loader)。所以，玩具JVM中也需要有class loader机制（至少是个简化版）。程序启动时设定一个默认的类加载器，加载主类，执行主类main方法，执行过程中遇到对其他类的引用时，就使用当前类加载器继续加载目标类，如果已经加载就直接返回。</p>
+
+<h2>类加载及main方法</h2>
+
+<p>前面已经提到了类加载。其实类加载本质上就是把目标class文件加载到内存，保存该class信息。在调用一个类的方法时，也是根据方法名(考虑到方法重载，还得考虑方法的原型，在class file中也就是descriptor)找到具体的方法，根据方法初始化调用帧，以及根据方法获得其要执行的字节码。</p>
+
+<p>所以，我们的JVM要跑起来，也就是找到并加载主类，然后找到主类中的main函数并执行。</p>
+
+<pre><code>  public void run(String mainClass) {
+    Class clazz = mRootLoader.loadClass(mainClass);
+    MethodInfo method = clazz.findMethod("main", "([Ljava/lang/String;)V");
+    Thread thread = new Thread();
+    thread.run(clazz, method);
+  }
+</code></pre>
+
+<p>当然，这个过程严格来说还得判定类访问控制、方法访问控制等。</p>
+
+<p><strong>至此，这个玩具JVM就可以跑起来了</strong>。可以设定它的class path，加载类，从main方法开始执行，调用其他类的静态方法，写写阶乘的实现是没有问题了。但是Java中还有很多其他特性：类对象、调用类实例方法、异常处理、调用native方法等待。接下来我再讲讲这些特性的实现，一窥Java核心语法的实现。</p>
+
+<h2>扩展实现</h2>
+
+<h3>类对象及实例方法调用</h3>
+
+<p>类对象的创建通过<code>new</code>指令完成，本质上也就是分配个对象，并关联类信息到这个对象。我们的实现中自然会有一个类用来表示玩具JVM中所有的对象：</p>
+
+<pre><code>// 为了与java.lang.Object区分开
+public class VObject {
+  // 简单起见，直接以field名作为key，来保存该对象所有的成员变量
+  private Map&lt;String, Slot&gt; mFields; 
+  // 与之关联的类信息
+  private final Class mClazz;
+    ...
+}
+</code></pre>
+
+<p>注意这里的<code>Class</code>是我们自己定义的Class，而不是java.lang.Class。<code>Slot</code>类型用于存储整数或一个引用(其他对象)。<code>new</code>指令的大概实现：</p>
+
+<pre><code>register(Opcode.op_new, (codes, frame) -&gt; {
+  int b1 = codes.readByte();
+  int b2 = codes.readByte();
+  int idx = (b1 &lt;&lt; 8) + b2; // 常量池索引，指向一个类信息描述
+  String clazzName = frame.getClazz().resolveClassName(idx); // 根据这个类信息描述解析到具体的类名
+  Class clazz = frame.getClazz().getClassLoader().loadClass(clazzName); // 使用当前的类加载器加载该类
+  initClass(frame.getThread(), clazz); 
+  VObject object = new VObject(clazz); // 创建该类对应的对象，完成new指令的对象创建动作
+  frame.pushRef(object); // 根据new指令的语义，我们需要将创建好的对象引用压回栈中
+});
+</code></pre>
+
+<p>需要注意的是，当我们在Java中写下代码 <code>new SomeClass()</code> 时，实际会产生两个功能的指令：a) 创建对象；b) 调用类的构造函数(<init>)</p>
+
+<pre><code>opcode [BB] - 0004: name_new 2 [Class: test.Simple2]  # new 指令，操作数是类信息常量池索引
+opcode [59] - 0007: dup 
+opcode [B7] - 0008: invokespecial 3 [Methodref: test.Simple2. , parameter = (), returns = void] # 调用目标类的构造函数，也就是&lt;init&gt;方法
+</code></pre>
+
+<p>调用类构造函数同普通类实例方法原理相同，都会先压入对象引用。<code>invokespecial</code>指令用于调用类对象实例方法，从栈顶依次出栈参数，最后出栈类对象实例引用。具体可以看看指令表里的描述。</p>
+
+<h3>类静态区域初始化</h3>
+
+<p>首次加载某个类时，会执行其static区域代码。这个写测试看下生成的代码就懂了，就是生成一个<cinit>的静态方法，在加载类时先执行这个方法。</p>
+
+<h3>异常处理</h3>
+
+<p>当一个方法中有try/catch时，该方法就会生成出一个异常处理表，存储在Code属性中。如下图：</p>
+
+<p><img src="http://i.imgur.com/Ms1qPYr.jpg" alt="" /></p>
+
+<p>异常处理表每一项都包含：<code>start_pc</code>、<code>end_pc</code>、<code>handler_pc</code> 及<code>catch_type</code>，表示在start_pc/end_pc间发现异常，且异常类型是catch_type时，则跳转到handler_pc处执行代码，也就是异常处理代码。其中catch_type也是常量池中的索引，当其为0时，则不是常量池索引，而是表示catch所有类型，其实就是finally块。从这里也可以看出，常量池索引是从1开始，而不是0。</p>
+
+<p>当异常发生时，JVM首先从当前帧对应的方法中的异常处理表查找异常处理代码，没有的话则弹出当前帧，回到上一帧，也就是调用者继续查找，直到找完所有调用帧。这个实现相对较多，就不列举代码了。</p>
+
+<h3>调用本地方法</h3>
+
+<p>前面实现的JVM都没有输出字符串的能力，要提供一个类似<code>System.out.println</code>的方法，就需要注册本地方法到JVM中。这里可以简单地为整个JVM设置一个本地方法表，在JVM启动时完成注册。类似以下代码：</p>
+
+<pre><code>public static void native println(String s);
+</code></pre>
+
+<p>也会在class文件中留下一个method，但这个method会被标记为native，自然也没有Code属性，没有字节码可执行。当执行<code>invoke</code>系列指令时，发现调用的是native方法，就需要从全局本地方法表中查找。注册本地方法类似：</p>
+
+<pre><code>mMethods.put(makeKey("java/lang/System", "println", "(Ljava/lang/String;)V"), (frame) -&gt; {
+  String s = (String) frame.popRef();
+  System.out.println(s);
+});
+</code></pre>
+
+<p>本地方法执行时，通过<code>frame</code>参数就可以取出调用该方法传入的参数。</p>
+
+<p>在实现了本地方法后，就可以给这个玩具JVM添加一些系统库，类似OpenJDK中jre目录下的lib。这些系统库可以包含java.lang.System.println、java.lang.String、java.lang.StringBuilder。简单起见，我实现的这些类和Java标准库有些不同。</p>
+
+<h2>最后</h2>
+
+<p>完整代码<a href="https://github.com/kevinlynx/toy_jvm">这里</a>。实现的指令很有限，可以跑通<a href="https://github.com/kevinlynx/toy_jvm/blob/master/test/AllTest.java">test/AllTest.java</a>中的代码。对于long/double等类型没有支持，各种限定访问的判断也没有。总之就是简单到仅仅可以一窥原理。基于java8，测试例子class文件java7编译(应该没关系)。祝玩得开心。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Java中隔离容器的实现]]></title>
@@ -798,172 +1030,6 @@ GET /index.jsp com.codemacro.webdemo.test.TestController.template
 <li><a href="http://blog.csdn.net/bingduanlbd/article/details/38349737">实现一个简单的Servlet容器</a></li>
 </ul>
 
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Java中的反射及Bean容器的实现]]></title>
-    <link href="http://codemacro.com/2015/05/31/java-refect-ioc/"/>
-    <updated>2015-05-31T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2015/05/31/java-refect-ioc</id>
-    <content type="html"><![CDATA[<p>编程语言中的反射(Refection)指的是可以在程序运行期动态加载一个类。与之相关的是自省(Introspection)，这个指的是程序自己可以获取一个类型的描述信息，例如获取一个类的所有接口定义、一个接口的所有形参。当编程语言有了这些语言特性之后，可以在很大程度上解决代码耦合问题，所以在Java的世界里，可以看到很多库/框架使用了反射技术。</p>
-
-<p>类似Spring的Bean容器实现就是大量运用了反射机制。Bean容器维护了一些Bean对象，简单来说就是一些普通对象。Bean容器可以根据配置创建这些对象，创建时如果这些对象依赖了其他对象，Bean容器还会负责将依赖的对象注入到目标对象中，也就是所谓的依赖注入(dependence injection)。放在模块设计中，又衍生出控制反转(IoC, Inverse of Control)概念，用于描述应用程序在使用一个框架时，不是框架来控制/限制应用程序的架构模式，而是由应用程序来控制框架。</p>
-
-<p>本文就简单描述下Bean容器是如何使用反射来实现的，最终代码参考<a href="https://github.com/kevinlynx/ioc-sample">github ioc-sample</a></p>
-
-<h2>类的动态加载</h2>
-
-<p>可以简单地使用<code>Class.forName</code>，传入某个class的完整名：</p>
-
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;</span> <span class="n">loadClass</span><span class="o">(</span><span class="n">String</span> <span class="n">fullName</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">ClassNotFoundException</span> <span class="o">{</span>
-  <span class="k">return</span> <span class="n">Class</span><span class="o">.</span><span class="na">forName</span><span class="o">(</span><span class="n">fullName</span><span class="o">);</span>
-<span class="o">}</span></code></pre></div></p>
-
-<p>类的加载涉及到class loader，这块内容是可以进一步深化的。加载了类之后就可以创建出类的实例，但还没有完成依赖注入的功能：</p>
-
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;</span> <span class="n">c</span> <span class="o">=</span> <span class="n">loadClass</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">com</span><span class="o">.</span><span class="na">codemacro</span><span class="o">.</span><span class="na">bean</span><span class="o">.</span><span class="na">test</span><span class="o">.</span><span class="na">Test1</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;);</span>
-<span class="n">Object</span> <span class="n">o</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">newInstance</span><span class="o">();</span></code></pre></div></p>
-
-<!-- more -->
-
-
-<h2>通过set接口注入</h2>
-
-<p>我们的类可以包含<code>set</code>接口，用于设置某个成员：</p>
-
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Test2</span> <span class="o">{</span>
-  <span class="kd">public</span> <span class="n">Test1</span> <span class="n">test1</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setTest1</span><span class="o">(</span><span class="n">Test1</span> <span class="n">t</span><span class="o">)</span> <span class="o">{</span>
-    <span class="n">test1</span> <span class="o">=</span> <span class="n">t</span><span class="o">;</span>
-  <span class="o">}</span>
-<span class="o">}</span></code></pre></div></p>
-
-<p>那么可以通过<code>setXXX</code>接口将<code>Test1</code>注入到<code>Test2</code>中：</p>
-
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="c1">// props指定哪些成员需要注入，例如{&amp;ldquo;Test1&amp;rdquo;, &amp;ldquo;test1&amp;rdquo;}，Test1指的是setTest1，test1指的是bean名字</span>
-<span class="kd">public</span> <span class="n">Object</span> <span class="nf">buildWithSetters</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;</span> <span class="n">c</span><span class="o">,</span> <span class="n">Map</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;</span><span class="n">String</span><span class="o">,</span> <span class="n">String</span><span class="o">&gt;</span> <span class="n">props</span><span class="o">)</span> <span class="o">{</span>
-  <span class="k">try</span> <span class="o">{</span>
-    <span class="c1">// ClassSetMethods 类获取Class&amp;lt;?&gt;中所有setXX这种接口</span>
-    <span class="n">ClassSetMethods</span> <span class="n">setMethods</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ClassSetMethods</span><span class="o">&amp;</span><span class="n">copy</span><span class="o">;;</span>
-    <span class="n">Object</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">newInstance</span><span class="o">();</span>
-    <span class="k">for</span> <span class="o">(</span><span class="n">Map</span><span class="o">.</span><span class="na">Entry</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;</span><span class="n">String</span><span class="o">,</span> <span class="n">String</span><span class="o">&gt;</span> <span class="n">entrys</span> <span class="o">:</span> <span class="n">props</span><span class="o">.</span><span class="na">entrySet</span><span class="o">())</span> <span class="o">{</span>
-      <span class="n">String</span> <span class="n">pname</span> <span class="o">=</span> <span class="n">entrys</span><span class="o">.</span><span class="na">getKey</span><span class="o">();</span>
-      <span class="n">String</span> <span class="n">beanName</span> <span class="o">=</span> <span class="n">entrys</span><span class="o">.</span><span class="na">getValue</span><span class="o">();</span>
-      <span class="c1">// 取得setXXX这个Method</span>
-      <span class="n">Method</span> <span class="n">m</span> <span class="o">=</span> <span class="n">setMethods</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">pname</span><span class="o">);</span>
-      <span class="n">Object</span> <span class="n">val</span> <span class="o">=</span> <span class="n">getBean</span><span class="o">(</span><span class="n">beanName</span><span class="o">);</span>
-      <span class="c1">// 调用</span>
-      <span class="n">m</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">obj</span><span class="o">,</span> <span class="n">val</span><span class="o">);</span>
-    <span class="o">}</span>
-    <span class="n">beans</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">obj</span><span class="o">);</span>
-    <span class="k">return</span> <span class="n">obj</span><span class="o">;</span>
-  <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-    <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">build</span> <span class="n">bean</span> <span class="n">failed</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">e</span><span class="o">);</span>
-  <span class="o">}</span>
-<span class="o">}</span>  <span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span></code></pre></div></p>
-
-<p><code>ClassSetMethod</code>自省出一个Class中所有的<code>setXXX(xx)</code>接口：</p>
-
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="nf">ClassSetMethods</span><span class="o">(</span><span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;</span> <span class="n">c</span><span class="o">)</span> <span class="o">{</span>
-  <span class="n">Method</span><span class="o">[]</span> <span class="n">methods</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">getMethods</span><span class="o">();</span>
-  <span class="k">for</span> <span class="o">(</span><span class="n">Method</span> <span class="n">m</span> <span class="o">:</span> <span class="n">methods</span><span class="o">)</span> <span class="o">{</span>
-    <span class="n">String</span> <span class="n">mname</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="na">getName</span><span class="o">();</span>
-    <span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;[]</span> <span class="n">ptypes</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="na">getParameterTypes</span><span class="o">();</span>
-    <span class="k">if</span> <span class="o">(</span><span class="n">mname</span><span class="o">.</span><span class="na">startsWith</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">set</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;)</span> <span class="o">&amp;</span><span class="n">amp</span><span class="o">;&amp;</span><span class="n">amp</span><span class="o">;</span> <span class="n">ptypes</span><span class="o">.</span><span class="na">length</span> <span class="o">==</span> <span class="mi">1</span> <span class="o">&amp;</span><span class="n">amp</span><span class="o">;&amp;</span><span class="n">amp</span><span class="o">;</span> <span class="n">m</span><span class="o">.</span><span class="na">getReturnType</span><span class="o">()</span> <span class="o">==</span> <span class="n">Void</span><span class="o">.</span><span class="na">TYPE</span><span class="o">)</span> <span class="o">{</span>
-      <span class="n">String</span> <span class="n">name</span> <span class="o">=</span> <span class="n">mname</span><span class="o">.</span><span class="na">substring</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">set</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;.</span><span class="na">length</span><span class="o">());</span>
-      <span class="k">this</span><span class="o">.</span><span class="na">methods</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">m</span><span class="o">);</span>
-    <span class="o">}</span>
-  <span class="o">}</span>
-<span class="o">}</span></code></pre></div></p>
-
-<p>以上就可以看出Java中的自省能力，例如<code>Class&lt;?&gt;.getMethods</code>、<code>Method.getReturnType</code>、<code>Method.getParameterTypes</code>。</p>
-
-<h2>通过构造函数注入</h2>
-
-<p>类似于Spring中的：</p>
-
-<pre><code>&lt;bean id="exampleBean" class="examples.ExampleBean"&gt;
-  &lt;constructor-arg type="int" value="2001"/&gt;
-  &lt;constructor-arg type="java.lang.String" value="Zara"/&gt;
-</code></pre>
-
-<p>   </bean></p>
-
-<p>可以将依赖的Bean通过构造函数参数注入到目标对象中：</p>
-
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">params</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;();</span>
-<span class="n">params</span><span class="o">.</span><span class="na">add</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">test1</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;);</span>
-<span class="n">bf</span><span class="o">.</span><span class="na">buildWithConstructor</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">test2</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">Test2</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="n">params</span><span class="o">);</span></code></pre></div></p>
-
-<p>其实现：</p>
-
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="n">Object</span> <span class="nf">buildWithConstructor</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;</span> <span class="n">c</span><span class="o">,</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">beanNames</span><span class="o">)</span> <span class="o">{</span>
-  <span class="k">try</span> <span class="o">{</span>
-    <span class="n">Constructor</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;[]</span> <span class="n">ctors</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">getConstructors</span><span class="o">();</span> <span class="c1">// 取得Class构造函数列表</span>
-    <span class="k">assert</span> <span class="n">ctors</span><span class="o">.</span><span class="na">length</span> <span class="o">==</span> <span class="mi">1</span><span class="o">;</span>
-    <span class="n">Constructor</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;</span> <span class="n">cc</span> <span class="o">=</span> <span class="n">ctors</span><span class="o">[</span><span class="mi">0</span><span class="o">];</span>
-    <span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;[]</span> <span class="n">ptypes</span> <span class="o">=</span> <span class="n">cc</span><span class="o">.</span><span class="na">getParameterTypes</span><span class="o">();</span> <span class="c1">// 取得构造函数参数类型列表</span>
-    <span class="k">assert</span> <span class="n">ptypes</span><span class="o">.</span><span class="na">length</span> <span class="o">==</span> <span class="n">beans</span><span class="o">.</span><span class="na">size</span><span class="o">();</span>
-    <span class="n">Object</span><span class="o">[]</span> <span class="n">args</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Object</span><span class="o">[</span><span class="n">ptypes</span><span class="o">.</span><span class="na">length</span><span class="o">];</span>
-    <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&amp;</span><span class="n">lt</span><span class="o">;</span> <span class="n">beanNames</span><span class="o">.</span><span class="na">size</span><span class="o">();</span> <span class="o">++</span><span class="n">i</span><span class="o">)</span> <span class="o">{</span>
-      <span class="n">args</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="n">getBean</span><span class="o">(</span><span class="n">beanNames</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">));</span> <span class="c1">// 构造调用构造函数的实参列表</span>
-    <span class="o">}</span>
-    <span class="n">Object</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">cc</span><span class="o">.</span><span class="na">newInstance</span><span class="o">(</span><span class="n">args</span><span class="o">);</span> <span class="c1">// 通过构造函数创建对象</span>
-    <span class="n">beans</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">obj</span><span class="o">);</span>
-    <span class="k">return</span> <span class="n">obj</span><span class="o">;</span>
-  <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-    <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">build</span> <span class="n">bean</span> <span class="n">failed</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">e</span><span class="o">);</span>
-  <span class="o">}</span>
-<span class="o">}</span></code></pre></div></p>
-
-<p>这个接口的使用约定<code>beanNames</code>保存的是bean名称，并与构造函数参数一一对应。</p>
-
-<h2>通过注解注入</h2>
-
-<p>我们可以通过注解标注某个数据成员是需要被自动注入的。我这里简单地获取注解标注的成员类型，找到该类型对应的Bean作为注入对象。当然复杂点还可以指定要注入Bean的名字，或自动查找类型的派生类实现。</p>
-
-<p>一个空的注解即可：</p>
-
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="nd">@Retention</span><span class="o">(</span><span class="n">RetentionPolicy</span><span class="o">.</span><span class="na">RUNTIME</span><span class="o">)</span>
-<span class="nd">@Target</span><span class="o">(</span><span class="n">ElementType</span><span class="o">.</span><span class="na">FIELD</span><span class="o">)</span>
-<span class="kd">public</span> <span class="nd">@interface</span> <span class="n">Inject</span> <span class="o">{</span>
-<span class="o">}</span></code></pre></div></p>
-
-<p>实现：</p>
-
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kd">public</span> <span class="n">Object</span> <span class="nf">buildWithInject</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;</span> <span class="n">c</span><span class="o">)</span> <span class="o">{</span>
-  <span class="k">try</span> <span class="o">{</span>
-    <span class="n">Object</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">newInstance</span><span class="o">();</span>
-    <span class="n">Field</span><span class="o">[]</span> <span class="n">fields</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">getDeclaredFields</span><span class="o">();</span> <span class="c1">// 获取该类所有定义的成员</span>
-    <span class="k">for</span> <span class="o">(</span><span class="n">Field</span> <span class="n">f</span> <span class="o">:</span><span class="n">fields</span><span class="o">)</span> <span class="o">{</span>
-      <span class="n">Inject</span> <span class="n">inject</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="na">getAnnotation</span><span class="o">(</span><span class="n">Inject</span><span class="o">.</span><span class="na">class</span><span class="o">);</span> <span class="c1">// 获取数据成员的注解</span>
-      <span class="k">if</span> <span class="o">(</span><span class="n">inject</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span> <span class="c1">// 如果被Inject注解标注</span>
-        <span class="n">Object</span> <span class="n">bean</span> <span class="o">=</span> <span class="n">getBeanByType</span><span class="o">(</span><span class="n">f</span><span class="o">.</span><span class="na">getType</span><span class="o">());</span> <span class="c1">// 根据成员的类型找到对应的Bean</span>
-        <span class="n">f</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="n">obj</span><span class="o">,</span> <span class="n">bean</span><span class="o">);</span> <span class="c1">// 注入</span>
-      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
-        <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">not</span> <span class="n">found</span> <span class="n">bean</span> <span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">+</span> <span class="n">f</span><span class="o">.</span><span class="na">getName</span><span class="o">());</span>
-      <span class="o">}</span>
-    <span class="o">}</span>
-    <span class="n">beans</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">obj</span><span class="o">);</span>
-    <span class="k">return</span> <span class="n">obj</span><span class="o">;</span>
-  <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-    <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">build</span> <span class="n">bean</span> <span class="n">failed</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">e</span><span class="o">);</span>
-  <span class="o">}</span>
-<span class="o">}</span></code></pre></div></p>
-
-<p><code>getBeanByType</code>就是根据<code>Class</code>匹配所有的Bean。使用时：</p>
-
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Test2</span> <span class="o">{</span>
-  <span class="nd">@Inject</span>
-  <span class="kd">public</span> <span class="n">Test1</span> <span class="n">test1</span><span class="o">;</span>
-  <span class="o">&amp;</span><span class="n">hellip</span><span class="o">;</span>
-<span class="o">}</span></code></pre></div></p>
-
-<p>完。</p>
 ]]></content>
   </entry>
   

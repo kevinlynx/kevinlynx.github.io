@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="无锁有序链表可以保证元素的唯一性，使其可用于哈希表的桶，甚至直接作为一个效率不那么高的map。普通链表的无锁实现相对简单点，因为插入元素可以在表头插，而有序链表的插入则是任意位置。 本文主要基于论文High Performance Dynamic Lock-Free Hash Tables实现。 &hellip;">
+  <meta name="description" content="Apache Drill可用于大数据的实时分析，引用一段介绍： 受到Google Dremel启发，Apache的Drill项目是对大数据集进行交互式分析的分布式系统。Drill并不会试图取代已有的大数据批处理框架（Big Data batch processing framework）， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,66 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2015/05/30/drill-http-plugin/">Drill中实现HTTP storage plugin</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-05-30T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>30</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>Apache Drill可用于大数据的实时分析，引用一段介绍：</p>
+
+<blockquote><p>受到Google Dremel启发，Apache的Drill项目是对大数据集进行交互式分析的分布式系统。Drill并不会试图取代已有的大数据批处理框架（Big Data batch processing framework），如Hadoop MapReduce或流处理框架（stream processing framework），如S4和Storm。相反，它是要填充现有空白的——对大数据集的实时交互式处理</p></blockquote>
+
+<p>简单来说，Drill可接收SQL查询语句，然后后端从多个数据源例如HDFS、MongoDB等获取数据并分析产出分析结果。在一次分析中，它可以汇集多个数据源的数据。而且基于分布式的架构，可以支持秒级查询。</p>
+
+<p>Drill在架构上是比较灵活的，它的前端可以不一定是SQL查询语言，后端数据源也可以接入Storage plugin来支持其他数据来源。这里我就实现了一个从HTTP服务获取数据的Storage plugin demo。这个demo可以接入基于GET请求，返回JSON格式的HTTP服务。源码可从我的Github获取：<a href="https://github.com/kevinlynx/drill-storage-http">drill-storage-http</a></p>
+
+<p>例子包括：</p>
+
+<pre><code>select name, length from http.`/e/api:search` where $p=2 and $q='avi'
+select name, length from http.`/e/api:search?q=avi&amp;p=2` where length &gt; 0 
+</code></pre>
+
+<h2>实现</h2>
+
+<p>要实现一个自己的storage plugin，目前Drill这方面文档几乎没有，只能从已有的其他storage plugin源码入手，例如mongodb的，参考Drill子项目<code>drill-mongo-storage</code>。实现的storage plugin打包为jar放到<code>jars</code>目录，Drill启动时会自动载入，然后web上配置指定类型即可。</p>
+
+<p>主要需要实现的类包括：</p>
+
+<pre><code>AbstractStoragePlugin
+StoragePluginConfig
+SchemaFactory
+BatchCreator
+AbstractRecordReader
+AbstractGroupScan
+</code></pre>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2015/05/30/drill-http-plugin/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -624,54 +684,6 @@ add ax, 2    # 取ax中的值1与立即数2进行相加，存放结果到ax
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2014/10/12/diamond/">淘宝分布式配置管理服务Diamond</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2014-10-12T00:00:00+08:00'><span class='date'><span class='date-month'>Oct</span> <span class='date-day'>12</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>在一个分布式环境中，同类型的服务往往会部署很多实例。这些实例使用了一些配置，为了更好地维护这些配置就产生了配置管理服务。通过这个服务可以轻松地管理这些应用服务的配置问题。应用场景可概括为：</p>
-
-<p><img src="/assets/res/diamond/disconf.PNG" alt="" /></p>
-
-<p>zookeeper的一种应用就是分布式配置管理(<a href="http://wenku.baidu.com/view/ee86ca90daef5ef7ba0d3c7d.html">基于ZooKeeper的配置信息存储方案的设计与实现</a>)。百度也有类似的实现：<a href="https://github.com/knightliao/disconf">disconf</a>。</p>
-
-<p><a href="http://code.taobao.org/p/diamond/src/">Diamond</a>则是淘宝开源的一种分布式配置管理服务的实现。Diamond本质上是一个Java写的Web应用，其对外提供接口都是基于HTTP协议的，在阅读代码时可以从实现各个接口的controller入手。</p>
-
-<h2>分布式配置管理</h2>
-
-<p>分布式配置管理的本质基本上就是一种<strong><a href="http://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern">推送-订阅</a></strong>模式的运用。配置的应用方是订阅者，配置管理服务则是推送方。概括为下图：</p>
-
-<p><img src="/assets/res/diamond/pubsub.PNG" alt="" /></p>
-
-<p>其中，客户端包括管理人员publish数据到配置管理服务，可以理解为添加/更新数据；配置管理服务notify数据到订阅者，可以理解为推送。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2014/10/12/diamond/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/3">&larr; Older</a>
@@ -686,11 +698,15 @@ add ax, 2    # 取ax中的值1与立即数2进行相加，存放结果到ax
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (7)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (8)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>
+      </li>
     
       <li class="post">
         <a href="/2017/02/05/mini-requirejs/">RequireJS最简实现</a>
@@ -708,10 +724,6 @@ add ax, 2    # 取ax中的值1与立即数2进行相加，存放结果到ax
         <a href="/2016/05/08/tls_so_coredump/">记一次线程局部存储与动态库引起的core</a>
       </li>
     
-      <li class="post">
-        <a href="/2015/09/05/java-lightweight-container/">Java中隔离容器的实现</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -721,7 +733,7 @@ add ax, 2    # 取ax中的值1与立即数2进行相加，存放结果到ax
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 116.15384615384616%'>java(7)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 127.6923076923077%'>network(12)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 118.46153846153845%'>java(8)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 127.6923076923077%'>network(12)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
 </section>
 
   

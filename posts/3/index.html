@@ -9,8 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="最早的时候是在程序初始化过程中开启了一个timer(timer_create)，这个timer第一次触发的时间较短时就会引起程序core掉，core的位置也是不定的。使用valgrind可以发现有错误的内存写入： ==31676== Invalid write of size 8
-==31676 &hellip;">
+  <meta name="description" content="在一个分布式环境中，同类型的服务往往会部署很多实例。这些实例使用了一些配置，为了更好地维护这些配置就产生了配置管理服务。通过这个服务可以轻松地管理这些应用服务的配置问题。应用场景可概括为： zookeeper的一种应用就是分布式配置管理(基于ZooKeeper的配置信息存储方案的设计与实现)。 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -65,6 +64,54 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2014/10/12/diamond/">淘宝分布式配置管理服务Diamond</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-10-12T00:00:00+08:00'><span class='date'><span class='date-month'>Oct</span> <span class='date-day'>12</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>在一个分布式环境中，同类型的服务往往会部署很多实例。这些实例使用了一些配置，为了更好地维护这些配置就产生了配置管理服务。通过这个服务可以轻松地管理这些应用服务的配置问题。应用场景可概括为：</p>
+
+<p><img src="/assets/res/diamond/disconf.PNG" alt="" /></p>
+
+<p>zookeeper的一种应用就是分布式配置管理(<a href="http://wenku.baidu.com/view/ee86ca90daef5ef7ba0d3c7d.html">基于ZooKeeper的配置信息存储方案的设计与实现</a>)。百度也有类似的实现：<a href="https://github.com/knightliao/disconf">disconf</a>。</p>
+
+<p><a href="http://code.taobao.org/p/diamond/src/">Diamond</a>则是淘宝开源的一种分布式配置管理服务的实现。Diamond本质上是一个Java写的Web应用，其对外提供接口都是基于HTTP协议的，在阅读代码时可以从实现各个接口的controller入手。</p>
+
+<h2>分布式配置管理</h2>
+
+<p>分布式配置管理的本质基本上就是一种<strong><a href="http://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern">推送-订阅</a></strong>模式的运用。配置的应用方是订阅者，配置管理服务则是推送方。概括为下图：</p>
+
+<p><img src="/assets/res/diamond/pubsub.PNG" alt="" /></p>
+
+<p>其中，客户端包括管理人员publish数据到配置管理服务，可以理解为添加/更新数据；配置管理服务notify数据到订阅者，可以理解为推送。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/10/12/diamond/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -587,60 +634,6 @@ nfds [in] Ignored. The nfds parameter is included only for compatibility with Be
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2014/05/04/muduo-source/">muduo源码阅读</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2014-05-04T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>4</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>最近简单读了下<a href="http://blog.csdn.net/solstice/article/details/5848547">muduo</a>的源码，本文对其主要实现/结构简单总结下。</p>
-
-<p>muduo的主要源码位于net文件夹下，base文件夹是一些基础代码，不影响理解网络部分的实现。muduo主要类包括：</p>
-
-<ul>
-<li>EventLoop</li>
-<li>Channel</li>
-<li>Poller</li>
-<li>TcpConnection</li>
-<li>TcpClient</li>
-<li>TcpServer</li>
-<li>Connector</li>
-<li>Acceptor</li>
-<li>EventLoopThread</li>
-<li>EventLoopThreadPool</li>
-</ul>
-
-
-<p>其中，Poller（及其实现类）包装了Poll/EPoll，封装了OS针对设备(fd)的操作；Channel是设备fd的包装，在muduo中主要包装socket；TcpConnection抽象一个TCP连接，无论是客户端还是服务器只要建立了网络连接就会使用TcpConnection；TcpClient/TcpServer分别抽象TCP客户端和服务器；Connector/Acceptor分别包装TCP客户端和服务器的建立连接/接受连接；EventLoop是一个主控类，是一个事件发生器，它驱动Poller产生/发现事件，然后将事件派发到Channel处理；EventLoopThread是一个带有EventLoop的线程；EventLoopThreadPool自然是一个EventLoopThread的资源池，维护一堆EventLoopThread。</p>
-
-<p>阅读库源码时可以从库的接口层着手，看看关键功能是如何实现的。对于muduo而言，可以从TcpServer/TcpClient/EventLoop/TcpConnection这几个类着手。接下来看看主要功能的实现：</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2014/05/04/muduo-source/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/4">&larr; Older</a>
@@ -655,11 +648,15 @@ nfds [in] Ignored. The nfds parameter is included only for compatibility with Be
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (7)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (8)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>
+      </li>
     
       <li class="post">
         <a href="/2017/02/05/mini-requirejs/">RequireJS最简实现</a>
@@ -677,10 +674,6 @@ nfds [in] Ignored. The nfds parameter is included only for compatibility with Be
         <a href="/2016/05/08/tls_so_coredump/">记一次线程局部存储与动态库引起的core</a>
       </li>
     
-      <li class="post">
-        <a href="/2015/09/05/java-lightweight-container/">Java中隔离容器的实现</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -690,7 +683,7 @@ nfds [in] Ignored. The nfds parameter is included only for compatibility with Be
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 116.15384615384616%'>java(7)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 127.6923076923077%'>network(12)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 118.46153846153845%'>java(8)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 127.6923076923077%'>network(12)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
 </section>
 
   
