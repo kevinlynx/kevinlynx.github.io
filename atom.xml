@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2017-02-25T15:48:08+08:00</updated>
+  <updated>2017-03-09T21:33:59+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,399 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[实现JVM中的JIT]]></title>
+    <link href="http://codemacro.com/2017/03/09/toy-jit/"/>
+    <updated>2017-03-09T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2017/03/09/toy-jit</id>
+    <content type="html"><![CDATA[<p>在JVM中，JIT (Just-in-Time) 即时编译指的是在Java程序运行过程中JVM优化部分指令为本地指令，从而大幅提升性能。在上一篇文章<a href="http://codemacro.com/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>中实现了一个基本可以运行Java字节码的JVM。本篇文章描述我是如何在这个玩具JVM中实现JIT的。</p>
+
+<p>推荐文章<a href="http://eli.thegreenplace.net/2013/11/05/how-to-jit-an-introduction/">&ldquo;How to JIT - an introduction&rdquo;</a>，介绍了JIT的基本实现原理。作者把JIT分为两个阶段：</p>
+
+<ul>
+<li>运行期生成机器代码(本地指令)</li>
+<li>执行机器代码</li>
+</ul>
+
+
+<p>生成机器代码很好理解，就是一个JVM指令到机器指令的翻译；而执行机器代码，原理上是利用了OS提供了API可以分配可以执行的内存，然后往这块内存中写入机器码，从而实现运行期可以执行动态生成的机器码功能。</p>
+
+<p>我们可以利用这个原理来实现JIT，但是未免太底层了点，需要做很多工作来完成这件事情。我们可以利用<a href="https://www.gnu.org/software/libjit/">libjit</a>来简化实现。这个作者博客里还有些libjit的教程，其中<a href="http://eli.thegreenplace.net/2013/10/17/getting-started-with-libjit-part-1">part 1</a>值得阅读。 简单来说，libjit对机器指令做了抽象，利用它的API来描述一个函数包含了哪些指令，实现了什么功能。然后具体的指令生成以及指令执行则交给libjit完成。</p>
+
+<p>例如以下使用libjit的代码：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// t = u
+</span><span class='line'>jit_insn_store(F, t, u); // 类似 mov 指令
+</span><span class='line'>// u = v
+</span><span class='line'>jit_insn_store(F, u, v);
+</span><span class='line'>
+</span><span class='line'>// v = t % v
+</span><span class='line'>jit_value_t rem = jit_insn_rem(F, t, v); // 求余指令
+</span><span class='line'>jit_insn_store(F, v, rem);</span></code></pre></td></tr></table></div></figure>
+
+
+<p>所以，我们需要做的，就是将JVM的字节码，翻译成一堆libjit的API调用。但是我希望能够稍微做点抽象，我们写个翻译器，能够将JVM这种基于栈的指令，翻译成基于寄存器的指令，才方便后面无论是使用libjit还是直接翻译成机器码。</p>
+
+<!-- more -->
+
+
+<h2>指令翻译</h2>
+
+<p>要将基于栈的指令翻译成基于寄存器的指令（类似），仔细想想主要解决两个问题：</p>
+
+<ul>
+<li>去除操作数栈</li>
+<li>跳转指令所需要的标签</li>
+</ul>
+
+
+<p>去除操作数栈，我使用了一个简单办法，因为JVM中执行字节码时，我们是可以知道每条指令执行时栈的具体情况的，也就是每条指令执行时，它依赖的操作数在栈的哪个位置是清楚的。例如，假设某个函数开头有以下指令：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>opcode [04] - 0000: iconst_1   # [1]
+</span><span class='line'>opcode [3C] - 0001: istore_1   # []
+</span><span class='line'>opcode [1B] - 0002: iload_1    # [1]
+</span><span class='line'>opcode [1A] - 0003: iload_0    # [1, N]
+</span><span class='line'>opcode [68] - 0004: imul       # [1 * N]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>当执行imul指令时，就可以知道该指令使用栈s[0]、s[1]的值，做完计算后写回s[0]。所以，类似JVM中局部变量用数字来编号，我也为栈元素编号，这些编号的元素全部被视为局部变量，所以这些指令全部可以转换为基于局部变量的指令。为了和JVM中本身的局部变量统一，我们将栈元素编号从局部变量后面开始。假设以上函数有2个局部变量，那么栈元素从编号2开始，局部变量编号从0开始。以上指令可以翻译为：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mov 1, $2   # 常量1写入变量2
+</span><span class='line'>lod $2, $1  # 变量2写入变量1
+</span><span class='line'>lod $1, $2  # 变量1写回变量2
+</span><span class='line'>lod $0, $3  # 变量0写入变量3
+</span><span class='line'>mul $3, $2  # 变量3与变量2相乘，写回变量2</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这里，我们定义了自己的中间指令集(IR)，这个中间指令集存在的意义在于，在将来翻译为某个平台的机器码时，它比JVM的指令集更容易理解。中间指令集是一种抽象，方便基于它们使用libjit或其他手段翻译成机器码。</p>
+
+<p>不过，我们看到上面的指令非常冗余。要优化掉这种冗余相对比较复杂，所以本文暂时不讨论这个问题。</p>
+
+<p>这个中间指令基于局部变量的方式，是利于JIT下游做各种具体实现的，例如是否直接转换为通用寄存器，即一定范围的局部变量数是可以直接使用寄存器实现，超出该范围的局部变量则放在栈上，用栈模拟；或者全部用栈模拟。注意在机器指令中栈元素是可以直接偏移访问的，不同于“基于栈的虚拟机”中的栈。</p>
+
+<p>以上指令，我们可以简单地为每条指令设定如何翻译为libjit的调用，例如mov指令：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>static void build_mov(BuildContext* context, const Instruction* inst) {
+</span><span class='line'>  jit_value_t c = jit_value_create_nint_constant(context-&gt;F, jit_type_int, inst-&gt;op1); 
+</span><span class='line'>  jit_insn_store(context-&gt;F, context-&gt;vars[inst-&gt;op2], c);
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>例如mul指令：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>static void build_mul(BuildContext* context, const Instruction* inst) {
+</span><span class='line'>  // context-&gt;vars就是前面说的局部变量表，包含了JVM中的局部变量及操作数栈
+</span><span class='line'>  jit_value_t tmp = jit_insn_mul(context-&gt;F, context-&gt;vars[inst-&gt;op1], context-&gt;vars[inst-&gt;op2]);
+</span><span class='line'>  jit_insn_store(context-&gt;F, context-&gt;vars[inst-&gt;op1], tmp);
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>接下来说另一个问题：跳转指令的标签。在机器指令中，跳转指令跳转的目标位置是一个绝对地址，或者像JVM中一样，是一个相对地址。但是在我们的中间指令集中，是没有地址的概念的，在翻译为机器指令时，也无法获取地址。所以，我们一般是增加了一个特殊指令<code>label</code>，用于打上一个标签，设置一个标签编号，相当于是一个地址。在后面的跳转指令中，则跳转的是这个标签编号。</p>
+
+<p>所以，我们需要在翻译JVM指令到我们的中间指令时，识别出哪些地方需要打标签；并且在翻译跳转类指令时，翻译为跳转到某个编号的标签。</p>
+
+<p>例如以下指令：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>opcode [04] - 0000: iconst_1
+</span><span class='line'>opcode [3C] - 0001: istore_1
+</span><span class='line'>opcode [1B] - 0002: iload_1     # 会被调整，需要在此打标签
+</span><span class='line'>opcode [1A] - 0003: iload_0
+</span><span class='line'>...
+</span><span class='line'>opcode [1A] - 0010: iload_0
+</span><span class='line'>opcode [9D] - 0011: ifgt -9     # pc-9，也就是跳转到0002位置</span></code></pre></td></tr></table></div></figure>
+
+
+<p>为了打上标签，我们的翻译需要遍历两遍指令，第一遍用来找出所有标签，第二遍才做真正的翻译。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>  // 该函数遍历所有指令，找出所有需要打标签的指令位置
+</span><span class='line'>  private List&lt;Integer&gt; createLabels(List&lt;InstParser.Instruction&gt; jbytecode) {
+</span><span class='line'>    List&lt;Integer&gt; labels = new LinkedList&lt;&gt;();
+</span><span class='line'>    for (InstParser.Instruction i : jbytecode) {
+</span><span class='line'>      LabelParser labelParser = labelParsers.get(i.opcode);
+</span><span class='line'>      if (labelParser != null) { // 不为空时表示是跳转指令
+</span><span class='line'>        int pc = labelParser.parse(i); // 不同的跳转指令地址解析不同，解析得到跳转的目标地址
+</span><span class='line'>        labels.add(pc); // 保存起来返回
+</span><span class='line'>      }
+</span><span class='line'>    }
+</span><span class='line'>    return labels;
+</span><span class='line'>  }</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然后在翻译指令的过程中，发现当前翻译的指令地址是跳转的目标位置时，则生成标签指令：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>   List&lt;Integer&gt; labels = createLabels(jbytecode);
+</span><span class='line'>   ...
+</span><span class='line'>   Iterator&lt;InstParser.Instruction&gt; it = jbytecode.iterator();
+</span><span class='line'>    while (it.hasNext()) {
+</span><span class='line'>      InstParser.Instruction inst = it.next();
+</span><span class='line'>      int label = labels.indexOf(inst.pc);
+</span><span class='line'>      if (label &gt;= 0) {
+</span><span class='line'>        state.addIR(new Inst(op_label, label)); // 生成标签指令，label就是标签编号
+</span><span class='line'>      }</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在处理跳转指令时，则填入标签编号：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>translators.put(Opcode.op_ifgt, (state, inst, iterator) -&gt; {
+</span><span class='line'>  short offset = (short)((inst.op1 &lt;&lt; 8) + inst.op2);
+</span><span class='line'>  int pc = inst.pc + offset;
+</span><span class='line'>  int label = state.findLabel(pc); // 找到标签编号
+</span><span class='line'>  int var = state.popStack();
+</span><span class='line'>  state.addIR(new Inst(op_jmp_gt, var, label));
+</span><span class='line'>});</span></code></pre></td></tr></table></div></figure>
+
+
+<p>我们的中间指令集中，跳转指令和标签指令就为：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>label #N            // 打上标签N
+</span><span class='line'>jmp_gt $var, #N     // 如果$var&gt;0，跳转到标签#N</span></code></pre></td></tr></table></div></figure>
+
+
+<p>看下使用libjit如何翻译以上两条指令：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>static void build_label(BuildContext* context, const Instruction* inst) {
+</span><span class='line'>  // 打上标签，inst-&gt;op1为标签编号N，对应写到context-&gt;labels[N]中
+</span><span class='line'>  jit_insn_label(context-&gt;F, &context-&gt;labels[inst-&gt;op1]);
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>static void build_jmp_gt(BuildContext* context, const Instruction* inst) {
+</span><span class='line'>  jit_value_t const0 = jit_value_create_nint_constant(context-&gt;F, jit_type_int, 0);
+</span><span class='line'>  // 是否&gt;0
+</span><span class='line'>  jit_value_t cmp_v_0 = jit_insn_gt(context-&gt;F, context-&gt;vars[inst-&gt;op1], const0);
+</span><span class='line'>  // 大于0则跳转到标签inst-&gt;op2
+</span><span class='line'>  jit_insn_branch_if(context-&gt;F, cmp_v_0, &context-&gt;labels[inst-&gt;op2]);
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>代码贴得有点多，大概懂原理就行了。</p>
+
+<p>在JIT中还有个很重要的过程，就是判定哪些代码需要被JIT。这里只是简单地尝试对每一个函数进行JIT，发现所有指令都能够被JIT时就JIT。</p>
+
+<h2>指令执行</h2>
+
+<p>在上一篇文章中，执行每个JVM函数时，都会有一个Frame与之关联。所以，在这里只要函数被JIT了，对应的帧就会包含被编译的代码，也就是libjit中的<code>jit_function_t</code>。在该Frame被执行时，就调用libjit执行该函数：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>  private void runNative() {
+</span><span class='line'>    int arg_cnt = getArgsCount();
+</span><span class='line'>    int[] args = new int[arg_cnt];
+</span><span class='line'>    for (int i = 0; i &lt; arg_cnt; ++i) {
+</span><span class='line'>      if (mLocals[i].type != Slot.Type.NUM) throw new RuntimeException("only supported number arg in jit");
+</span><span class='line'>      args[i] = mLocals[i].i;
+</span><span class='line'>    }
+</span><span class='line'>    int ret = mJIT.invoke(args); // mJIT后面会看到，主要就是将参数以数组形式传递到libjit中，并做JIT函数调用
+</span><span class='line'>    mThread.popFrame();
+</span><span class='line'>    if (hasReturnType() && mThread.topFrame() != null) {
+</span><span class='line'>      mThread.topFrame().pushInt(ret); // 目前只支持int返回类型
+</span><span class='line'>    }
+</span><span class='line'>  }</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>实现</h2>
+
+<p>以上就是整个JIT的过程，主要工作集中于JVM指令到中间指令，中间指令到libjit API调用。整个实现包含以下模块：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>+-----------+       +----------+
+</span><span class='line'>| ASM       |       | libjit   |
+</span><span class='line'>|           | &lt;-----+ API call |
+</span><span class='line'>+-----------+       +----+-----+
+</span><span class='line'>                         ^
+</span><span class='line'>                         |
+</span><span class='line'>+-----------+       +----+-----+
+</span><span class='line'>|  JVM      |       |  IR code |
+</span><span class='line'>|  bytecode +-----&gt; |          |
+</span><span class='line'>+-----------+       +----------+
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>JVM byte code及IR code的处理是在Java中完成的；处理完后将IR code输出为byte[]，通过JNI调用包装好的C API。这个C API则是基于libjit，将IR code翻译为libjit的API调用。指令翻译完后调用libjit的API得到最终的ASM机器指令。</p>
+
+<p>同样，要执行指令时，也是通过JNI调用这个C API。JNI交互全部包装在以下类中：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>public class ToyJIT {
+</span><span class='line'>  private long jitPtr = 0;
+</span><span class='line'>
+</span><span class='line'>  public void initialize(byte[] bytes, int maxLocals, int maxLabels, int argCnt, int retType) {
+</span><span class='line'>    jitPtr = compile(bytes, maxLocals, maxLabels, argCnt, retType);
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>  public int invoke(int... args) {
+</span><span class='line'>    return invoke(jitPtr, args);
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>  static {
+</span><span class='line'>    System.loadLibrary("toyjit");
+</span><span class='line'>  }
+</span><span class='line'>  private static native long compile(byte[] bytes, int maxLocals, int maxLabels, int argCnt, int retType);
+</span><span class='line'>  private static native int invoke(long jitPtr, int[] args);</span></code></pre></td></tr></table></div></figure>
+
+
+<p>即，<code>libtoyjit.so</code> 主要提供翻译接口 <code>compile</code> 及执行接口 <code>invoke</code>。</p>
+
+<h2>性能对比</h2>
+
+<p>简单测试了下一个阶乘计算函数：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>  public static int fac2(int n) {
+</span><span class='line'>    int r = 1;
+</span><span class='line'>    do {
+</span><span class='line'>      r = r * n;
+</span><span class='line'>      n = n - 1;
+</span><span class='line'>    } while (n &gt; 0);
+</span><span class='line'>    return r;
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'> ...
+</span><span class='line'>    int i = 0;
+</span><span class='line'>    for (; i &lt; 10000; ++i) {
+</span><span class='line'>        fac2(100);
+</span><span class='line'>    }
+</span><span class='line'> ...</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>fac2</code>函数会被JIT，测试发现不开启JIT时需要16秒，开启后1秒，差距还是很明显的。</p>
+
+<p>最后奉上代码，<a href="https://github.com/kevinlynx/toy_jit">toy_jit</a>，就是前面说的C API部分，翻译IR到libjit API call，包装接口用于JNI调用。redhat 7.2下编译，需要先编译出libjit，我是直接clone的libjit master编译的。Java部分还是在<a href="https://github.com/kevinlynx/toy_jvm">toy_jvm</a>中。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2017/03/09/toy-jit/'>http://codemacro.com/2017/03/09/toy-jit/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[写一个玩具Java虚拟机]]></title>
@@ -4162,141 +4555,6 @@ s addr 0x20de040
 <p class='post-footer'>
             原文地址：
             <a href='http://codemacro.com/2014/10/19/zk-fastleaderelection/'>http://codemacro.com/2014/10/19/zk-fastleaderelection/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[图解分布式一致性协议Paxos]]></title>
-    <link href="http://codemacro.com/2014/10/15/explain-poxos/"/>
-    <updated>2014-10-15T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2014/10/15/explain-poxos</id>
-    <content type="html"><![CDATA[<p>Paxos协议/算法是分布式系统中比较重要的协议，它有多重要呢？</p>
-
-<p><a href="http://coolshell.cn/articles/10910.html">&lt;分布式系统的事务处理></a>：</p>
-
-<blockquote><p>Google Chubby的作者Mike Burrows说过这个世界上只有一种一致性算法，那就是Paxos，其它的算法都是残次品。</p></blockquote>
-
-<p><a href="http://book.douban.com/subject/25723658/">&lt;大规模分布式存储系统></a>：</p>
-
-<blockquote><p>理解了这两个分布式协议之后(Paxos/2PC)，学习其他分布式协议会变得相当容易。</p></blockquote>
-
-<p>学习Paxos算法有两部分：a) 算法的原理/证明；b) 算法的理解/运作。</p>
-
-<p>理解这个算法的运作过程其实基本就可以用于工程实践。而且理解这个过程相对来说也容易得多。</p>
-
-<p>网上我觉得讲Paxos讲的好的属于这篇：<a href="http://coderxy.com/archives/121">paxos图解</a>及<a href="http://coderxy.com/archives/136">Paxos算法详解</a>，我这里就结合<a href="http://zh.wikipedia.org/zh-cn/Paxos%E7%AE%97%E6%B3%95#.E5.AE.9E.E4.BE.8B">wiki上的实例</a>进一步阐述。一些paxos基础通过这里提到的两篇文章，以及wiki上的内容基本可以理解。</p>
-
-<!-- more -->
-
-
-<h2>算法内容</h2>
-
-<p>Paxos在原作者的《Paxos Made Simple》中内容是比较精简的：</p>
-
-<blockquote><p>Phase  1</p>
-
-<p>  (a) A proposer selects a proposal number n  and sends a prepare request with number  n to a majority of acceptors.</p>
-
-<p>  (b)  If  an  acceptor  receives  a prepare  request  with  number  n  greater than  that  of  any  prepare  request  to  which  it  has  already  responded, then it responds to the request with a promise not to accept any more proposals numbered less than  n  and with the highest-numbered pro-posal (if any) that it has accepted.</p>
-
-<p>  Phase  2</p>
-
-<p>  (a)  If  the  proposer  receives  a  response  to  its  prepare requests (numbered  n)  from  a  majority  of  acceptors,  then  it  sends  an  accept request to each of those acceptors for a proposal numbered  n  with a value v , where v is the value of the highest-numbered proposal among the responses, or is any value if the responses reported no proposals.</p>
-
-<p>  (b) If an acceptor receives an accept request for a proposal numbered n, it accepts the proposal unless it has already responded to a prepare request having a number greater than  n.</p></blockquote>
-
-<p>借用<a href="http://coderxy.com/archives/121">paxos图解</a>文中的流程图可概括为：</p>
-
-<p><img src="http://codemacro.com/assets/res/paxos/paxos-flow.png" alt="" /></p>
-
-<h2>实例及详解</h2>
-
-<p>Paxos中有三类角色<code>Proposer</code>、<code>Acceptor</code>及<code>Learner</code>，主要交互过程在<code>Proposer</code>和<code>Acceptor</code>之间。</p>
-
-<p><code>Proposer</code>与<code>Acceptor</code>之间的交互主要有4类消息通信，如下图：</p>
-
-<p><img src="http://codemacro.com/assets/res/paxos/paxos-messages.png" alt="" /></p>
-
-<p>这4类消息对应于paxos算法的两个阶段4个过程：</p>
-
-<ul>
-<li>phase 1
-
-<ul>
-<li>a) proposer向网络内超过半数的acceptor发送prepare消息</li>
-<li>b) acceptor正常情况下回复promise消息</li>
-</ul>
-</li>
-<li>phase 2
-
-<ul>
-<li>a) 在有足够多acceptor回复promise消息时，proposer发送accept消息</li>
-<li>b) 正常情况下acceptor回复accepted消息</li>
-</ul>
-</li>
-</ul>
-
-
-<p>因为在整个过程中可能有其他proposer针对同一件事情发出以上请求，所以在每个过程中都会有些特殊情况处理，这也是为了达成一致性所做的事情。如果在整个过程中没有其他proposer来竞争，那么这个操作的结果就是确定无异议的。但是如果有其他proposer的话，情况就不一样了。</p>
-
-<p>以<a href="http://zh.wikipedia.org/zh-cn/Paxos%E7%AE%97%E6%B3%95#.E5.AE.9E.E4.BE.8B">paxos中文wiki上的例子</a>为例。简单来说该例子以若干个议员提议税收，确定最终通过的法案税收比例。</p>
-
-<p>以下图中基本只画出proposer与一个acceptor的交互。时间标志T2总是在T1后面。propose number简称N。</p>
-
-<p>情况之一如下图：</p>
-
-<p><img src="http://codemacro.com/assets/res/paxos/paxos-e1.png" alt="" /></p>
-
-<p>A3在T1发出accepted给A1，然后在T2收到A5的prepare，在T3的时候A1才通知A5最终结果(税率10%)。这里会有两种情况：</p>
-
-<ul>
-<li>A5发来的N5小于A1发出去的N1，那么A3直接拒绝(reject)A5</li>
-<li>A5发来的N5大于A1发出去的N1，那么A3回复promise，但带上A1的(N1, 10%)</li>
-</ul>
-
-
-<p>这里可以与paxos流程图对应起来，更好理解。<strong>acceptor会记录(MaxN, AcceptN, AcceptV)</strong>。</p>
-
-<p>A5在收到promise后，后续的流程可以顺利进行。但是发出accept时，因为收到了(AcceptN, AcceptV)，所以会取最大的AcceptN对应的AcceptV，例子中也就是A1的10%作为AcceptV。如果在收到promise时没有发现有其他已记录的AcceptV，则其值可以由自己决定。</p>
-
-<p>针对以上A1和A5冲突的情况，最终A1和A5都会广播接受的值为10%。</p>
-
-<p>其实4个过程中对于acceptor而言，在回复promise和accepted时由于都可能因为其他proposer的介入而导致特殊处理。所以基本上看在这两个时间点收到其他proposer的请求时就可以了解整个算法了。例如在回复promise时则可能因为proposer发来的N不够大而reject：</p>
-
-<p><img src="http://codemacro.com/assets/res/paxos/paxos-e2.png" alt="" /></p>
-
-<p>如果在发accepted消息时，对其他更大N的proposer发出过promise，那么也会reject该proposer发出的accept，如图：</p>
-
-<p><img src="http://codemacro.com/assets/res/paxos/paxos-e3.png" alt="" /></p>
-
-<p>这个对应于Phase 2 b)：</p>
-
-<blockquote><p>it accepts the proposal unless it has already responded to a prepare request having a number greater than  n.</p></blockquote>
-
-<h2>总结</h2>
-
-<p>Leslie Lamport没有用数学描述Paxos，但是他用英文阐述得很清晰。将Paxos的两个Phase的内容理解清楚，整个算法过程还是不复杂的。</p>
-
-<p>至于Paxos中一直提到的一个全局唯一且递增的proposer number，其如何实现，引用如下：</p>
-
-<blockquote><p>如何产生唯一的编号呢？在《Paxos made simple》中提到的是让所有的Proposer都从不相交的数据集合中进行选择，例如系统有5个Proposer，则可为每一个Proposer分配一个标识j(0~4)，则每一个proposer每次提出决议的编号可以为5*i + j(i可以用来表示提出议案的次数)</p></blockquote>
-
-<h2>参考文档</h2>
-
-<ul>
-<li>paxos图解, <a href="http://coderxy.com/archives/121">http://coderxy.com/archives/121</a></li>
-<li>Paxos算法详解, <a href="http://coderxy.com/archives/136">http://coderxy.com/archives/136</a></li>
-<li>Paxos算法 wiki, <a href="http://zh.wikipedia.org/zh-cn/Paxos%E7%AE%97%E6%B3%95#.E5.AE.9E.E4.BE.8B">http://zh.wikipedia.org/zh-cn/Paxos%E7%AE%97%E6%B3%95#.E5.AE.9E.E4.BE.8B</a></li>
-</ul>
-
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2014/10/15/explain-poxos/'>http://codemacro.com/2014/10/15/explain-poxos/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>

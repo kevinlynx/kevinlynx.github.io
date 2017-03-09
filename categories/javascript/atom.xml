@@ -4,7 +4,7 @@
   <title><![CDATA[Category: javascript | loop in codes]]></title>
   <link href="http://codemacro.com/categories/javascript/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2017-02-25T15:48:08+08:00</updated>
+  <updated>2017-03-09T21:37:18+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -301,7 +301,7 @@ npm install ../xxx/xxx.tgz
 
 <p>经过以上步骤后，在主页面中载入插件打包的bundle.js时，会得到错误，说找不到React模块。我这里并没有完全改造为RequireJS的模块，所以我在页面中是静态引入react的，即：</p>
 
-<p>&#8220;`</p>
+<p>```</p>
 
 <script src="static/js/react-with-addons.js"></script>
 
@@ -324,7 +324,7 @@ npm install ../xxx/xxx.tgz
 <p>define(&lsquo;_&rsquo;, [], function () {
   return _
 })
-&#8220;`</p>
+```</p>
 
 <p>即，因为react被静态引入，就会存在全局变量window.React，所以这里是告诉RequireJS我们定义<code>react</code>模块就是全局变量React。此时webpack中打出的文件中<code>require(['react'], xx</code>时，就不会导致RequireJS再去从服务端载入react.js文件。</p>
 

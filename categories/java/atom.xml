@@ -4,7 +4,7 @@
   <title><![CDATA[Category: java | loop in codes]]></title>
   <link href="http://codemacro.com/categories/java/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2017-02-25T15:48:08+08:00</updated>
+  <updated>2017-03-09T21:37:18+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,260 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[实现JVM中的JIT]]></title>
+    <link href="http://codemacro.com/2017/03/09/toy-jit/"/>
+    <updated>2017-03-09T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2017/03/09/toy-jit</id>
+    <content type="html"><![CDATA[<p>在JVM中，JIT (Just-in-Time) 即时编译指的是在Java程序运行过程中JVM优化部分指令为本地指令，从而大幅提升性能。在上一篇文章<a href="http://codemacro.com/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>中实现了一个基本可以运行Java字节码的JVM。本篇文章描述我是如何在这个玩具JVM中实现JIT的。</p>
+
+<p>推荐文章<a href="http://eli.thegreenplace.net/2013/11/05/how-to-jit-an-introduction/">&ldquo;How to JIT - an introduction&rdquo;</a>，介绍了JIT的基本实现原理。作者把JIT分为两个阶段：</p>
+
+<ul>
+<li>运行期生成机器代码(本地指令)</li>
+<li>执行机器代码</li>
+</ul>
+
+
+<p>生成机器代码很好理解，就是一个JVM指令到机器指令的翻译；而执行机器代码，原理上是利用了OS提供了API可以分配可以执行的内存，然后往这块内存中写入机器码，从而实现运行期可以执行动态生成的机器码功能。</p>
+
+<p>我们可以利用这个原理来实现JIT，但是未免太底层了点，需要做很多工作来完成这件事情。我们可以利用<a href="https://www.gnu.org/software/libjit/">libjit</a>来简化实现。这个作者博客里还有些libjit的教程，其中<a href="http://eli.thegreenplace.net/2013/10/17/getting-started-with-libjit-part-1">part 1</a>值得阅读。 简单来说，libjit对机器指令做了抽象，利用它的API来描述一个函数包含了哪些指令，实现了什么功能。然后具体的指令生成以及指令执行则交给libjit完成。</p>
+
+<p>例如以下使用libjit的代码：</p>
+
+<pre><code>// t = u
+jit_insn_store(F, t, u); // 类似 mov 指令
+// u = v
+jit_insn_store(F, u, v);
+
+// v = t % v
+jit_value_t rem = jit_insn_rem(F, t, v); // 求余指令
+jit_insn_store(F, v, rem);
+</code></pre>
+
+<p>所以，我们需要做的，就是将JVM的字节码，翻译成一堆libjit的API调用。但是我希望能够稍微做点抽象，我们写个翻译器，能够将JVM这种基于栈的指令，翻译成基于寄存器的指令，才方便后面无论是使用libjit还是直接翻译成机器码。</p>
+
+<!-- more -->
+
+
+<h2>指令翻译</h2>
+
+<p>要将基于栈的指令翻译成基于寄存器的指令（类似），仔细想想主要解决两个问题：</p>
+
+<ul>
+<li>去除操作数栈</li>
+<li>跳转指令所需要的标签</li>
+</ul>
+
+
+<p>去除操作数栈，我使用了一个简单办法，因为JVM中执行字节码时，我们是可以知道每条指令执行时栈的具体情况的，也就是每条指令执行时，它依赖的操作数在栈的哪个位置是清楚的。例如，假设某个函数开头有以下指令：</p>
+
+<pre><code>opcode [04] - 0000: iconst_1   # [1]
+opcode [3C] - 0001: istore_1   # []
+opcode [1B] - 0002: iload_1    # [1]
+opcode [1A] - 0003: iload_0    # [1, N]
+opcode [68] - 0004: imul       # [1 * N]
+</code></pre>
+
+<p>当执行imul指令时，就可以知道该指令使用栈s[0]、s[1]的值，做完计算后写回s[0]。所以，类似JVM中局部变量用数字来编号，我也为栈元素编号，这些编号的元素全部被视为局部变量，所以这些指令全部可以转换为基于局部变量的指令。为了和JVM中本身的局部变量统一，我们将栈元素编号从局部变量后面开始。假设以上函数有2个局部变量，那么栈元素从编号2开始，局部变量编号从0开始。以上指令可以翻译为：</p>
+
+<pre><code>mov 1, $2   # 常量1写入变量2
+lod $2, $1  # 变量2写入变量1
+lod $1, $2  # 变量1写回变量2
+lod $0, $3  # 变量0写入变量3
+mul $3, $2  # 变量3与变量2相乘，写回变量2
+</code></pre>
+
+<p>这里，我们定义了自己的中间指令集(IR)，这个中间指令集存在的意义在于，在将来翻译为某个平台的机器码时，它比JVM的指令集更容易理解。中间指令集是一种抽象，方便基于它们使用libjit或其他手段翻译成机器码。</p>
+
+<p>不过，我们看到上面的指令非常冗余。要优化掉这种冗余相对比较复杂，所以本文暂时不讨论这个问题。</p>
+
+<p>这个中间指令基于局部变量的方式，是利于JIT下游做各种具体实现的，例如是否直接转换为通用寄存器，即一定范围的局部变量数是可以直接使用寄存器实现，超出该范围的局部变量则放在栈上，用栈模拟；或者全部用栈模拟。注意在机器指令中栈元素是可以直接偏移访问的，不同于“基于栈的虚拟机”中的栈。</p>
+
+<p>以上指令，我们可以简单地为每条指令设定如何翻译为libjit的调用，例如mov指令：</p>
+
+<pre><code>static void build_mov(BuildContext* context, const Instruction* inst) {
+  jit_value_t c = jit_value_create_nint_constant(context-&gt;F, jit_type_int, inst-&gt;op1); 
+  jit_insn_store(context-&gt;F, context-&gt;vars[inst-&gt;op2], c);
+}
+</code></pre>
+
+<p>例如mul指令：</p>
+
+<pre><code>static void build_mul(BuildContext* context, const Instruction* inst) {
+  // context-&gt;vars就是前面说的局部变量表，包含了JVM中的局部变量及操作数栈
+  jit_value_t tmp = jit_insn_mul(context-&gt;F, context-&gt;vars[inst-&gt;op1], context-&gt;vars[inst-&gt;op2]);
+  jit_insn_store(context-&gt;F, context-&gt;vars[inst-&gt;op1], tmp);
+}
+</code></pre>
+
+<p>接下来说另一个问题：跳转指令的标签。在机器指令中，跳转指令跳转的目标位置是一个绝对地址，或者像JVM中一样，是一个相对地址。但是在我们的中间指令集中，是没有地址的概念的，在翻译为机器指令时，也无法获取地址。所以，我们一般是增加了一个特殊指令<code>label</code>，用于打上一个标签，设置一个标签编号，相当于是一个地址。在后面的跳转指令中，则跳转的是这个标签编号。</p>
+
+<p>所以，我们需要在翻译JVM指令到我们的中间指令时，识别出哪些地方需要打标签；并且在翻译跳转类指令时，翻译为跳转到某个编号的标签。</p>
+
+<p>例如以下指令：</p>
+
+<pre><code>opcode [04] - 0000: iconst_1
+opcode [3C] - 0001: istore_1
+opcode [1B] - 0002: iload_1     # 会被调整，需要在此打标签
+opcode [1A] - 0003: iload_0
+...
+opcode [1A] - 0010: iload_0
+opcode [9D] - 0011: ifgt -9     # pc-9，也就是跳转到0002位置
+</code></pre>
+
+<p>为了打上标签，我们的翻译需要遍历两遍指令，第一遍用来找出所有标签，第二遍才做真正的翻译。</p>
+
+<pre><code>  // 该函数遍历所有指令，找出所有需要打标签的指令位置
+  private List&lt;Integer&gt; createLabels(List&lt;InstParser.Instruction&gt; jbytecode) {
+    List&lt;Integer&gt; labels = new LinkedList&lt;&gt;();
+    for (InstParser.Instruction i : jbytecode) {
+      LabelParser labelParser = labelParsers.get(i.opcode);
+      if (labelParser != null) { // 不为空时表示是跳转指令
+        int pc = labelParser.parse(i); // 不同的跳转指令地址解析不同，解析得到跳转的目标地址
+        labels.add(pc); // 保存起来返回
+      }
+    }
+    return labels;
+  }
+</code></pre>
+
+<p>然后在翻译指令的过程中，发现当前翻译的指令地址是跳转的目标位置时，则生成标签指令：</p>
+
+<pre><code>   List&lt;Integer&gt; labels = createLabels(jbytecode);
+   ...
+   Iterator&lt;InstParser.Instruction&gt; it = jbytecode.iterator();
+    while (it.hasNext()) {
+      InstParser.Instruction inst = it.next();
+      int label = labels.indexOf(inst.pc);
+      if (label &gt;= 0) {
+        state.addIR(new Inst(op_label, label)); // 生成标签指令，label就是标签编号
+      }
+</code></pre>
+
+<p>在处理跳转指令时，则填入标签编号：</p>
+
+<pre><code>translators.put(Opcode.op_ifgt, (state, inst, iterator) -&gt; {
+  short offset = (short)((inst.op1 &lt;&lt; 8) + inst.op2);
+  int pc = inst.pc + offset;
+  int label = state.findLabel(pc); // 找到标签编号
+  int var = state.popStack();
+  state.addIR(new Inst(op_jmp_gt, var, label));
+});
+</code></pre>
+
+<p>我们的中间指令集中，跳转指令和标签指令就为：</p>
+
+<pre><code>label #N            // 打上标签N
+jmp_gt $var, #N     // 如果$var&gt;0，跳转到标签#N
+</code></pre>
+
+<p>看下使用libjit如何翻译以上两条指令：</p>
+
+<pre><code>static void build_label(BuildContext* context, const Instruction* inst) {
+  // 打上标签，inst-&gt;op1为标签编号N，对应写到context-&gt;labels[N]中
+  jit_insn_label(context-&gt;F, &amp;context-&gt;labels[inst-&gt;op1]);
+}
+
+static void build_jmp_gt(BuildContext* context, const Instruction* inst) {
+  jit_value_t const0 = jit_value_create_nint_constant(context-&gt;F, jit_type_int, 0);
+  // 是否&gt;0
+  jit_value_t cmp_v_0 = jit_insn_gt(context-&gt;F, context-&gt;vars[inst-&gt;op1], const0);
+  // 大于0则跳转到标签inst-&gt;op2
+  jit_insn_branch_if(context-&gt;F, cmp_v_0, &amp;context-&gt;labels[inst-&gt;op2]);
+}
+</code></pre>
+
+<p>代码贴得有点多，大概懂原理就行了。</p>
+
+<p>在JIT中还有个很重要的过程，就是判定哪些代码需要被JIT。这里只是简单地尝试对每一个函数进行JIT，发现所有指令都能够被JIT时就JIT。</p>
+
+<h2>指令执行</h2>
+
+<p>在上一篇文章中，执行每个JVM函数时，都会有一个Frame与之关联。所以，在这里只要函数被JIT了，对应的帧就会包含被编译的代码，也就是libjit中的<code>jit_function_t</code>。在该Frame被执行时，就调用libjit执行该函数：</p>
+
+<pre><code>  private void runNative() {
+    int arg_cnt = getArgsCount();
+    int[] args = new int[arg_cnt];
+    for (int i = 0; i &lt; arg_cnt; ++i) {
+      if (mLocals[i].type != Slot.Type.NUM) throw new RuntimeException("only supported number arg in jit");
+      args[i] = mLocals[i].i;
+    }
+    int ret = mJIT.invoke(args); // mJIT后面会看到，主要就是将参数以数组形式传递到libjit中，并做JIT函数调用
+    mThread.popFrame();
+    if (hasReturnType() &amp;&amp; mThread.topFrame() != null) {
+      mThread.topFrame().pushInt(ret); // 目前只支持int返回类型
+    }
+  }
+</code></pre>
+
+<h2>实现</h2>
+
+<p>以上就是整个JIT的过程，主要工作集中于JVM指令到中间指令，中间指令到libjit API调用。整个实现包含以下模块：</p>
+
+<pre><code>+-----------+       +----------+
+| ASM       |       | libjit   |
+|           | &lt;-----+ API call |
++-----------+       +----+-----+
+                         ^
+                         |
++-----------+       +----+-----+
+|  JVM      |       |  IR code |
+|  bytecode +-----&gt; |          |
++-----------+       +----------+
+</code></pre>
+
+<p>JVM byte code及IR code的处理是在Java中完成的；处理完后将IR code输出为byte[]，通过JNI调用包装好的C API。这个C API则是基于libjit，将IR code翻译为libjit的API调用。指令翻译完后调用libjit的API得到最终的ASM机器指令。</p>
+
+<p>同样，要执行指令时，也是通过JNI调用这个C API。JNI交互全部包装在以下类中：</p>
+
+<pre><code>public class ToyJIT {
+  private long jitPtr = 0;
+
+  public void initialize(byte[] bytes, int maxLocals, int maxLabels, int argCnt, int retType) {
+    jitPtr = compile(bytes, maxLocals, maxLabels, argCnt, retType);
+  }
+
+  public int invoke(int... args) {
+    return invoke(jitPtr, args);
+  }
+
+  static {
+    System.loadLibrary("toyjit");
+  }
+  private static native long compile(byte[] bytes, int maxLocals, int maxLabels, int argCnt, int retType);
+  private static native int invoke(long jitPtr, int[] args);
+</code></pre>
+
+<p>即，<code>libtoyjit.so</code> 主要提供翻译接口 <code>compile</code> 及执行接口 <code>invoke</code>。</p>
+
+<h2>性能对比</h2>
+
+<p>简单测试了下一个阶乘计算函数：</p>
+
+<pre><code>  public static int fac2(int n) {
+    int r = 1;
+    do {
+      r = r * n;
+      n = n - 1;
+    } while (n &gt; 0);
+    return r;
+  }
+
+ ...
+    int i = 0;
+    for (; i &lt; 10000; ++i) {
+        fac2(100);
+    }
+ ...
+</code></pre>
+
+<p><code>fac2</code>函数会被JIT，测试发现不开启JIT时需要16秒，开启后1秒，差距还是很明显的。</p>
+
+<p>最后奉上代码，<a href="https://github.com/kevinlynx/toy_jit">toy_jit</a>，就是前面说的C API部分，翻译IR到libjit API call，包装接口用于JNI调用。redhat 7.2下编译，需要先编译出libjit，我是直接clone的libjit master编译的。Java部分还是在<a href="https://github.com/kevinlynx/toy_jvm">toy_jvm</a>中。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[写一个玩具Java虚拟机]]></title>
@@ -317,61 +571,65 @@ export-class=com.codemacro.test.Export; com.codemacro.test.Export2
 
 <p>其实现大概为：</p>
 
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">BundleClassLoader</span> <span class="kd">extends</span> <span class="n">URLClassLoader</span> <span class="o">{</span>
-  <span class="kd">public</span> <span class="nf">BundleClassLoader</span><span class="o">(</span><span class="n">File</span> <span class="n">home</span><span class="o">,</span> <span class="n">SharedClassList</span> <span class="n">sharedClasses</span><span class="o">)</span> <span class="o">{</span>
-    <span class="c1">// getClassPath将bundle目录下的classes和各个jar作为class path传给URLClassLoader</span>
-    <span class="kd">super</span><span class="o">(</span><span class="n">getClassPath</span><span class="o">(</span><span class="n">home</span><span class="o">));</span>
-    <span class="k">this</span><span class="o">.</span><span class="na">sharedClasses</span> <span class="o">=</span> <span class="n">sharedClasses</span><span class="o">;</span>
-  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight java %}
+public class BundleClassLoader extends URLClassLoader {
+  public BundleClassLoader(File home, SharedClassList sharedClasses) {
+    // getClassPath将bundle目录下的classes和各个jar作为class path传给URLClassLoader
+    super(getClassPath(home));
+    this.sharedClasses = sharedClasses;
+  }</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="nd">@Override</span>
-  <span class="kd">protected</span> <span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;</span> <span class="n">findClass</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">ClassNotFoundException</span> <span class="o">{</span>
-    <span class="n">logger</span><span class="o">.</span><span class="na">debug</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="k">try</span> <span class="n">find</span> <span class="kd">class</span> <span class="err">{}&amp;</span><span class="nc">rdquo</span><span class="o">;,</span> <span class="n">name</span><span class="o">);</span>
-    <span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;</span> <span class="n">claz</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
-    <span class="k">try</span> <span class="o">{</span>
-      <span class="n">claz</span> <span class="o">=</span> <span class="kd">super</span><span class="o">.</span><span class="na">findClass</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
-    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">ClassNotFoundException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-      <span class="n">claz</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
-    <span class="o">}</span>
-    <span class="k">if</span> <span class="o">(</span><span class="n">claz</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-      <span class="n">logger</span><span class="o">.</span><span class="na">debug</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">load</span> <span class="n">from</span> <span class="kd">class</span> <span class="nc">path</span> <span class="k">for</span> <span class="o">{}&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">name</span><span class="o">);</span>
-      <span class="k">return</span> <span class="n">claz</span><span class="o">;</span>
-    <span class="o">}</span>
-    <span class="n">claz</span> <span class="o">=</span> <span class="n">sharedClasses</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
-    <span class="k">if</span> <span class="o">(</span><span class="n">claz</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-      <span class="n">logger</span><span class="o">.</span><span class="na">debug</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">load</span> <span class="n">from</span> <span class="n">shared</span> <span class="kd">class</span> <span class="nc">for</span> <span class="o">{}&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">name</span><span class="o">);</span>
-      <span class="k">return</span> <span class="n">claz</span><span class="o">;</span>
-    <span class="o">}</span>
-    <span class="n">logger</span><span class="o">.</span><span class="na">warn</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">not</span> <span class="n">found</span> <span class="kd">class</span> <span class="err">{}&amp;</span><span class="nc">rdquo</span><span class="o">;,</span> <span class="n">name</span><span class="o">);</span>
-    <span class="k">throw</span> <span class="k">new</span> <span class="nf">ClassNotFoundException</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
-  <span class="o">}</span>
-<span class="o">}</span></code></pre></div>
+<p>  @Override
+  protected Class&lt;?> findClass(String name) throws ClassNotFoundException {
+    logger.debug(&ldquo;try find class {}&rdquo;, name);
+    Class&lt;?> claz = null;
+    try {
+      claz = super.findClass(name);
+    } catch (ClassNotFoundException e) {
+      claz = null;
+    }
+    if (claz != null) {
+      logger.debug(&ldquo;load from class path for {}&rdquo;, name);
+      return claz;
+    }
+    claz = sharedClasses.get(name);
+    if (claz != null) {
+      logger.debug(&ldquo;load from shared class for {}&rdquo;, name);
+      return claz;
+    }
+    logger.warn(&ldquo;not found class {}&rdquo;, name);
+    throw new ClassNotFoundException(name);
+  }
+}
+{% endhighlight %}
 完整代码参看<a href="https://github.com/kevinlynx/kcontainer/blob/master/kcontainer/src/main/java/com/codemacro/container/BundleClassLoader.java">BundleClassLoader.java</a></p>
 
 <p>创建bundle时，会为其创建自己的class loader，并使用这个class loader来载入<code>export-class</code>和<code>init-class</code>：</p>
 
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">static</span> <span class="n">Bundle</span> <span class="nf">create</span><span class="o">(</span><span class="n">File</span> <span class="n">home</span><span class="o">,</span> <span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">SharedClassList</span> <span class="n">sharedClasses</span><span class="o">,</span>
-      <span class="n">BundleConf</span> <span class="n">conf</span><span class="o">)</span> <span class="o">{</span>
-    <span class="n">BundleClassLoader</span> <span class="n">loader</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">BundleClassLoader</span><span class="o">(</span><span class="n">home</span><span class="o">,</span> <span class="n">sharedClasses</span><span class="o">);</span>
-    <span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">exports</span> <span class="o">=</span> <span class="n">conf</span><span class="o">.</span><span class="na">getExportClassNames</span><span class="o">();</span>
-    <span class="k">if</span> <span class="o">(</span><span class="n">exports</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-      <span class="n">logger</span><span class="o">.</span><span class="na">info</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">load</span> <span class="n">exported</span> <span class="n">classes</span> <span class="k">for</span> <span class="o">{}&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">name</span><span class="o">);</span>
-      <span class="n">loadExports</span><span class="o">(</span><span class="n">loader</span><span class="o">,</span> <span class="n">sharedClasses</span><span class="o">,</span> <span class="n">exports</span><span class="o">);</span>
-    <span class="o">}</span>
-    <span class="k">return</span> <span class="k">new</span> <span class="nf">Bundle</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">conf</span><span class="o">.</span><span class="na">getInitClassName</span><span class="o">(),</span> <span class="n">loader</span><span class="o">);</span>
-  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight java %}
+  public static Bundle create(File home, String name, SharedClassList sharedClasses,
+      BundleConf conf) {
+    BundleClassLoader loader = new BundleClassLoader(home, sharedClasses);
+    List<String> exports = conf.getExportClassNames();
+    if (exports != null) {
+      logger.info(&ldquo;load exported classes for {}&rdquo;, name);
+      loadExports(loader, sharedClasses, exports);
+    }
+    return new Bundle(name, conf.getInitClassName(), loader);
+  }</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">loadExports</span><span class="o">(</span><span class="n">ClassLoader</span> <span class="n">loader</span><span class="o">,</span> <span class="n">SharedClassList</span> <span class="n">sharedClasses</span><span class="o">,</span>
-      <span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">exports</span><span class="o">)</span> <span class="o">{</span>
-      <span class="k">for</span> <span class="o">(</span><span class="n">String</span> <span class="nl">claz_name:</span> <span class="n">exports</span><span class="o">)</span> <span class="o">{</span>
-        <span class="k">try</span> <span class="o">{</span>
-          <span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;</span> <span class="n">claz</span> <span class="o">=</span> <span class="n">loader</span><span class="o">.</span><span class="na">loadClass</span><span class="o">(</span><span class="n">claz_name</span><span class="o">);</span> <span class="c1">// 载入class</span>
-          <span class="n">sharedClasses</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">claz_name</span><span class="o">,</span> <span class="n">claz</span><span class="o">);</span>
-        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">ClassNotFoundException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-          <span class="n">logger</span><span class="o">.</span><span class="na">warn</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">load</span> <span class="kd">class</span> <span class="err">{} </span><span class="nc">failed</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">claz_name</span><span class="o">);</span>
-        <span class="o">}</span>
-      <span class="o">}</span>
-  <span class="o">}</span></code></pre></div></p>
+<p>  private static void loadExports(ClassLoader loader, SharedClassList sharedClasses,
+      List<String> exports) {
+      for (String claz_name: exports) {
+        try {
+          Class&lt;?> claz = loader.loadClass(claz_name); // 载入class
+          sharedClasses.put(claz_name, claz);
+        } catch (ClassNotFoundException e) {
+          logger.warn(&ldquo;load class {} failed&rdquo;, claz_name);
+        }
+      }
+  }
+{% endhighlight %}</p>
 
 <p>以上。</p>
 
@@ -394,9 +652,11 @@ export-class=com.codemacro.test.Export; com.codemacro.test.Export2
 
 <p>system class loader的parent就是ext class loader，再上面就是bootstrap class loader了 (不是java类，实际获取不到)。默认情况下以上三个class loader都是一个：</p>
 
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">ClassLoader</span><span class="o">.</span><span class="na">getSystemClassLoader</span><span class="o">());</span>
-<span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">Main</span><span class="o">.</span><span class="na">class</span><span class="o">.</span><span class="na">getClassLoader</span><span class="o">());</span>
-<span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">().</span><span class="na">getContextClassLoader</span><span class="o">());</span></code></pre></div></p>
+<p>{% highlight java %}
+System.out.println(ClassLoader.getSystemClassLoader());
+System.out.println(Main.class.getClassLoader());
+System.out.println(Thread.currentThread().getContextClassLoader());
+{% endhighlight %}</p>
 
 <p>Output:</p>
 
@@ -432,7 +692,7 @@ sun.misc.Launcher$AppClassLoader@157c2bd
 
 <p>可达性分析的基本思想是：</p>
 
-<blockquote><p>通过一系列的称为&#8221;GC Roots&#8221;的对象作为起始点，从这些节点开始向下搜索，搜索所走过的路径称为引用链，当一个对象到GC Roots没有任何引用链项链时，则证明此对象是不可用的。</p></blockquote>
+<blockquote><p>通过一系列的称为"GC Roots"的对象作为起始点，从这些节点开始向下搜索，搜索所走过的路径称为引用链，当一个对象到GC Roots没有任何引用链项链时，则证明此对象是不可用的。</p></blockquote>
 
 <p>在Java中有很多种类的对象可以作为GC Roots，例如类静态属性引用的对象。</p>
 
@@ -601,17 +861,19 @@ sun.misc.Launcher$AppClassLoader@157c2bd
 
 <p>部署好了jcm.server，并注册了cluster后，就可以通过jcm.subscriber使用：</p>
 
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="c1">// 传入需要使用的集群名hello9/hello，以及传入jcm.server地址，可以多个：127.0.0.1:8080</span>
-<span class="n">Subscriber</span> <span class="n">subscriber</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">Subscriber</span><span class="o">(</span> <span class="n">Arrays</span><span class="o">.</span><span class="na">asList</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="mf">127.0</span><span class="o">.</span><span class="mf">0.1</span><span class="o">:</span><span class="mi">8080</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;),</span> <span class="n">Arrays</span><span class="o">.</span><span class="na">asList</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">hello9</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">hello</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;));</span>
-<span class="c1">// 使用轮询负载均衡策略</span>
-<span class="n">RRAllocator</span> <span class="n">rr</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">RRAllocator</span><span class="o">();</span>
-<span class="n">subscriber</span><span class="o">.</span><span class="na">addListener</span><span class="o">(</span><span class="n">rr</span><span class="o">);</span>
-<span class="n">subscriber</span><span class="o">.</span><span class="na">startup</span><span class="o">();</span>
-<span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&amp;</span><span class="n">lt</span><span class="o">;</span> <span class="mi">2</span><span class="o">;</span> <span class="o">++</span><span class="n">i</span><span class="o">)</span> <span class="o">{</span>
-  <span class="c1">// rr.alloc 根据cluster名字获取可用的node</span>
-  <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">rr</span><span class="o">.</span><span class="na">alloc</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">hello9</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">ProtoType</span><span class="o">.</span><span class="na">HTTP</span><span class="o">));</span>
-<span class="o">}</span>
-<span class="n">subscriber</span><span class="o">.</span><span class="na">shutdown</span><span class="o">();</span></code></pre></div></p>
+<p>{% highlight java %}
+// 传入需要使用的集群名hello9/hello，以及传入jcm.server地址，可以多个：127.0.0.1:8080
+Subscriber subscriber = new Subscriber( Arrays.asList(&ldquo;127.0.0.1:8080&rdquo;), Arrays.asList(&ldquo;hello9&rdquo;, &ldquo;hello&rdquo;));
+// 使用轮询负载均衡策略
+RRAllocator rr = new RRAllocator();
+subscriber.addListener(rr);
+subscriber.startup();
+for (int i = 0; i &lt; 2; ++i) {
+  // rr.alloc 根据cluster名字获取可用的node
+  System.out.println(rr.alloc(&ldquo;hello9&rdquo;, ProtoType.HTTP));
+}
+subscriber.shutdown();
+{% endhighlight %}</p>
 
 <h2>JCM实现</h2>
 
@@ -717,319 +979,6 @@ Time               bytin  bytout   pktin  pktout  pkterr  pktdrp
 <h2>总结</h2>
 
 <p>名字服务在分布式系统中虽然是基础服务，但往往承担了非常重要的角色，数据同步出现错误、节点状态出现瞬时的错误，都可能对整套系统造成较大影响，业务上出现较大故障。所以名字服务的健壮性、可用性非常重要。实现中需要考虑很多异常情况，包括网络不稳定、应用层的错误等。为了提高足够的可用性，一般还会加多层的数据cache，例如subscriber端的本地cache，server端的本地cache，以保证在任何情况下都不会影响应用层的服务。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[基于servlet实现一个web框架]]></title>
-    <link href="http://codemacro.com/2015/06/07/servlet-web-framework/"/>
-    <updated>2015-06-07T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2015/06/07/servlet-web-framework</id>
-    <content type="html"><![CDATA[<p>servlet作为一个web规范，其本身就算做一个web开发框架，但是其web action (响应某个URI的实现)的实现都是基于类的，不是很方便，并且3.0之前的版本还必须通过web.xml配置来增加新的action。servlet中有一个filter的功能，可以配置所有URI的功能都经过filter。我们可以基于filter的功能来实现一个简单的web框架。在这个框架中，主要改进URI action的映射，就像<a href="https://www.playframework.com/">play framework</a>中route的配置：</p>
-
-<pre><code>GET     /hello      com.codemacro.webdemo.test.TestController.hello
-GET     /route      com.codemacro.webdemo.test.TestController.route
-POST    /hello      com.codemacro.webdemo.test.TestController.sayHello
-</code></pre>
-
-<p>即把某个URI映射到类接口级别。基于servlet实现web框架的好处不仅实现简单，还能运行在所有支持servlet容器规范的web server上，例如Tomcat、Jetty。</p>
-
-<p>本文提到的web framework demo可以从我的github 上取得：<a href="https://github.com/kevinlynx/servlet-web-framework-demo">servlet-web-framework-demo</a></p>
-
-<h2>功能</h2>
-
-<p>这个web framework URI action部分（或者说URI routing）如同前面描述，action的编写如：</p>
-
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestController</span> <span class="kd">extends</span> <span class="n">BaseController</span> <span class="o">{</span>
-  <span class="c1">// 返回字符串</span>
-  <span class="kd">public</span> <span class="n">Result</span> <span class="nf">index</span><span class="o">()</span> <span class="o">{</span>
-    <span class="k">return</span> <span class="nf">ok</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">hello</span> <span class="n">world</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;);</span>
-  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="c1">// HTTP 404</span>
-  <span class="kd">public</span> <span class="n">Result</span> <span class="nf">code404</span><span class="o">()</span> <span class="o">{</span>
-    <span class="k">return</span> <span class="nf">status</span><span class="o">(</span><span class="mi">404</span><span class="o">,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">not</span> <span class="n">found</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;);</span>
-  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="c1">// 使用JSP模板渲染</span>
-  <span class="kd">public</span> <span class="n">Result</span> <span class="nf">template</span><span class="o">()</span> <span class="o">{</span>
-    <span class="n">String</span><span class="o">[]</span> <span class="n">langs</span> <span class="o">=</span> <span class="k">new</span> <span class="n">String</span><span class="o">[]</span> <span class="o">{&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">c</span><span class="o">++&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">java</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">python</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;};</span>
-    <span class="k">return</span> <span class="nf">ok</span><span class="o">(</span><span class="n">jsp</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">index</span><span class="o">.</span><span class="na">jsp</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;)</span>
-        <span class="o">.</span><span class="na">put</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">name</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">kevin</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;)</span>
-        <span class="o">.</span><span class="na">put</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">langs</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span>  <span class="n">langs</span><span class="o">)</span>
-        <span class="o">);</span>
-  <span class="o">}</span>
-<span class="o">}</span></code></pre></div></p>
-
-<!-- more -->
-
-
-<p>有了action之后，配置<code>route</code>文件映射URI即可：</p>
-
-<pre><code>GET /index  com.codemacro.webdemo.test.TestController.index
-GET /404    com.codemacro.webdemo.test.TestController.code404
-GET /index.jsp com.codemacro.webdemo.test.TestController.template
-</code></pre>
-
-<p>然后配置<code>web.xml</code>，增加一个filter：</p>
-
-<pre><code>&lt;filter&gt;
-  &lt;filter-name&gt;MyWebFilter&lt;/filter-name&gt;
-  &lt;filter-class&gt;com.codemacro.webdemo.MyServletFilter&lt;/filter-class&gt;
-&lt;/filter&gt;
-&lt;filter-mapping&gt;
-  &lt;filter-name&gt;MyWebFilter&lt;/filter-name&gt;
-  &lt;url-pattern&gt;/*&lt;/url-pattern&gt;
-&lt;/filter-mapping&gt;
-</code></pre>
-
-<p>最后以war的形式部署到Jetty <code>webapps</code>下即可运行。想想下次要再找个什么lightweight Java web framework，直接用这个demo就够了。接下来讲讲一些关键部分的实现。</p>
-
-<h2>servlet basic</h2>
-
-<p>基于servlet开发的话，引入servlet api是必须的：</p>
-
-<pre><code>&lt;dependency&gt;
-    &lt;groupId&gt;javax.servlet&lt;/groupId&gt;
-    &lt;artifactId&gt;servlet-api&lt;/artifactId&gt;
-    &lt;version&gt;2.5&lt;/version&gt;
-    &lt;type&gt;jar&lt;/type&gt;
-    &lt;scope&gt;compile&lt;/scope&gt;
-&lt;/dependency&gt;
-</code></pre>
-
-<p>servlet filter的接口包含：</p>
-
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MyServletFilter</span> <span class="kd">implements</span> <span class="n">Filter</span> <span class="o">{</span>
-  <span class="c1">// web app启动时调用一次，可用于web框架初始化</span>
-  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">init</span><span class="o">(</span><span class="n">FilterConfig</span> <span class="n">conf</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">ServletException</span> <span class="o">{</span> <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="c1">// 满足filter url-pattern时就会调用；req/res分别对应HTTP请求和回应</span>
-  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">doFilter</span><span class="o">(</span><span class="n">ServletRequest</span> <span class="n">req</span><span class="o">,</span> <span class="n">ServletResponse</span> <span class="n">res</span><span class="o">,</span>
-    <span class="n">FilterChain</span> <span class="n">chain</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">,</span> <span class="n">ServletException</span> <span class="o">{</span> <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">destroy</span><span class="o">()</span> <span class="o">{</span> <span class="o">}</span>
-<span class="o">}</span></code></pre></div></p>
-
-<p><code>init</code>接口可用于启动时载入<code>routes</code>配置文件，并建立URI到action的映射。</p>
-
-<h2>action manager</h2>
-
-<p><code>ActionManager</code>负责启动时载入<code>routes</code>配置，建立URI到action的映射。一个URI包含了HTTP method和URI String，例如<code>GET /index</code>。action既然映射到了类接口上，那么可以在启动时就同过Java反射找到对应的类及接口。简单起见，每次收到URI的请求时，就创建这个类对应的对象，然后调用映射的接口即可。</p>
-
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="c1">// 例如：registerAction(&amp;ldquo;com.codemacro.webdemo.test.TestController&amp;rdquo;, &amp;ldquo;index&amp;rdquo;, &amp;ldquo;/index&amp;rdquo;, &amp;ldquo;GET&amp;rdquo;);</span>
-<span class="kd">public</span> <span class="kt">void</span> <span class="nf">registerAction</span><span class="o">(</span><span class="n">String</span> <span class="n">clazName</span><span class="o">,</span> <span class="n">String</span> <span class="n">methodName</span><span class="o">,</span> <span class="n">String</span> <span class="n">uri</span><span class="o">,</span> <span class="n">String</span> <span class="n">method</span><span class="o">)</span> <span class="o">{</span>
-  <span class="k">try</span> <span class="o">{</span>
-    <span class="n">uri</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;/&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">+</span> <span class="n">appName</span> <span class="o">+</span> <span class="n">uri</span><span class="o">;</span>
-    <span class="c1">// 载入对应的class</span>
-    <span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?</span> <span class="kd">extends</span> <span class="n">BaseController</span><span class="o">&gt;</span> <span class="n">clazz</span> <span class="o">=</span> <span class="o">(</span><span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?</span> <span class="kd">extends</span> <span class="n">BaseController</span><span class="o">&gt;)</span> <span class="n">loadClass</span><span class="o">(</span><span class="n">clazName</span><span class="o">);</span>
-    <span class="c1">// 取得对应的接口</span>
-    <span class="n">Method</span> <span class="n">m</span> <span class="o">=</span> <span class="n">clazz</span><span class="o">.</span><span class="na">getMethod</span><span class="o">(</span><span class="n">methodName</span><span class="o">,</span> <span class="o">(</span><span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;[])</span><span class="kc">null</span><span class="o">);</span>
-    <span class="c1">// 接口要求必须返回Result</span>
-    <span class="k">if</span> <span class="o">(</span><span class="n">m</span><span class="o">.</span><span class="na">getReturnType</span><span class="o">()</span> <span class="o">!=</span> <span class="n">Result</span><span class="o">.</span><span class="na">class</span><span class="o">)</span> <span class="o">{</span>
-      <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">action</span> <span class="n">method</span> <span class="k">return</span> <span class="n">type</span> <span class="nl">mismatch:</span> <span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">+</span> <span class="n">uri</span><span class="o">);</span>
-    <span class="o">}</span>
-    <span class="n">ActionKey</span> <span class="n">k</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">ActionKey</span><span class="o">(</span><span class="n">uri</span><span class="o">,</span> <span class="n">getMethod</span><span class="o">(</span><span class="n">method</span><span class="o">));</span>
-    <span class="n">ActionValue</span> <span class="n">v</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">ActionValue</span><span class="o">(</span><span class="n">clazz</span><span class="o">,</span> <span class="n">m</span><span class="o">);</span>
-    <span class="n">logger</span><span class="o">.</span><span class="na">debug</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">register</span> <span class="n">action</span> <span class="o">{}</span> <span class="o">{}</span> <span class="o">{}</span> <span class="o">{}&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">clazName</span><span class="o">,</span> <span class="n">methodName</span><span class="o">,</span> <span class="n">uri</span><span class="o">,</span> <span class="n">method</span><span class="o">);</span>
-    <span class="c1">// 建立映射</span>
-    <span class="n">actions</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">k</span><span class="o">,</span> <span class="n">v</span><span class="o">);</span>
-  <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-    <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">registerAction</span> <span class="nl">failed:</span> <span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">+</span> <span class="n">uri</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
-  <span class="o">}</span>
-<span class="o">}</span></code></pre></div></p>
-
-<p>controller都要求派生于<code>BaseController</code>，这样才可以利用<code>BaseController</code>更方便地获取请求数据之类，例如query string/cookie 等。</p>
-
-<p>收到请求时，就需要根据请求的HTTP Method和URI string取得之前建立的映射，并调用之：</p>
-
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">invoke</span><span class="o">(</span><span class="n">HttpServletRequest</span> <span class="n">req</span><span class="o">,</span> <span class="n">HttpServletResponse</span> <span class="n">resp</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
-  <span class="n">String</span> <span class="n">uri</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="na">getRequestURI</span><span class="o">();</span>
-  <span class="n">String</span> <span class="n">method</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="na">getMethod</span><span class="o">().</span><span class="na">toUpperCase</span><span class="o">();</span>
-  <span class="k">try</span> <span class="o">{</span>
-    <span class="c1">// 取得之前建立的映射，Map查找</span>
-    <span class="n">ActionValue</span> <span class="n">v</span> <span class="o">=</span> <span class="n">getAction</span><span class="o">(</span><span class="n">uri</span><span class="o">,</span> <span class="n">method</span><span class="o">);</span>
-    <span class="c1">// 创建新的controller对象</span>
-    <span class="n">BaseController</span> <span class="n">ctl</span> <span class="o">=</span> <span class="o">(</span><span class="n">BaseController</span><span class="o">)</span> <span class="n">v</span><span class="o">.</span><span class="na">clazz</span><span class="o">.</span><span class="na">newInstance</span><span class="o">();</span>
-    <span class="n">ctl</span><span class="o">.</span><span class="na">init</span><span class="o">(</span><span class="n">req</span><span class="o">,</span> <span class="n">resp</span><span class="o">,</span> <span class="k">this</span><span class="o">);</span>
-    <span class="n">logger</span><span class="o">.</span><span class="na">debug</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">invoke</span> <span class="n">action</span> <span class="o">{}&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">uri</span><span class="o">);</span>
-    <span class="c1">// 调用绑定的接口</span>
-    <span class="n">Result</span> <span class="n">result</span> <span class="o">=</span> <span class="o">(</span><span class="n">Result</span><span class="o">)</span> <span class="n">v</span><span class="o">.</span><span class="na">method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">ctl</span><span class="o">,</span> <span class="o">(</span><span class="n">Object</span><span class="o">[])</span> <span class="kc">null</span><span class="o">);</span>
-    <span class="c1">// 渲染结果</span>
-    <span class="n">result</span><span class="o">.</span><span class="na">render</span><span class="o">();</span>
-  <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-    <span class="o">&amp;</span><span class="n">hellip</span><span class="o">;</span>
-  <span class="o">}</span>
-<span class="o">}</span></code></pre></div></p>
-
-<h2>结果渲染</h2>
-
-<p>结果渲染无非就是把框架用户返回的结果渲染为字符串，写进<code>HttpServletResponse</code>。这个渲染过程可以是直接的<code>Object.toString</code>，或者经过模板引擎渲染，或者格式化为JSON。</p>
-
-<p>通过实现具体的<code>Result</code>类，可以扩展不同的渲染方式，例如最基础的<code>Result</code>就是调用返回对象的<code>toString</code>：</p>
-
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Result</span> <span class="o">{</span>
-  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">render</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">,</span> <span class="n">ServletException</span> <span class="o">{</span>
-    <span class="n">PrintWriter</span> <span class="n">writer</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="na">getWriter</span><span class="o">();</span>
-    <span class="c1">// result是controller action里返回的</span>
-    <span class="n">writer</span><span class="o">.</span><span class="na">append</span><span class="o">(</span><span class="n">result</span><span class="o">.</span><span class="na">toString</span><span class="o">());</span>
-    <span class="n">writer</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
-  <span class="o">}</span>
-<span class="o">}</span></code></pre></div></p>
-
-<p>为了简单，不引入第三方库，可以直接通过JSP来完成。JSP本身在servlet容器中就会被编译成一个servlet对象。</p>
-
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">JSPResult</span> <span class="kd">extends</span> <span class="n">Result</span> <span class="o">{</span>
-  <span class="o">&amp;</span><span class="n">hellip</span><span class="o">;</span>
-  <span class="nd">@Override</span>
-  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">render</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">,</span> <span class="n">ServletException</span> <span class="o">{</span>
-    <span class="c1">// 传入一些对象到模板中</span>
-    <span class="k">for</span> <span class="o">(</span><span class="n">Map</span><span class="o">.</span><span class="na">Entry</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;</span><span class="n">String</span><span class="o">,</span> <span class="n">Object</span><span class="o">&gt;</span> <span class="n">entry</span> <span class="o">:</span> <span class="n">content</span><span class="o">.</span><span class="na">entrySet</span><span class="o">())</span> <span class="o">{</span>
-      <span class="n">request</span><span class="o">.</span><span class="na">setAttribute</span><span class="o">(</span><span class="n">entry</span><span class="o">.</span><span class="na">getKey</span><span class="o">(),</span> <span class="n">entry</span><span class="o">.</span><span class="na">getValue</span><span class="o">());</span>
-    <span class="o">}</span>
-    <span class="c1">// 委托给JSP来完成渲染</span>
-    <span class="n">request</span><span class="o">.</span><span class="na">getRequestDispatcher</span><span class="o">(</span><span class="n">file</span><span class="o">).</span><span class="na">forward</span><span class="o">(</span><span class="n">request</span><span class="o">,</span> <span class="n">response</span><span class="o">);</span>
-  <span class="o">}</span>
-<span class="o">}</span></code></pre></div></p>
-
-<p>JSP中可以使用传统的scriptlets表达式，也可以使用新的EL方式，例如：</p>
-
-<pre><code>&lt;%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%&gt;
-&lt;h4&gt;By EL&lt;/h4&gt;
-&lt;c:forEach var="lang" items="${langs}"&gt;
-  &lt;span&gt;${lang}&lt;/span&gt;|
-&lt;/c:forEach&gt;
-
-&lt;% String[] langs = (String[]) request.getAttribute("langs"); %&gt;
-&lt;% if (langs != null) { %&gt;
-&lt;% for (String lang : langs) { %&gt;
-  &lt;span&gt;&lt;%= lang %&gt;&lt;/span&gt;|
-&lt;% } } %&gt;
-</code></pre>
-
-<p>使用EL的话需要引入<code>&lt;%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%&gt;</code></p>
-
-<h2>BaseController</h2>
-
-<p><code>BaseController</code>是一种template pattern实现，其包装了一些方便的接口给具体的controller使用，例如：</p>
-
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">BaseController</span> <span class="o">{</span>
-  <span class="c1">// 取得/index?name=kevin中的name参数值</span>
-  <span class="kd">protected</span> <span class="n">String</span> <span class="nf">getQueryString</span><span class="o">(</span><span class="n">String</span> <span class="n">key</span><span class="o">)</span> <span class="o">{</span>
-    <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="na">getParameter</span><span class="o">(</span><span class="n">key</span><span class="o">);</span>
-  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="kd">protected</span> <span class="n">Result</span> <span class="nf">status</span><span class="o">(</span><span class="kt">int</span> <span class="n">code</span><span class="o">,</span> <span class="n">String</span> <span class="n">text</span><span class="o">)</span> <span class="o">{</span>
-    <span class="n">response</span><span class="o">.</span><span class="na">setStatus</span><span class="o">(</span><span class="n">code</span><span class="o">);</span>
-    <span class="k">return</span> <span class="k">new</span> <span class="nf">Result</span><span class="o">(</span><span class="n">response</span><span class="o">,</span> <span class="n">text</span><span class="o">);</span>
-  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="c1">// 默认是HTTP 200</span>
-  <span class="kd">protected</span> <span class="n">Result</span> <span class="nf">ok</span><span class="o">(</span><span class="n">Object</span> <span class="n">obj</span><span class="o">)</span> <span class="o">{</span>
-    <span class="k">return</span> <span class="k">new</span> <span class="nf">Result</span><span class="o">(</span><span class="n">response</span><span class="o">,</span> <span class="n">obj</span><span class="o">);</span>
-  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="kd">protected</span> <span class="n">Result</span> <span class="nf">ok</span><span class="o">(</span><span class="n">Result</span> <span class="n">result</span><span class="o">)</span> <span class="o">{</span>
-    <span class="k">return</span> <span class="n">result</span><span class="o">;</span>
-  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="kd">protected</span> <span class="n">JSPResult</span> <span class="nf">jsp</span><span class="o">(</span><span class="n">String</span> <span class="n">file</span><span class="o">)</span> <span class="o">{</span>
-    <span class="k">return</span> <span class="k">new</span> <span class="nf">JSPResult</span><span class="o">(</span><span class="n">request</span><span class="o">,</span> <span class="n">response</span><span class="o">,</span> <span class="n">file</span><span class="o">,</span> <span class="n">actionMgr</span><span class="o">);</span>
-  <span class="o">}</span>
-<span class="o">}</span></code></pre></div></p>
-
-<h2>Reverse routing</h2>
-
-<p>Reverse routing指的是在开发web过程中，要引入某个URL时，我们不是直接写这个URL字符串，而是写其映射的接口，以使代码更易维护（因为URL可能会随着项目进展而改变）。并且，servlet app部署后URL会带上这个app的名字前缀，例如<code>/web-demo/index</code>中的<code>/web-demo</code>。在模板文件中，例如要链接到其他URI，更好的方式当然是直接写<code>/index</code>。</p>
-
-<p>这里的实现比较丑陋，还是基于字符串的形式，例如：</p>
-
-<pre><code>&lt;a href='&lt;route:reverse action="com.codemacro.webdemo.test.TestController.hello" name="kevin"/&gt;'&gt;index&lt;/a&gt;
-</code></pre>
-
-<p>通过自定义一个EL function <code>reverse</code>来实现。这里需要引入一个JSP的库：</p>
-
-<pre><code>&lt;dependency&gt;
-    &lt;groupId&gt;javax.servlet&lt;/groupId&gt;
-    &lt;artifactId&gt;jsp-api&lt;/artifactId&gt;
-    &lt;version&gt;2.0&lt;/version&gt;
-    &lt;optional&gt;true&lt;/optional&gt;
-&lt;/dependency&gt;
-</code></pre>
-
-<p>首先实现一个<code>SimpleTagSupport</code>，为了支持<code>?name=kevin</code>这种动态参数，还需要<code>implements DynamicAttributes</code>：</p>
-
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">JSPRouteTag</span> <span class="kd">extends</span> <span class="n">SimpleTagSupport</span> <span class="kd">implements</span> <span class="n">DynamicAttributes</span> <span class="o">{</span>
-  <span class="nd">@Override</span>
-  <span class="c1">// 输出最终的URL</span>
-  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">doTag</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
-    <span class="n">JspContext</span> <span class="n">context</span> <span class="o">=</span> <span class="n">getJspContext</span><span class="o">();</span>
-    <span class="n">ActionManager</span> <span class="n">actionMgr</span> <span class="o">=</span> <span class="o">(</span><span class="n">ActionManager</span><span class="o">)</span> <span class="n">context</span><span class="o">.</span><span class="na">findAttribute</span><span class="o">(</span><span class="n">ACTION_MGR</span><span class="o">);</span>
-    <span class="n">JspWriter</span> <span class="n">out</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="na">getOut</span><span class="o">();</span>
-    <span class="n">String</span> <span class="n">uri</span> <span class="o">=</span> <span class="n">actionMgr</span><span class="o">.</span><span class="na">getReverseAction</span><span class="o">(</span><span class="n">action</span><span class="o">,</span> <span class="n">attrMap</span><span class="o">);</span>
-    <span class="n">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">uri</span><span class="o">);</span>
-  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="nd">@Override</span>
-  <span class="c1">// name=&amp;ldquo;kevin&amp;rdquo; 时调用</span>
-  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setDynamicAttribute</span><span class="o">(</span><span class="n">String</span> <span class="n">uri</span><span class="o">,</span> <span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">Object</span> <span class="n">value</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">JspException</span> <span class="o">{</span>
-    <span class="n">attrMap</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">value</span><span class="o">);</span>
-  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="c1">// &lt;code&gt;action=&quot;xxx&quot;&lt;/code&gt; 时会调用&lt;code&gt;setAction&lt;/code&gt;</span>
-  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setAction</span><span class="o">(</span><span class="n">String</span> <span class="n">action</span><span class="o">)</span> <span class="o">{</span>
-    <span class="k">this</span><span class="o">.</span><span class="na">action</span> <span class="o">=</span> <span class="n">action</span><span class="o">;</span>
-  <span class="o">}</span>
-<span class="o">}</span></code></pre></div></p>
-
-<p>为了访问到<code>ActionManager</code>，这里是通过写到<code>Request context</code>中实现的，相当hack。</p>
-
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="nf">JSPResult</span><span class="o">(</span><span class="n">HttpServletRequest</span> <span class="n">req</span><span class="o">,</span> <span class="n">HttpServletResponse</span> <span class="n">resp</span><span class="o">,</span> <span class="n">String</span> <span class="n">file</span><span class="o">,</span>
-    <span class="n">ActionManager</span> <span class="n">actionMgr</span><span class="o">)</span> <span class="o">{</span>
-  <span class="kd">super</span><span class="o">(</span><span class="n">resp</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
-  <span class="o">..</span>
-  <span class="n">put</span><span class="o">(</span><span class="n">JSPRouteTag</span><span class="o">.</span><span class="na">ACTION_MGR</span><span class="o">,</span> <span class="n">actionMgr</span><span class="o">);</span>
-<span class="o">}</span></code></pre></div></p>
-
-<p>第二步增加一个描述这个新tag的文件 <code>WEB-INF/route_tag.tld</code>：</p>
-
-<pre><code>&lt;taglib&gt;
-    &lt;tlibversion&gt;1.0&lt;/tlibversion&gt;
-    &lt;jspversion&gt;1.1&lt;/jspversion&gt;
-    &lt;shortname&gt;URLRouteTags&lt;/shortname&gt;
-    &lt;uri&gt;/myweb-router&lt;/uri&gt;
-    &lt;info&gt;&lt;/info&gt;
-
-    &lt;tag&gt;
-        &lt;name&gt;reverse&lt;/name&gt;
-        &lt;tagclass&gt;com.codemacro.webdemo.result.JSPRouteTag&lt;/tagclass&gt;
-        &lt;bodycontent&gt;&lt;/bodycontent&gt;
-        &lt;info&gt;&lt;/info&gt;
-        &lt;attribute&gt;
-            &lt;name&gt;action&lt;/name&gt;
-            &lt;required&gt;true&lt;/required&gt;
-        &lt;/attribute&gt;
-        &lt;dynamic-attributes&gt;true&lt;/dynamic-attributes&gt;
-    &lt;/tag&gt;
-&lt;/taglib&gt;
-</code></pre>
-
-<p>最后在需要使用的JSP中引入这个自定义tag：</p>
-
-<pre><code>&lt;%@ taglib prefix="route" uri="/myweb-router" %&gt;
-</code></pre>
-
-<h2>参考资料</h2>
-
-<ul>
-<li><a href="http://www.cnblogs.com/cuiliang/archive/2011/10/21/2220671.html">Servlet生命周期与工作原理</a></li>
-<li><a href="http://www.blogjava.net/fancydeepin/archive/2013/09/30/fan_servlet.html">JSP/Servlet工作原理</a></li>
-<li><a href="http://www.cnblogs.com/xushuai123/archive/2013/03/24/2979711.html">EL表达式</a></li>
-<li><a href="http://www.codedata.com.tw/java/java-tutorial-the-3rd-class-3-servlet-jsp/">使用Servlet、JSP开发Web程序</a></li>
-<li><a href="http://www.itzhai.com/java-web-notes-servlet-filters-in-the-filter-writing-the-introduction-and-use-of-filters.html#read-more">Java Web笔记 – Servlet中的Filter过滤器的介绍和使用 编写过滤器</a></li>
-<li><a href="http://blog.csdn.net/bingduanlbd/article/details/38349737">实现一个简单的Servlet容器</a></li>
-</ul>
-
 ]]></content>
   </entry>
   
