@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="接上回对DHT网络的研究，我用erlang克隆了一个磁力搜索引擎。我这个实现包含了完整的功能，DHT网络的加入、infohash的接收、种子的获取、资源信息的索引、搜索。 如下图： ">
+  <meta name="description" content="接上篇，本篇谈谈一些实现细节。 这个爬虫程序主要的问题在于如何获取P2P网络中分享的资源，获取到资源后索引到数据库中，搜索就是自然而然的事情。 DHT DHT网络本质上是一个用于查询的网络，其用于查询一个资源有哪些计算机正在下载。每个资源都有一个20字节长度的ID用于标示，称为infohash。 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,50 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2013/06/21/magnet-search-impl/">使用erlang实现P2P磁力搜索-实现</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-06-21T00:00:00+08:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>接<a href="http://codemacro.com/2013/06/20/magnet-search/">上篇</a>，本篇谈谈一些实现细节。</p>
+
+<p>这个爬虫程序主要的问题在于如何获取P2P网络中分享的资源，获取到资源后索引到数据库中，搜索就是自然而然的事情。</p>
+
+<h2>DHT</h2>
+
+<p>DHT网络本质上是一个用于查询的网络，其用于查询一个资源有哪些计算机正在下载。每个资源都有一个20字节长度的ID用于标示，称为infohash。当一个程序作为DHT节点加入这个网络时，就会有其他节点来向你查询，当你做出回应后，对方就会记录下你。对方还会询问其他节点，当对方开始下载这个infohash对应的资源时，他就会告诉所有曾经询问过的节点，包括你。这个时候就可以确定，这个infohash对应的资源在这个网络中是有效的。</p>
+
+<p>关于这个网络的工作原理，参看：<a href="http://codemacro.com/2013/05/19/crawl-dht/">P2P中DHT网络爬虫</a>以及<a href="http://xiaoxia.org/2013/05/11/magnet-search-engine/">写了个磁力搜索的网页</a>。</p>
+
+<p>获取到infohash后能做什么？关键点在于，我们现在使用的磁力链接(magnet url)，是和infohash对应起来的。也就是拿到infohash，就等于拿到一个磁力链接。但是这个爬虫还需要建立资源的信息，这些信息来源于种子文件。种子文件其实也是对应到一个资源，种子文件包含资源名、描述、文件列表、文件大小等信息。获取到infohash时，其实也获取到了对应的计算机地址，我们可以在这些计算机上下载到对应的种子文件。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/06/21/magnet-search-impl/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -511,42 +555,6 @@ Obj-&gt;func(args)
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/09/17/c-plus-plus-ctor-virtual/">C++陷阱：构造函数中的多态</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2012-09-17T16:01:00+08:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>17</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>4:01 pm</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>C++中主要是通过给函数加上<code>virtual</code>关键字来实现多态。多态可用于改变一个接口的实现，也算是一种嵌入应用层代码到底层的实现手段。就算你用不到C++那些复杂的技术，多态肯定会被用到。</p>
-
-<p>但加上<code>virtual</code>不一定能保证多态成功：</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/09/17/c-plus-plus-ctor-virtual/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/6">&larr; Older</a>
@@ -561,11 +569,15 @@ Obj-&gt;func(args)
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (9)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (10)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/04/09/xnio-source/">XNIO源码阅读</a>
+      </li>
     
       <li class="post">
         <a href="/2017/03/09/toy-jit/">实现JVM中的JIT</a>
@@ -583,10 +595,6 @@ Obj-&gt;func(args)
         <a href="/2017/01/08/react-plugin/">ReactJS项目中基于webpack实现页面插件</a>
       </li>
     
-      <li class="post">
-        <a href="/2016/08/16/reverse_html/">一次逆向网页内容加密</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -596,7 +604,7 @@ Obj-&gt;func(args)
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 120.76923076923077%'>java(9)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 127.6923076923077%'>network(12)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 123.07692307692308%'>java(10)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
 </section>
 
   

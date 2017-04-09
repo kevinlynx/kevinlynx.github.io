@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2017-03-09T21:33:59+08:00</updated>
+  <updated>2017-04-09T13:22:56+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,143 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[XNIO源码阅读]]></title>
+    <link href="http://codemacro.com/2017/04/09/xnio-source/"/>
+    <updated>2017-04-09T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2017/04/09/xnio-source</id>
+    <content type="html"><![CDATA[<p><a href="http://xnio.jboss.org/">XNIO</a>是JBoss的一个IO框架。最开始我想找个lightweight servlet container库，于是看到了<a href="http://undertow.io/">undertow</a>，发现其网络部分使用的就是XNIO。所以干脆就先把XNIO的源码读下。</p>
+
+<p>XNIO文档非常匮乏，能找到都是<a href="https://docs.jboss.org/author/display/XNIO/About+XNIO">3.0的版本</a>，而且描述也不完全。Git上已经出到3.5.0。我读的是3.3.6.Final。</p>
+
+<h2>使用方式</h2>
+
+<p>可以参考<a href="https://github.com/ecki/xnio-samples/blob/master/src/main/java/org/xnio/samples/SimpleEchoServer.java">SimpleEchoServer.java</a>，不过这个例子使用的API已经被deprecated，仅供参考。使用方式大致为：</p>
+
+<ul>
+<li>创建服务，提供acceptListener</li>
+<li>在acceptListener中accept新的连接，并注册连接listener</li>
+<li>在连接listener回调中完成IO读写</li>
+</ul>
+
+
+<!-- more -->
+
+
+<h2>主要概念</h2>
+
+<ul>
+<li>Channel，基本上同Java NIO中的Channel一致，一个server socket是一个channel，accept出来的连接也是channel</li>
+<li>ChannelListener，监听Channel上的IO事件，应用代码与XNIO交互的地方</li>
+<li>XnioWorker，维护IO线程池及应用任务线程池</li>
+</ul>
+
+
+<h2>项目结构</h2>
+
+<p>源码分为两个项目: xnio-api及nio-impl。xnio-api属于API层；nio-impl是基于NIO的实现。通过Java service provider动态地找到nio-impl这个实现。可见XNIO还可以用其他方式来实现。</p>
+
+<p><code>org.xnio.channels</code>这个包里包含了大量的Channel接口定义，这个是非常恶心的一个地方，读代码的时候很容易被绕进去。这个包主要的实现后面提。<code>org.xnio.conduits</code>，我理解为比Channel更底层的传输通道，channel依赖于conduit实现，总之也是个恶心的概念。</p>
+
+<h2>线程模型</h2>
+
+<p>可以通过连接如何建立以及建立连接后如何管理连接来了解XNIO的线程模型。通过这个过程我简单画了下主要类关系以及连接建立过程：</p>
+
+<p><img src="http://i.imgur.com/HoL99Wz.png" alt="" /></p>
+
+<p><em>用的Dia绘图，UML图支持得不够好</em></p>
+
+<p>XNIO的线程模型是一个典型的one loop per thread的Reactor模型。<code>WorkerThread</code>类就是这个线程，其有一个主循环，不断地检测其关心的IO设备是否有IO事件发生。当有事件发生时，就将事件通知给关心的listener。站在上层模块的角度，这个线程就是一个Reactor，事件产生器。整个系统有固定数量的<code>WorkerThread</code>，也就是IO线程数。这个模型基本上凡是基于epoll/select模型实现的网络库都会用，例如<a href="http://codemacro.com/2014/05/04/muduo-source/">muduo</a>。可以回看下这个模型：</p>
+
+<p><img src="http://codemacro.com/assets/res/muduo-model.png" alt="" /></p>
+
+<p>XNIO中接收到一个新连接时，会根据这个连接的地址(remote&amp;local address)算出一个哈希值，然后根据哈希值分配到某一个IO线程，然后该连接以后的IO事件都由该线程处理。<code>WorkerThread</code>会始终回调<code>NioHandle</code>。<code>QueuedNioTcpServerHandle</code>是一个accept socket，监听accept事件。而<code>NioSocketStreamConnection</code>则是一个建立好的连接，每次新连接进来就会创建，被哈希到某个<code>WorkerThread</code>处理。<code>NioSocketConduit</code>是一个连接具体关心IO事件的类，正是前面提到的，是一个Channel的底层实现。</p>
+
+<p><code>NioXnioWorker</code>继承于<code>XnioWorker</code>，<code>XnioWorker</code>内部包含了一个应用任务的线程池。应用代码通过channel listener获取到IO事件通知，channel listener是在IO线程中回调的，所以不适合做耗时操作，否则会导致IO线程中其他IO设备饿死。所以对于这类任务就可以放到这个线程池中做。</p>
+
+<h2>Channel架构</h2>
+
+<p>前面提到的XNIO例子使用了一个deprecated的接口，那如何不使用这个接口呢？这就需要更具体地了解channel。XNIO中抽象的channel有很多类型，有些是只读的，有些是只写的，有些则是全双工的。channel还能被组合 (<code>AssembledChannel</code>)。可以看下3.1里channel包的大图：<a href="http://docs.jboss.org/xnio/3.1/api/org/xnio/channels/package-summary.png">channel package summary</a></p>
+
+<p>这里我只关注基于TCP服务中的channel。如图：</p>
+
+<p><img src="http://i.imgur.com/BjmU3BJ.png" alt="" /></p>
+
+<p>重点关注 <code>QueuedNioTcpServer</code> 及 <code>NioSocketStreamConnection</code>。<code>QueuedNioTcpServer</code>实现<code>AcceptingChannel</code> 没什么好说的，就是表示一个可以接收连接的channel。<code>NioSocketStreamConnection</code>表示一个网络连接。<code>StreamConnection</code>是一个可读可写的channel，但是其内部是通过另外两个channel来实现的，分别是<code>ConduitStreamSourceChannel</code>及<code>ConduitStreamSinkChannel</code>，分别用读和写。这两个channel内部其实是分别通过两个conduit 来实现，分别为<code>ConduitStreamSourceChannel</code> 及 <code>ConduitStreamSinkChannel</code> 。</p>
+
+<p><code>NioSocketStreamConnection</code> 内部包含<code>NioSocketConduit</code>，这个类实现了 <code>ConduitStreamSourceChannel</code> 及 <code>ConduitStreamSinkChannel</code> 。在TCP场景下，<code>StreamConnection</code>中的读写channel正是指向了<code>NioSocketConduit</code>。这个层次包装得有点绕，需要慢慢梳理。</p>
+
+<p>在accept的时候，得到的可以是<code>StreamConnection</code>，其实也就是得到了一个可读可写的channel，设计得也没问题。可以基于这个channel设置读写listener。但是如果想在读listener里发起写操作，由于在读listener里看到的是一个只读的channel，所以就没办法写。所以才会有其他包装的channel。</p>
+
+<p>理清了以上关系，就可以不用那个deprecated的API来实现一个echo server：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">class</span> <span class="nc">ReadListener</span> <span class="kd">implements</span> <span class="n">ChannelListener</span><span class="o">&lt;</span><span class="n">StreamSourceChannel</span><span class="o">&gt;</span> <span class="o">{</span>
+  <span class="c1">// 保存一个可写的channel，才能在读listener里做写操作</span>
+  <span class="kd">private</span> <span class="n">StreamSinkChannel</span> <span class="n">sinkChannel</span><span class="o">;</span>
+
+  <span class="kd">public</span> <span class="nf">ReadListener</span><span class="o">(</span><span class="n">StreamSinkChannel</span> <span class="n">sinkChannel</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">this</span><span class="o">.</span><span class="na">sinkChannel</span> <span class="o">=</span> <span class="n">sinkChannel</span><span class="o">;</span>
+  <span class="o">}</span>
+
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">handleEvent</span><span class="o">(</span><span class="n">StreamSourceChannel</span> <span class="n">channel</span><span class="o">)</span> <span class="o">{</span>
+    <span class="kd">final</span> <span class="n">ByteBuffer</span> <span class="n">buffer</span> <span class="o">=</span> <span class="n">ByteBuffer</span><span class="o">.</span><span class="na">allocate</span><span class="o">(</span><span class="mi">512</span><span class="o">);</span>
+    <span class="kt">int</span> <span class="n">res</span><span class="o">;</span>
+    <span class="k">try</span> <span class="o">{</span>
+      <span class="k">while</span> <span class="o">((</span><span class="n">res</span> <span class="o">=</span> <span class="n">channel</span><span class="o">.</span><span class="na">read</span><span class="o">(</span><span class="n">buffer</span><span class="o">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">buffer</span><span class="o">.</span><span class="na">flip</span><span class="o">();</span>
+        <span class="n">Channels</span><span class="o">.</span><span class="na">writeBlocking</span><span class="o">(</span><span class="n">sinkChannel</span><span class="o">,</span> <span class="n">buffer</span><span class="o">);</span>
+      <span class="o">}</span>
+      <span class="n">Channels</span><span class="o">.</span><span class="na">flushBlocking</span><span class="o">(</span><span class="n">sinkChannel</span><span class="o">);</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">res</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">channel</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+        <span class="n">channel</span><span class="o">.</span><span class="na">resumeReads</span><span class="o">();</span>
+      <span class="o">}</span>
+    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+      <span class="n">IoUtils</span><span class="o">.</span><span class="na">safeClose</span><span class="o">(</span><span class="n">channel</span><span class="o">);</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+<span class="kd">final</span> <span class="n">ChannelListener</span><span class="o">&lt;</span><span class="n">AcceptingChannel</span><span class="o">&lt;</span><span class="n">StreamConnection</span><span class="o">&gt;&gt;</span> <span class="n">acceptListener</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ChannelListener</span><span class="o">&lt;</span><span class="n">AcceptingChannel</span><span class="o">&lt;</span><span class="n">StreamConnection</span><span class="o">&gt;&gt;()</span> <span class="o">{</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">handleEvent</span><span class="o">(</span><span class="n">AcceptingChannel</span><span class="o">&lt;</span><span class="n">StreamConnection</span><span class="o">&gt;</span> <span class="n">channel</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">try</span> <span class="o">{</span>
+      <span class="n">StreamConnection</span> <span class="n">accepted</span><span class="o">;</span>
+      <span class="c1">// channel is ready to accept zero or more connections</span>
+      <span class="k">while</span> <span class="o">((</span><span class="n">accepted</span> <span class="o">=</span> <span class="n">channel</span><span class="o">.</span><span class="na">accept</span><span class="o">())</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;accepted &quot;</span>
+            <span class="o">+</span> <span class="n">accepted</span><span class="o">.</span><span class="na">getPeerAddress</span><span class="o">());</span>
+        <span class="c1">// stream channel has been accepted at this stage.</span>
+        <span class="c1">// read listener is set; start it up</span>
+        <span class="n">accepted</span><span class="o">.</span><span class="na">getSourceChannel</span><span class="o">().</span><span class="na">setReadListener</span><span class="o">(</span><span class="k">new</span> <span class="nf">ReadListener</span><span class="o">(</span><span class="n">accepted</span><span class="o">.</span><span class="na">getSinkChannel</span><span class="o">()));</span>
+        <span class="n">accepted</span><span class="o">.</span><span class="na">getSourceChannel</span><span class="o">().</span><span class="na">resumeReads</span><span class="o">();</span>
+      <span class="o">}</span>
+    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">IOException</span> <span class="n">ignored</span><span class="o">)</span> <span class="o">{</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">};</span>
+<span class="kd">final</span> <span class="n">XnioWorker</span> <span class="n">worker</span> <span class="o">=</span> <span class="n">Xnio</span><span class="o">.</span><span class="na">getInstance</span><span class="o">().</span><span class="na">createWorker</span><span class="o">(</span>
+    <span class="n">OptionMap</span><span class="o">.</span><span class="na">EMPTY</span><span class="o">);</span>
+<span class="c1">// Create the server.</span>
+<span class="n">AcceptingChannel</span><span class="o">&lt;?</span> <span class="kd">extends</span> <span class="n">StreamConnection</span><span class="o">&gt;</span> <span class="n">server</span> <span class="o">=</span> <span class="n">worker</span>
+    <span class="o">.</span><span class="na">createStreamConnectionServer</span><span class="o">(</span><span class="k">new</span> <span class="nf">InetSocketAddress</span><span class="o">(</span><span class="mi">12345</span><span class="o">),</span>
+        <span class="n">acceptListener</span><span class="o">,</span> <span class="n">OptionMap</span><span class="o">.</span><span class="na">EMPTY</span><span class="o">);</span>
+<span class="c1">// lets start accepting connections</span>
+<span class="n">server</span><span class="o">.</span><span class="na">resumeAccepts</span><span class="o">();</span></code></pre></div>
+
+
+<p>完。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2017/04/09/xnio-source/'>http://codemacro.com/2017/04/09/xnio-source/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[实现JVM中的JIT]]></title>
@@ -4467,94 +4604,6 @@ s addr 0x20de040
 <p class='post-footer'>
             原文地址：
             <a href='http://codemacro.com/2014/11/04/linux-dynamic-library/'>http://codemacro.com/2014/11/04/linux-dynamic-library/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[图解zookeeper FastLeader选举算法]]></title>
-    <link href="http://codemacro.com/2014/10/19/zk-fastleaderelection/"/>
-    <updated>2014-10-19T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2014/10/19/zk-fastleaderelection</id>
-    <content type="html"><![CDATA[<p>zookeeper配置为集群模式时，在启动或异常情况时会选举出一个实例作为Leader。其默认选举算法为<code>FastLeaderElection</code>。</p>
-
-<p>不知道zookeeper的可以考虑这样一个问题：某个服务可以配置为多个实例共同构成一个集群对外提供服务。其每一个实例本地都存有冗余数据，每一个实例都可以直接对外提供读写服务。在这个集群中为了保证数据的一致性，需要有一个Leader来协调一些事务。那么问题来了：如何确定哪一个实例是Leader呢？</p>
-
-<p>问题的难点在于：</p>
-
-<ul>
-<li>没有一个仲裁者来选定Leader</li>
-<li>每一个实例本地可能已经存在数据，不确定哪个实例上的数据是最新的</li>
-</ul>
-
-
-<p>分布式选举算法正是用来解决这个问题的。</p>
-
-<p>本文基于zookeeper 3.4.6 的源码进行分析。FastLeaderElection算法的源码全部位于<code>FastLeaderElection.java</code>文件中，其对外接口为<code>FastLeaderElection.lookForLeader</code>，该接口是一个同步接口，直到选举结束才会返回。同样由于网上已有类似文章，所以我就从图示的角度来阐述。阅读一些其他文章有利于获得初步印象：</p>
-
-<ul>
-<li><a href="http://iwinit.iteye.com/blog/1773531">深入浅出Zookeeper之五 Leader选举</a>，代码导读</li>
-<li><a href="http://blog.csdn.net/xhh198781/article/details/6619203">zookeeper3.3.3源码分析(二)FastLeader选举算法</a>，文字描述较细</li>
-</ul>
-
-
-<h2>主要流程</h2>
-
-<p>阅读代码和以上推荐文章可以把整个流程梳理清楚。实现上，包括了一个消息处理主循环，也是选举的主要逻辑，以及一个消息发送队列处理线程和消息解码线程。主要流程可概括为下图：</p>
-
-<!-- more -->
-
-
-<p><img src="http://codemacro.com/assets/res/zk/fle-flow.png" alt="fle-flow.png" /></p>
-
-<p>推荐对照着推荐的文章及代码理解，不赘述。</p>
-
-<p>我们从感性上来理解这个算法。</p>
-
-<p>每一个节点，相当于一个选民，他们都有自己的推荐人，最开始他们都推荐自己。谁更适合成为Leader有一个简单的规则，例如sid够大（配置）、持有的数据够新(zxid够大)。每个选民都告诉其他选民自己目前的推荐人是谁，类似于出去搞宣传拉拢其他选民。每一个选民发现有比自己更适合的人时就转而推荐这个更适合的人。最后，大部分人意见一致时，就可以结束选举。</p>
-
-<p>就这么简单。总体上有一种不断演化逼近结果的感觉。</p>
-
-<p>当然，会有些特殊情况的处理。例如总共3个选民，1和2已经确定3是Leader，但3还不知情，此时就走入<code>LEADING/FOLLOWING</code>的分支，选民3只是接收结果。</p>
-
-<p>代码中不是所有逻辑都在这个大流程中完成的。在接收消息线程中，还可能单独地回应某个节点(<code>WorkerReceiver.run</code>)：</p>
-
-<p><img src="http://codemacro.com/assets/res/zk/recv.png" alt="recv.png" /></p>
-
-<p>从这里可以看出，当某个节点已经确定选举结果不再处于<code>LOOKING</code>状态时，其收到<code>LOOKING</code>消息时都会直接回应选举的最终结果。结合上面那个比方，相当于某次选举结束了，这个时候来了选民4又发起一次新的选举，那么其他选民就直接告诉它当前的Leader情况。相当于，在这个集群主从已经就绪的情况下，又开启了一个实例，这个实例就会直接使用当前的选举结果。</p>
-
-<h2>状态转换</h2>
-
-<p>每个节点上有一些关键的数据结构：</p>
-
-<ul>
-<li>当前推荐人，初始推荐自己，每次收到其他更好的推荐人时就更新</li>
-<li>其他人的投票集合，用于确定何时选举结束</li>
-</ul>
-
-
-<p>每次推荐人更新时就会进行广播，正是这个不断地广播驱动整个算法趋向于结果。假设有3个节点A/B/C，其都还没有数据，按照sid关系为C>B>A，那么按照规则，C更可能成为Leader，其各个节点的状态转换为：</p>
-
-<p><img src="http://codemacro.com/assets/res/zk/state.png" alt="state.png" /></p>
-
-<p>图中，v(A)表示当前推荐人为A；r[]表示收到的投票集合。需要注意一个细节，初始投票集合里包含了自己的投票，代码中自己会将推荐人推荐给自己，网络模块(<code>QuorumCnxManager</code>)直接将该消息放入接收队列。</p>
-
-<p>可以看看当其他节点已经确定投票结果时，即不再是<code>LOOKING</code>时的状态：</p>
-
-<p><img src="http://codemacro.com/assets/res/zk/state-ret.png" alt="state-ret.png" /></p>
-
-<p>代码中有一个特殊的投票集合<code>outofelection</code>，我理解为选举已结束的那些投票，这些投票仅用于表征选举结果。</p>
-
-<p>当一个新启动的节点加入集群时，它对集群内其他节点发出投票请求，而其他节点已不处于<code>LOOKING</code>状态，此时其他节点回应选举结果，该节点收集这些结果到<code>outofelection</code>中，最终在收到合法LEADER消息且这些选票也构成选举结束条件时，该节点就结束自己的选举行为。<em>注意到代码中会<code>logicalclock = n.electionEpoch;</code>更新选举轮数</em></p>
-
-<p><em>完</em></p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2014/10/19/zk-fastleaderelection/'>http://codemacro.com/2014/10/19/zk-fastleaderelection/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>

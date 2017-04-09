@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="在JVM中，JIT (Just-in-Time) 即时编译指的是在Java程序运行过程中JVM优化部分指令为本地指令，从而大幅提升性能。在上一篇文章写一个玩具Java虚拟机中实现了一个基本可以运行Java字节码的JVM。本篇文章描述我是如何在这个玩具JVM中实现JIT的。 推荐文章&ldquo; &hellip;">
+  <meta name="description" content="XNIO是JBoss的一个IO框架。最开始我想找个lightweight servlet container库，于是看到了undertow，发现其网络部分使用的就是XNIO。所以干脆就先把XNIO的源码读下。 XNIO文档非常匮乏，能找到都是3.0的版本，而且描述也不完全。Git上已经出到3.5. &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,53 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2017/04/09/xnio-source/">XNIO源码阅读</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2017-04-09T00:00:00+08:00'><span class='date'><span class='date-month'>Apr</span> <span class='date-day'>9</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><a href="http://xnio.jboss.org/">XNIO</a>是JBoss的一个IO框架。最开始我想找个lightweight servlet container库，于是看到了<a href="http://undertow.io/">undertow</a>，发现其网络部分使用的就是XNIO。所以干脆就先把XNIO的源码读下。</p>
+
+<p>XNIO文档非常匮乏，能找到都是<a href="https://docs.jboss.org/author/display/XNIO/About+XNIO">3.0的版本</a>，而且描述也不完全。Git上已经出到3.5.0。我读的是3.3.6.Final。</p>
+
+<h2>使用方式</h2>
+
+<p>可以参考<a href="https://github.com/ecki/xnio-samples/blob/master/src/main/java/org/xnio/samples/SimpleEchoServer.java">SimpleEchoServer.java</a>，不过这个例子使用的API已经被deprecated，仅供参考。使用方式大致为：</p>
+
+<ul>
+<li>创建服务，提供acceptListener</li>
+<li>在acceptListener中accept新的连接，并注册连接listener</li>
+<li>在连接listener回调中完成IO读写</li>
+</ul>
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2017/04/09/xnio-source/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -627,77 +674,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2015/06/07/servlet-web-framework/">基于servlet实现一个web框架</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2015-06-07T00:00:00+08:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>7</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>servlet作为一个web规范，其本身就算做一个web开发框架，但是其web action (响应某个URI的实现)的实现都是基于类的，不是很方便，并且3.0之前的版本还必须通过web.xml配置来增加新的action。servlet中有一个filter的功能，可以配置所有URI的功能都经过filter。我们可以基于filter的功能来实现一个简单的web框架。在这个框架中，主要改进URI action的映射，就像<a href="https://www.playframework.com/">play framework</a>中route的配置：</p>
-
-<pre><code>GET     /hello      com.codemacro.webdemo.test.TestController.hello
-GET     /route      com.codemacro.webdemo.test.TestController.route
-POST    /hello      com.codemacro.webdemo.test.TestController.sayHello
-</code></pre>
-
-<p>即把某个URI映射到类接口级别。基于servlet实现web框架的好处不仅实现简单，还能运行在所有支持servlet容器规范的web server上，例如Tomcat、Jetty。</p>
-
-<p>本文提到的web framework demo可以从我的github 上取得：<a href="https://github.com/kevinlynx/servlet-web-framework-demo">servlet-web-framework-demo</a></p>
-
-<h2>功能</h2>
-
-<p>这个web framework URI action部分（或者说URI routing）如同前面描述，action的编写如：</p>
-
-<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestController</span> <span class="kd">extends</span> <span class="n">BaseController</span> <span class="o">{</span>
-  <span class="c1">// 返回字符串</span>
-  <span class="kd">public</span> <span class="n">Result</span> <span class="nf">index</span><span class="o">()</span> <span class="o">{</span>
-    <span class="k">return</span> <span class="nf">ok</span><span class="o">(</span><span class="s">&quot;hello world&quot;</span><span class="o">);</span>
-  <span class="o">}</span>
-
-  <span class="c1">// HTTP 404</span>
-  <span class="kd">public</span> <span class="n">Result</span> <span class="nf">code404</span><span class="o">()</span> <span class="o">{</span>
-    <span class="k">return</span> <span class="nf">status</span><span class="o">(</span><span class="mi">404</span><span class="o">,</span> <span class="s">&quot;not found&quot;</span><span class="o">);</span>
-  <span class="o">}</span>
-
-  <span class="c1">// 使用JSP模板渲染</span>
-  <span class="kd">public</span> <span class="n">Result</span> <span class="nf">template</span><span class="o">()</span> <span class="o">{</span>
-    <span class="n">String</span><span class="o">[]</span> <span class="n">langs</span> <span class="o">=</span> <span class="k">new</span> <span class="n">String</span><span class="o">[]</span> <span class="o">{</span><span class="s">&quot;c++&quot;</span><span class="o">,</span> <span class="s">&quot;java&quot;</span><span class="o">,</span> <span class="s">&quot;python&quot;</span><span class="o">};</span>
-    <span class="k">return</span> <span class="nf">ok</span><span class="o">(</span><span class="n">jsp</span><span class="o">(</span><span class="s">&quot;index.jsp&quot;</span><span class="o">)</span>
-        <span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="s">&quot;name&quot;</span><span class="o">,</span> <span class="s">&quot;kevin&quot;</span><span class="o">)</span>
-        <span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="s">&quot;langs&quot;</span><span class="o">,</span>  <span class="n">langs</span><span class="o">)</span>
-        <span class="o">);</span>
-  <span class="o">}</span>
-<span class="o">}</span></code></pre></div>
-
-
-
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2015/06/07/servlet-web-framework/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/2">&larr; Older</a>
@@ -710,11 +686,15 @@ POST    /hello      com.codemacro.webdemo.test.TestController.sayHello
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (9)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (10)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/04/09/xnio-source/">XNIO源码阅读</a>
+      </li>
     
       <li class="post">
         <a href="/2017/03/09/toy-jit/">实现JVM中的JIT</a>
@@ -732,10 +712,6 @@ POST    /hello      com.codemacro.webdemo.test.TestController.sayHello
         <a href="/2017/01/08/react-plugin/">ReactJS项目中基于webpack实现页面插件</a>
       </li>
     
-      <li class="post">
-        <a href="/2016/08/16/reverse_html/">一次逆向网页内容加密</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -745,7 +721,7 @@ POST    /hello      com.codemacro.webdemo.test.TestController.sayHello
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 120.76923076923077%'>java(9)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 127.6923076923077%'>network(12)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 123.07692307692308%'>java(10)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
 </section>
 
   

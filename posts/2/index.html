@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="编程语言中的反射(Refection)指的是可以在程序运行期动态加载一个类。与之相关的是自省(Introspection)，这个指的是程序自己可以获取一个类型的描述信息，例如获取一个类的所有接口定义、一个接口的所有形参。当编程语言有了这些语言特性之后，可以在很大程度上解决代码耦合问题， &hellip;">
+  <meta name="description" content="servlet作为一个web规范，其本身就算做一个web开发框架，但是其web action (响应某个URI的实现)的实现都是基于类的，不是很方便，并且3.0之前的版本还必须通过web.xml配置来增加新的action。servlet中有一个filter的功能， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,77 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2015/06/07/servlet-web-framework/">基于servlet实现一个web框架</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-06-07T00:00:00+08:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>7</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>servlet作为一个web规范，其本身就算做一个web开发框架，但是其web action (响应某个URI的实现)的实现都是基于类的，不是很方便，并且3.0之前的版本还必须通过web.xml配置来增加新的action。servlet中有一个filter的功能，可以配置所有URI的功能都经过filter。我们可以基于filter的功能来实现一个简单的web框架。在这个框架中，主要改进URI action的映射，就像<a href="https://www.playframework.com/">play framework</a>中route的配置：</p>
+
+<pre><code>GET     /hello      com.codemacro.webdemo.test.TestController.hello
+GET     /route      com.codemacro.webdemo.test.TestController.route
+POST    /hello      com.codemacro.webdemo.test.TestController.sayHello
+</code></pre>
+
+<p>即把某个URI映射到类接口级别。基于servlet实现web框架的好处不仅实现简单，还能运行在所有支持servlet容器规范的web server上，例如Tomcat、Jetty。</p>
+
+<p>本文提到的web framework demo可以从我的github 上取得：<a href="https://github.com/kevinlynx/servlet-web-framework-demo">servlet-web-framework-demo</a></p>
+
+<h2>功能</h2>
+
+<p>这个web framework URI action部分（或者说URI routing）如同前面描述，action的编写如：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestController</span> <span class="kd">extends</span> <span class="n">BaseController</span> <span class="o">{</span>
+  <span class="c1">// 返回字符串</span>
+  <span class="kd">public</span> <span class="n">Result</span> <span class="nf">index</span><span class="o">()</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="nf">ok</span><span class="o">(</span><span class="s">&quot;hello world&quot;</span><span class="o">);</span>
+  <span class="o">}</span>
+
+  <span class="c1">// HTTP 404</span>
+  <span class="kd">public</span> <span class="n">Result</span> <span class="nf">code404</span><span class="o">()</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="nf">status</span><span class="o">(</span><span class="mi">404</span><span class="o">,</span> <span class="s">&quot;not found&quot;</span><span class="o">);</span>
+  <span class="o">}</span>
+
+  <span class="c1">// 使用JSP模板渲染</span>
+  <span class="kd">public</span> <span class="n">Result</span> <span class="nf">template</span><span class="o">()</span> <span class="o">{</span>
+    <span class="n">String</span><span class="o">[]</span> <span class="n">langs</span> <span class="o">=</span> <span class="k">new</span> <span class="n">String</span><span class="o">[]</span> <span class="o">{</span><span class="s">&quot;c++&quot;</span><span class="o">,</span> <span class="s">&quot;java&quot;</span><span class="o">,</span> <span class="s">&quot;python&quot;</span><span class="o">};</span>
+    <span class="k">return</span> <span class="nf">ok</span><span class="o">(</span><span class="n">jsp</span><span class="o">(</span><span class="s">&quot;index.jsp&quot;</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="s">&quot;name&quot;</span><span class="o">,</span> <span class="s">&quot;kevin&quot;</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="s">&quot;langs&quot;</span><span class="o">,</span>  <span class="n">langs</span><span class="o">)</span>
+        <span class="o">);</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2015/06/07/servlet-web-framework/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -633,64 +704,6 @@ add ax, 2    # 取ax中的值1与立即数2进行相加，存放结果到ax
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2014/10/19/zk-fastleaderelection/">图解zookeeper FastLeader选举算法</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2014-10-19T00:00:00+08:00'><span class='date'><span class='date-month'>Oct</span> <span class='date-day'>19</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>zookeeper配置为集群模式时，在启动或异常情况时会选举出一个实例作为Leader。其默认选举算法为<code>FastLeaderElection</code>。</p>
-
-<p>不知道zookeeper的可以考虑这样一个问题：某个服务可以配置为多个实例共同构成一个集群对外提供服务。其每一个实例本地都存有冗余数据，每一个实例都可以直接对外提供读写服务。在这个集群中为了保证数据的一致性，需要有一个Leader来协调一些事务。那么问题来了：如何确定哪一个实例是Leader呢？</p>
-
-<p>问题的难点在于：</p>
-
-<ul>
-<li>没有一个仲裁者来选定Leader</li>
-<li>每一个实例本地可能已经存在数据，不确定哪个实例上的数据是最新的</li>
-</ul>
-
-
-<p>分布式选举算法正是用来解决这个问题的。</p>
-
-<p>本文基于zookeeper 3.4.6 的源码进行分析。FastLeaderElection算法的源码全部位于<code>FastLeaderElection.java</code>文件中，其对外接口为<code>FastLeaderElection.lookForLeader</code>，该接口是一个同步接口，直到选举结束才会返回。同样由于网上已有类似文章，所以我就从图示的角度来阐述。阅读一些其他文章有利于获得初步印象：</p>
-
-<ul>
-<li><a href="http://iwinit.iteye.com/blog/1773531">深入浅出Zookeeper之五 Leader选举</a>，代码导读</li>
-<li><a href="http://blog.csdn.net/xhh198781/article/details/6619203">zookeeper3.3.3源码分析(二)FastLeader选举算法</a>，文字描述较细</li>
-</ul>
-
-
-<h2>主要流程</h2>
-
-<p>阅读代码和以上推荐文章可以把整个流程梳理清楚。实现上，包括了一个消息处理主循环，也是选举的主要逻辑，以及一个消息发送队列处理线程和消息解码线程。主要流程可概括为下图：</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2014/10/19/zk-fastleaderelection/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/3">&larr; Older</a>
@@ -705,11 +718,15 @@ add ax, 2    # 取ax中的值1与立即数2进行相加，存放结果到ax
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (9)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (12)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (10)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/04/09/xnio-source/">XNIO源码阅读</a>
+      </li>
     
       <li class="post">
         <a href="/2017/03/09/toy-jit/">实现JVM中的JIT</a>
@@ -727,10 +744,6 @@ add ax, 2    # 取ax中的值1与立即数2进行相加，存放结果到ax
         <a href="/2017/01/08/react-plugin/">ReactJS项目中基于webpack实现页面插件</a>
       </li>
     
-      <li class="post">
-        <a href="/2016/08/16/reverse_html/">一次逆向网页内容加密</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -740,7 +753,7 @@ add ax, 2    # 取ax中的值1与立即数2进行相加，存放结果到ax
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 120.76923076923077%'>java(9)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 127.6923076923077%'>network(12)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 123.07692307692308%'>java(10)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
 </section>
 
   
