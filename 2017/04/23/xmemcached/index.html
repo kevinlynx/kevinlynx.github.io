@@ -5,11 +5,11 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Category: web - loop in codes</title>
+  <title>Xmemcached源码阅读 - loop in codes</title>
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="Category: web">
+  <meta name="description" content="Xmemcached 是一个memcached客户端库。由于它提供的是同步API，而我想看下如何增加异步接口。所以就大致浏览了下它的源码。 主要结构 针对memcache客户端的实现，主要结构如下： XMemcachedClient 是应用主要使用的类，所有针对memcache的接口都在这里 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -18,7 +18,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://codemacro.com/categories/web">
+  <link rel="canonical" href="http://codemacro.com/2017/04/23/xmemcached">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
@@ -63,81 +63,136 @@
   <div id="main">
     <div id="content">
       <div>
-<article role="article">
+<article class="hentry" role="article">
   
   <header>
-    <h1 class="entry-title">Category: web</h1>
+    
+      <h1 class="entry-title">Xmemcached源码阅读</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2017-04-23T00:00:00+08:00'><span class='date'><span class='date-month'>Apr</span> <span class='date-day'>23</span><span class='date-suffix'>rd</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
     
   </header>
-  
-  <div id="blog-archives" class="category">
 
 
+<div class="entry-content"><p><a href="https://github.com/killme2008/xmemcached">Xmemcached</a> 是一个memcached客户端库。由于它提供的是同步API，而我想看下如何增加异步接口。所以就大致浏览了下它的源码。</p>
 
-  
-  <h2>2013</h2>
+<h2>主要结构</h2>
 
-<article>
-  
-<h1><a href="/2013/06/09/ice-web-client/">使用ActionScript开发Ice Web客户端</a></h1>
-<time datetime="2013-06-09T00:00:00+08:00" pubdate><span class='month'>Jun</span> <span class='day'>09</span> <span class='year'>2013</span></time>
+<p>针对memcache客户端的实现，主要结构如下：</p>
 
-<footer>
-  <span class="categories">posted in <a class='category' href='/categories/ice/'>ice</a>, <a class='category' href='/categories/web/'>web</a></span>
-</footer>
+<p><img src="http://i.imgur.com/7r4Y35O.jpg" alt="" /></p>
 
-
-</article>
-
-
-
-  
-  <h2>2012</h2>
-
-<article>
-  
-<h1><a href="/2012/07/24/html-table-hover/">HTML中table的高亮以及tooltip</a></h1>
-<time datetime="2012-07-24T16:08:00+08:00" pubdate><span class='month'>Jul</span> <span class='day'>24</span> <span class='year'>2012</span></time>
-
-<footer>
-  <span class="categories">posted in <a class='category' href='/categories/tips/'>tips</a>, <a class='category' href='/categories/web/'>web</a></span>
-</footer>
+<ul>
+<li><code>XMemcachedClient</code> 是应用主要使用的类，所有针对memcache的接口都在这里</li>
+<li><code>Command</code> 用于抽象二进制协议或文本协议下各个操作，这里称为Command。<code>CommandFactory</code> 用于创建这些command</li>
+<li><code>MemcachedSessionLocator</code> 用于抽象不同的负载均衡策略，或者说数据分布策略。在一个memcached集群中，数据具体存放在哪个replica中，主要就是由这个类的实现具体的，例如<code>KetamaMemcachedSessionLocator</code> 实现了一致性哈希策略</li>
+<li><code>MemcachedConnector</code> 包装了网络部分，与每一个memcached建立连接后，就得到一个<code>Session</code>。command的发送都在<code>MemcachedConnector</code>中实现</li>
+<li>各个Session类/接口，则涉及到Xmemcached使用的网络库yanf4j。这个库也是Xmemcached作者的。</li>
+</ul>
 
 
-</article>
+<!-- more -->
 
 
+<p>Command 类的实现中有个关键的<code>CountDownLatch</code>。在将Command通过session发送出去之后，就利用这个latch同步等待，等到网络模块收到数据后回调。Command会和session绑定，在这个session上收到数据后，就认为是这个command的回应。</p>
 
-<article>
-  
-<h1><a href="/2012/07/20/get-client-timezone-in-rails/">Rails中获取客户端时区</a></h1>
-<time datetime="2012-07-20T16:42:00+08:00" pubdate><span class='month'>Jul</span> <span class='day'>20</span> <span class='year'>2012</span></time>
+<p>由于本身memcached库核心东西比较少，上面的结构也就很好理解。协议的抽象和数据分布策略的抽象是必须的。接下来看看网络实现部分。</p>
 
-<footer>
-  <span class="categories">posted in <a class='category' href='/categories/tips/'>tips</a>, <a class='category' href='/categories/web/'>web</a></span>
-</footer>
+<h2>网络实现</h2>
 
+<p>Xmemcached的网络实现主要结构如下：</p>
 
-</article>
+<p><img src="http://i.imgur.com/pwGjcgQ.jpg" alt="" /></p>
 
-
-
-<article>
-  
-<h1><a href="/2012/07/19/popup-window-in-html/">HTML中实现弹出窗口</a></h1>
-<time datetime="2012-07-19T14:56:00+08:00" pubdate><span class='month'>Jul</span> <span class='day'>19</span> <span class='year'>2012</span></time>
-
-<footer>
-  <span class="categories">posted in <a class='category' href='/categories/tips/'>tips</a>, <a class='category' href='/categories/web/'>web</a></span>
-</footer>
+<ul>
+<li><code>SocketChannelController</code>，主要的类，将IO事件通知转交给session</li>
+<li><code>NioController</code>，主要关注其成员<code>SelectorManagrer</code></li>
+<li><code>SelectorManager</code> 内置若干个<code>Reactor</code>，数量由CPU核数决定</li>
+<li><code>Reactor</code>，IO事件的产生器，一个Reactor对应一个线程，线程循环中不断轮询NIO selector是否产生了IO事件</li>
+<li><code>CodecFactory</code>，编解码网络消息接口</li>
+<li><code>PoolDispatcher</code> ，Dispatcher 用于调度一个IO事件的具体处理过程，而<code>PoolDispatcher</code>则是放到一个单独的线程池中处理</li>
+<li><code>DispatcherFactory</code> ，用于创建具体的dispatcher</li>
+</ul>
 
 
-</article>
+<p>这个网络实现还是比较典型的Reactor模式。其中，产生IO事件后，IO事件的具体处理，默认交给了一个独立的线程池。一般网络库都会提供类似的机制，以使得IO线程不至于被业务逻辑阻塞住，导致IO处理效率下降。</p>
+
+<p>写数据时，数据都会写到一个队列中，在设备可写时才具体写入。看下具体的读数据过程：</p>
+
+<p><img src="http://i.imgur.com/N7XqVS7.jpg" alt="" /></p>
+
+<p>从Reactor中最终调用到Xmemcached的command，用于具体解析回应数据。要调整为异步的话，则可以修改Command的实现，增加异步回调。同时注意控制dispatcher使用的线程池。</p>
+
+<p>完。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2017/04/23/xmemcached/'>http://codemacro.com/2017/04/23/xmemcached/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
 
 </div>
 
+
+  <footer>
+    <p class="meta">
+      
   
+
+<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2017-04-23T00:00:00+08:00'><span class='date'><span class='date-month'>Apr</span> <span class='date-day'>23</span><span class='date-suffix'>rd</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/categories/java/'>java</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/2017/04/09/xnio-source/" title="Previous Post: XNIO源码阅读">&laquo; XNIO源码阅读</a>
+      
+      
+    </p>
+  </footer>
 </article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><!-- UY BEGIN -->
+<div id="uyan_frame"></div>
+<script type="text/javascript" src="http://v2.uyan.cc/code/uyan.js?uid=1537634"></script>
+<!-- UY END -->
+
+</div>
+  </section>
 
 </div>
 

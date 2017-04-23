@@ -4,7 +4,7 @@
   <title><![CDATA[Category: java | loop in codes]]></title>
   <link href="http://codemacro.com/categories/java/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2017-04-09T13:22:56+08:00</updated>
+  <updated>2017-04-23T21:07:29+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,64 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Xmemcached源码阅读]]></title>
+    <link href="http://codemacro.com/2017/04/23/xmemcached/"/>
+    <updated>2017-04-23T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2017/04/23/xmemcached</id>
+    <content type="html"><![CDATA[<p><a href="https://github.com/killme2008/xmemcached">Xmemcached</a> 是一个memcached客户端库。由于它提供的是同步API，而我想看下如何增加异步接口。所以就大致浏览了下它的源码。</p>
+
+<h2>主要结构</h2>
+
+<p>针对memcache客户端的实现，主要结构如下：</p>
+
+<p><img src="http://i.imgur.com/7r4Y35O.jpg" alt="" /></p>
+
+<ul>
+<li><code>XMemcachedClient</code> 是应用主要使用的类，所有针对memcache的接口都在这里</li>
+<li><code>Command</code> 用于抽象二进制协议或文本协议下各个操作，这里称为Command。<code>CommandFactory</code> 用于创建这些command</li>
+<li><code>MemcachedSessionLocator</code> 用于抽象不同的负载均衡策略，或者说数据分布策略。在一个memcached集群中，数据具体存放在哪个replica中，主要就是由这个类的实现具体的，例如<code>KetamaMemcachedSessionLocator</code> 实现了一致性哈希策略</li>
+<li><code>MemcachedConnector</code> 包装了网络部分，与每一个memcached建立连接后，就得到一个<code>Session</code>。command的发送都在<code>MemcachedConnector</code>中实现</li>
+<li>各个Session类/接口，则涉及到Xmemcached使用的网络库yanf4j。这个库也是Xmemcached作者的。</li>
+</ul>
+
+
+<!-- more -->
+
+
+<p>Command 类的实现中有个关键的<code>CountDownLatch</code>。在将Command通过session发送出去之后，就利用这个latch同步等待，等到网络模块收到数据后回调。Command会和session绑定，在这个session上收到数据后，就认为是这个command的回应。</p>
+
+<p>由于本身memcached库核心东西比较少，上面的结构也就很好理解。协议的抽象和数据分布策略的抽象是必须的。接下来看看网络实现部分。</p>
+
+<h2>网络实现</h2>
+
+<p>Xmemcached的网络实现主要结构如下：</p>
+
+<p><img src="http://i.imgur.com/pwGjcgQ.jpg" alt="" /></p>
+
+<ul>
+<li><code>SocketChannelController</code>，主要的类，将IO事件通知转交给session</li>
+<li><code>NioController</code>，主要关注其成员<code>SelectorManagrer</code></li>
+<li><code>SelectorManager</code> 内置若干个<code>Reactor</code>，数量由CPU核数决定</li>
+<li><code>Reactor</code>，IO事件的产生器，一个Reactor对应一个线程，线程循环中不断轮询NIO selector是否产生了IO事件</li>
+<li><code>CodecFactory</code>，编解码网络消息接口</li>
+<li><code>PoolDispatcher</code> ，Dispatcher 用于调度一个IO事件的具体处理过程，而<code>PoolDispatcher</code>则是放到一个单独的线程池中处理</li>
+<li><code>DispatcherFactory</code> ，用于创建具体的dispatcher</li>
+</ul>
+
+
+<p>这个网络实现还是比较典型的Reactor模式。其中，产生IO事件后，IO事件的具体处理，默认交给了一个独立的线程池。一般网络库都会提供类似的机制，以使得IO线程不至于被业务逻辑阻塞住，导致IO处理效率下降。</p>
+
+<p>写数据时，数据都会写到一个队列中，在设备可写时才具体写入。看下具体的读数据过程：</p>
+
+<p><img src="http://i.imgur.com/N7XqVS7.jpg" alt="" /></p>
+
+<p>从Reactor中最终调用到Xmemcached的command，用于具体解析回应数据。要调整为异步的话，则可以修改Command的实现，增加异步回调。同时注意控制dispatcher使用的线程池。</p>
+
+<p>完。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[XNIO源码阅读]]></title>
@@ -792,115 +850,6 @@ sun.misc.Launcher$AppClassLoader@157c2bd
 <p>即，当你把一个对象A传递到另一个线程中，这个线程由对象B创建，A/B两个对象对应的类关联的class loader不同，在B的线程中调用A.some_method，some_method加载资源或类时，如果使用了<code>Class.getClassLoader</code>或<code>Class.forName</code>时，实际使用的是A的class loader，而这个行为可能不是预期的。这个时候就需要将代码改为<code>Thread.currentThread().getContextClassLoader()</code>。</p>
 
 <p>完。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Java GC总结]]></title>
-    <link href="http://codemacro.com/2015/08/10/java-gc-summary/"/>
-    <updated>2015-08-10T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2015/08/10/java-gc-summary</id>
-    <content type="html"><![CDATA[<p>Java GC相关的文章有很多，本文只做概要性总结，主要内容来源于&lt;深入理解Java虚拟机>。</p>
-
-<h2>对象存活性判定</h2>
-
-<p>对象存活性判定用于确定一个对象是死是活，死掉的对象则需要被垃圾回收。主要包括的方法：</p>
-
-<ul>
-<li>引用计数</li>
-<li>可达性分析</li>
-</ul>
-
-
-<p>可达性分析的基本思想是：</p>
-
-<blockquote><p>通过一系列的称为&#8221;GC Roots&#8221;的对象作为起始点，从这些节点开始向下搜索，搜索所走过的路径称为引用链，当一个对象到GC Roots没有任何引用链项链时，则证明此对象是不可用的。</p></blockquote>
-
-<p>在Java中有很多种类的对象可以作为GC Roots，例如类静态属性引用的对象。</p>
-
-<h2>垃圾收集算法</h2>
-
-<p>确定了哪些对象是需要回收之后，就可以运用各种垃圾收集算法收集这些对象，例如直接回收内存，或者回收并移动整理内存。</p>
-
-<p>主要包括：</p>
-
-<ul>
-<li>标记清除(Mark-Sweep)算法：首先标记出需要回收的对象，然后统一回收被标记的对象</li>
-<li>复制(Copying)算法：将可用内存分块，当一块内存用完后将存活对象复制到其他块，并统一回收不使用的块。Java中新生代对象一般使用该方法</li>
-<li>标记整理(Mark-Compact)算法：基本同标记清除，不同的是回收时是把可用对象进行移动，以避免内存碎片问题</li>
-<li>分代收集，将内存分区域，不同区域采用不同的算法，例如Java中的新生代及老年代</li>
-</ul>
-
-
-<!-- more -->
-
-
-<p><img src="/assets/res/heap-structure.png" alt="" /></p>
-
-<p>如上，Java Hotspot虚拟机实现中将堆内存分为3大区域，即新生代、老年代、永久代。新生代中又分了eden、survivor0及survivor1，采用复制算法；老年代则采用标记清除及标记整理；永久代存放加载的类，类似于代码段，但同样会发生GC。</p>
-
-<h2>垃圾收集器</h2>
-
-<p>垃圾收集算法在实现时会略有不同，不同的实现称为垃圾收集器。不同的垃圾收集器适用的范围还不一样，有些收集器仅能用于新生代，有些用于老年代，有些新生代老年代都可以被使用。垃圾收集器可通过JVM启动参数指定。</p>
-
-<p><img src="/assets/res/hotspot-gc-collectors.png" alt="" /></p>
-
-<p>上图中展示了新生代（年轻代）和老年代可用的各种垃圾收集器，图中的连线表示两种收集器可以配合使用。</p>
-
-<ul>
-<li>Serial收集器，单线程收集，复制算法</li>
-<li>ParNew收集器，Serial收集器的多线程版本</li>
-<li>Parallel Scavenge收集器，复制算法，吞吐量优先的收集器，更高效率地利用CPU时间，适合用于服务器程序</li>
-<li>Serial Old收集器，单线程收集，标记整理算法</li>
-<li>Parallel Old收集器，标记整理算法，Parallel Scavenge收集器的老年代版本</li>
-<li>CMS(Concurrent Mark Sweep)收集器，标记清除算法，以获取最短停顿时间为目标的收集器</li>
-<li>G1收集器，较新的收集器实现</li>
-</ul>
-
-
-<p>JVM有些参数组合了各种收集器，例如：</p>
-
-<ul>
-<li><code>UseConcMarkSweepGC</code>：使用ParNew + CMS + Serial Old收集器</li>
-<li><code>UseParallelGC</code>，运行在server模式下的默认值，使用Parallel Scavenge + Serial Old 收集器</li>
-</ul>
-
-
-<h2>GC日志</h2>
-
-<p>生产服务器一般会配置GC日志，以在故障时能够分析问题所在，一般的应用可配置以下JVM参数：</p>
-
-<pre><code>-XX:+UseParallelGC -XX:+DisableExplicitGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./logs/gc.log 
-</code></pre>
-
-<p>输出日志类似：</p>
-
-<pre><code>1456772.057: [GC [PSYoungGen: 33824K-&gt;96K(33920K)] 53841K-&gt;20113K(102208K), 0.0025050 secs] [Times: user=0.00 sys=0.00, real=0.00 secs]
-1456863.534: [GC [PSYoungGen: 33824K-&gt;96K(33920K)] 53841K-&gt;20113K(102208K), 0.0020050 secs] [Times: user=0.00 sys=0.00, real=0.00 secs]
-1456962.061: [GC [PSYoungGen: 33824K-&gt;128K(33920K)] 53841K-&gt;20145K(102208K), 0.0014150 secs] [Times: user=0.01 sys=0.00, real=0.00 secs]
-</code></pre>
-
-<ul>
-<li><code>1456772.057</code>，自JVM启动后的时间值</li>
-<li><code>GC</code> 表示本次进行的是一次minor GC，即年轻代中的GC</li>
-<li><code>PSYoungGen</code> 垃圾收集器类型，这里是Parallel Scavenge</li>
-<li><code>33824K-&gt;96K(33920K)</code>，收集前后新生代大小，<code>33920K</code>为新生代总大小(eden+ 1 survivor)</li>
-<li><code>53841K-&gt;20113K(102208K)</code>，堆总大小及GC前后大小</li>
-<li><code>0.0025050 secs</code>，GC时停顿时间</li>
-</ul>
-
-
-<h2>常见策略</h2>
-
-<p>JVM GC相关的有一些策略值得注意：</p>
-
-<ul>
-<li>对象优先在eden分配，当回收时（Eden区可用内存不够），将Eden和当前Survivor还存活着的对象一次性复制到另外一块Survivor，最后清理Eden和刚才用过的Survivor。这个过程称为一次MinorGC，每次MinorGC就会增加活着对象的年龄，当年龄超过某值(-XX:MaxTenuringThreashold)时，就会被转移到老年代(Tenured)。老年代发生GC时被称为FullGC</li>
-<li>每一次发生MinorGC而存活下来的对象其年龄都会加1，较老的对象会进入老年代</li>
-<li>当分配大对象(> PretenureSizeThreshold)时，其就会直接进入老年代</li>
-<li>当年轻代(Eden+Survivor)不足以容纳存活对象时，这些对象会被全部放入老年代(分配担保机制)</li>
-</ul>
-
 ]]></content>
   </entry>
   
