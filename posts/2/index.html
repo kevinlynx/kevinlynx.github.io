@@ -9,7 +9,8 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="之前在公司里维护了一个名字服务，这个名字服务日常管理了近4000台机器，有4000个左右的客户端连接上来获取机器信息，由于其基本是一个单点服务，所以某些模块接近瓶颈。后来倒是有重构计划，详细设计做了，代码都写了一部分，结果由于某些原因重构就被终止了。 JCM是我业余时间用Java重写的一个版本， &hellip;">
+  <meta name="description" content="Java GC相关的文章有很多，本文只做概要性总结，主要内容来源于&lt;深入理解Java虚拟机>。 对象存活性判定 对象存活性判定用于确定一个对象是死是活，死掉的对象则需要被垃圾回收。主要包括的方法： 引用计数
+可达性分析 可达性分析的基本思想是： 通过一系列的称为&#8221;GC Roots &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +65,70 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2015/08/10/java-gc-summary/">Java GC总结</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-08-10T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>10</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>Java GC相关的文章有很多，本文只做概要性总结，主要内容来源于&lt;深入理解Java虚拟机>。</p>
+
+<h2>对象存活性判定</h2>
+
+<p>对象存活性判定用于确定一个对象是死是活，死掉的对象则需要被垃圾回收。主要包括的方法：</p>
+
+<ul>
+<li>引用计数</li>
+<li>可达性分析</li>
+</ul>
+
+
+<p>可达性分析的基本思想是：</p>
+
+<blockquote><p>通过一系列的称为&#8221;GC Roots&#8221;的对象作为起始点，从这些节点开始向下搜索，搜索所走过的路径称为引用链，当一个对象到GC Roots没有任何引用链项链时，则证明此对象是不可用的。</p></blockquote>
+
+<p>在Java中有很多种类的对象可以作为GC Roots，例如类静态属性引用的对象。</p>
+
+<h2>垃圾收集算法</h2>
+
+<p>确定了哪些对象是需要回收之后，就可以运用各种垃圾收集算法收集这些对象，例如直接回收内存，或者回收并移动整理内存。</p>
+
+<p>主要包括：</p>
+
+<ul>
+<li>标记清除(Mark-Sweep)算法：首先标记出需要回收的对象，然后统一回收被标记的对象</li>
+<li>复制(Copying)算法：将可用内存分块，当一块内存用完后将存活对象复制到其他块，并统一回收不使用的块。Java中新生代对象一般使用该方法</li>
+<li>标记整理(Mark-Compact)算法：基本同标记清除，不同的是回收时是把可用对象进行移动，以避免内存碎片问题</li>
+<li>分代收集，将内存分区域，不同区域采用不同的算法，例如Java中的新生代及老年代</li>
+</ul>
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2015/08/10/java-gc-summary/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -639,86 +704,6 @@ add ax, 2    # 取ax中的值1与立即数2进行相加，存放结果到ax
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2014/12/03/gdb_stl/">基于内存查看STL常用容器内容</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2014-12-03T00:00:00+08:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>3</span><span class='date-suffix'>rd</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>有时候在线上使用gdb调试程序core问题时，可能没有符号文件，拿到的仅是一个内存地址，如果这个指向的是一个STL对象，那么如何查看这个对象的内容呢？</p>
-
-<p>只需要知道STL各个容器的数据结构实现，就可以查看其内容。本文描述了SGI STL实现中常用容器的数据结构，以及如何在gdb中查看其内容。</p>
-
-<h2>string</h2>
-
-<p>string，即<code>basic_string</code> <code>bits/basic_string.h</code>：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">mutable</span> <span class="n">_Alloc_hider</span>  <span class="n">_M_dataplus</span><span class="p">;</span>
-    <span class="p">...</span> 
-      <span class="k">const</span> <span class="n">_CharT</span><span class="o">*</span>
-      <span class="n">c_str</span><span class="p">()</span> <span class="k">const</span>
-      <span class="p">{</span> <span class="k">return</span> <span class="n">_M_data</span><span class="p">();</span> <span class="p">}</span>
-    <span class="p">...</span>    
-      <span class="n">_CharT</span><span class="o">*</span>
-      <span class="n">_M_data</span><span class="p">()</span> <span class="k">const</span> 
-      <span class="p">{</span> <span class="k">return</span>  <span class="n">_M_dataplus</span><span class="p">.</span><span class="n">_M_p</span><span class="p">;</span> <span class="p">}</span>
-
-    <span class="p">...</span>
-      <span class="k">struct</span> <span class="nl">_Alloc_hider</span> <span class="p">:</span> <span class="n">_Alloc</span>
-      <span class="p">{</span>
-    <span class="n">_Alloc_hider</span><span class="p">(</span><span class="n">_CharT</span><span class="o">*</span> <span class="n">__dat</span><span class="p">,</span> <span class="k">const</span> <span class="n">_Alloc</span><span class="o">&amp;</span> <span class="n">__a</span><span class="p">)</span>
-    <span class="o">:</span> <span class="n">_Alloc</span><span class="p">(</span><span class="n">__a</span><span class="p">),</span> <span class="n">_M_p</span><span class="p">(</span><span class="n">__dat</span><span class="p">)</span> <span class="p">{</span> <span class="p">}</span>
-
-    <span class="n">_CharT</span><span class="o">*</span> <span class="n">_M_p</span><span class="p">;</span> <span class="c1">// The actual data.</span>
-      <span class="p">};</span>
-   
-      <span class="n">size_type</span>
-      <span class="n">length</span><span class="p">()</span> <span class="k">const</span>
-      <span class="p">{</span> <span class="k">return</span> <span class="n">_M_rep</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">_M_length</span><span class="p">;</span> <span class="p">}</span>
-
-      <span class="n">_Rep</span><span class="o">*</span>
-      <span class="n">_M_rep</span><span class="p">()</span> <span class="k">const</span>
-      <span class="p">{</span> <span class="k">return</span> <span class="o">&amp;</span><span class="p">((</span><span class="k">reinterpret_cast</span><span class="o">&lt;</span><span class="n">_Rep</span><span class="o">*&gt;</span> <span class="p">(</span><span class="n">_M_data</span><span class="p">()))[</span><span class="o">-</span><span class="mi">1</span><span class="p">]);</span> <span class="p">}</span>
-
-      <span class="p">...</span>
-       <span class="k">struct</span> <span class="n">_Rep_base</span>
-      <span class="p">{</span>
-    <span class="n">size_type</span>       <span class="n">_M_length</span><span class="p">;</span>
-    <span class="n">size_type</span>       <span class="n">_M_capacity</span><span class="p">;</span>
-    <span class="n">_Atomic_word</span>        <span class="n">_M_refcount</span><span class="p">;</span>
-      <span class="p">};</span>
-
-      <span class="k">struct</span> <span class="nl">_Rep</span> <span class="p">:</span> <span class="n">_Rep_base</span></code></pre></div>
-
-
-<p>即，string内有一个指针，指向实际的字符串位置，这个位置前面有一个<code>_Rep</code>结构，其内保存了字符串的长度、可用内存以及引用计数。当我们拿到一个string对象的地址时，可以通过以下代码获取相关值：</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2014/12/03/gdb_stl/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/3">&larr; Older</a>
@@ -733,11 +718,15 @@ add ax, 2    # 取ax中的值1与立即数2进行相加，存放结果到ax
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (11)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/05/18/memcache-proxy/">实现一个memcache proxy</a>
+      </li>
     
       <li class="post">
         <a href="/2017/04/23/xmemcached/">Xmemcached源码阅读</a>
@@ -755,10 +744,6 @@ add ax, 2    # 取ax中的值1与立即数2进行相加，存放结果到ax
         <a href="/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>
       </li>
     
-      <li class="post">
-        <a href="/2017/02/05/mini-requirejs/">RequireJS最简实现</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -768,7 +753,7 @@ add ax, 2    # 取ax中的值1与立即数2进行相加，存放结果到ax
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 125.38461538461539%'>java(11)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
 </section>
 
   

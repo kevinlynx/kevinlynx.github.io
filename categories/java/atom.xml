@@ -4,7 +4,7 @@
   <title><![CDATA[Category: java | loop in codes]]></title>
   <link href="http://codemacro.com/categories/java/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2017-04-23T21:07:29+08:00</updated>
+  <updated>2017-05-18T20:10:14+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,101 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[实现一个memcache proxy]]></title>
+    <link href="http://codemacro.com/2017/05/18/memcache-proxy/"/>
+    <updated>2017-05-18T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2017/05/18/memcache-proxy</id>
+    <content type="html"><![CDATA[<p>通常我们会使用多台memcached构成一个集群，通过客户端库来实现缓存数据的分片(replica)。这会带来2个主要问题：</p>
+
+<ul>
+<li>memcached机器连接数过多</li>
+<li>不利于做整体的服务化；缺少可运维性。例如想对接入的客户端做应用级隔离；或者对缓存数据做多区域(机房)的冗余</li>
+</ul>
+
+
+<p>实现一个memcache proxy，相对于减少连接数来说，主要可以提供更多的扩展性。目前已经存在一些不错的memcache proxy，例如twitter的<a href="https://github.com/twitter/twemproxy">twemproxy</a>，facebook的<a href="https://github.com/facebook/mcrouter">mcrouter</a>。稍微调研了下，发现twemproxy虽然轻量，但功能较弱；mcrouter功能齐全，类似多区域多写的需求也满足。处于好玩的目的，之前又读过网络库<a href="http://codemacro.com/2017/04/09/xnio-source/">xnio</a>源码，我还是决定自己实现一个。</p>
+
+<!-- more -->
+
+
+<p>这个项目简单取名为<a href="https://github.com/kevinlynx/kvproxy">kvproxy</a>，通过简单的抽象可以实现为memcache或redis等key-value形式的服务proxy。 这是一些预想中的<a href="https://github.com/kevinlynx/kvproxy/blob/master/design.md">feature</a>。</p>
+
+<p>在目前的阶段，主要关注于其性能。因为memcached本身的RT非常小，所以这个proxy的性能就要求比较高。这里主要先关注下核心功能的实现。</p>
+
+<h2>架构</h2>
+
+<p>如下图：</p>
+
+<p><img src="http://i.imgur.com/VxrSdKT.png" alt="" /></p>
+
+<ul>
+<li><code>Service</code>，用于抽象key-value服务，如memcache；<code>MemcacheService</code>是其实现之一</li>
+<li><code>ServerLocator</code>，用于定位memcached机器列表，例如<code>ConstantLocator</code>则是从配置文件中读取。可以实现一个从名字服务读取列表的locator。</li>
+<li><code>Connection</code>，配合<code>KVProxy</code>，基于xnio，表示一个与客户端的连接</li>
+<li><code>ConnectionListener</code>，用于处理网络连接上的请求，例如<code>RequestHandler</code>则是<code>MemcaheService</code>中的listener，用于处理从客户端发过来的memcache协议请求</li>
+<li><code>MemClient</code>，包装memcache客户端，用于proxy将请求转发到后端的memcache服务</li>
+<li><code>GroupClient</code>，包装<code>MemClient</code>，可以用于多区域数据的同时写入，目前实现为单个primary及多个slave。写数据同步写入primary异步写入slave；读取数据则只从primary读。</li>
+</ul>
+
+
+<p>本身要抽象的东西不复杂，所以结构其实是很简单的，也没有花太多心思。接下来关注下性能方面的问题。</p>
+
+<h2>异步性</h2>
+
+<p>作为一个proxy，异步基本是必然选择的方案，指的是，proxy在收到memcache的请求时，不阻塞当前的IO线程，形成一个请求context，在收到回应时拿到这个context来回应客户端。这样通过增加消耗的内存，来释放CPU资源，可以让IO模块尽可能多地接收从客户端来的请求。当然，如果请求过多，可能就会耗尽内存。</p>
+
+<p>为了简单，我没有自己实现memcache client。网络上有很多开源的memcache client。我试了几个，例如<a href="http://codemacro.com/2017/04/23/xmemcached/">xmemcached</a>(为此还读过它的源码)，但由于这些客户端都是同步的，虽然可以自己起线程池来把同步包装为异步，但始终不是最优方案。最后无意发现了<a href="https://github.com/spotify/folsom">folsom</a>，集成到kvproxy后性能表现还不错。当然，真正要做到性能最优，最好还是自己实现memcache client，这样可以使用同一个xnio reactor，不用开那么多IO线程，拿到数据后就可以直接得到ByteBuffer，应该可以减少内存拷贝操作(能提高多少也不确定)。</p>
+
+<h2>性能测试</h2>
+
+<p>我使用了<a href="https://github.com/RedisLabs/memtier_benchmark">memtier_benchmark</a>来做压力测试。测试环境是16core的虚拟机(宿主机不同)，benchmark工具同目标测试服务部署在不同的机器，proxy同memcache部署在相同机器。目标服务基于OS centos7，测试命令为：</p>
+
+<pre><code>./memtier_benchmark -s 127.0.0.1 -p 22122 -P memcache_text --test-time 60 -d 4096 --hide-histogram
+</code></pre>
+
+<p>默认开启4个压测线程，每个线程建立50个连接，测试60秒，默认设置是1:10的set/get。</p>
+
+<p>首先是直接压测memcached：</p>
+
+<pre><code>ALL STATS
+========================================================================
+Type        Ops/sec     Hits/sec   Misses/sec      Latency       KB/sec
+------------------------------------------------------------------------
+Sets        5729.65          ---          ---      3.27500     23141.85
+Gets       57279.42        80.33     57199.09      3.16000      1771.99
+Waits          0.00          ---          ---      0.00000          ---
+Totals     63009.07        80.33     57199.09      3.17000     24913.84
+</code></pre>
+
+<p>然后我压测了twitter的twemproxy，RT差不多增加70%。</p>
+
+<pre><code>ALL STATS
+========================================================================
+Type        Ops/sec     Hits/sec   Misses/sec      Latency       KB/sec
+------------------------------------------------------------------------
+Sets        3344.58          ---          ---      5.58400     13508.68
+Gets       33430.28        40.00     33390.28      5.41900      1006.32
+Waits          0.00          ---          ---      0.00000          ---
+Totals     36774.85        40.00     33390.28      5.43400     14515.00
+</code></pre>
+
+<p>最后是压测kvproxy (jdk8)，只与memcache建立一个连接，RT增加95%，基本上翻倍。不过由于是Java实现，相对于twemproxy的C实现感觉也不差。当然，机器资源消耗更大(主要是内存)。</p>
+
+<pre><code>ALL STATS
+========================================================================
+Type        Ops/sec     Hits/sec   Misses/sec      Latency       KB/sec
+------------------------------------------------------------------------
+Sets        2959.41          ---          ---      6.62400     11953.00
+Gets       29578.47        33.90     29544.57      6.20800       884.38
+Waits          0.00          ---          ---      0.00000          ---
+Totals     32537.88        33.90     29544.57      6.24600     12837.37
+</code></pre>
+
+<p>压测中IO线程CPU并没有跑满，推测是虚拟机之间的网络带宽还是不够。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Xmemcached源码阅读]]></title>
@@ -141,59 +236,61 @@
 
 <p>理清了以上关系，就可以不用那个deprecated的API来实现一个echo server：</p>
 
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">class</span> <span class="nc">ReadListener</span> <span class="kd">implements</span> <span class="n">ChannelListener</span><span class="o">&lt;</span><span class="n">StreamSourceChannel</span><span class="o">&gt;</span> <span class="o">{</span>
-  <span class="c1">// 保存一个可写的channel，才能在读listener里做写操作</span>
-  <span class="kd">private</span> <span class="n">StreamSinkChannel</span> <span class="n">sinkChannel</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight java %}
+class ReadListener implements ChannelListener<StreamSourceChannel> {
+  // 保存一个可写的channel，才能在读listener里做写操作
+  private StreamSinkChannel sinkChannel;</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="kd">public</span> <span class="nf">ReadListener</span><span class="o">(</span><span class="n">StreamSinkChannel</span> <span class="n">sinkChannel</span><span class="o">)</span> <span class="o">{</span>
-    <span class="k">this</span><span class="o">.</span><span class="na">sinkChannel</span> <span class="o">=</span> <span class="n">sinkChannel</span><span class="o">;</span>
-  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>  public ReadListener(StreamSinkChannel sinkChannel) {
+    this.sinkChannel = sinkChannel;
+  }</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">handleEvent</span><span class="o">(</span><span class="n">StreamSourceChannel</span> <span class="n">channel</span><span class="o">)</span> <span class="o">{</span>
-    <span class="kd">final</span> <span class="n">ByteBuffer</span> <span class="n">buffer</span> <span class="o">=</span> <span class="n">ByteBuffer</span><span class="o">.</span><span class="na">allocate</span><span class="o">(</span><span class="mi">512</span><span class="o">);</span>
-    <span class="kt">int</span> <span class="n">res</span><span class="o">;</span>
-    <span class="k">try</span> <span class="o">{</span>
-      <span class="k">while</span> <span class="o">((</span><span class="n">res</span> <span class="o">=</span> <span class="n">channel</span><span class="o">.</span><span class="na">read</span><span class="o">(</span><span class="n">buffer</span><span class="o">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
-        <span class="n">buffer</span><span class="o">.</span><span class="na">flip</span><span class="o">();</span>
-        <span class="n">Channels</span><span class="o">.</span><span class="na">writeBlocking</span><span class="o">(</span><span class="n">sinkChannel</span><span class="o">,</span> <span class="n">buffer</span><span class="o">);</span>
-      <span class="o">}</span>
-      <span class="n">Channels</span><span class="o">.</span><span class="na">flushBlocking</span><span class="o">(</span><span class="n">sinkChannel</span><span class="o">);</span>
-      <span class="k">if</span> <span class="o">(</span><span class="n">res</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="o">)</span> <span class="o">{</span>
-        <span class="n">channel</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
-      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
-        <span class="n">channel</span><span class="o">.</span><span class="na">resumeReads</span><span class="o">();</span>
-      <span class="o">}</span>
-    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-      <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-      <span class="n">IoUtils</span><span class="o">.</span><span class="na">safeClose</span><span class="o">(</span><span class="n">channel</span><span class="o">);</span>
-    <span class="o">}</span>
-  <span class="o">}</span>
-<span class="o">}</span>
-<span class="kd">final</span> <span class="n">ChannelListener</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;</span><span class="n">AcceptingChannel</span><span class="o">&lt;</span><span class="n">StreamConnection</span><span class="o">&gt;&gt;</span> <span class="n">acceptListener</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ChannelListener</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;</span><span class="n">AcceptingChannel</span><span class="o">&lt;</span><span class="n">StreamConnection</span><span class="o">&gt;&gt;()</span> <span class="o">{</span>
-  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">handleEvent</span><span class="o">(</span><span class="n">AcceptingChannel</span><span class="o">&lt;</span><span class="n">StreamConnection</span><span class="o">&gt;</span> <span class="n">channel</span><span class="o">)</span> <span class="o">{</span>
-    <span class="k">try</span> <span class="o">{</span>
-      <span class="n">StreamConnection</span> <span class="n">accepted</span><span class="o">;</span>
-      <span class="c1">// channel is ready to accept zero or more connections</span>
-      <span class="k">while</span> <span class="o">((</span><span class="n">accepted</span> <span class="o">=</span> <span class="n">channel</span><span class="o">.</span><span class="na">accept</span><span class="o">())</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">accepted</span> <span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span>
-            <span class="o">+</span> <span class="n">accepted</span><span class="o">.</span><span class="na">getPeerAddress</span><span class="o">());</span>
-        <span class="c1">// stream channel has been accepted at this stage.</span>
-        <span class="c1">// read listener is set; start it up</span>
-        <span class="n">accepted</span><span class="o">.</span><span class="na">getSourceChannel</span><span class="o">().</span><span class="na">setReadListener</span><span class="o">(</span><span class="k">new</span> <span class="nf">ReadListener</span><span class="o">(</span><span class="n">accepted</span><span class="o">.</span><span class="na">getSinkChannel</span><span class="o">()));</span>
-        <span class="n">accepted</span><span class="o">.</span><span class="na">getSourceChannel</span><span class="o">().</span><span class="na">resumeReads</span><span class="o">();</span>
-      <span class="o">}</span>
-    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">IOException</span> <span class="n">ignored</span><span class="o">)</span> <span class="o">{</span>
-    <span class="o">}</span>
-  <span class="o">}</span>
-<span class="o">};</span>
-<span class="kd">final</span> <span class="n">XnioWorker</span> <span class="n">worker</span> <span class="o">=</span> <span class="n">Xnio</span><span class="o">.</span><span class="na">getInstance</span><span class="o">().</span><span class="na">createWorker</span><span class="o">(</span>
-    <span class="n">OptionMap</span><span class="o">.</span><span class="na">EMPTY</span><span class="o">);</span>
-<span class="c1">// Create the server.</span>
-<span class="n">AcceptingChannel</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?</span> <span class="kd">extends</span> <span class="n">StreamConnection</span><span class="o">&gt;</span> <span class="n">server</span> <span class="o">=</span> <span class="n">worker</span>
-    <span class="o">.</span><span class="na">createStreamConnectionServer</span><span class="o">(</span><span class="k">new</span> <span class="nf">InetSocketAddress</span><span class="o">(</span><span class="mi">12345</span><span class="o">),</span>
-        <span class="n">acceptListener</span><span class="o">,</span> <span class="n">OptionMap</span><span class="o">.</span><span class="na">EMPTY</span><span class="o">);</span>
-<span class="c1">// lets start accepting connections</span>
-<span class="n">server</span><span class="o">.</span><span class="na">resumeAccepts</span><span class="o">();</span></code></pre></div></p>
+<p>  public void handleEvent(StreamSourceChannel channel) {
+    final ByteBuffer buffer = ByteBuffer.allocate(512);
+    int res;
+    try {
+      while ((res = channel.read(buffer)) > 0) {
+        buffer.flip();
+        Channels.writeBlocking(sinkChannel, buffer);
+      }
+      Channels.flushBlocking(sinkChannel);
+      if (res == -1) {
+        channel.close();
+      } else {
+        channel.resumeReads();
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+      IoUtils.safeClose(channel);
+    }
+  }
+}
+final ChannelListener&lt;AcceptingChannel<StreamConnection>> acceptListener = new ChannelListener&lt;AcceptingChannel<StreamConnection>>() {
+  public void handleEvent(AcceptingChannel<StreamConnection> channel) {
+    try {
+      StreamConnection accepted;
+      // channel is ready to accept zero or more connections
+      while ((accepted = channel.accept()) != null) {
+        System.out.println(&ldquo;accepted &rdquo;
+            + accepted.getPeerAddress());
+        // stream channel has been accepted at this stage.
+        // read listener is set; start it up
+        accepted.getSourceChannel().setReadListener(new ReadListener(accepted.getSinkChannel()));
+        accepted.getSourceChannel().resumeReads();
+      }
+    } catch (IOException ignored) {
+    }
+  }
+};
+final XnioWorker worker = Xnio.getInstance().createWorker(
+    OptionMap.EMPTY);
+// Create the server.
+AcceptingChannel&lt;? extends StreamConnection> server = worker
+    .createStreamConnectionServer(new InetSocketAddress(12345),
+        acceptListener, OptionMap.EMPTY);
+// lets start accepting connections
+server.resumeAccepts();
+{% endhighlight %}</p>
 
 <p>完。</p>
 ]]></content>
@@ -682,174 +779,6 @@ opcode [B7] - 0008: invokespecial 3 [Methodref: test.Simple2. , parameter = (), 
 <h2>最后</h2>
 
 <p>完整代码<a href="https://github.com/kevinlynx/toy_jvm">这里</a>。实现的指令很有限，可以跑通<a href="https://github.com/kevinlynx/toy_jvm/blob/master/test/AllTest.java">test/AllTest.java</a>中的代码。对于long/double等类型没有支持，各种限定访问的判断也没有。总之就是简单到仅仅可以一窥原理。基于java8，测试例子class文件java7编译(应该没关系)。祝玩得开心。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Java中隔离容器的实现]]></title>
-    <link href="http://codemacro.com/2015/09/05/java-lightweight-container/"/>
-    <updated>2015-09-05T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2015/09/05/java-lightweight-container</id>
-    <content type="html"><![CDATA[<p>Java中隔离容器用于隔离各个依赖库环境，解决Jar包冲突问题。</p>
-
-<h2>问题</h2>
-
-<p>应用App依赖库LibA和LibB，而LibA和LibB又同时依赖LibBase，而LibA和LibB都是其他团队开发的，其中LibA发布了一个重要的修复版本，但是依赖LibBase v2.0，而LibB还没有升级版本，LibBase还不是兼容的，那么此时升级就会面临困难。在生产环境中这种情况往往更恶劣，可能是好几层的间接依赖关系。</p>
-
-<p>隔离容器用于解决这种问题。它把LibA和LibB的环境完全隔离开来，LibBase即使类名完全相同也不互相冲突，使得LibA和LibB的升级互不影响。众所周知，Java中判定两个类是否相同，看的是类名和其对应的class loader，两者同时相同才表示相等。隔离容器正是利用这种特性实现的。</p>
-
-<h2>KContainer</h2>
-
-<p>这里我实现了一个demo，称为KContainer，源码见<a href="https://github.com/kevinlynx/kcontainer">github kcontainer</a>。这个container模仿了一些OSGI的东西，这里把LibA和LibB看成是两个bundle，bundle之间是互相隔离的，每个bundle有自己所依赖的第三方库，bundle之间的第三方库完全对外隐藏。bundle可以导出一些类给其他bundle用，bundle可以开启自己的服务。由于是个demo，我只实现关键的部分。</p>
-
-<p>KContainer的目录结构类似：</p>
-
-<pre><code>.
-|-- bundle
-    |-- test1
-        |-- test1.prop
-        |-- classes
-        |-- lib
-            |-- a.jar
-            |-- b.jar
-    |-- test2
-        |-- test2.prop
-        |-- classes
-|-- lib
-    |-- kcontainer.jar
-    |-- kcontainer.interface.jar
-</code></pre>
-
-<p>bundle目录存放了所有会被自动载入的bundle。每一个bundle都有一个配置文件<code>bundle-name.prop</code>，用于描述自己导出哪些类，例如：</p>
-
-<pre><code>init=com.codemacro.test.B
-export-class=com.codemacro.test.Export; com.codemacro.test.Export2
-</code></pre>
-
-<p><code>init</code>指定bundle启动时需要调用的类，用户可以在这个类里开启自己的服务；<code>export-class</code>描述需要导出的类列表。bundle之间的所有类都是隔离的，但<code>export-class</code>会被统一放置，作为所有bundle共享的类。后面会描述KContainer如何处理类加载问题，这也是隔离容器的主要内容。</p>
-
-<!-- more -->
-
-
-<p>bundle依赖的类可以直接以<code>*.class</code>文件存放到<code>classes</code>目录，也可以作为<code>*.jar</code>放到<code>lib</code>目录。作为extra pratice，我还会把<code>*.jar</code>中的jar解压同时作为类加载的路径。</p>
-
-<p>KContainer本身可以作为一个framework被使用。为了示例，我写了一个入口类，加载启动完所有bundle后就退出了，这个仅作为例子，用不了生产。</p>
-
-<h2>隔离的核心实现</h2>
-
-<p>隔离的目的是分开各个bundle中的类。利用的语言特性包括：</p>
-
-<ul>
-<li>class的区分由class name和载入其的class loader共同决定</li>
-<li>当在class A中使用了class B时，JVM默认会用class A的class loader去加载class B</li>
-<li>class loader中的双亲委托机制</li>
-<li><code>URLClassLoader</code>会从指定的目录及*.jar中加载类</li>
-</ul>
-
-
-<p>KContainer的主要任务，就是为bundle实现一个自定义的class loader。</p>
-
-<p>当KContainer加载一个bundle时，在处理其<code>export-class</code>或<code>init</code>时，都是需要加载bundle中的类的。在这之前，我给每一个bundle关联一个独立的<code>BundleClassLoader</code>。然后用这个class loader去加载bundle中的类，利用class loader传递特性，使得一个bundle中的所有类都是由其关联的class loader加载的，从而实现bundle之间类隔离效果。</p>
-
-<p>实现class loader时，是实现<code>loadClass</code>还是<code>findClass</code>？通过实现<code>loadClass</code>我们可以改变class loader的双亲委托模式，制定加载类的具体顺序。但我的目的仅仅是隔离bundle，想了下其实实现<code>findClass</code>就可以达成目的。关于<code>loadClass</code>和<code>findClass</code>的区别可以参考这里 (<a href="http://blog.csdn.net/fenglibing/article/details/17471659">实现自己的类加载时，重写方法loadClass与findClass的区别</a>)。简单来说，就是<code>findClass</code>只有在类确实找不到的情况下才会被调用，在此之前，<code>loadClass</code>默认都是走的双亲委托模式。</p>
-
-<p><code>BundleClassLoader</code>派生于<code>URLClassLoader</code>，默认的parent class loader就是<code>system class loader</code> (<code>app class loader</code>)。这使得KContainer中的bundle类加载有三层选择：自己的class path；其他bundle共享的classes；jvm的class path。通过实现<code>findClass</code>，在默认路径都无法加载到类时，才尝试bundle共享的class，优先级最低。</p>
-
-<p>其实现大概为：</p>
-
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">BundleClassLoader</span> <span class="kd">extends</span> <span class="n">URLClassLoader</span> <span class="o">{</span>
-  <span class="kd">public</span> <span class="nf">BundleClassLoader</span><span class="o">(</span><span class="n">File</span> <span class="n">home</span><span class="o">,</span> <span class="n">SharedClassList</span> <span class="n">sharedClasses</span><span class="o">)</span> <span class="o">{</span>
-    <span class="c1">// getClassPath将bundle目录下的classes和各个jar作为class path传给URLClassLoader</span>
-    <span class="kd">super</span><span class="o">(</span><span class="n">getClassPath</span><span class="o">(</span><span class="n">home</span><span class="o">));</span>
-    <span class="k">this</span><span class="o">.</span><span class="na">sharedClasses</span> <span class="o">=</span> <span class="n">sharedClasses</span><span class="o">;</span>
-  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="nd">@Override</span>
-  <span class="kd">protected</span> <span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;</span> <span class="n">findClass</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">ClassNotFoundException</span> <span class="o">{</span>
-    <span class="n">logger</span><span class="o">.</span><span class="na">debug</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="k">try</span> <span class="n">find</span> <span class="kd">class</span> <span class="err">{}&amp;</span><span class="nc">rdquo</span><span class="o">;,</span> <span class="n">name</span><span class="o">);</span>
-    <span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;</span> <span class="n">claz</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
-    <span class="k">try</span> <span class="o">{</span>
-      <span class="n">claz</span> <span class="o">=</span> <span class="kd">super</span><span class="o">.</span><span class="na">findClass</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
-    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">ClassNotFoundException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-      <span class="n">claz</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
-    <span class="o">}</span>
-    <span class="k">if</span> <span class="o">(</span><span class="n">claz</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-      <span class="n">logger</span><span class="o">.</span><span class="na">debug</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">load</span> <span class="n">from</span> <span class="kd">class</span> <span class="nc">path</span> <span class="k">for</span> <span class="o">{}&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">name</span><span class="o">);</span>
-      <span class="k">return</span> <span class="n">claz</span><span class="o">;</span>
-    <span class="o">}</span>
-    <span class="n">claz</span> <span class="o">=</span> <span class="n">sharedClasses</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
-    <span class="k">if</span> <span class="o">(</span><span class="n">claz</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-      <span class="n">logger</span><span class="o">.</span><span class="na">debug</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">load</span> <span class="n">from</span> <span class="n">shared</span> <span class="kd">class</span> <span class="nc">for</span> <span class="o">{}&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">name</span><span class="o">);</span>
-      <span class="k">return</span> <span class="n">claz</span><span class="o">;</span>
-    <span class="o">}</span>
-    <span class="n">logger</span><span class="o">.</span><span class="na">warn</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">not</span> <span class="n">found</span> <span class="kd">class</span> <span class="err">{}&amp;</span><span class="nc">rdquo</span><span class="o">;,</span> <span class="n">name</span><span class="o">);</span>
-    <span class="k">throw</span> <span class="k">new</span> <span class="nf">ClassNotFoundException</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
-  <span class="o">}</span>
-<span class="o">}</span></code></pre></div>
-完整代码参看<a href="https://github.com/kevinlynx/kcontainer/blob/master/kcontainer/src/main/java/com/codemacro/container/BundleClassLoader.java">BundleClassLoader.java</a></p>
-
-<p>创建bundle时，会为其创建自己的class loader，并使用这个class loader来载入<code>export-class</code>和<code>init-class</code>：</p>
-
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">static</span> <span class="n">Bundle</span> <span class="nf">create</span><span class="o">(</span><span class="n">File</span> <span class="n">home</span><span class="o">,</span> <span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">SharedClassList</span> <span class="n">sharedClasses</span><span class="o">,</span>
-      <span class="n">BundleConf</span> <span class="n">conf</span><span class="o">)</span> <span class="o">{</span>
-    <span class="n">BundleClassLoader</span> <span class="n">loader</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">BundleClassLoader</span><span class="o">(</span><span class="n">home</span><span class="o">,</span> <span class="n">sharedClasses</span><span class="o">);</span>
-    <span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">exports</span> <span class="o">=</span> <span class="n">conf</span><span class="o">.</span><span class="na">getExportClassNames</span><span class="o">();</span>
-    <span class="k">if</span> <span class="o">(</span><span class="n">exports</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-      <span class="n">logger</span><span class="o">.</span><span class="na">info</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">load</span> <span class="n">exported</span> <span class="n">classes</span> <span class="k">for</span> <span class="o">{}&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">name</span><span class="o">);</span>
-      <span class="n">loadExports</span><span class="o">(</span><span class="n">loader</span><span class="o">,</span> <span class="n">sharedClasses</span><span class="o">,</span> <span class="n">exports</span><span class="o">);</span>
-    <span class="o">}</span>
-    <span class="k">return</span> <span class="k">new</span> <span class="nf">Bundle</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">conf</span><span class="o">.</span><span class="na">getInitClassName</span><span class="o">(),</span> <span class="n">loader</span><span class="o">);</span>
-  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">loadExports</span><span class="o">(</span><span class="n">ClassLoader</span> <span class="n">loader</span><span class="o">,</span> <span class="n">SharedClassList</span> <span class="n">sharedClasses</span><span class="o">,</span>
-      <span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">exports</span><span class="o">)</span> <span class="o">{</span>
-      <span class="k">for</span> <span class="o">(</span><span class="n">String</span> <span class="nl">claz_name:</span> <span class="n">exports</span><span class="o">)</span> <span class="o">{</span>
-        <span class="k">try</span> <span class="o">{</span>
-          <span class="n">Class</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?&gt;</span> <span class="n">claz</span> <span class="o">=</span> <span class="n">loader</span><span class="o">.</span><span class="na">loadClass</span><span class="o">(</span><span class="n">claz_name</span><span class="o">);</span> <span class="c1">// 载入class</span>
-          <span class="n">sharedClasses</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">claz_name</span><span class="o">,</span> <span class="n">claz</span><span class="o">);</span>
-        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">ClassNotFoundException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-          <span class="n">logger</span><span class="o">.</span><span class="na">warn</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">load</span> <span class="kd">class</span> <span class="err">{} </span><span class="nc">failed</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="n">claz_name</span><span class="o">);</span>
-        <span class="o">}</span>
-      <span class="o">}</span>
-  <span class="o">}</span></code></pre></div></p>
-
-<p>以上。</p>
-
-<h2>扩展</h2>
-
-<p>扩展的地方有很多，例如支持导出package，导出一个完整的jar。当然可能需要实现<code>loadClass</code>，以改变类加载的优先级，让共享类的优先级高于jvm class path的优先级。</p>
-
-<h2>其他</h2>
-
-<h3>线程ContextClassLoader</h3>
-
-<p>提到class loader，我们看下最常接触的几类：</p>
-
-<ul>
-<li><code>XX.class.getClassLoader</code>，获取加载类<code>XX</code>的class loader</li>
-<li><code>Thread.currentThread().getContextClassLoader()</code>，获取当前线程的ContextClassLoader</li>
-<li><code>ClassLoader.getSystemClassLoader()</code>，获取system class loader</li>
-</ul>
-
-
-<p>system class loader的parent就是ext class loader，再上面就是bootstrap class loader了 (不是java类，实际获取不到)。默认情况下以上三个class loader都是一个：</p>
-
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">ClassLoader</span><span class="o">.</span><span class="na">getSystemClassLoader</span><span class="o">());</span>
-<span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">Main</span><span class="o">.</span><span class="na">class</span><span class="o">.</span><span class="na">getClassLoader</span><span class="o">());</span>
-<span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">().</span><span class="na">getContextClassLoader</span><span class="o">());</span></code></pre></div></p>
-
-<p>Output:</p>
-
-<pre><code>sun.misc.Launcher$AppClassLoader@157c2bd
-sun.misc.Launcher$AppClassLoader@157c2bd
-sun.misc.Launcher$AppClassLoader@157c2bd
-</code></pre>
-
-<p>创建线程时，新的线程ContextClassLoader就是父线程的ContextClassLoader。在载入一个新的class时，推荐优先使用线程context class loader，例如框架<a href="http://jodd.org/">Jodd</a>中包装的。关于线程context class loader和<code>Class.getClassLoader</code>这里有个解释算是相对合理：<a href="http://www.xcoder.cn/html/web/j2ee/2013/0506/5557.html">ContextClassLoader浅析</a></p>
-
-<p>即，当你把一个对象A传递到另一个线程中，这个线程由对象B创建，A/B两个对象对应的类关联的class loader不同，在B的线程中调用A.some_method，some_method加载资源或类时，如果使用了<code>Class.getClassLoader</code>或<code>Class.forName</code>时，实际使用的是A的class loader，而这个行为可能不是预期的。这个时候就需要将代码改为<code>Thread.currentThread().getContextClassLoader()</code>。</p>
-
-<p>完。</p>
 ]]></content>
   </entry>
   

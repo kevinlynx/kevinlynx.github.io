@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2017-04-23T21:07:29+08:00</updated>
+  <updated>2017-05-18T20:08:06+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,136 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[实现一个memcache proxy]]></title>
+    <link href="http://codemacro.com/2017/05/18/memcache-proxy/"/>
+    <updated>2017-05-18T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2017/05/18/memcache-proxy</id>
+    <content type="html"><![CDATA[<p>通常我们会使用多台memcached构成一个集群，通过客户端库来实现缓存数据的分片(replica)。这会带来2个主要问题：</p>
+
+<ul>
+<li>memcached机器连接数过多</li>
+<li>不利于做整体的服务化；缺少可运维性。例如想对接入的客户端做应用级隔离；或者对缓存数据做多区域(机房)的冗余</li>
+</ul>
+
+
+<p>实现一个memcache proxy，相对于减少连接数来说，主要可以提供更多的扩展性。目前已经存在一些不错的memcache proxy，例如twitter的<a href="https://github.com/twitter/twemproxy">twemproxy</a>，facebook的<a href="https://github.com/facebook/mcrouter">mcrouter</a>。稍微调研了下，发现twemproxy虽然轻量，但功能较弱；mcrouter功能齐全，类似多区域多写的需求也满足。处于好玩的目的，之前又读过网络库<a href="http://codemacro.com/2017/04/09/xnio-source/">xnio</a>源码，我还是决定自己实现一个。</p>
+
+<!-- more -->
+
+
+<p>这个项目简单取名为<a href="https://github.com/kevinlynx/kvproxy">kvproxy</a>，通过简单的抽象可以实现为memcache或redis等key-value形式的服务proxy。 这是一些预想中的<a href="https://github.com/kevinlynx/kvproxy/blob/master/design.md">feature</a>。</p>
+
+<p>在目前的阶段，主要关注于其性能。因为memcached本身的RT非常小，所以这个proxy的性能就要求比较高。这里主要先关注下核心功能的实现。</p>
+
+<h2>架构</h2>
+
+<p>如下图：</p>
+
+<p><img src="http://i.imgur.com/VxrSdKT.png" alt="" /></p>
+
+<ul>
+<li><code>Service</code>，用于抽象key-value服务，如memcache；<code>MemcacheService</code>是其实现之一</li>
+<li><code>ServerLocator</code>，用于定位memcached机器列表，例如<code>ConstantLocator</code>则是从配置文件中读取。可以实现一个从名字服务读取列表的locator。</li>
+<li><code>Connection</code>，配合<code>KVProxy</code>，基于xnio，表示一个与客户端的连接</li>
+<li><code>ConnectionListener</code>，用于处理网络连接上的请求，例如<code>RequestHandler</code>则是<code>MemcaheService</code>中的listener，用于处理从客户端发过来的memcache协议请求</li>
+<li><code>MemClient</code>，包装memcache客户端，用于proxy将请求转发到后端的memcache服务</li>
+<li><code>GroupClient</code>，包装<code>MemClient</code>，可以用于多区域数据的同时写入，目前实现为单个primary及多个slave。写数据同步写入primary异步写入slave；读取数据则只从primary读。</li>
+</ul>
+
+
+<p>本身要抽象的东西不复杂，所以结构其实是很简单的，也没有花太多心思。接下来关注下性能方面的问题。</p>
+
+<h2>异步性</h2>
+
+<p>作为一个proxy，异步基本是必然选择的方案，指的是，proxy在收到memcache的请求时，不阻塞当前的IO线程，形成一个请求context，在收到回应时拿到这个context来回应客户端。这样通过增加消耗的内存，来释放CPU资源，可以让IO模块尽可能多地接收从客户端来的请求。当然，如果请求过多，可能就会耗尽内存。</p>
+
+<p>为了简单，我没有自己实现memcache client。网络上有很多开源的memcache client。我试了几个，例如<a href="http://codemacro.com/2017/04/23/xmemcached/">xmemcached</a>(为此还读过它的源码)，但由于这些客户端都是同步的，虽然可以自己起线程池来把同步包装为异步，但始终不是最优方案。最后无意发现了<a href="https://github.com/spotify/folsom">folsom</a>，集成到kvproxy后性能表现还不错。当然，真正要做到性能最优，最好还是自己实现memcache client，这样可以使用同一个xnio reactor，不用开那么多IO线程，拿到数据后就可以直接得到ByteBuffer，应该可以减少内存拷贝操作(能提高多少也不确定)。</p>
+
+<h2>性能测试</h2>
+
+<p>我使用了<a href="https://github.com/RedisLabs/memtier_benchmark">memtier_benchmark</a>来做压力测试。测试环境是16core的虚拟机(宿主机不同)，benchmark工具同目标测试服务部署在不同的机器，proxy同memcache部署在相同机器。目标服务基于OS centos7，测试命令为：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>./memtier_benchmark -s 127.0.0.1 -p 22122 -P memcache_text --test-time 60 -d 4096 --hide-histogram</span></code></pre></td></tr></table></div></figure>
+
+
+<p>默认开启4个压测线程，每个线程建立50个连接，测试60秒，默认设置是1:10的set/get。</p>
+
+<p>首先是直接压测memcached：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ALL STATS
+</span><span class='line'>========================================================================
+</span><span class='line'>Type        Ops/sec     Hits/sec   Misses/sec      Latency       KB/sec
+</span><span class='line'>------------------------------------------------------------------------
+</span><span class='line'>Sets        5729.65          ---          ---      3.27500     23141.85
+</span><span class='line'>Gets       57279.42        80.33     57199.09      3.16000      1771.99
+</span><span class='line'>Waits          0.00          ---          ---      0.00000          ---
+</span><span class='line'>Totals     63009.07        80.33     57199.09      3.17000     24913.84</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然后我压测了twitter的twemproxy，RT差不多增加70%。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ALL STATS
+</span><span class='line'>========================================================================
+</span><span class='line'>Type        Ops/sec     Hits/sec   Misses/sec      Latency       KB/sec
+</span><span class='line'>------------------------------------------------------------------------
+</span><span class='line'>Sets        3344.58          ---          ---      5.58400     13508.68
+</span><span class='line'>Gets       33430.28        40.00     33390.28      5.41900      1006.32
+</span><span class='line'>Waits          0.00          ---          ---      0.00000          ---
+</span><span class='line'>Totals     36774.85        40.00     33390.28      5.43400     14515.00
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>最后是压测kvproxy (jdk8)，只与memcache建立一个连接，RT增加95%，基本上翻倍。不过由于是Java实现，相对于twemproxy的C实现感觉也不差。当然，机器资源消耗更大(主要是内存)。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ALL STATS
+</span><span class='line'>========================================================================
+</span><span class='line'>Type        Ops/sec     Hits/sec   Misses/sec      Latency       KB/sec
+</span><span class='line'>------------------------------------------------------------------------
+</span><span class='line'>Sets        2959.41          ---          ---      6.62400     11953.00
+</span><span class='line'>Gets       29578.47        33.90     29544.57      6.20800       884.38
+</span><span class='line'>Waits          0.00          ---          ---      0.00000          ---
+</span><span class='line'>Totals     32537.88        33.90     29544.57      6.24600     12837.37
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>压测中IO线程CPU并没有跑满，推测是虚拟机之间的网络带宽还是不够。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2017/05/18/memcache-proxy/'>http://codemacro.com/2017/05/18/memcache-proxy/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Xmemcached源码阅读]]></title>
@@ -4001,377 +4131,6 @@ public class Test {
 <p class='post-footer'>
             原文地址：
             <a href='http://codemacro.com/2015/03/31/intro-java-bytecode/'>http://codemacro.com/2015/03/31/intro-java-bytecode/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[基于内存查看STL常用容器内容]]></title>
-    <link href="http://codemacro.com/2014/12/03/gdb_stl/"/>
-    <updated>2014-12-03T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2014/12/03/gdb_stl</id>
-    <content type="html"><![CDATA[<p>有时候在线上使用gdb调试程序core问题时，可能没有符号文件，拿到的仅是一个内存地址，如果这个指向的是一个STL对象，那么如何查看这个对象的内容呢？</p>
-
-<p>只需要知道STL各个容器的数据结构实现，就可以查看其内容。本文描述了SGI STL实现中常用容器的数据结构，以及如何在gdb中查看其内容。</p>
-
-<h2>string</h2>
-
-<p>string，即<code>basic_string</code> <code>bits/basic_string.h</code>：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">mutable</span> <span class="n">_Alloc_hider</span>  <span class="n">_M_dataplus</span><span class="p">;</span>
-    <span class="p">...</span> 
-      <span class="k">const</span> <span class="n">_CharT</span><span class="o">*</span>
-      <span class="n">c_str</span><span class="p">()</span> <span class="k">const</span>
-      <span class="p">{</span> <span class="k">return</span> <span class="n">_M_data</span><span class="p">();</span> <span class="p">}</span>
-    <span class="p">...</span>    
-      <span class="n">_CharT</span><span class="o">*</span>
-      <span class="n">_M_data</span><span class="p">()</span> <span class="k">const</span> 
-      <span class="p">{</span> <span class="k">return</span>  <span class="n">_M_dataplus</span><span class="p">.</span><span class="n">_M_p</span><span class="p">;</span> <span class="p">}</span>
-
-    <span class="p">...</span>
-      <span class="k">struct</span> <span class="nl">_Alloc_hider</span> <span class="p">:</span> <span class="n">_Alloc</span>
-      <span class="p">{</span>
-    <span class="n">_Alloc_hider</span><span class="p">(</span><span class="n">_CharT</span><span class="o">*</span> <span class="n">__dat</span><span class="p">,</span> <span class="k">const</span> <span class="n">_Alloc</span><span class="o">&amp;</span> <span class="n">__a</span><span class="p">)</span>
-    <span class="o">:</span> <span class="n">_Alloc</span><span class="p">(</span><span class="n">__a</span><span class="p">),</span> <span class="n">_M_p</span><span class="p">(</span><span class="n">__dat</span><span class="p">)</span> <span class="p">{</span> <span class="p">}</span>
-
-    <span class="n">_CharT</span><span class="o">*</span> <span class="n">_M_p</span><span class="p">;</span> <span class="c1">// The actual data.</span>
-      <span class="p">};</span>
-   
-      <span class="n">size_type</span>
-      <span class="n">length</span><span class="p">()</span> <span class="k">const</span>
-      <span class="p">{</span> <span class="k">return</span> <span class="n">_M_rep</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">_M_length</span><span class="p">;</span> <span class="p">}</span>
-
-      <span class="n">_Rep</span><span class="o">*</span>
-      <span class="n">_M_rep</span><span class="p">()</span> <span class="k">const</span>
-      <span class="p">{</span> <span class="k">return</span> <span class="o">&amp;</span><span class="p">((</span><span class="k">reinterpret_cast</span><span class="o">&lt;</span><span class="n">_Rep</span><span class="o">*&gt;</span> <span class="p">(</span><span class="n">_M_data</span><span class="p">()))[</span><span class="o">-</span><span class="mi">1</span><span class="p">]);</span> <span class="p">}</span>
-
-      <span class="p">...</span>
-       <span class="k">struct</span> <span class="n">_Rep_base</span>
-      <span class="p">{</span>
-    <span class="n">size_type</span>       <span class="n">_M_length</span><span class="p">;</span>
-    <span class="n">size_type</span>       <span class="n">_M_capacity</span><span class="p">;</span>
-    <span class="n">_Atomic_word</span>        <span class="n">_M_refcount</span><span class="p">;</span>
-      <span class="p">};</span>
-
-      <span class="k">struct</span> <span class="nl">_Rep</span> <span class="p">:</span> <span class="n">_Rep_base</span></code></pre></div>
-
-
-<p>即，string内有一个指针，指向实际的字符串位置，这个位置前面有一个<code>_Rep</code>结构，其内保存了字符串的长度、可用内存以及引用计数。当我们拿到一个string对象的地址时，可以通过以下代码获取相关值：</p>
-
-<!-- more -->
-
-
-
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">ds_str_i</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">p</span><span class="p">)</span> <span class="p">{</span>
-        <span class="kt">char</span> <span class="o">**</span><span class="n">raw</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span><span class="o">**</span><span class="p">)</span><span class="n">p</span><span class="p">;</span>
-        <span class="kt">char</span> <span class="o">*</span><span class="n">s</span> <span class="o">=</span> <span class="o">*</span><span class="n">raw</span><span class="p">;</span>
-        <span class="kt">size_t</span> <span class="n">len</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="kt">size_t</span><span class="o">*</span><span class="p">)(</span><span class="n">s</span> <span class="o">-</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">size_t</span><span class="p">)</span> <span class="o">*</span> <span class="mi">3</span><span class="p">);</span>
-        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;str: %s (%zd)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">len</span><span class="p">);</span>
-    <span class="p">}</span>
-
-    <span class="kt">size_t</span> <span class="nf">ds_str</span><span class="p">()</span> <span class="p">{</span>
-        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">s</span> <span class="o">=</span> <span class="s">&quot;hello&quot;</span><span class="p">;</span>
-        <span class="n">ds_str_i</span><span class="p">(</span><span class="o">&amp;</span><span class="n">s</span><span class="p">);</span>
-        <span class="k">return</span> <span class="n">s</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
-    <span class="p">}</span></code></pre></div>
-
-
-<p>在gdb中拿到一个string的地址时，可以以下打印出该字符串及长度：</p>
-
-<pre><code>(gdb) x/1a p
-0x7fffffffe3a0: 0x606028
-(gdb) p (char*)0x606028
-$2 = 0x606028 "hello"
-(gdb) x/1dg 0x606028-24
-0x606010:       5
-</code></pre>
-
-<h2>vector</h2>
-
-<p>众所周知vector实现就是一块连续的内存，<code>bits/stl_vector.h</code>。</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">_Tp</span><span class="p">,</span> <span class="k">typename</span> <span class="n">_Alloc</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">allocator</span><span class="o">&lt;</span><span class="n">_Tp</span><span class="o">&gt;</span> <span class="o">&gt;</span>
-    <span class="k">class</span> <span class="nc">vector</span> <span class="o">:</span> <span class="k">protected</span> <span class="n">_Vector_base</span><span class="o">&lt;</span><span class="n">_Tp</span><span class="p">,</span> <span class="n">_Alloc</span><span class="o">&gt;</span>
-
-    <span class="p">...</span>
-    <span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">_Tp</span><span class="p">,</span> <span class="k">typename</span> <span class="n">_Alloc</span><span class="o">&gt;</span>
-    <span class="k">struct</span> <span class="n">_Vector_base</span>
-    <span class="p">{</span>
-      <span class="k">typedef</span> <span class="k">typename</span> <span class="n">_Alloc</span><span class="o">::</span><span class="k">template</span> <span class="n">rebind</span><span class="o">&lt;</span><span class="n">_Tp</span><span class="o">&gt;::</span><span class="n">other</span> <span class="n">_Tp_alloc_type</span><span class="p">;</span>
-
-      <span class="k">struct</span> <span class="nl">_Vector_impl</span>
-      <span class="p">:</span> <span class="k">public</span> <span class="n">_Tp_alloc_type</span>
-      <span class="p">{</span>
-    <span class="n">_Tp</span><span class="o">*</span>           <span class="n">_M_start</span><span class="p">;</span>
-    <span class="n">_Tp</span><span class="o">*</span>           <span class="n">_M_finish</span><span class="p">;</span>
-    <span class="n">_Tp</span><span class="o">*</span>           <span class="n">_M_end_of_storage</span><span class="p">;</span>
-    <span class="n">_Vector_impl</span><span class="p">(</span><span class="n">_Tp_alloc_type</span> <span class="k">const</span><span class="o">&amp;</span> <span class="n">__a</span><span class="p">)</span>
-    <span class="o">:</span> <span class="n">_Tp_alloc_type</span><span class="p">(</span><span class="n">__a</span><span class="p">),</span> <span class="n">_M_start</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">_M_finish</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">_M_end_of_storage</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-    <span class="p">{</span> <span class="p">}</span>
-      <span class="p">};</span>
-
-
-      <span class="n">_Vector_impl</span> <span class="n">_M_impl</span><span class="p">;</span></code></pre></div>
-
-
-<p>可以看出<code>sizeof(vector&lt;xxx&gt;)=24</code>，其内也就是3个指针，<code>_M_start</code>指向首元素地址，<code>_M_finish</code>指向最后一个节点+1，<code>_M_end_of_storage</code>是可用空间最后的位置。</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">iterator</span>
-      <span class="nf">end</span><span class="p">()</span>
-      <span class="p">{</span> <span class="k">return</span> <span class="n">iterator</span> <span class="p">(</span><span class="k">this</span><span class="o">-&gt;</span><span class="n">_M_impl</span><span class="p">.</span><span class="n">_M_finish</span><span class="p">);</span> <span class="p">}</span>
-      <span class="n">const_iterator</span>
-      <span class="p">...</span>
-      <span class="n">begin</span><span class="p">()</span> <span class="k">const</span>
-      <span class="p">{</span> <span class="k">return</span> <span class="n">const_iterator</span> <span class="p">(</span><span class="k">this</span><span class="o">-&gt;</span><span class="n">_M_impl</span><span class="p">.</span><span class="n">_M_start</span><span class="p">);</span> <span class="p">}</span>
-      <span class="p">...</span>
-      <span class="n">size_type</span>
-      <span class="n">capacity</span><span class="p">()</span> <span class="k">const</span>
-      <span class="p">{</span> <span class="k">return</span> <span class="n">size_type</span><span class="p">(</span><span class="n">const_iterator</span><span class="p">(</span><span class="k">this</span><span class="o">-&gt;</span><span class="n">_M_impl</span><span class="p">.</span><span class="n">_M_end_of_storage</span><span class="p">)</span>
-             <span class="o">-</span> <span class="n">begin</span><span class="p">());</span> <span class="p">}</span></code></pre></div>
-
-
-<p>可以通过代码从一个vector对象地址输出其信息：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span>
-    <span class="kt">void</span> <span class="n">ds_vec_i</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">p</span><span class="p">)</span> <span class="p">{</span>
-        <span class="n">T</span> <span class="o">*</span><span class="n">start</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="n">T</span><span class="o">**</span><span class="p">)</span><span class="n">p</span><span class="p">;</span>
-        <span class="n">T</span> <span class="o">*</span><span class="n">finish</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="n">T</span><span class="o">**</span><span class="p">)((</span><span class="kt">char</span><span class="o">*</span><span class="p">)</span><span class="n">p</span> <span class="o">+</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="p">));</span>
-        <span class="n">T</span> <span class="o">*</span><span class="n">end_storage</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="n">T</span><span class="o">**</span><span class="p">)((</span><span class="kt">char</span><span class="o">*</span><span class="p">)</span><span class="n">p</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="p">));</span>
-        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;vec size: %ld, avaiable size: %ld</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">finish</span> <span class="o">-</span> <span class="n">start</span><span class="p">,</span> <span class="n">end_storage</span> <span class="o">-</span> <span class="n">start</span><span class="p">);</span> 
-    <span class="p">}</span>
-
-    <span class="kt">size_t</span> <span class="n">ds_vec</span><span class="p">()</span> <span class="p">{</span>
-        <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">vec</span><span class="p">;</span>
-        <span class="n">vec</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x11</span><span class="p">);</span>
-        <span class="n">vec</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x22</span><span class="p">);</span>
-        <span class="n">vec</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x33</span><span class="p">);</span>
-        <span class="n">ds_vec_i</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">vec</span><span class="p">);</span>
-        <span class="k">return</span> <span class="n">vec</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
-    <span class="p">}</span></code></pre></div>
-
-
-<p>使用gdb输出一个vector中的内容：</p>
-
-<pre><code>(gdb) p p
-$3 = (void *) 0x7fffffffe380
-(gdb) x/1a p
-0x7fffffffe380: 0x606080
-(gdb) x/3xw 0x606080
-0x606080:       0x00000011      0x00000022      0x00000033
-</code></pre>
-
-<h2>list</h2>
-
-<p>众所周知list被实现为一个链表。准确来说是一个双向链表。list本身是一个特殊节点，其代表end，其指向的下一个元素才是list真正的第一个节点：</p>
-
-<p><code>bits/stl_list.h</code></p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">bool</span>
-      <span class="n">empty</span><span class="p">()</span> <span class="k">const</span>
-      <span class="p">{</span> <span class="k">return</span> <span class="k">this</span><span class="o">-&gt;</span><span class="n">_M_impl</span><span class="p">.</span><span class="n">_M_node</span><span class="p">.</span><span class="n">_M_next</span> <span class="o">==</span> <span class="o">&amp;</span><span class="k">this</span><span class="o">-&gt;</span><span class="n">_M_impl</span><span class="p">.</span><span class="n">_M_node</span><span class="p">;</span> <span class="p">}</span>
-
-      <span class="n">const_iterator</span>
-      <span class="n">begin</span><span class="p">()</span> <span class="k">const</span>
-      <span class="p">{</span> <span class="k">return</span> <span class="n">const_iterator</span><span class="p">(</span><span class="k">this</span><span class="o">-&gt;</span><span class="n">_M_impl</span><span class="p">.</span><span class="n">_M_node</span><span class="p">.</span><span class="n">_M_next</span><span class="p">);</span> <span class="p">}</span>
-
-      <span class="n">iterator</span>
-      <span class="n">end</span><span class="p">()</span>
-      <span class="p">{</span> <span class="k">return</span> <span class="n">iterator</span><span class="p">(</span><span class="o">&amp;</span><span class="k">this</span><span class="o">-&gt;</span><span class="n">_M_impl</span><span class="p">.</span><span class="n">_M_node</span><span class="p">);</span> <span class="p">}</span>
-
-      <span class="p">...</span>
-
-    <span class="k">struct</span> <span class="n">_List_node_base</span>
-    <span class="p">{</span>
-        <span class="n">_List_node_base</span><span class="o">*</span> <span class="n">_M_next</span><span class="p">;</span>   <span class="c1">///&lt; Self-explanatory</span>
-        <span class="n">_List_node_base</span><span class="o">*</span> <span class="n">_M_prev</span><span class="p">;</span>   <span class="c1">///&lt; Self-explanatory</span>
-        <span class="p">...</span>
-    <span class="p">};</span>
-         
-    <span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">_Tp</span><span class="o">&gt;</span>
-    <span class="k">struct</span> <span class="nl">_List_node</span> <span class="p">:</span> <span class="k">public</span> <span class="n">_List_node_base</span>
-    <span class="p">{</span>
-      <span class="n">_Tp</span> <span class="n">_M_data</span><span class="p">;</span>                <span class="c1">///&lt; User&#39;s data.</span>
-    <span class="p">};</span>
-      
-    <span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">_Tp</span><span class="p">,</span> <span class="k">typename</span> <span class="n">_Alloc</span><span class="o">&gt;</span>
-    <span class="k">class</span> <span class="nc">_List_base</span>
-    <span class="p">{</span>
-        <span class="p">...</span>
-      <span class="k">struct</span> <span class="nl">_List_impl</span>
-      <span class="p">:</span> <span class="k">public</span> <span class="n">_Node_alloc_type</span>
-      <span class="p">{</span>
-    <span class="n">_List_node_base</span> <span class="n">_M_node</span><span class="p">;</span>
-        <span class="p">...</span>
-      <span class="p">};</span>
-
-      <span class="n">_List_impl</span> <span class="n">_M_impl</span><span class="p">;</span>
-
-          
-    <span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">_Tp</span><span class="p">,</span> <span class="k">typename</span> <span class="n">_Alloc</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">allocator</span><span class="o">&lt;</span><span class="n">_Tp</span><span class="o">&gt;</span> <span class="o">&gt;</span>
-    <span class="k">class</span> <span class="nc">list</span> <span class="o">:</span> <span class="k">protected</span> <span class="n">_List_base</span><span class="o">&lt;</span><span class="n">_Tp</span><span class="p">,</span> <span class="n">_Alloc</span><span class="o">&gt;</span></code></pre></div>
-
-
-<p>所以<code>sizeof(list&lt;xx&gt;)=16</code>，两个指针。每一个真正的节点首先是包含两个指针，然后是元素内容(<code>_List_node</code>)。</p>
-
-<p>通过代码输出list的内容：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="cp">#define NEXT(ptr, T) do { \</span>
-<span class="cp">        void *n = *(char**)ptr; \</span>
-<span class="cp">        T val = *(T*)((char**)ptr + 2); \</span>
-<span class="cp">        printf(&quot;list item %p val: 0x%x\n&quot;, ptr, val); \</span>
-<span class="cp">        ptr = n; \</span>
-<span class="cp">    } while (0)</span>
-
-    <span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span>
-    <span class="kt">void</span> <span class="n">ds_list_i</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">p</span><span class="p">)</span> <span class="p">{</span>
-        <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="kt">char</span><span class="o">**</span><span class="p">)</span><span class="n">p</span><span class="p">;</span>
-
-        <span class="n">NEXT</span><span class="p">(</span><span class="n">ptr</span><span class="p">,</span> <span class="n">T</span><span class="p">);</span>
-        <span class="n">NEXT</span><span class="p">(</span><span class="n">ptr</span><span class="p">,</span> <span class="n">T</span><span class="p">);</span>
-        <span class="n">NEXT</span><span class="p">(</span><span class="n">ptr</span><span class="p">,</span> <span class="n">T</span><span class="p">);</span>
-    <span class="p">}</span>
-
-    <span class="kt">size_t</span> <span class="n">ds_list</span><span class="p">()</span> <span class="p">{</span>
-        <span class="n">std</span><span class="o">::</span><span class="n">list</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">lst</span><span class="p">;</span>
-        <span class="n">lst</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x11</span><span class="p">);</span>
-        <span class="n">lst</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x22</span><span class="p">);</span>
-        <span class="n">lst</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="mh">0x33</span><span class="p">);</span>
-        <span class="n">ds_list_i</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lst</span><span class="p">);</span>
-        <span class="k">return</span> <span class="n">lst</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
-    <span class="p">}</span></code></pre></div>
-
-
-<p>在gdb中可以以下方式遍历该list：</p>
-
-<pre><code>(gdb) p p
-$4 = (void *) 0x7fffffffe390
-(gdb) x/1a p
-0x7fffffffe390: 0x606080
-(gdb) x/1xw 0x606080+16         # 元素1 
-0x606090:       0x00000011
-(gdb) x/1a 0x606080
-0x606080:       0x6060a0
-(gdb) x/1xw 0x6060a0+16         # 元素2
-0x6060b0:       0x00000022
-</code></pre>
-
-<h2>map</h2>
-
-<p>map使用的是红黑树实现，实际使用的是<code>stl_tree.h</code>实现：</p>
-
-<p><code>bits/stl_map.h</code></p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">typedef</span> <span class="n">_Rb_tree</span><span class="o">&lt;</span><span class="n">key_type</span><span class="p">,</span> <span class="n">value_type</span><span class="p">,</span> <span class="n">_Select1st</span><span class="o">&lt;</span><span class="n">value_type</span><span class="o">&gt;</span><span class="p">,</span>
-               <span class="n">key_compare</span><span class="p">,</span> <span class="n">_Pair_alloc_type</span><span class="o">&gt;</span> <span class="n">_Rep_type</span><span class="p">;</span>
-    <span class="p">...</span>
-     <span class="n">_Rep_type</span> <span class="n">_M_t</span><span class="p">;</span>
-    <span class="p">...</span> 
-
-      <span class="n">iterator</span>
-      <span class="n">begin</span><span class="p">()</span>
-      <span class="p">{</span> <span class="k">return</span> <span class="n">_M_t</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span> <span class="p">}</span></code></pre></div>
-
-
-<p><code>bits/stl_tree.h</code></p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">struct</span> <span class="n">_Rb_tree_node_base</span>
-      <span class="p">{</span>
-        <span class="k">typedef</span> <span class="n">_Rb_tree_node_base</span><span class="o">*</span> <span class="n">_Base_ptr</span><span class="p">;</span>
-        <span class="k">typedef</span> <span class="k">const</span> <span class="n">_Rb_tree_node_base</span><span class="o">*</span> <span class="n">_Const_Base_ptr</span><span class="p">;</span>
-
-        <span class="n">_Rb_tree_color</span>  <span class="n">_M_color</span><span class="p">;</span>
-        <span class="n">_Base_ptr</span>       <span class="n">_M_parent</span><span class="p">;</span>
-        <span class="n">_Base_ptr</span>       <span class="n">_M_left</span><span class="p">;</span>
-        <span class="n">_Base_ptr</span>       <span class="n">_M_right</span><span class="p">;</span>
-        
-        <span class="p">...</span>
-      <span class="p">};</span>
-
-    <span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">_Val</span><span class="o">&gt;</span>
-    <span class="k">struct</span> <span class="nl">_Rb_tree_node</span> <span class="p">:</span> <span class="k">public</span> <span class="n">_Rb_tree_node_base</span>
-    <span class="p">{</span>
-      <span class="k">typedef</span> <span class="n">_Rb_tree_node</span><span class="o">&lt;</span><span class="n">_Val</span><span class="o">&gt;*</span> <span class="n">_Link_type</span><span class="p">;</span>
-      <span class="n">_Val</span> <span class="n">_M_value_field</span><span class="p">;</span>
-    <span class="p">};</span>
-
-
-    <span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">_Key_compare</span><span class="p">,</span>
-           <span class="kt">bool</span> <span class="n">_Is_pod_comparator</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">__is_pod</span><span class="o">&lt;</span><span class="n">_Key_compare</span><span class="o">&gt;::</span><span class="n">__value</span><span class="o">&gt;</span>
-        <span class="k">struct</span> <span class="nl">_Rb_tree_impl</span> <span class="p">:</span> <span class="k">public</span> <span class="n">_Node_allocator</span>
-        <span class="p">{</span>
-      <span class="n">_Key_compare</span>      <span class="n">_M_key_compare</span><span class="p">;</span>
-      <span class="n">_Rb_tree_node_base</span>    <span class="n">_M_header</span><span class="p">;</span>
-      <span class="n">size_type</span>         <span class="n">_M_node_count</span><span class="p">;</span> <span class="c1">// Keeps track of size of tree.</span>
-      <span class="p">...</span>
-        <span class="p">}</span>
-    
-    <span class="n">_Rb_tree_impl</span><span class="o">&lt;</span><span class="n">_Compare</span><span class="o">&gt;</span> <span class="n">_M_impl</span><span class="p">;</span>
-    <span class="p">...</span>
-
-      <span class="n">iterator</span>
-      <span class="n">begin</span><span class="p">()</span>
-      <span class="p">{</span>
-    <span class="k">return</span> <span class="n">iterator</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="n">_Link_type</span><span class="o">&gt;</span>
-            <span class="p">(</span><span class="k">this</span><span class="o">-&gt;</span><span class="n">_M_impl</span><span class="p">.</span><span class="n">_M_header</span><span class="p">.</span><span class="n">_M_left</span><span class="p">));</span>
-      <span class="p">}</span></code></pre></div>
-
-
-<p>所以可以看出，大部分时候(取决于<code>_M_key_compare</code>) <code>sizeof(map&lt;xx&gt;)=48</code>，主要的元素是：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">_Rb_tree_color</span>  <span class="n">_M_color</span><span class="p">;</span> <span class="c1">// 节点颜色</span>
-        <span class="n">_Base_ptr</span>       <span class="n">_M_parent</span><span class="p">;</span> <span class="c1">// 父节点</span>
-        <span class="n">_Base_ptr</span>       <span class="n">_M_left</span><span class="p">;</span> <span class="c1">// 左节点</span>
-        <span class="n">_Base_ptr</span>       <span class="n">_M_right</span><span class="p">;</span> <span class="c1">// 右节点</span>
-        <span class="n">_Val</span>            <span class="n">_M_value_field</span> <span class="c1">// 同list中节点技巧一致，后面是实际的元素</span></code></pre></div>
-
-
-<p>同list中的实现一致，map本身作为一个节点，其不是一个存储数据的节点，</p>
-
-<p><code>_Rb_tree::end</code></p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">iterator</span>
-      <span class="nf">end</span><span class="p">()</span>
-      <span class="p">{</span> <span class="k">return</span> <span class="n">iterator</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="n">_Link_type</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="k">this</span><span class="o">-&gt;</span><span class="n">_M_impl</span><span class="p">.</span><span class="n">_M_header</span><span class="p">));</span> <span class="p">}</span></code></pre></div>
-
-
-<p>由于节点值在<code>_Rb_tree_node_base</code>后，所以任意时候拿到节点就可以偏移这个结构体拿到节点值，节点的值是一个pair，包含了key和value。</p>
-
-<p>在gdb中打印以下map的内容：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">size_t</span> <span class="nf">ds_map</span><span class="p">()</span> <span class="p">{</span>
-        <span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span> <span class="kt">int</span><span class="o">&gt;</span> <span class="n">imap</span><span class="p">;</span>
-        <span class="n">imap</span><span class="p">[</span><span class="s">&quot;abc&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mh">0xbbb</span><span class="p">;</span>
-        <span class="k">return</span> <span class="n">imap</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
-    <span class="p">}</span></code></pre></div>
-
-
-<pre><code>(gdb) p/x &amp;imap
-$7 = 0x7fffffffe370
-(gdb) x/1a (char*)&amp;imap+24       # _M_left 真正的节点
-0x7fffffffe388: 0x606040          
-(gdb) x/1xw 0x606040+32+8        # 偏移32字节是节点值的地址，再偏移8则是value的地址
-0x606068:       0x00000bbb
-(gdb) p *(char**)(0x606040+32)   # 偏移32字节是string的地址
-$8 = 0x606028 "abc"
-</code></pre>
-
-<p>或者很多时候没有必要这么装逼+蛋疼：</p>
-
-<pre><code>(gdb) p *(char**)(imap._M_t._M_impl._M_header._M_left+1)
-$9 = 0x606028 "abc"
-(gdb) x/1xw (char*)(imap._M_t._M_impl._M_header._M_left+1)+8
-0x606068:       0x00000bbb
-</code></pre>
-
-<p><em>完</em></p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2014/12/03/gdb_stl/'>http://codemacro.com/2014/12/03/gdb_stl/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: network | loop in codes]]></title>
   <link href="http://codemacro.com/categories/network/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2017-04-23T21:07:29+08:00</updated>
+  <updated>2017-05-18T20:10:14+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -83,59 +83,61 @@
 
 <p>理清了以上关系，就可以不用那个deprecated的API来实现一个echo server：</p>
 
-<p><div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">class</span> <span class="nc">ReadListener</span> <span class="kd">implements</span> <span class="n">ChannelListener</span><span class="o">&lt;</span><span class="n">StreamSourceChannel</span><span class="o">&gt;</span> <span class="o">{</span>
-  <span class="c1">// 保存一个可写的channel，才能在读listener里做写操作</span>
-  <span class="kd">private</span> <span class="n">StreamSinkChannel</span> <span class="n">sinkChannel</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight java %}
+class ReadListener implements ChannelListener<StreamSourceChannel> {
+  // 保存一个可写的channel，才能在读listener里做写操作
+  private StreamSinkChannel sinkChannel;</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="kd">public</span> <span class="nf">ReadListener</span><span class="o">(</span><span class="n">StreamSinkChannel</span> <span class="n">sinkChannel</span><span class="o">)</span> <span class="o">{</span>
-    <span class="k">this</span><span class="o">.</span><span class="na">sinkChannel</span> <span class="o">=</span> <span class="n">sinkChannel</span><span class="o">;</span>
-  <span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>  public ReadListener(StreamSinkChannel sinkChannel) {
+    this.sinkChannel = sinkChannel;
+  }</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">handleEvent</span><span class="o">(</span><span class="n">StreamSourceChannel</span> <span class="n">channel</span><span class="o">)</span> <span class="o">{</span>
-    <span class="kd">final</span> <span class="n">ByteBuffer</span> <span class="n">buffer</span> <span class="o">=</span> <span class="n">ByteBuffer</span><span class="o">.</span><span class="na">allocate</span><span class="o">(</span><span class="mi">512</span><span class="o">);</span>
-    <span class="kt">int</span> <span class="n">res</span><span class="o">;</span>
-    <span class="k">try</span> <span class="o">{</span>
-      <span class="k">while</span> <span class="o">((</span><span class="n">res</span> <span class="o">=</span> <span class="n">channel</span><span class="o">.</span><span class="na">read</span><span class="o">(</span><span class="n">buffer</span><span class="o">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
-        <span class="n">buffer</span><span class="o">.</span><span class="na">flip</span><span class="o">();</span>
-        <span class="n">Channels</span><span class="o">.</span><span class="na">writeBlocking</span><span class="o">(</span><span class="n">sinkChannel</span><span class="o">,</span> <span class="n">buffer</span><span class="o">);</span>
-      <span class="o">}</span>
-      <span class="n">Channels</span><span class="o">.</span><span class="na">flushBlocking</span><span class="o">(</span><span class="n">sinkChannel</span><span class="o">);</span>
-      <span class="k">if</span> <span class="o">(</span><span class="n">res</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="o">)</span> <span class="o">{</span>
-        <span class="n">channel</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
-      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
-        <span class="n">channel</span><span class="o">.</span><span class="na">resumeReads</span><span class="o">();</span>
-      <span class="o">}</span>
-    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-      <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
-      <span class="n">IoUtils</span><span class="o">.</span><span class="na">safeClose</span><span class="o">(</span><span class="n">channel</span><span class="o">);</span>
-    <span class="o">}</span>
-  <span class="o">}</span>
-<span class="o">}</span>
-<span class="kd">final</span> <span class="n">ChannelListener</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;</span><span class="n">AcceptingChannel</span><span class="o">&lt;</span><span class="n">StreamConnection</span><span class="o">&gt;&gt;</span> <span class="n">acceptListener</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ChannelListener</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;</span><span class="n">AcceptingChannel</span><span class="o">&lt;</span><span class="n">StreamConnection</span><span class="o">&gt;&gt;()</span> <span class="o">{</span>
-  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">handleEvent</span><span class="o">(</span><span class="n">AcceptingChannel</span><span class="o">&lt;</span><span class="n">StreamConnection</span><span class="o">&gt;</span> <span class="n">channel</span><span class="o">)</span> <span class="o">{</span>
-    <span class="k">try</span> <span class="o">{</span>
-      <span class="n">StreamConnection</span> <span class="n">accepted</span><span class="o">;</span>
-      <span class="c1">// channel is ready to accept zero or more connections</span>
-      <span class="k">while</span> <span class="o">((</span><span class="n">accepted</span> <span class="o">=</span> <span class="n">channel</span><span class="o">.</span><span class="na">accept</span><span class="o">())</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">accepted</span> <span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span>
-            <span class="o">+</span> <span class="n">accepted</span><span class="o">.</span><span class="na">getPeerAddress</span><span class="o">());</span>
-        <span class="c1">// stream channel has been accepted at this stage.</span>
-        <span class="c1">// read listener is set; start it up</span>
-        <span class="n">accepted</span><span class="o">.</span><span class="na">getSourceChannel</span><span class="o">().</span><span class="na">setReadListener</span><span class="o">(</span><span class="k">new</span> <span class="nf">ReadListener</span><span class="o">(</span><span class="n">accepted</span><span class="o">.</span><span class="na">getSinkChannel</span><span class="o">()));</span>
-        <span class="n">accepted</span><span class="o">.</span><span class="na">getSourceChannel</span><span class="o">().</span><span class="na">resumeReads</span><span class="o">();</span>
-      <span class="o">}</span>
-    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">IOException</span> <span class="n">ignored</span><span class="o">)</span> <span class="o">{</span>
-    <span class="o">}</span>
-  <span class="o">}</span>
-<span class="o">};</span>
-<span class="kd">final</span> <span class="n">XnioWorker</span> <span class="n">worker</span> <span class="o">=</span> <span class="n">Xnio</span><span class="o">.</span><span class="na">getInstance</span><span class="o">().</span><span class="na">createWorker</span><span class="o">(</span>
-    <span class="n">OptionMap</span><span class="o">.</span><span class="na">EMPTY</span><span class="o">);</span>
-<span class="c1">// Create the server.</span>
-<span class="n">AcceptingChannel</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;?</span> <span class="kd">extends</span> <span class="n">StreamConnection</span><span class="o">&gt;</span> <span class="n">server</span> <span class="o">=</span> <span class="n">worker</span>
-    <span class="o">.</span><span class="na">createStreamConnectionServer</span><span class="o">(</span><span class="k">new</span> <span class="nf">InetSocketAddress</span><span class="o">(</span><span class="mi">12345</span><span class="o">),</span>
-        <span class="n">acceptListener</span><span class="o">,</span> <span class="n">OptionMap</span><span class="o">.</span><span class="na">EMPTY</span><span class="o">);</span>
-<span class="c1">// lets start accepting connections</span>
-<span class="n">server</span><span class="o">.</span><span class="na">resumeAccepts</span><span class="o">();</span></code></pre></div></p>
+<p>  public void handleEvent(StreamSourceChannel channel) {
+    final ByteBuffer buffer = ByteBuffer.allocate(512);
+    int res;
+    try {
+      while ((res = channel.read(buffer)) > 0) {
+        buffer.flip();
+        Channels.writeBlocking(sinkChannel, buffer);
+      }
+      Channels.flushBlocking(sinkChannel);
+      if (res == -1) {
+        channel.close();
+      } else {
+        channel.resumeReads();
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+      IoUtils.safeClose(channel);
+    }
+  }
+}
+final ChannelListener&lt;AcceptingChannel<StreamConnection>> acceptListener = new ChannelListener&lt;AcceptingChannel<StreamConnection>>() {
+  public void handleEvent(AcceptingChannel<StreamConnection> channel) {
+    try {
+      StreamConnection accepted;
+      // channel is ready to accept zero or more connections
+      while ((accepted = channel.accept()) != null) {
+        System.out.println(&ldquo;accepted &rdquo;
+            + accepted.getPeerAddress());
+        // stream channel has been accepted at this stage.
+        // read listener is set; start it up
+        accepted.getSourceChannel().setReadListener(new ReadListener(accepted.getSinkChannel()));
+        accepted.getSourceChannel().resumeReads();
+      }
+    } catch (IOException ignored) {
+    }
+  }
+};
+final XnioWorker worker = Xnio.getInstance().createWorker(
+    OptionMap.EMPTY);
+// Create the server.
+AcceptingChannel&lt;? extends StreamConnection> server = worker
+    .createStreamConnectionServer(new InetSocketAddress(12345),
+        acceptListener, OptionMap.EMPTY);
+// lets start accepting connections
+server.resumeAccepts();
+{% endhighlight %}</p>
 
 <p>完。</p>
 ]]></content>

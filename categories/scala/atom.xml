@@ -4,7 +4,7 @@
   <title><![CDATA[Category: scala | loop in codes]]></title>
   <link href="http://codemacro.com/categories/scala/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2017-04-23T21:07:29+08:00</updated>
+  <updated>2017-05-18T20:10:14+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -28,8 +28,9 @@
 
 <p>scala中一切都是对象，虽然Java也是这样说的（其实ruby也是这样说的）。在Java中一个数字仅仅是个值，但在scala中却真的是对象：</p>
 
-<p><div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
-<span class="n">println</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="mi">2</span> <span class="n">type</span><span class="k">:</span> <span class="kt">&amp;rdquo</span><span class="o">;</span> <span class="o">+</span> <span class="mf">2.</span><span class="n">getClass</span><span class="o">())</span></code></pre></div></p>
+<p>{% highlight scala %} <br/>
+println(&ldquo;2 type: &rdquo; + 2.getClass())
+{% endhighlight %}</p>
 
 <p>scala同Java一样将所有类型都设定了一个基类：<code>Any</code>。不同的是，<code>Any</code>下还区分了<code>AnyVal</code>和<code>AnyRef</code>。</p>
 
@@ -37,18 +38,19 @@
 
 <p>scala是一门静态类型语言，但是其强大的类型推断可以避免很多冗余信息的代码。例如：</p>
 
-<p><div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
-<span class="k">val</span> <span class="n">map</span><span class="k">:</span><span class="kt">Map</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">HashMap</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]</span>
-<span class="c1">// 可简写为</span>
-<span class="k">val</span> <span class="n">map</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">HashMap</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight scala %} <br/>
+val map:Map[String, Int] = new HashMap[String, Int]
+// 可简写为
+val map = new HashMap[String, Int]</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">def</span> <span class="n">func</span><span class="o">()</span><span class="k">:</span><span class="kt">String</span> <span class="o">=</span> <span class="o">{</span>
-    <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">hello</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span>
-<span class="o">}</span>
-<span class="c1">// 可简写为</span>
-<span class="k">def</span> <span class="n">func</span><span class="o">()</span> <span class="k">=</span> <span class="o">{</span>
-    <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">hello</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span>
-<span class="o">}</span></code></pre></div></p>
+<p>def func():String = {
+    &ldquo;hello&rdquo;
+}
+// 可简写为
+def func() = {
+    &ldquo;hello&rdquo;
+}
+{% endhighlight %}</p>
 
 <p>类型推断可以根据表达式的类型决定这个变量/函数的类型，这就如同C++11中的<code>auto</code>关键字。</p>
 
@@ -56,17 +58,18 @@
 
 <p>scala既然包含了函数式语言的特性，那么函数作为first citizen就是自然而言的事情。而function literal的语法形式也就必须更自然（想想common lisp里lambda那蛋疼的关键字）：</p>
 
-<p><div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
-<span class="k">val</span> <span class="n">factor</span> <span class="k">=</span> <span class="mi">3</span>
-<span class="k">val</span> <span class="n">multiplier</span> <span class="k">=</span> <span class="o">(</span><span class="n">i</span><span class="k">:</span><span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">i</span> <span class="o">*</span> <span class="n">factor</span> <span class="c1">// function literal, lexical bind to factor</span>
-<span class="k">val</span> <span class="n">l1</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">,</span> <span class="mi">5</span><span class="o">)</span> <span class="n">map</span> <span class="n">multiplier</span> <span class="c1">// map &lt;code&gt;multiplier&lt;/code&gt; to every element in List l1&lt;/p&gt;</span>
+<p>{% highlight scala %} <br/>
+val factor = 3
+val multiplier = (i:Int) => i * factor // function literal, lexical bind to factor
+val l1 = List(1, 2, 3, 4, 5) map multiplier // map <code>multiplier</code> to every element in List l1</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">def</span> <span class="n">add</span><span class="o">(</span><span class="n">a</span><span class="k">:</span><span class="kt">Int</span><span class="o">,</span> <span class="n">b</span><span class="k">:</span><span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
-  <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
-<span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>def add(a:Int, b:Int) = {
+  a + b
+}</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">val</span> <span class="n">f</span><span class="k">:</span><span class="o">(</span><span class="kt">Int</span><span class="o">,</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">Int</span> <span class="k">=</span> <span class="n">add</span> <span class="c1">// f is a function type: (Int, Int) =&gt; Int</span>
-<span class="n">println</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">f</span><span class="o">:&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">+</span> <span class="n">f</span><span class="o">(</span><span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">))</span></code></pre></div></p>
+<p>val f:(Int, Int) => Int = add // f is a function type: (Int, Int) => Int
+println(&ldquo;f:&rdquo; + f(2, 3))
+{% endhighlight %}</p>
 
 <!-- more -->
 
@@ -79,8 +82,9 @@
 
 <p>scala中其实没有语句。对于if/while之类都算是表达式，其处理方式同函数式语言中一样，将最后一个表达式的值作为返回值：</p>
 
-<p><div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
-<span class="k">val</span> <span class="n">i</span> <span class="k">=</span> <span class="k">if</span> <span class="o">(</span><span class="mi">2</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="o">)</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="o">;</span><span class="kc">true</span> <span class="k">else</span> <span class="o">&amp;</span><span class="k">#</span><span class="mi">8216</span><span class="o">;</span><span class="kc">false</span></code></pre></div></p>
+<p>{% highlight scala %} <br/>
+val i = if (2 > 1) &lsquo;true else 'false
+{% endhighlight %}</p>
 
 <h3>控制语句</h3>
 
@@ -90,21 +94,25 @@
 
 <p>这个语法特性对应着函数式语言中的List Comprehension，可以用于处理一个集合，以产出另一个集合。</p>
 
-<p><div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
-<span class="k">val</span> <span class="n">r</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
-  <span class="n">n</span> <span class="o">&amp;</span><span class="n">lt</span><span class="o">;-</span> <span class="nc">Array</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">,</span> <span class="mi">5</span><span class="o">)</span>
-  <span class="k">if</span> <span class="n">n</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span>
-<span class="o">}</span> <span class="k">yield</span> <span class="n">n</span>
-<span class="n">r</span> <span class="n">map</span> <span class="n">println</span></code></pre></div></p>
+<p>{% highlight scala %} <br/>
+val r = for {
+  n &lt;- Array(1, 2, 3, 4, 5)
+  if n % 2 == 0
+} yield n
+r map println
+{% endhighlight %}</p>
 
 <p>这个例子同Erlang中的：</p>
 
-<p><div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="p">[</span><span class="nv">N</span> <span class="p">||</span> <span class="nv">N</span> <span class="err">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">-</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="nv">N</span> <span class="ow">rem</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">].</span></code></pre></div></p>
+<p>{% highlight erlang %}
+[N || N &lt;- [1, 2, 3, 4, 5], N rem 2 == 0].
+{% endhighlight %}</p>
 
 <p>for中的generator在实践中也比较有用，相当于foreach：</p>
 
-<p><div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
-<span class="k">for</span> <span class="o">(</span><span class="n">i</span> <span class="o">&amp;</span><span class="n">lt</span><span class="o">;-</span> <span class="nc">Array</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">))</span> <span class="n">println</span><span class="o">(</span><span class="n">i</span><span class="o">)</span></code></pre></div></p>
+<p>{% highlight scala %} <br/>
+for (i &lt;- Array(1, 2, 3, 4)) println(i)
+{% endhighlight %}</p>
 
 <h3>pattern match</h3>
 
@@ -112,34 +120,37 @@
 
 <p>最简单的匹配：</p>
 
-<p><div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
-<span class="n">println</span><span class="o">(</span><span class="mi">1</span> <span class="k">match</span> <span class="o">{</span>
-  <span class="k">case</span> <span class="mi">1</span> <span class="k">=&gt;</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">one</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span>
-  <span class="k">case</span> <span class="mi">2</span> <span class="k">=&gt;</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">two</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span>
-  <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">unknown</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">})</span></code></pre></div></p>
+<p>{% highlight scala %} <br/>
+println(1 match {
+  case 1 => &ldquo;one&rdquo;
+  case 2 => &ldquo;two&rdquo;
+  case _ => &ldquo;unknown&rdquo; })
+{% endhighlight %}</p>
 
 <p>对类型进行匹配：</p>
 
-<p><div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
-<span class="k">val</span> <span class="n">obj</span><span class="k">:</span><span class="kt">Any</span> <span class="o">=</span> <span class="kc">null</span>
-<span class="n">println</span><span class="o">(</span><span class="n">obj</span> <span class="k">match</span> <span class="o">{</span>
-  <span class="k">case</span> <span class="n">t</span><span class="k">:</span><span class="kt">Int</span> <span class="o">=&gt;</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">int</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span>
-  <span class="k">case</span> <span class="n">t</span><span class="k">:</span><span class="kt">String</span> <span class="o">=&gt;</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">string</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span>
-  <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">unknown</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span>
-<span class="o">})</span></code></pre></div></p>
+<p>{% highlight scala %} <br/>
+val obj:Any = null
+println(obj match {
+  case t:Int => &ldquo;int&rdquo;
+  case t:String => &ldquo;string&rdquo;
+  case _ => &ldquo;unknown&rdquo;
+})
+{% endhighlight %}</p>
 
 <p>更有用的是提取list/tuple之类集合里的元素。通过一个match&hellip;case才能匹配出list/tuple里的元素（当然也可以通过一些函数来提取），多少有点累赘：</p>
 
-<p><div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
-<span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">hello</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="mi">110</span><span class="o">)</span> <span class="k">match</span> <span class="o">{</span>
-  <span class="k">case</span> <span class="o">(</span><span class="n">str</span><span class="o">,</span> <span class="k">_</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="n">str</span><span class="o">)</span>
-  <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">unknown</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;)</span>
-<span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight scala %} <br/>
+(&ldquo;hello&rdquo;, 110) match {
+  case (str, _) => println(str)
+  case _ => println(&ldquo;unknown&rdquo;)
+}</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="nc">List</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">hello</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="mi">110</span><span class="o">,</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="o">;</span><span class="n">sym</span><span class="o">)</span> <span class="k">match</span> <span class="o">{</span>
-  <span class="k">case</span> <span class="nc">List</span><span class="o">(&lt;</span><span class="n">em</span><span class="o">&gt;,</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;,</span> <span class="n">s</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="n">s</span><span class="o">)</span>
-  <span class="k">case</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;::</span><span class="n">n</span><span class="o">::&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="n">n</span><span class="o">)</span> <span class="c1">// head::tail</span>
-<span class="o">}</span></code></pre></div></p>
+<p>List(&ldquo;hello&rdquo;, 110, &lsquo;sym) match {
+  case List(<em>, </em>, s) => println(s)
+  case <em>::n::</em> => println(n) // head::tail
+}
+{% endhighlight %}</p>
 
 <p>例子中还体现了scala对于list的处理能力，果然包含了函数式语言的特性。</p>
 
@@ -147,14 +158,15 @@
 
 <p>函数式语言里为了支持if，一般都会有Guard的概念。其用于进行条件限定，在scala中的for comprehension和pattern match中四处可见：</p>
 
-<p><div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
-<span class="k">val</span> <span class="n">obj</span><span class="k">:</span><span class="kt">Any</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">hello</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span>
-<span class="n">println</span><span class="o">(</span><span class="n">obj</span> <span class="k">match</span> <span class="o">{</span>
-  <span class="k">case</span> <span class="n">t</span><span class="k">:</span><span class="kt">Int</span> <span class="o">=&gt;</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">int</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span>
-  <span class="k">case</span> <span class="n">t</span><span class="k">:</span><span class="kt">String</span> <span class="kt">if</span> <span class="kt">t</span> <span class="o">=</span><span class="k">=</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">hello</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="k">=&gt;</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">world</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="c1">// guard</span>
-  <span class="k">case</span> <span class="n">t</span><span class="k">:</span><span class="kt">String</span> <span class="o">=&gt;</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">hello</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span>
-  <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">unknown</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span>
-<span class="o">})</span></code></pre></div></p>
+<p>{% highlight scala %} <br/>
+val obj:Any = &ldquo;hello&rdquo;
+println(obj match {
+  case t:Int => &ldquo;int&rdquo;
+  case t:String if t == &ldquo;hello&rdquo; => &ldquo;world&rdquo; // guard
+  case t:String => &ldquo;hello&rdquo;
+  case _ => &ldquo;unknown&rdquo;
+})
+{% endhighlight %}</p>
 
 <h2>trait/abstract type</h2>
 
@@ -162,61 +174,61 @@
 
 <p>简单的应用：</p>
 
-<p><div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
-<span class="k">trait</span> <span class="nc">Show</span> <span class="o">{</span>
-  <span class="k">def</span> <span class="n">show</span><span class="o">(</span><span class="n">s</span><span class="k">:</span><span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="n">println</span><span class="o">(</span><span class="n">s</span><span class="o">)</span>
-<span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight scala %} <br/>
+trait Show {
+  def show(s:String) = println(s)
+}</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">abstract</span> <span class="k">class</span> <span class="nc">Widget</span>
-<span class="k">class</span> <span class="nc">MyClass</span> <span class="k">extends</span> <span class="nc">Widget</span> <span class="k">with</span> <span class="nc">Show</span> <span class="o">{</span>
-  <span class="k">override</span> <span class="k">def</span> <span class="n">show</span><span class="o">(</span><span class="n">s</span><span class="k">:</span><span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="n">println</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="nc">MyClass</span> <span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">+</span> <span class="n">s</span><span class="o">)</span>
-<span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>abstract class Widget
+class MyClass extends Widget with Show {
+  override def show(s:String) = println(&ldquo;MyClass &rdquo; + s)
+}</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">val</span> <span class="n">t</span><span class="k">:</span><span class="kt">Show</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">MyClass</span>
-<span class="n">t</span> <span class="n">show</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">hello</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="c1">// 等同于t.show(&amp;ldquo;hello&amp;rdquo;)，scala中支持这种函数调用，可应用于构建DSL&lt;/p&gt;</span>
+<p>val t:Show = new MyClass
+t show &ldquo;hello&rdquo; // 等同于t.show(&ldquo;hello&rdquo;)，scala中支持这种函数调用，可应用于构建DSL</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+<p>{% endhighlight %}</p>
 
 <p>以上例子显现不出trait的作用。trait为了支持“混入(mixin)“，<strong>语法上允许在创建一个对象时，混入一个trait</strong>，而不用在类定义时混入：</p>
 
-<p><div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
-<span class="k">trait</span> <span class="nc">Show</span> <span class="o">{</span>
-  <span class="k">def</span> <span class="n">show</span><span class="o">(</span><span class="n">s</span><span class="k">:</span><span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="n">println</span><span class="o">(</span><span class="n">s</span><span class="o">)</span>
-<span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight scala %} <br/>
+trait Show {
+  def show(s:String) = println(s)
+}</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">Person</span><span class="o">(</span><span class="k">val</span> <span class="n">name</span><span class="k">:</span><span class="kt">String</span><span class="o">)</span> <span class="o">{</span>
-<span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>class Person(val name:String) {
+}</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">val</span> <span class="n">person</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Person</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">kevin</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;)</span> <span class="k">with</span> <span class="nc">Show</span> <span class="c1">// 混入Show到person中</span>
-<span class="n">person</span><span class="o">.</span><span class="n">show</span><span class="o">(</span><span class="n">person</span><span class="o">.</span><span class="n">name</span><span class="o">)</span> <span class="c1">// person拥有show接口&lt;/p&gt;</span>
+<p>val person = new Person(&ldquo;kevin&rdquo;) with Show // 混入Show到person中
+person.show(person.name) // person拥有show接口</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+<p>{% endhighlight %}</p>
 
 <h2>class</h2>
 
 <p>class方面的语法可以简单关注些常用的语法，trait一节中的例子已经显示了class定义方面的一些语法：</p>
 
-<p><div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight scala %}</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">class</span> <span class="nc">Person</span><span class="o">(</span><span class="k">val</span> <span class="n">name</span><span class="k">:</span><span class="kt">String</span><span class="o">)</span> <span class="o">{</span> <span class="c1">// primary constructor，参数作为类成员</span>
-  <span class="k">val</span> <span class="n">address</span> <span class="k">=</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">earth</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="c1">// 另一个成员，默认的可见属性</span>
-  <span class="k">var</span> <span class="n">id</span><span class="k">:</span><span class="kt">Int</span> <span class="o">=</span> <span class="mi">0</span>
-  <span class="k">private</span> <span class="k">val</span> <span class="n">email</span> <span class="k">=</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">kevinlynx</span> <span class="n">at</span> <span class="n">gmail</span> <span class="n">dot</span> <span class="n">com</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="c1">// private成员&lt;/p&gt;</span>
+<p>class Person(val name:String) { // primary constructor，参数作为类成员
+  val address = &ldquo;earth&rdquo; // 另一个成员，默认的可见属性
+  var id:Int = 0
+  private val email = &ldquo;kevinlynx at gmail dot com&rdquo; // private成员</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="n">id</span> <span class="k">=</span> <span class="n">randid</span> <span class="c1">// 类体一定程度上作为primary constructor函数体&lt;/p&gt;</span>
+<p>  id = randid // 类体一定程度上作为primary constructor函数体</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="k">def</span> <span class="n">fullname</span> <span class="k">=</span> <span class="n">println</span><span class="o">(</span><span class="n">name</span> <span class="o">+</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span> <span class="n">lynx</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;)</span> <span class="c1">// 接口&lt;/p&gt;</span>
+<p>  def fullname = println(name + &ldquo; lynx&rdquo;) // 接口</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="k">def</span> <span class="k">this</span><span class="o">()</span> <span class="k">=</span> <span class="k">this</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">ah</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;)</span> <span class="c1">// 0个或多个auxiliary constructor，可以调用primary constructor&lt;/p&gt;</span>
+<p>  def this() = this(&ldquo;ah&rdquo;) // 0个或多个auxiliary constructor，可以调用primary constructor</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="k">def</span> <span class="n">randid</span><span class="k">:</span><span class="kt">Int</span> <span class="o">=</span> <span class="mi">2</span>
-<span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>  def randid:Int = 2
+}</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">val</span> <span class="n">p</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Person</span>
-<span class="n">println</span><span class="o">(</span><span class="n">p</span><span class="o">.</span><span class="n">fullname</span><span class="o">)</span>
-<span class="n">println</span><span class="o">(</span><span class="n">p</span><span class="o">.</span><span class="n">id</span><span class="o">)&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>val p = new Person
+println(p.fullname)
+println(p.id)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+<p>{% endhighlight %}</p>
 
 <p>面向对象语法在scala中占有很大的比例，除了基本类语法外，还有很多类相关的语法，例如<code>companion classes</code>、<code>case classes</code>等。</p>
 
@@ -224,18 +236,18 @@
 
 <p>object类似于类，类可以有很多实例化出很多对象，但object则只有一个实例，其更像一个语言内置的单件模式。scala中任意object，只要包含了main接口，即可作为一个程序的入口：</p>
 
-<p><div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
-<span class="k">object</span> <span class="nc">Test</span> <span class="o">{</span>
-  <span class="k">val</span> <span class="n">i</span> <span class="k">=</span> <span class="mi">100</span>
-  <span class="k">val</span> <span class="n">str</span> <span class="k">=</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">hello</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight scala %} <br/>
+object Test {
+  val i = 100
+  val str = &ldquo;hello&rdquo;</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>  <span class="k">def</span> <span class="n">main</span><span class="o">(</span><span class="n">args</span><span class="k">:</span><span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">])</span> <span class="k">=</span> <span class="o">{</span>
-    <span class="n">println</span><span class="o">(</span><span class="n">i</span><span class="o">)</span>
-  <span class="o">}</span>
-<span class="o">}</span>
-<span class="n">println</span><span class="o">(</span><span class="nc">Test</span><span class="o">.</span><span class="n">str</span><span class="o">)&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>  def main(args:Array[String]) = {
+    println(i)
+  }
+}
+println(Test.str)</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+<p>{% endhighlight %}</p>
 
 <h2>functions</h2>
 
@@ -247,60 +259,63 @@
 
 <p>简单来说就是将多参数的函数转换为某个参数为固定值的函数：</p>
 
-<p><div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
-<span class="k">def</span> <span class="n">concatUpper</span><span class="o">(</span><span class="n">s1</span><span class="k">:</span><span class="kt">String</span><span class="o">,</span> <span class="n">s2</span><span class="k">:</span><span class="kt">String</span><span class="o">)</span><span class="k">:</span><span class="kt">String</span> <span class="o">=</span> <span class="o">(</span><span class="n">s1</span> <span class="o">+</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span> <span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">+</span> <span class="n">s2</span><span class="o">).</span><span class="n">toUpperCase</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight scala %} <br/>
+def concatUpper(s1:String, s2:String):String = (s1 + &ldquo; &rdquo; + s2).toUpperCase</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">val</span> <span class="n">c1</span> <span class="k">=</span> <span class="n">concatUpper</span> <span class="k">_</span> <span class="c1">// now c1 is a function value, type: (String, String) =&gt; String</span>
-<span class="n">println</span><span class="o">(</span><span class="n">c1</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">short</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">pants</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;))</span>
-<span class="k">val</span> <span class="n">c2</span> <span class="k">=</span> <span class="n">concatUpper</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">short</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;,</span> <span class="k">_:</span><span class="kt">String</span><span class="o">)</span>
-<span class="n">println</span><span class="o">(</span><span class="n">c2</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">pants</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;))</span></code></pre></div></p>
+<p>val c1 = concatUpper _ // now c1 is a function value, type: (String, String) => String
+println(c1(&ldquo;short&rdquo;, &ldquo;pants&rdquo;))
+val c2 = concatUpper(&ldquo;short&rdquo;, _:String)
+println(c2(&ldquo;pants&rdquo;))
+{% endhighlight %}</p>
 
 <h3>currying</h3>
 
 <p>函数柯里化同偏函数一定程度上具有相同的作用。scala里柯里化函数的语法不同：</p>
 
-<p><div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
-<span class="k">def</span> <span class="n">multiplier</span><span class="o">(</span><span class="n">i</span><span class="k">:</span><span class="kt">Int</span><span class="o">)(</span><span class="n">factor</span><span class="k">:</span><span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="n">i</span> <span class="o">*</span> <span class="n">factor</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight scala %} <br/>
+def multiplier(i:Int)(factor:Int) = i * factor</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;//</span> <span class="n">当然也可以将一个普通函数转换为柯里化版本</span>
-<span class="k">val</span> <span class="n">catVal</span> <span class="k">=</span> <span class="n">concatUpper</span> <span class="k">_</span>
-<span class="k">val</span> <span class="n">curryCat</span> <span class="k">=</span> <span class="n">catVal</span><span class="o">.</span><span class="n">curried</span> <span class="c1">// 2.10中curry，以前是用Function.curried</span>
-<span class="k">val</span> <span class="n">catLeft</span> <span class="k">=</span> <span class="n">curryCat</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">hello</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;)</span>
-<span class="n">println</span><span class="o">(</span><span class="n">catLeft</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">world</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;))&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>// 当然也可以将一个普通函数转换为柯里化版本
+val catVal = concatUpper _
+val curryCat = catVal.curried // 2.10中curry，以前是用Function.curried
+val catLeft = curryCat(&ldquo;hello&rdquo;)
+println(catLeft(&ldquo;world&rdquo;))</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+<p>{% endhighlight %}</p>
 
 <h3>call by name</h3>
 
 <p>函数参数传递中的call by name特性，有点类似于惰性计算，即在使用到参数的时候才计算该参数，而不是在调用函数之前就把参数值计算好。</p>
 
-<p><div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
-<span class="k">def</span> <span class="n">show</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="o">=&gt;</span> <span class="nc">String</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span> <span class="c1">// 指定s call by name</span>
-  <span class="n">println</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">show</span> <span class="n">get</span> <span class="n">called</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;)</span>
-  <span class="n">println</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">argument</span><span class="o">:&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">+</span> <span class="n">s</span><span class="o">)</span>
-<span class="o">}</span>
-<span class="k">def</span> <span class="n">getStr</span> <span class="k">=</span> <span class="o">{</span>
-  <span class="n">println</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">getStr</span> <span class="n">get</span> <span class="n">called</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;)</span>
-  <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">hello</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span>
-<span class="o">}</span>
-<span class="n">show</span><span class="o">(</span><span class="n">getStr</span><span class="o">)</span></code></pre></div></p>
+<p>{% highlight scala %} <br/>
+def show(s: => String) = { // 指定s call by name
+  println(&ldquo;show get called&rdquo;)
+  println(&ldquo;argument:&rdquo; + s)
+}
+def getStr = {
+  println(&ldquo;getStr get called&rdquo;)
+  &ldquo;hello&rdquo;
+}
+show(getStr)
+{% endhighlight %}</p>
 
 <p>给我印象较深的是，通过call by name语法，<strong>可以实现一个如同while的函数</strong>：</p>
 
-<p><div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
-<span class="k">def</span> <span class="n">myWhile</span><span class="o">(</span><span class="n">cond</span><span class="k">:</span> <span class="o">=&gt;</span> <span class="nc">Boolean</span><span class="o">)(</span><span class="n">f</span><span class="k">:</span> <span class="o">=&gt;</span> <span class="nc">Unit</span><span class="o">)</span> <span class="o">{</span>
-  <span class="k">if</span> <span class="o">(</span><span class="n">cond</span><span class="o">)</span> <span class="o">{</span>
-    <span class="n">f</span>
-    <span class="n">myWhile</span><span class="o">(</span><span class="n">cond</span><span class="o">)(</span><span class="n">f</span><span class="o">)</span>
-  <span class="o">}</span>
-<span class="o">}&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight scala %} <br/>
+def myWhile(cond: => Boolean)(f: => Unit) {
+  if (cond) {
+    f
+    myWhile(cond)(f)
+  }
+}</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">var</span> <span class="n">count</span> <span class="k">=</span> <span class="mi">0</span>
-<span class="c1">// WTF ?</span>
-<span class="n">myWhile</span><span class="o">(</span><span class="n">count</span> <span class="o">&amp;</span><span class="n">lt</span><span class="o">;</span> <span class="mi">3</span><span class="o">)</span> <span class="o">{</span>
-  <span class="n">println</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">in</span> <span class="k">while</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;)</span>
-  <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
-<span class="o">}</span></code></pre></div></p>
+<p>var count = 0
+// WTF ?
+myWhile(count &lt; 3) {
+  println(&ldquo;in while&rdquo;)
+  count += 1
+}
+{% endhighlight %}</p>
 
 <h2>other</h2>
 
@@ -310,26 +325,26 @@
 
 <p>用来表示所有拥有某个相同原型接口的类型：</p>
 
-<p><div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
-<span class="c1">// 相当于C中的typedef，定义一个structural types类型，需要包含名为show的接口</span>
-<span class="k">type</span> <span class="kt">MyType</span> <span class="o">=</span> <span class="o">{</span> <span class="k">def</span> <span class="n">show</span><span class="o">()</span><span class="k">:</span><span class="kt">Unit</span> <span class="o">}</span>
-<span class="k">class</span> <span class="nc">ClassA</span> <span class="o">{</span>
-  <span class="k">def</span> <span class="n">show</span><span class="o">()</span><span class="k">:</span><span class="kt">Unit</span> <span class="o">=</span> <span class="o">{</span>
-    <span class="n">println</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="nc">ClassA</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;)</span>
-  <span class="o">}</span>
-<span class="o">}</span>
-<span class="k">class</span> <span class="nc">ClassB</span> <span class="o">{</span>
-  <span class="k">def</span> <span class="n">show</span><span class="o">()</span><span class="k">:</span><span class="kt">Unit</span> <span class="o">=</span> <span class="o">{</span>
-    <span class="n">println</span><span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="nc">ClassB</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;)</span>
-  <span class="o">}</span>
-<span class="o">}</span>
-<span class="k">var</span> <span class="n">obj</span><span class="k">:</span><span class="kt">MyType</span> <span class="o">=</span> <span class="kc">null</span>
-<span class="n">obj</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ClassA</span>
-<span class="n">obj</span><span class="o">.</span><span class="n">show</span>
-<span class="n">obj</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ClassB</span>
-<span class="n">obj</span><span class="o">.</span><span class="n">show</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<p>{% highlight scala %} <br/>
+// 相当于C中的typedef，定义一个structural types类型，需要包含名为show的接口
+type MyType = { def show():Unit }
+class ClassA {
+  def show():Unit = {
+    println(&ldquo;ClassA&rdquo;)
+  }
+}
+class ClassB {
+  def show():Unit = {
+    println(&ldquo;ClassB&rdquo;)
+  }
+}
+var obj:MyType = null
+obj = new ClassA
+obj.show
+obj = new ClassB
+obj.show</p>
 
-<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
+<p>{% endhighlight %}</p>
 
 <p>虽然ClassA/ClassB没有任何关系，但因为都包含了一个<code>show</code>接口，则可以通过一个统一的类型将其统一起来。</p>
 
@@ -337,11 +352,12 @@
 
 <p>基本类似于C++模板，但仅限于类型信息，适合定义类似C++ STL的容器：</p>
 
-<p><div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
-<span class="k">class</span> <span class="nc">Vector</span><span class="o">&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;var%20a:T,%20var%20b:T&quot;</span><span class="o">&gt;</span><span class="n">T</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span> <span class="o">{</span>
-<span class="o">}</span>
-<span class="k">val</span> <span class="n">v</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Vector</span><span class="o">&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;1,%202&quot;</span><span class="o">&gt;</span><span class="nc">Int</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
-<span class="n">println</span><span class="o">(</span><span class="n">v</span><span class="o">.</span><span class="n">a</span> <span class="o">+</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;:&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">+</span> <span class="n">v</span><span class="o">.</span><span class="n">b</span><span class="o">)</span></code></pre></div></p>
+<p>{% highlight scala %} <br/>
+class Vector<a href="var%20a:T,%20var%20b:T">T</a> {
+}
+val v = new Vector<a href="1,%202">Int</a>
+println(v.a + &ldquo;:&rdquo; + v.b)
+{% endhighlight %}</p>
 
 <h2>小结</h2>
 

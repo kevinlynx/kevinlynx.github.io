@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="接上篇。 下载使用 目前为止dhtcrawler2相对dhtcrawler而言，数据库部分调整很大，DHT部分基本沿用之前。但单纯作为一个爬资源的程序而言，DHT部分可以进行大幅削减，这个以后再说。这个版本更快、更稳定。为了方便，我将编译好的erlang二进制文件作为git的主分支， &hellip;">
+  <meta name="description" content="dhtcrawler2最开始使用mongodb自带的全文搜索引擎搜索资源。搜索一些短关键字时很容易导致erlang进程call timeout，也就是查询时间太长。对于像avi这种关键字，搜索时间长达十几秒。搜索的资源数量200万左右。这其中大部分资源只是对root文件名进行了索引， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,52 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2013/08/08/sphinx-dhtcrawler/">dhtcrawler2换用sphinx搜索</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-08-08T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>8</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>dhtcrawler2最开始使用mongodb自带的全文搜索引擎搜索资源。搜索一些短关键字时很容易导致erlang进程call timeout，也就是查询时间太长。对于像<code>avi</code>这种关键字，搜索时间长达十几秒。搜索的资源数量200万左右。这其中大部分资源只是对root文件名进行了索引，即对于多文件资源而言没有索引单个文件名。索引方式有部分资源是按照字符串子串的形式，没有拆词，非常占用存储空间；有部分是使用了rmmseg（我编译了rmmseg-cpp作为erlang nif库调用 <a href="https://github.com/kevinlynx/erl-rmmseg">erl-rmmseg</a>）进行了拆词，占用空间小了很多，但由于词库问题很多片里的词汇没拆出来。</p>
+
+<p>很早以前我以为搜索耗时的原因是因为数据库太忙，想部署个mongodb集群出来。后来发现数据库没有任何读写的状态下，查询依然慢。终于只好放弃mongodb自带的文本搜索。于是我改用sphinx。简单起见，我直接下载了<a href="http://www.coreseek.cn/">coreseek4.1</a>（sphinx的一个支持中文拆词的包装）。</p>
+
+<p>现在，已经导入了200多万的资源进sphinx，并且索引了所有文件名，索引文件达800M。对于<code>avi</code>关键字的搜索大概消耗0.2秒的时间。<a href="http://bt.cm/e/http_handler:search?q=avi">搜索试试</a>。</p>
+
+<p>以下记录下sphinx在dhtcrawler的应用</p>
+
+<h3>sphinx简介</h3>
+
+<p>sphinx包含两个主要的程序：indexer和searchd。indexer用于建立文本内容的索引，然后searchd基于这些索引提供文本搜索功能，而要使用该功能，可以遵循searchd的网络协议连接searchd这个服务来使用。</p>
+
+<p>indexer可以通过多种方式来获取这些文本内容，文本内容的来源称为数据源。sphinx内置mysql这种数据源，意思是可以直接从mysql数据库中取得数据。sphinx还支持xmlpipe2这种数据源，其数据以xml格式提供给indexer。要导入mongodb数据库里的内容，可以选择使用xmlpipe2这种方式。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/08/08/sphinx-dhtcrawler/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -537,52 +583,6 @@ Obj-&gt;func(args)
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2013/02/15/ice-overview/">分布式程序开发平台ICE概览</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2013-02-15T00:00:00+08:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>15</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>本文基于ICE Manual及相关文档就ICE的一些主要特性做一个概览，它不是一个tutorial，不是一个guid，更不是manual。</p>
-
-<h2>概览</h2>
-
-<p><a href="http://www.zeroc.com/index.html">ICE</a>，Internet Communications Engine，按照官方介绍，是一个支持C++、.Net、Java、Python、Objective-C、Ruby、PHP及ActionScript等语言的分布式程序开发平台。按照我的理解，简单来说它是一个核心功能包装RPC的库。要把这个RPC包装得漂亮，自然而然，对于使用者而言，调用一个远端的接口和调用一个本地的接口没有什么区别，例如：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">Object</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="n">xxx</span>
-    <span class="n">obj</span><span class="o">-&gt;</span><span class="n">sayHello</span><span class="p">();</span></code></pre></div>
-
-
-<p>ICE包装<code>sayHello</code>接口，当应用层调用该接口时，ICE发送调用请求到远端服务器，接收返回结果并返回给应用层。ICE在接口提供方面，做到了这一点。</p>
-
-<p>以下，我将逐个给出ICE中的一些工具、组件、特性说明，以展示它作为一个分布式程序开发平台所拥有的能力。到目前为止，所有这些信息均来自于ICE相关文档，总结出来权当为自己服务。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2013/02/15/ice-overview/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/6">&larr; Older</a>
@@ -597,11 +597,15 @@ Obj-&gt;func(args)
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (11)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/05/18/memcache-proxy/">实现一个memcache proxy</a>
+      </li>
     
       <li class="post">
         <a href="/2017/04/23/xmemcached/">Xmemcached源码阅读</a>
@@ -619,10 +623,6 @@ Obj-&gt;func(args)
         <a href="/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>
       </li>
     
-      <li class="post">
-        <a href="/2017/02/05/mini-requirejs/">RequireJS最简实现</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -632,7 +632,7 @@ Obj-&gt;func(args)
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 125.38461538461539%'>java(11)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
 </section>
 
   

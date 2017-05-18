@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="linux下使用动态库，基本用起来还是很容易。但如果我们的程序中大量使用动态库来实现各种框架/插件，那么就会遇到一些坑，掌握这些坑才有利于程序更稳健地运行。 本篇先谈谈动态库符号方面的问题。 测试代码可以在github上找到 符号查找 一个应用程序test会链接一个动态库libdy.so， &hellip;">
+  <meta name="description" content="有时候在线上使用gdb调试程序core问题时，可能没有符号文件，拿到的仅是一个内存地址，如果这个指向的是一个STL对象，那么如何查看这个对象的内容呢？ 只需要知道STL各个容器的数据结构实现，就可以查看其内容。本文描述了SGI STL实现中常用容器的数据结构，以及如何在gdb中查看其内容。 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,86 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2014/12/03/gdb_stl/">基于内存查看STL常用容器内容</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-12-03T00:00:00+08:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>3</span><span class='date-suffix'>rd</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>有时候在线上使用gdb调试程序core问题时，可能没有符号文件，拿到的仅是一个内存地址，如果这个指向的是一个STL对象，那么如何查看这个对象的内容呢？</p>
+
+<p>只需要知道STL各个容器的数据结构实现，就可以查看其内容。本文描述了SGI STL实现中常用容器的数据结构，以及如何在gdb中查看其内容。</p>
+
+<h2>string</h2>
+
+<p>string，即<code>basic_string</code> <code>bits/basic_string.h</code>：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">mutable</span> <span class="n">_Alloc_hider</span>  <span class="n">_M_dataplus</span><span class="p">;</span>
+    <span class="p">...</span> 
+      <span class="k">const</span> <span class="n">_CharT</span><span class="o">*</span>
+      <span class="n">c_str</span><span class="p">()</span> <span class="k">const</span>
+      <span class="p">{</span> <span class="k">return</span> <span class="n">_M_data</span><span class="p">();</span> <span class="p">}</span>
+    <span class="p">...</span>    
+      <span class="n">_CharT</span><span class="o">*</span>
+      <span class="n">_M_data</span><span class="p">()</span> <span class="k">const</span> 
+      <span class="p">{</span> <span class="k">return</span>  <span class="n">_M_dataplus</span><span class="p">.</span><span class="n">_M_p</span><span class="p">;</span> <span class="p">}</span>
+
+    <span class="p">...</span>
+      <span class="k">struct</span> <span class="nl">_Alloc_hider</span> <span class="p">:</span> <span class="n">_Alloc</span>
+      <span class="p">{</span>
+    <span class="n">_Alloc_hider</span><span class="p">(</span><span class="n">_CharT</span><span class="o">*</span> <span class="n">__dat</span><span class="p">,</span> <span class="k">const</span> <span class="n">_Alloc</span><span class="o">&amp;</span> <span class="n">__a</span><span class="p">)</span>
+    <span class="o">:</span> <span class="n">_Alloc</span><span class="p">(</span><span class="n">__a</span><span class="p">),</span> <span class="n">_M_p</span><span class="p">(</span><span class="n">__dat</span><span class="p">)</span> <span class="p">{</span> <span class="p">}</span>
+
+    <span class="n">_CharT</span><span class="o">*</span> <span class="n">_M_p</span><span class="p">;</span> <span class="c1">// The actual data.</span>
+      <span class="p">};</span>
+   
+      <span class="n">size_type</span>
+      <span class="n">length</span><span class="p">()</span> <span class="k">const</span>
+      <span class="p">{</span> <span class="k">return</span> <span class="n">_M_rep</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">_M_length</span><span class="p">;</span> <span class="p">}</span>
+
+      <span class="n">_Rep</span><span class="o">*</span>
+      <span class="n">_M_rep</span><span class="p">()</span> <span class="k">const</span>
+      <span class="p">{</span> <span class="k">return</span> <span class="o">&amp;</span><span class="p">((</span><span class="k">reinterpret_cast</span><span class="o">&lt;</span><span class="n">_Rep</span><span class="o">*&gt;</span> <span class="p">(</span><span class="n">_M_data</span><span class="p">()))[</span><span class="o">-</span><span class="mi">1</span><span class="p">]);</span> <span class="p">}</span>
+
+      <span class="p">...</span>
+       <span class="k">struct</span> <span class="n">_Rep_base</span>
+      <span class="p">{</span>
+    <span class="n">size_type</span>       <span class="n">_M_length</span><span class="p">;</span>
+    <span class="n">size_type</span>       <span class="n">_M_capacity</span><span class="p">;</span>
+    <span class="n">_Atomic_word</span>        <span class="n">_M_refcount</span><span class="p">;</span>
+      <span class="p">};</span>
+
+      <span class="k">struct</span> <span class="nl">_Rep</span> <span class="p">:</span> <span class="n">_Rep_base</span></code></pre></div>
+
+
+<p>即，string内有一个指针，指向实际的字符串位置，这个位置前面有一个<code>_Rep</code>结构，其内保存了字符串的长度、可用内存以及引用计数。当我们拿到一个string对象的地址时，可以通过以下代码获取相关值：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/12/03/gdb_stl/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -562,63 +642,6 @@ FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2014/09/02/stack-frame/">C/C++中手动获取调用堆栈</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2014-09-02T00:00:00+08:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>2</span><span class='date-suffix'>nd</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>当我们的程序core掉之后，如果能获取到core时的函数调用堆栈将非常有利于定位问题。在Windows下可以使用<a href="http://blog.csdn.net/starlee/article/details/6630816">SEH机制</a>；在Linux下通过gdb使用coredump文件即可。</p>
-
-<p>但有时候由于某些错误导致堆栈被破坏，发生拿不到调用堆栈的情况。</p>
-
-<p>一些基础预备知识本文不再详述，可以参考以下文章：</p>
-
-<ul>
-<li><a href="http://hutaow.com/blog/2013/10/15/dump-stack/">函数调用栈的获取原理分析</a></li>
-<li><a href="http://www.findfunaax.com/notes/file/262">寄存器、函数调用与栈帧</a></li>
-</ul>
-
-
-<p>需要知道的信息：</p>
-
-<ul>
-<li>函数调用对应的<code>call</code>指令本质上是先压入下一条指令的地址到堆栈，然后跳转到目标函数地址</li>
-<li>函数返回指令<code>ret</code>则是从堆栈取出一个地址，然后跳转到该地址</li>
-<li>EBP寄存器始终指向当前执行函数相关信息（局部变量）所在栈中的位置，ESP则始终指向栈顶</li>
-<li>每一个函数入口都会保存调用者的EBP值，在出口处都会重设EBP值，从而实现函数调用的现场保存及现场恢复</li>
-<li>64位机器增加了不少寄存器，从而使得函数调用的参数大部分时候可以通过寄存器传递；同时寄存器名字发生改变，例如EBP变为RBP</li>
-</ul>
-
-
-<p>在函数调用中堆栈的情况可用下图说明：</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2014/09/02/stack-frame/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/4">&larr; Older</a>
@@ -633,11 +656,15 @@ FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (11)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/05/18/memcache-proxy/">实现一个memcache proxy</a>
+      </li>
     
       <li class="post">
         <a href="/2017/04/23/xmemcached/">Xmemcached源码阅读</a>
@@ -655,10 +682,6 @@ FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
         <a href="/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>
       </li>
     
-      <li class="post">
-        <a href="/2017/02/05/mini-requirejs/">RequireJS最简实现</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -668,7 +691,7 @@ FETCH_HEAD      ORIG_HEAD  config    hooks        info   objects  refs
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 125.38461538461539%'>java(11)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
 </section>
 
   

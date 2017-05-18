@@ -9,7 +9,8 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="Xmemcached 是一个memcached客户端库。由于它提供的是同步API，而我想看下如何增加异步接口。所以就大致浏览了下它的源码。 主要结构 针对memcache客户端的实现，主要结构如下： XMemcachedClient 是应用主要使用的类，所有针对memcache的接口都在这里 &hellip;">
+  <meta name="description" content="通常我们会使用多台memcached构成一个集群，通过客户端库来实现缓存数据的分片(replica)。这会带来2个主要问题： memcached机器连接数过多
+不利于做整体的服务化；缺少可运维性。例如想对接入的客户端做应用级隔离；或者对缓存数据做多区域(机房)的冗余 实现一个memcache &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +65,48 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2017/05/18/memcache-proxy/">实现一个memcache proxy</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2017-05-18T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>18</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>通常我们会使用多台memcached构成一个集群，通过客户端库来实现缓存数据的分片(replica)。这会带来2个主要问题：</p>
+
+<ul>
+<li>memcached机器连接数过多</li>
+<li>不利于做整体的服务化；缺少可运维性。例如想对接入的客户端做应用级隔离；或者对缓存数据做多区域(机房)的冗余</li>
+</ul>
+
+
+<p>实现一个memcache proxy，相对于减少连接数来说，主要可以提供更多的扩展性。目前已经存在一些不错的memcache proxy，例如twitter的<a href="https://github.com/twitter/twemproxy">twemproxy</a>，facebook的<a href="https://github.com/facebook/mcrouter">mcrouter</a>。稍微调研了下，发现twemproxy虽然轻量，但功能较弱；mcrouter功能齐全，类似多区域多写的需求也满足。处于好玩的目的，之前又读过网络库<a href="http://codemacro.com/2017/04/09/xnio-source/">xnio</a>源码，我还是决定自己实现一个。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2017/05/18/memcache-proxy/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -587,70 +630,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2015/08/10/java-gc-summary/">Java GC总结</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2015-08-10T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>10</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>Java GC相关的文章有很多，本文只做概要性总结，主要内容来源于&lt;深入理解Java虚拟机>。</p>
-
-<h2>对象存活性判定</h2>
-
-<p>对象存活性判定用于确定一个对象是死是活，死掉的对象则需要被垃圾回收。主要包括的方法：</p>
-
-<ul>
-<li>引用计数</li>
-<li>可达性分析</li>
-</ul>
-
-
-<p>可达性分析的基本思想是：</p>
-
-<blockquote><p>通过一系列的称为&#8221;GC Roots&#8221;的对象作为起始点，从这些节点开始向下搜索，搜索所走过的路径称为引用链，当一个对象到GC Roots没有任何引用链项链时，则证明此对象是不可用的。</p></blockquote>
-
-<p>在Java中有很多种类的对象可以作为GC Roots，例如类静态属性引用的对象。</p>
-
-<h2>垃圾收集算法</h2>
-
-<p>确定了哪些对象是需要回收之后，就可以运用各种垃圾收集算法收集这些对象，例如直接回收内存，或者回收并移动整理内存。</p>
-
-<p>主要包括：</p>
-
-<ul>
-<li>标记清除(Mark-Sweep)算法：首先标记出需要回收的对象，然后统一回收被标记的对象</li>
-<li>复制(Copying)算法：将可用内存分块，当一块内存用完后将存活对象复制到其他块，并统一回收不使用的块。Java中新生代对象一般使用该方法</li>
-<li>标记整理(Mark-Compact)算法：基本同标记清除，不同的是回收时是把可用对象进行移动，以避免内存碎片问题</li>
-<li>分代收集，将内存分区域，不同区域采用不同的算法，例如Java中的新生代及老年代</li>
-</ul>
-
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2015/08/10/java-gc-summary/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/2">&larr; Older</a>
@@ -663,11 +642,15 @@
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (11)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/05/18/memcache-proxy/">实现一个memcache proxy</a>
+      </li>
     
       <li class="post">
         <a href="/2017/04/23/xmemcached/">Xmemcached源码阅读</a>
@@ -685,10 +668,6 @@
         <a href="/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>
       </li>
     
-      <li class="post">
-        <a href="/2017/02/05/mini-requirejs/">RequireJS最简实现</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -698,7 +677,7 @@
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 125.38461538461539%'>java(11)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
 </section>
 
   

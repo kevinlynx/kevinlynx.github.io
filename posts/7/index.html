@@ -9,8 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="参考Is using memcmp on array of int strictly conforming? 以下代码一定会输出ok吗？ #include &lt;stdio.h&gt;
-#include &lt;string.h&gt; struct S { int array[2]; }; &hellip;">
+  <meta name="description" content="虽然我对C++11没有什么兴趣，因为C++03就已经有很多复杂的技术了。我曾经试图把我学到的那些复杂的C++技术应用到项目中，但悲剧地发现这给团队其他成员带来了不小的负担。其实也给未来一段时间的自己带来了不小的负担。尤其是template的应用，template代码从外表上就一副唬人的样子， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -65,6 +64,42 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2012/08/21/c-plus-plus-11-lambda-overview/">C++11中lambda概览</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2012-08-21T16:44:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2012</span></span> <span class='time'>4:44 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>虽然我对C++11没有什么兴趣，因为C++03就已经有很多复杂的技术了。我曾经试图把我学到的那些复杂的C++技术应用到项目中，但悲剧地发现这给团队其他成员带来了不小的负担。其实也给未来一段时间的自己带来了不小的负担。尤其是template的应用，template代码从外表上就一副唬人的样子，就像即使你会Lisp，并且对Lisp中的括号不以为然，但看到满屏幕的括号时依然内心不安。</p>
+
+<p>但是稍微对C++11的一些特性做了解后，单从理论上来说，还是挺让人有兴趣的。我感觉C++11加入了不少函数式语言的特性和思想，这是我感兴趣的最大理由。今天来看看C++11中的lambda。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2012/08/21/c-plus-plus-11-lambda-overview/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -455,42 +490,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/07/26/post-footer-plugin-for-octopress/">为octopress每篇文章添加一个文章信息</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2012-07-26T14:27:00+08:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>26</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>2:27 pm</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>当你的博客文章被转载时，你肯定希望转载者能添加一个原始地址。或者你的文章被各种RSS抓取器抓取时，你也希望能在明显的位置显示这个原始地址。使用octopress写博客时，可以通过插件来做这件事。最开始，我只是想单纯地添加这个“原始地址“，一番google未能找到现成的插件，所以只好动手。</p>
-
-<p>话说编写octopress真不是件容易事，因为我实在没找到编写插件的文档。octopress基于jekyll，jekyll又使用了liquid。最后我把这几个项目的文档都翻了下，也仅仅看到几个代码示例，而且liquid的API页面居然出错。无奈之下只好多翻了些现有插件的代码，摸索着来写。写octopress的插件，主要分为generator/tag/filter几种。tag很好理解，就是在文章中插入一个插件注册的tag，然后生成页面时就会调用到对应的插件。filter大概就是把文章内容过滤一遍转换成其他内容输出。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/07/26/post-footer-plugin-for-octopress/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/8">&larr; Older</a>
@@ -505,11 +504,15 @@
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (11)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/05/18/memcache-proxy/">实现一个memcache proxy</a>
+      </li>
     
       <li class="post">
         <a href="/2017/04/23/xmemcached/">Xmemcached源码阅读</a>
@@ -527,10 +530,6 @@
         <a href="/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>
       </li>
     
-      <li class="post">
-        <a href="/2017/02/05/mini-requirejs/">RequireJS最简实现</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -540,7 +539,7 @@
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 125.38461538461539%'>java(11)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
 </section>
 
   
