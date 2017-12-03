@@ -1,0 +1,696 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: javascript | loop in codes]]></title>
+  <link href="http://codemacro.com/categories/javascript/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2017-05-18T20:10:14+08:00</updated>
+  <id>http://codemacro.com/</id>
+  <author>
+    <name><![CDATA[Kevin Lynx]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[RequireJS最简实现]]></title>
+    <link href="http://codemacro.com/2017/02/05/mini-requirejs/"/>
+    <updated>2017-02-05T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2017/02/05/mini-requirejs</id>
+    <content type="html"><![CDATA[<p>网上有不少解析RequireJS源码的文章，我觉得意义不大。阅读源代码的目的不是为了熟悉代码，而是为了学习核心实现原理。相对RequireJS的源码，<a href="https://github.com/zengjialuo/kittyjs">kitty.js</a>的实现更简单，更容易理解。本文正是抄了kitty.js的实现，是一个更精简的RequireJS，用于理解RequireJS的实现原理。</p>
+
+<p><a href="https://github.com/kevinlynx/dummy-requirejs">github dummy-requirejs</a>。这个实现仅支持核心feature：</p>
+
+<pre><code>require(deps, callback) // deps 是依赖数组
+define(id, deps, factory) // factory是一个函数
+</code></pre>
+
+<p>例子参考git中rect.js/main.js。</p>
+
+<p>从实现来看，require/define是基本一致的，require的callback等同于define的factory：都会要求deps被加载且被执行，获得deps的exports作为整个module传入callback/factory。不同的是，factory的返回值会被作为define出来的模块的export，可被视为模块本身；而callback返回值被忽略。</p>
+
+<p>从用法来看，define仅是定义了模块，这个模块可能被作为deps被其他模块依赖，但define传入的factory此时是不执行的；而require则会触发各个模块的factory执行。</p>
+
+<!-- more -->
+
+
+<h2>实现</h2>
+
+<p>主要实现分为3部分内容，其中关键的地方在于模块载入。</p>
+
+<h3>数据结构</h3>
+
+<p>既然是模块加载器，并且需要处理模块之间的依赖问题，所以设置一个哈希表保存所有的模块。</p>
+
+<pre><code>var mods = {} // &lt;id, Module&gt;
+
+function Module(id) {
+    var mod = this
+    mod.id = id
+    mod.uri = id // 简单起见，根据id拼出uri: abc.js
+    mod.deps = []  // 依赖的模块id列表
+    mod.factory = blank // 定义模块时的factory
+    mod.callback = blank // 模块加载完毕后回调
+    mod.exports = {} // 模块导出的对象
+}
+</code></pre>
+
+<p>define的实现就比较简单，主要就是往<code>mods</code>里添加一个<code>Module</code>对象，简单来说就是：</p>
+
+<pre><code>function define(id, deps, factory) {
+    var mod = getModule(id) // mods存在就返回，否则就往mods里新增
+    mod.deps = deps
+    mod.factory = factory
+}
+</code></pre>
+
+<h3>模块载入</h3>
+
+<p>遇到require时就会产生模块载入的动作。模块载入时可能发生以下动作：</p>
+
+<ul>
+<li>往页面添加script标签以让浏览器从服务端拉取js文件</li>
+<li>js文件中可能遇到define从而立即添加模块 (非AMD模块不考虑)</li>
+<li>define定义的模块可能有其他依赖模块，递归载入这些模块，直到所有模块载入完毕</li>
+</ul>
+
+
+<p>这里的模块载入只是把模块js文件载入到浏览器环境中。以上过程对应的大概代码为：</p>
+
+<pre><code>Module.prototype.load = function() {
+    var mod = this
+    if (mod.status == STATUS.FETCHING) return
+    if (mod.status == STATUS.UNFETCH) {
+        return mod.fetch() // 添加script标签从服务端拉取文件
+    }
+    mod.status = STATUS.LOADING
+    mod.remain = mod.deps.length // 所有依赖载入完毕后通知回调
+    function callback() {
+        mod.remain--
+        if (mod.remain === 0) {
+            mod.onload() // 通知回调
+        }
+    }
+    each(mod.deps, function (dep) {
+        var m = getModule(dep)  // 获取依赖模块对象，依赖模块可能已经被载入也可能没有
+        if (m.status &gt;= STATUS.LOADED || m.status == STATUS.LOADING) { // 已经载入
+            mod.remain--
+            return
+        }
+        m.listeners.push(callback)
+        if (m.status &lt; STATUS.LOADING) {
+            m.load()
+        }
+    })
+    if (mod.remain == 0) {
+        mod.onload()
+    }
+}
+</code></pre>
+
+<p><code>load</code>的实现由于混合了异步问题，所以理解起来会有点难。<code>fetch</code>的实现就是一般的往页面添加script及设置回调的过程。在fetch完毕后会重新调用<code>load</code>以完成递归载入该模块的依赖：</p>
+
+<pre><code>// 该函数回调时，该js文件已经被浏览器执行，其内容包含define则会添加模块（当然已经被添加过了）
+// 可以回头看上面的define调用的是getModule，此时会重新设置deps/factory等属性
+function onloadListener() {
+    var readyState = script.readyState;
+    if (typeof readyState === 'undefined' || /^(loaded|complete)$/.test(readyState)) {
+        mod.status = STATUS.FETCHED
+        mod.load()
+    }
+}
+</code></pre>
+
+<h3>模块生效</h3>
+
+<p>模块载入后模块其实还没生效，还无法使用模块中定义的各种符号。要让模块生效，就得执行模块定义的factory函数。在直接间接依赖的模块被全部载入完成后，最终回调到我们的callback。此时可以看看require的实现：</p>
+
+<pre><code>// 前面提到require/define实现类似，所以这里创建了Module对象，只是复用代码
+function require(deps, callback) {
+    var mod = new Module(getId())
+    mod.deps = deps
+    mod.factory = callback
+    mod.callback = function () {
+        mod.exec()
+    }
+    mod.status = STATUS.FETCHED
+    mod.load()
+}
+</code></pre>
+
+<p>就是简单地调用了<code>load</code>，完成后调用了<code>exec</code>。<code>exec</code>又是一个涉及到递归的函数，它会递归执行所有模块的factory。factory的执行需要各个模块的exports对象，只有模块exec后才会得到exports对象。</p>
+
+<pre><code>Module.prototype.exec = function() {
+    var mod = this
+    if (mod.status &gt;= STATUS.EXECUTED) { return mod.exports }
+    // 获取依赖模块的exports列表
+    var args = mod.getDepsExport()
+    var ret = mod.factory.apply(null, args)
+    // factory 返回值作为该模块的exports
+    mod.exports = ret 
+    mod.status = STATUS.EXECUTED
+    return mod.exports
+}
+</code></pre>
+
+<p>上面的代码主要是实现这样的功能：</p>
+
+<pre><code>// 将依赖[d1, d2]的exports作为参数d1,d2传入
+define('my-module', ['d1', 'd2'], function (d1, d2) {
+    return {func: function() {}}
+})
+</code></pre>
+
+<p><code>getDepsExport</code>就是一个取依赖模块exports的过程：</p>
+
+<pre><code>Module.prototype.getDepsExport = function() {
+    var mod = this
+    var exports = []
+    var deps = mod.deps
+    var argsLen = mod.factory.length &lt; deps.length ? mod.factory.length : deps.length
+    for (var i = 0; i &lt; argsLen; i++) {
+        exports.push(mod.require(deps[i]))
+    }
+    return exports
+}
+</code></pre>
+
+<p><code>Module.require(id)</code>用于exec目标模块并返回其exports：</p>
+
+<pre><code>Module.prototype.require = function(dep) {
+    // 由于之前已经递归载入过所有模块，所以该依赖模块必然是已经存在的，可以被exec的
+    var mod = getModule(dep)
+    return mod.exec()
+}
+</code></pre>
+
+<p>于是又回到了<code>exec</code>，实现了递归执行所有依赖模块的功能。<code>exec</code>主要是获取依赖模块exports并调用factory，所以最初的require将用户的callback作为factory传入那个临时Module，最终使得调用到用户的callback。</p>
+
+<p>通过以上过程，实际上就已经走通了从define到require实现的整个过程。整个代码不到200行。基于此可以添加更多RequireJS的附加功能。完。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[ReactJS项目中基于webpack实现页面插件]]></title>
+    <link href="http://codemacro.com/2017/01/08/react-plugin/"/>
+    <updated>2017-01-08T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2017/01/08/react-plugin</id>
+    <content type="html"><![CDATA[<p>整个Web页面是基于ReactJS的，js打包用的webpack，现在想在Web页面端实现一种插件机制，可以动态载入第三方写的js插件。这个插件有一个约定的入口，插件被载入后调用该入口函数，插件内部实现渲染逻辑。插件的实现也使用了ReactJS，当然理论上也可以不使用。预期的交互关系是这样的：</p>
+
+<pre><code>// 主页面
+load('/plugin/my-plugin.js', function (plugin) {
+    plugin.init($('#plugin-main'), args)
+})
+
+// 基于ReactJS的插件
+function init($elem, args) {
+    ReactDOM.render((&lt;Index /&gt;), $elem)
+}
+export {init}
+</code></pre>
+
+<p>在主页面上支持这种插件机制，有点类似一个应用市场，主页面作为应用平台，插件就是应用，用户可以在主页面上选用各种插件。</p>
+
+<h2>问题</h2>
+
+<p>目前主页面里ReactJS被webpack打包进了bundle.js，如果插件也把ReactjS打包进去，最终在载入插件后，浏览器环境中就会初始化两次ReactJS。<strong>而ReactJS是不能被初始化多次的</strong>。此外，为了插件编写方便，我把一些可重用的组件打包成一个单独的库，让主页面和插件都去依赖。这个库自然也不能把ReactJS打包进来。何况还有很多三方库，例如underscore、ReactDOM最好也能避免重复打包，从而可以去除重复的内容。所以，这里就涉及到如何在webpack中拆分这些库。</p>
+
+<p>需要解决的问题：</p>
+
+<ul>
+<li>拆分三方库，避免打包进bundle.js</li>
+<li>动态载入js文件，且能拿到其module，或者至少能知道js什么时候被载入，才能调用其入口函数</li>
+</ul>
+
+
+<!-- more -->
+
+
+<p>关于第二个问题，我选用了RequireJS，但其实它不是用于我这种场景的，不过我不想自己写一个js载入器。用RequireJS在我这种场景下会带来一些问题：webpack在打包js文件时会检查是否有AMD模块加载器，如果有则会把打包的代码作为AMD模块来加载。对于三方库的依赖就需要做一些适配。</p>
+
+<h2>实现</h2>
+
+<p>开始做这件事时我是不熟悉RequireJS/AMD的，导致踩了不少坑。过程不表，这里就记录一些关键步骤。</p>
+
+<p>公共组件库及插件是必须要打包为library的，否则没有导出符号：</p>
+
+<pre><code>// webpack.config.js
+config.output = {
+  filename: 'drogo_components.js',
+  path: path.join(__dirname, 'dist'),
+  libraryTarget: 'umd',
+  library: 'drogo_components'
+};
+</code></pre>
+
+<p>此外，为了不打包三方库进bundle.js，需要设置：</p>
+
+<pre><code>// webpack.config.js
+config.externals = {
+  'react': 'React',
+  'underscore': '_',
+};
+</code></pre>
+
+<p><code>externals</code>中key为代码中<code>require</code>或<code>import xxx from 'xxx'</code>中的名字，value为输出代码中的名字。以上设置后，webpack打包出来的代码类似于：</p>
+
+<pre><code>(function webpackUniversalModuleDefinition(root, factory) {
+    if(typeof exports === 'object' &amp;&amp; typeof module === 'object')
+        module.exports = factory(require("React"), require("_"));
+    else if(typeof define === 'function' &amp;&amp; define.amd)
+        define(["React", "_"], factory);
+...
+</code></pre>
+
+<p>了解了RequireJS后就能看懂上面的代码，意思是定义我这里说的插件或公共库为一个模块，其依赖<code>React</code>及<code>_</code>模块。</p>
+
+<p>插件及公共库如何编写？</p>
+
+<pre><code>// 入口main.js中
+import React from 'react'
+import ReactDOM from 'react-dom'
+import Test from './components/test'
+import Index from './components/index'
+
+function init($elem, data) {
+    ReactDOM.render((&lt;Index biz={data.biz} /&gt;), $elem)
+}
+
+export {Index, Test, init}
+</code></pre>
+
+<p>入口js中export的内容就会成为这个library被require载入后能拿到的符号。这个库在webpack中引用时同理。注意需要设置库的入口文件：</p>
+
+<pre><code>// package.json
+  "main": "static/js/main.bundle.js",
+</code></pre>
+
+<p>对于本地库，可以通过以下方法在本地使用：</p>
+
+<pre><code>// 打包本地库，生成库.tgz文件
+npm pack
+// 切换到要使用该库的工程下安装
+npm install ../xxx/xxx.tgz
+</code></pre>
+
+<p><code>package.json</code>中也不需要依赖该文件，如果不自己install，也是可以在package.json中依赖的，类似：</p>
+
+<pre><code>"xxxx": "file:../xxx/xxx.tgz"
+</code></pre>
+
+<p>经过以上步骤后，在主页面中载入插件打包的bundle.js时，会得到错误，说找不到React模块。我这里并没有完全改造为RequireJS的模块，所以我在页面中是静态引入react的，即：</p>
+
+<p>```</p>
+
+<script src="static/js/react-with-addons.js"></script>
+
+
+<script src="static/js/react-dom.min.js"></script>
+
+
+<pre><code>
+当执行插件后，RequireJS会去重新载入react.js，如果能load成功，就又会导致浏览器环境中出现两份ReactJS，解决方法是：
+</code></pre>
+
+<p>define(&lsquo;react&rsquo;, [], function() {
+  return React
+})</p>
+
+<p>define(&lsquo;react-dom&rsquo;, [], function() {
+  return ReactDOM
+})</p>
+
+<p>define(&lsquo;_&rsquo;, [], function () {
+  return _
+})
+```</p>
+
+<p>即，因为react被静态引入，就会存在全局变量window.React，所以这里是告诉RequireJS我们定义<code>react</code>模块就是全局变量React。此时webpack中打出的文件中<code>require(['react'], xx</code>时，就不会导致RequireJS再去从服务端载入react.js文件。</p>
+
+<p>使用RequireJS后，要动态载入插件，代码就类似于：</p>
+
+<pre><code>window.require(['/api/plug/content/1'], function (m) {
+  m.init($('#app-main')[0], args)
+})
+</code></pre>
+
+<p>最后，之所以没有把页面全部改造为RequireJS，例如通过require载入主页面，主页面依赖react、公共组件库等，是因为我发现RequireJS的载入顺序与项目中使用的部分界面库有冲突，导致一些<code>&lt;a&gt;</code>的事件监听丢失（如下拉菜单不可用），根本原因还没找到。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Javascript Overview]]></title>
+    <link href="http://codemacro.com/2013/08/21/javascript-overview/"/>
+    <updated>2013-08-21T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2013/08/21/javascript-overview</id>
+    <content type="html"><![CDATA[<h2>Lexical Structure</h2>
+
+<p>In JavaScript, identifiers are used to name variables and functions and to provide labels for certain loops in JavaScript code. A JavaScript identifier must begin with a letter, an underscore (_), or a dollar sign ($). Subsequent characters can be letters, digits, underscores, or dollar signs</p>
+
+<pre><code>i
+abc
+v1
+$str
+</code></pre>
+
+<p>JavaScript allows identifiers to contain letters and digits from the entire Unicode character set.</p>
+
+<p>Like many programming languages, JavaScript uses the semicolon (;) to separate statements from each other. In JavaScript, you can usually omit the semicolon between two statements if those statements are written on separate lines.</p>
+
+<h2>Types/Values/Variables</h2>
+
+<h3>Numbers</h3>
+
+<p>Unlike many languages, JavaScript does not make a distinction between integer values and floating-point values. All numbers in JavaScript are represented as floating-point values.</p>
+
+<pre><code>0
+3
+0xff
+3.14
+</code></pre>
+
+<h3>Strings</h3>
+
+<pre><code>"hello world"
+'hello world'
+"Wouldn't you prefer O'Reilly's book?"  
+</code></pre>
+
+<!-- more -->
+
+
+<h3>Boolean</h3>
+
+<pre><code>true
+false
+</code></pre>
+
+<p>Any JavaScript value can be converted to a boolean value. The following values convert to, and therefore work like, <code>false</code>:</p>
+
+<pre><code>undefined
+null
+0
+-0
+NaN
+"" // the empty string
+</code></pre>
+
+<h3>null/undefined</h3>
+
+<p><code>null</code> is a language keyword that evaluates to a special value that is usually used to indicate the absence of a value. Using the typeof operator on null returns the string &ldquo;object&rdquo;, indicating that null can be thought of as a special object value that indicates &ldquo;no object&rdquo;.</p>
+
+<h3>Objects</h3>
+
+<p>JavaScript objects are composite values: they are a collection of properties or named values.</p>
+
+<pre><code>var s = "hello world!"; // A string
+var word = s.substring(s.indexOf(" ")+1, s.length);
+var obj = {
+    propName1: 123,
+    propName2: "abc"
+};
+obj.propName1 = 456;
+obj["propName1"] = 456; // same as previous statement
+</code></pre>
+
+<h3>Arrays</h3>
+
+<p>Arrays are a specialized kind of object. JavaScript arrays are untyped: an array element may be of any type, and different elements of the same array may be of different types.</p>
+
+<pre><code>var empty = []; // An array with no elements
+var primes = [2, 3, 5, 7, 11]; // An array with 5 numeric elements
+var misc = [ 1.1, true, "a", ]; // 3 elements of various types + trailing comma
+</code></pre>
+
+<p>Another way to create an array is with the Array() constructor:</p>
+
+<pre><code>var a = new Array();
+var a = new Array(10);
+var a = new Array(5, 4, 3, 2, 1, "testing, testing");
+</code></pre>
+
+<h3>Functions</h3>
+
+<p>Functions designed to initialize a newly created object are called <strong>constructors</strong>. In JavaScript, <strong>functions are objects</strong>. JavaScript can assign functions to variables and pass them to other functions. JavaScript function definitions can be nested within other functions.</p>
+
+<pre><code>function printprops(o) {
+    for(var p in o)
+    console.log(p + ": " + o[p] + "\n");
+}
+var square = function(x) { return x*x; }
+
+function hypotenuse(a, b) {
+    function square(x) { return x*x; }
+    return Math.sqrt(square(a) + square(b));
+}
+</code></pre>
+
+<h2>Expressions/Operators</h2>
+
+<h3>Object and Array initializers</h3>
+
+<pre><code>var p = { x:2.3, y:-1.2 }; // An object with 2 properties
+var q = {}; // An empty object with no properties
+q.x = 2.3; q.y = -1.2; // Now q has the same properties as p
+var matrix = [[1,2,3], [4,5,6], [7,8,9]];
+</code></pre>
+
+<h3>Object creation expression</h3>
+
+<p>An object creation expression creates a new object and invokes a function (called a constructor) to initialize the properties of that object.</p>
+
+<pre><code>new Object()
+new Point(2,3)
+</code></pre>
+
+<h3>Operators</h3>
+
+<ul>
+<li>Arithmetic operator</li>
+<li>Relational operator</li>
+<li>Logical operator</li>
+<li>Assignment operator</li>
+<li>Conditional operator</li>
+<li><code>typeof</code> operator</li>
+<li><code>delete</code> operator</li>
+</ul>
+
+
+<h3><code>eval</code> expression</h3>
+
+<p>JavaScript has the ability to interpret strings of JavaScript source code, evaluating them to produce a value. JavaScript does this with the global function <code>eval()</code>:</p>
+
+<pre><code>eval("3+2") // =&gt; 5
+</code></pre>
+
+<h2>Statements</h2>
+
+<h3>Declaration Statements</h3>
+
+<p>The var statement declares a variable or variables. Here’s the syntax:</p>
+
+<pre><code>var name_1 [ = value_1] [ ,..., name_n [= value_n]] 
+</code></pre>
+
+<h3>Conditionals</h3>
+
+<pre><code>if (expression)
+    statement   
+else if (expression)
+    statement
+
+switch(expression) {
+    statements
+}
+</code></pre>
+
+<h3>Loops</h3>
+
+<pre><code>while (expression)
+    statement
+
+do
+    statement
+while (expression);
+
+for(initialize ; test ; increment)
+    statement
+
+for (variable in object)
+    statement
+
+var o = {a:1, b:2};
+for(var p in o) // Assign property names of o to variable p
+    console.log(o[p]); // Print the value of each property
+</code></pre>
+
+<h3>Other</h3>
+
+<ul>
+<li>break/break label</li>
+<li>continue/continue label</li>
+<li>return</li>
+<li>throw</li>
+<li>try/catch/finally</li>
+<li>with</li>
+<li>use strict</li>
+</ul>
+
+
+<h2>Objects</h2>
+
+<p>An object is more than a simple stringtovalue map, however. In addition to maintaining its own set of properties, a JavaScript object also inherits the properties of another object, known as its &ldquo;prototype&rdquo;. The methods of an object are typically inherited properties, and this &ldquo;prototypal inheritance&rdquo; is a key feature of JavaScript.</p>
+
+<p>JavaScript objects are dynamic—properties can usually be added and deleted—but they can be used to simulate the static objects and “structs” of statically typed languages.</p>
+
+<p><strong>Objects are mutable and are manipulated by reference rather than by value.</strong></p>
+
+<p>Every JavaScript object has a second JavaScript object (or null, but this is rare) associated with it. This second object is known as a <strong>prototype</strong>.</p>
+
+<p>Objects created using the new keyword and a constructor invocation use the value of the prototype property of the constructor function as their prototype.</p>
+
+<p><code>Object.create()</code> creates a new object, using its first argument as the prototype of that object.</p>
+
+<pre><code>var o1 = Object.create({x:1, y:2}); // o1 inherits properties x and y.
+</code></pre>
+
+<p>If you want to create an ordinary empty object (like the object returned by {} or new Object()), pass Object.prototype:</p>
+
+<pre><code>var o3 = Object.create(Object.prototype); // o3 is like {} or new Object().
+</code></pre>
+
+<p>The <code>delete</code> operator removes a property from an object:</p>
+
+<pre><code>delete book.author; // The book object now has no author property.
+delete book["main title"]; // Now it doesn't have "main title", either.
+</code></pre>
+
+<h3>property getters and setters</h3>
+
+<p>Properties defined by getters and setters are sometimes known as accessor properties to distinguish them from data properties that have a simple value.</p>
+
+<pre><code>var p = {
+    // x and y are regular read-write data properties.
+    x: 1.0,
+    y: 1.0,
+    // r is a read-write accessor property with getter and setter.
+    // Don't forget to put a comma after accessor methods.
+    get r() { return Math.sqrt(this.x*this.x + this.y*this.y); },
+    set r(newvalue) {
+        var oldvalue = Math.sqrt(this.x*this.x + this.y*this.y);
+        var ratio = newvalue/oldvalue;
+        this.x *= ratio;
+        this.y *= ratio;
+    },
+    // theta is a read-only accessor property with getter only.
+    get theta() { return Math.atan2(this.y, this.x); }
+};
+</code></pre>
+
+<h2>Functions</h2>
+
+<p>In JavaScript, functions may be nested within other functions. For example:</p>
+
+<pre><code>function hypotenuse(a, b) {
+    function square(x) { return x*x; }
+    return Math.sqrt(square(a) + square(b));
+}   
+</code></pre>
+
+<h3>Invoking functions</h3>
+
+<p>JavaScript functions can be invoked in four ways:</p>
+
+<ul>
+<li>as functions</li>
+<li>as methods</li>
+<li>as constructors</li>
+<li>indirectly through their call() and apply() methods</li>
+</ul>
+
+
+<h3>Optional parameters</h3>
+
+<pre><code>// Append the names of the enumerable properties of object o to the
+// array a, and return a. If a is omitted, create and return a new array.
+function getPropertyNames(o, /* optional */ a) {
+    if (a === undefined) a = []; // If undefined, use a new array
+    for(var property in o) a.push(property);
+    return a;
+}
+// This function can be invoked with 1 or 2 arguments:
+var a = getPropertyNames(o); // Get o's properties into a new array
+getPropertyNames(p,a); // append p's properties to that array
+</code></pre>
+
+<h3>Variable-Length Argument Lists: The Arguments Object</h3>
+
+<pre><code>function max(/* ... */) {
+    var max = Number.NEGATIVE_INFINITY;
+    // Loop through the arguments, looking for, and remembering, the biggest.
+    for(var i = 0; i &lt; arguments.length; i++)
+    if (arguments[i] &gt; max) max = arguments[i];
+    // Return the biggest
+    return max;
+}
+var largest = max(1, 10, 100, 2, 3, 1000, 4, 5, 10000, 6); // =&gt; 10000
+</code></pre>
+
+<p>In addition to its array elements, the Arguments object defines callee and caller properties.</p>
+
+<pre><code>var factorial = function(x) {
+    if (x &lt;= 1) return 1;
+    return x * arguments.callee(x-1);
+};
+</code></pre>
+
+<h3>Function as values</h3>
+
+<p>Functions are not primitive values in JavaScript, but a specialized kind of object, which means that functions can have properties.</p>
+
+<pre><code>// Initialize the counter property of the function object.
+// Function declarations are hoisted so we really can
+// do this assignment before the function declaration.
+uniqueInteger.counter = 0;
+// This function returns a different integer each time it is called.
+// It uses a property of itself to remember the next value to be returned.
+function uniqueInteger() {
+    return uniqueInteger.counter++; // Increment and return counter property
+}
+</code></pre>
+
+<h3>Closures</h3>
+
+<p>Like most modern programming languages, JavaScript uses lexical scoping.</p>
+
+<h3>Function bind method</h3>
+
+<p>When you invoke the bind() method on a function f and pass an object o, the method returns a new function. Invoking the new function (as a function) invokes the original function f as a method of o. Any arguments you pass to the new function are passed to the original function.</p>
+
+<pre><code>function f(y) { return this.x + y; } // This function needs to be bound
+var o = { x : 1 }; // An object we'll bind to
+var g = f.bind(o); // Calling g(x) invokes o.f(x)
+g(2) // =&gt; 3    
+</code></pre>
+
+<h3>The Function() Constructor</h3>
+
+<p>Functions are usually defined using the function keyword, either in the form of a function definition statement or a function literal expression. But functions can also be defined with the Function() constructor. For example:</p>
+
+<pre><code>var f = new Function("x", "y", "return x*y;");
+</code></pre>
+
+<h2>Reference</h2>
+
+<ul>
+<li>\<Javascript The Definitive Guid 6th\></li>
+<li><a href="http://javascript.crockford.com/survey.html">A Survey of the JavaScript Programming Language</a></li>
+<li><a href="http://www.2ality.com/2011/10/javascript-overview.html">A quick overview of JavaScript</a></li>
+<li><a href="http://www.csse.monash.edu.au/~lloyd/tildeProgLang/JavaScript/summary.html">JavaScript Summary</a></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+</feed>

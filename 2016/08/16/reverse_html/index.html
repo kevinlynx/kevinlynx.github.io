@@ -1,0 +1,352 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>一次逆向网页内容加密 - loop in codes</title>
+  <meta name="author" content="Kevin Lynx">
+
+  
+  <meta name="description" content="最近写一个爬虫要从这个网页爬取内容。以往爬取网页内容复杂点的，一般就是处理下页面内容动态载入，动态载入的内容可能会要求复杂奇怪的参数，或者找到这个动态载入的HTTP接口在哪里麻烦点。但是这个网页不同。类似： 1
+&lt;td&gt;&lt;span name="record_yijiaof: &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://codemacro.com/2016/08/16/reverse_html">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <!--script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script-->
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<!--link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css"-->
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">loop in codes</a></h1>
+  
+    <h2>Kevin Lynx BLOG</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:codemacro.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about.html">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">一次逆向网页内容加密</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-08-16T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>16</span><span class='date-suffix'>th</span>, <span class='date-year'>2016</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>最近写一个爬虫要从这个<a href="http://cpquery.sipo.gov.cn/txnQueryFeeData.do?select-key:shenqingh=2007200071873&amp;select-key:zhuanlilx=2&amp;select-key:gonggaobj=&amp;select-key:backPage=http%3A%2F%2Fcpquery.sipo.gov.cn%2FtxnQueryOrdinaryPatents.do%3Fselect-key%3Ashenqingh%3D2015204531832%26select-key%3Azhuanlimc%3D%26select-key%3Ashenqingrxm%3D%26select-key%3Azhuanlilx%3D%26select-key%3Ashenqingr_from%3D%26select-key%3Ashenqingr_to%3D%26inner-flag%3Aopen-type%3Dwindow%26inner-flag%3Aflowno%3D1470846836440&amp;inner-flag:open-type=window&amp;inner-flag:flowno=1471142917509">网页</a>爬取内容。以往爬取网页内容复杂点的，一般就是处理下页面内容动态载入，动态载入的内容可能会要求复杂奇怪的参数，或者找到这个动态载入的HTTP接口在哪里麻烦点。但是这个网页不同。类似：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;td&gt;&lt;span name="record_yijiaof:feiyongzldm" title="pos||"&gt;&lt;span id="5d299905633d4aa288b65f5bf74e414c" class="nlkfqirnlfjerldfgzxcyiuro"&gt;专&lt;/span&gt;&lt;span id="546c73d012f74931aa5d45707121eb50" class="nlkfqirnlfjerldfgzxcyiuro"&gt;实&lt;/span&gt;&lt;span id="e0285e05974b4577b23b2ced8e453005" class="nlkfqirnlfjerldfgzxcyiuro"&gt;新&lt;/span&gt;&lt;span id="82b9e003de4e4577aa7617681a0d3777" class="nlkfqirnlfjerldfgzxcyiuro"&gt;用&lt;/span&gt;&lt;span id="417aaf4c6ad14b7781db02a688a4f885" class="nlkfqirnlfjerldfgzxcyiuro"&gt;用&lt;/span&gt;&lt;span id="a3f326efa35e4fe898d2f751e77d6777" class="nlkfqirnlfjerldfgzxcyiuro"&gt;新&lt;/span&gt;&lt;span id="c6c5135b931c48c09c6529735f4c6434" class="nlkfqirnlfjerldfgzxcyiuro"&gt;型&lt;/span&gt;&lt;span id="8c55b119929147ddbe178776903554e5" class="nlkfqirnlfjerldfgzxcyiuro"&gt;专&lt;/span&gt;&lt;span id="f8e47702c9f5420198a6f9b9aa132c9c" class="nlkfqirnlfjerldfgzxcyiuro"&gt;利&lt;/span&gt;&lt;span id="60cc2e23682e4ca2b850a92f55029458" class="nlkfqirnlfjerldfgzxcyiuro"&gt;第9年年费&lt;/span&gt;&lt;/span&gt;&lt;/td&gt;</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>最终希望得到的内容其实是<code>实用新型专利第9年年费</code>，但是得到的网页确实乱序后的字符串，并且每次刷新得到的乱序还不一样，试过几次也看不出规律。</p>
+
+<p>按照以往的思路，猜测肯定是某个js文件中包含了还原算法，我的目的，就是找出这个算法，在爬虫程序中实现这个算法，以还原出可读的字符串。</p>
+
+<p>js中要完成这样的事，首先得找到网页元素，包括：根据外层span <code>name=record_yijiaof:feiyongzldm</code>；根据再外层的table；根据内层span <code>class='nlkfqirnlfjerldfgzxcyiuro'</code>。以前我一直想要个工具，可以在某网页载入的所有js文件中搜索特定字符串，从而帮助逆向，但是一直没有这个工具。所以这次也只有人肉看每个js。根据js的名字猜测这个逻辑会放在哪里。</p>
+
+<!-- more -->
+
+
+<p>看了几个可能的js文件，在文件中都没有搜索出我认为可能的字符串。于是我又人肉搜索其他不太可能的js文件，均未果。此时陷入死胡同。</p>
+
+<p>网页文件末尾会有个超长id的span元素，类似：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;span style="display: none" id="3535346033366237393b6c3c38343d3e71702777202021272f28282a797f2b2f0c1910411d4016171b4d4f1f49191b18075053040204010100085b0b580e0908776d2370227674712d2f2b7879287a2935696b6b306730606d683f6c6b39686857564e00520653565b5c08525f5c0d5b4812424a17434345414e494e1a491d49b4b2b6afbce6b3b2eab8bbb2b5bfb7bea4a6f6f7f6f0a7a0a0aeadada5adadaa9595c79688c39ec29c9e9d9b9ece97c985858083858c8ed68edf83d985dcdf8ef3f3a1faa7e9f0f7abaaf8aefefef8f7e2b4e6b0b5e7b4efede9bbe2eebbebead0d3dbd7d1ddcad2d0d88fdfd88fdddc9695c6c79693c595cd9fcbcacb989f9b32303a373236372b3039383f3e34683a71262b2120237722207b2279792c2d2d1043411b131017170411181a48151a4b0307570a01015255015b5e5e5e0d0f0624767374222377232d65282f2a282c2d69656a35626362663b3d633f3f39673e53555a015c04545f505a460d5f585a5a13464015174c14434f4a49434845184fb5b9e6b5e7e4e5e1bbbdeca7eab9bdb6f6a5a4f1a4a3a0f6acaaaaadfda5aea890c4c6c696c6c797999d92c980cbc89ad5828383848dd2828e8dd88ed984d88aa1a4f0a0a5a3a3f6abf8acaaf5e1fcfce2e3b0b5edb6e6efeabbeeeabebee6eb8685d0d186848486dbd18edcd8dfc2d7c39593cac6cdc7cecaccc9cfcb9e9f9d31623b3a61303465383132336a3f372322297322702d21717a782b7d287c287e194041161417431e104d4c124e491b181c005355025153540d09025d5e090b5d727973717d75277278797c7a2f7b792a347d6061306630606d6e696d3e386a3a58575a01545351515c5b09095c0f0a5744175e10454743144a1d42484948484be3b8b5bbb7e3bfb5bdebbebdbdebb9b8a6a7f3bff2f7a3a5abffaffdafacfdab9494c193c5929196c99bcb9c94c89c9dd2818ad5988c8680d98d8fda8b8b8adca6f5f4a6a2a7a5a1faadabfcaaf8f9adb2e2b0b2e5f</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>这个字符串不像base64加密，看这个网页带了md5的js，怀疑跟md5有关，但md5不应该用来加密字符内容，js文件中也未看到可能的API。</p>
+
+<p>后来发现乱序的字符串中有些字符是不显示的，通过这个css控制：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nlkfqirnlfjerldfgzxcyiuro {
+</span><span class='line'>    display: none!important;
+</span><span class='line'>    visibility: hidden!important;
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>网页载入经过js处理后，显示出来的字符看起来是相同的css class <code>nlkfqirnlfjer1dfgzxcyiuro</code>，开始觉得奇怪，研究了下这个的差异。折腾了好久发现被人戏弄了：nlkfqirnlfje<strong>r1d</strong>fgzxcyiuro与nlkfqirnlfje<strong>rld</strong>fgzxcyiuro，前一个是<code>r1d</code>后一个是<code>rld</code>，分别是数字1和字母L！WTF</p>
+
+<p>原始网页中所有字符的css class都是不显示的，所以可以推测js中经过一定算法将需要显示的字符改了css class。但是此刻还是没有思路。</p>
+
+<p>后来尝试了chrome的DOM breakpoint，可以在DOM元素被改变时断点，但是用起来不是特别好用，没有带来任何帮助。</p>
+
+<p>绝望之际把整个网页另存下来，另存下来的网页是经过js处理后的，手工将css改回原始内容，本地载入网页发现还是可以正常显示，证明处理逻辑真的还在js文件中。然后我逐个删除每一个js文件，还是想找出具体是哪个js文件包含了这个还原算法。</p>
+
+<p>然后发现竟然是jquery-1.7.2.min.js。但我想这不能说明问题，因为作者肯定是通过jQuery来获取元素的，删除jQuery.js作者的代码不能work，当然就显示不出来。这个时候我开始清理html中的js代码，发现所有js代码都被清除完后，网页内容依然可以还原，所以断定还原算法就在jQuery.js中。然而这个文件是min版本的，网上找了个还原工具，其实就是重新格式化方便阅读。</p>
+
+<p>但是此刻发现在这个文件中依然搜索不到可能的字符串，例如前面提到的找元素的一些线索，如span css，如span name等等。此时重新通过chrome的DOM断点来获取调用堆栈。这次直接断css class会被改变的span元素，竟然发现可行。此时无非是断点，看效果，继续下更精确的断点，最后发现源头：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>b(function() {
+</span><span class='line'>    b.mix()
+</span><span class='line'>});
+</span><span class='line'>
+</span><span class='line'>...
+</span><span class='line'>mix: function() {
+</span><span class='line'>    var b0 = bF("s" + "p" + "a" + "n");
+</span><span class='line'>    if (b0 && b0[b0.length - 1]) {
+</span><span class='line'>        var b5 = b0[b0.length - 1].getAttribute("i" + "d");
+</span><span class='line'>        if (!b5) {
+</span><span class='line'>            return
+</span><span class='line'>        }
+</span><span class='line'>        var b2 = "";
+</span><span class='line'>        var b4 = 0;
+</span><span class='line'>        for (var b3 = 0; b3 &lt; b5.length; b3 += 2) {
+</span><span class='line'>            if (b4 &gt; 255) {
+</span><span class='line'>                b4 = 0
+</span><span class='line'>            }
+</span><span class='line'>            var b1 = parseInt(parseInt(b5.substring(b3, b3 + 2), 16) ^ b4++);
+</span><span class='line'>            b2 += String.fromCharCode(b1)
+</span><span class='line'>        }
+</span><span class='line'>        if (b2) {
+</span><span class='line'>            // ... 省略
+</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>首先看到的是<code>"s" + "p" + "a" + "n"</code>，这不就是<code>span</code>！看前面几行代码很快就明白这是在取网页的最后一个<code>span</code>元素，也就是那个包含超长id属性的span元素。此时需要提下，之前也是对这个页尾span元素做过实验，发现必须是span元素且为最后一个元素才能正确还原网页内容，可以推断这个span是多么关键的一个线索。感兴趣的可以把这个网页的jQuery-1.7.2.min.js还原后查看<code>mix</code>函数实现。</p>
+
+<p>翻译过来还原函数非常简单，写一个java版本：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>public static String parseSipoIds(String enStr) {
+</span><span class='line'>  int b4 = 0;
+</span><span class='line'>  StringBuilder sb = new StringBuilder();
+</span><span class='line'>  for (int i = 0; i &lt; enStr.length(); i += 2) {
+</span><span class='line'>    if (b4 &gt; 255) b4 = 0;
+</span><span class='line'>    int c = Integer.parseInt(enStr.substring(i, i + 2), 16) ^ b4++;
+</span><span class='line'>    sb.append((char)c);
+</span><span class='line'>  }
+</span><span class='line'>  return sb.toString();
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>即这个span元素就是需要显示出来的span元素id集合，以逗号分隔。</p>
+
+<p>以前还爬过一个日本政府网站，防爬也是做得很过分，不过主要是配合服务器，每一个网页的url是动态变化的，且需要从最原始的网页经过一定的操作才能获得。流程复杂让人痛苦不堪，最后还是一路携带cookie，真的模拟人的操作流程走下来。具体也记不清了。</p>
+
+<p>最后吐槽一下，作者把还原算法写到jQuery.js里，也真是苦费心机。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2016/08/16/reverse_html/'>http://codemacro.com/2016/08/16/reverse_html/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2016-08-16T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>16</span><span class='date-suffix'>th</span>, <span class='date-year'>2016</span></span> <span class='time'>12:00 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/categories/other/'>other</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/2016/05/08/tls_so_coredump/" title="Previous Post: 记一次线程局部存储与动态库引起的core">&laquo; 记一次线程局部存储与动态库引起的core</a>
+      
+      
+        <a class="basic-alignment right" href="/2017/01/08/react-plugin/" title="Next Post: ReactJS项目中基于webpack实现页面插件">ReactJS项目中基于webpack实现页面插件 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><!-- UY BEGIN -->
+<div id="uyan_frame"></div>
+<script type="text/javascript" src="http://v2.uyan.cc/code/uyan.js?uid=1537634"></script>
+<!-- UY END -->
+
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/05/18/memcache-proxy/">实现一个memcache proxy</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/04/23/xmemcached/">Xmemcached源码阅读</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/04/09/xnio-source/">XNIO源码阅读</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/03/09/toy-jit/">实现JVM中的JIT</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+<div id="recentcomments" class="dsq-widget">
+<h1 class="dsq-widget-title">Recent Comments</h1>
+</div>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - Kevin Lynx -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
+<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
+
+</p>
+
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

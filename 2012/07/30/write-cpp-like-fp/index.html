@@ -1,0 +1,366 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>像写函数式语言代码一样写C++ - loop in codes</title>
+  <meta name="author" content="Kevin Lynx">
+
+  
+  <meta name="description" content="忘记最早接触函数式编程语言是什么时候了，也忘记接触的第一门函数式语言是哪一门。断断续续接触过好几种函数式语言（当然都算不纯的，ruby/lisp不算纯吧），这些语言的思想在潜移默化中多多少少对我有所影响。 我是个C++程序员，我不知道我平时写的都是些什么代码。 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://codemacro.com/2012/07/30/write-cpp-like-fp">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <!--script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script-->
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<!--link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css"-->
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">loop in codes</a></h1>
+  
+    <h2>Kevin Lynx BLOG</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:codemacro.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about.html">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">像写函数式语言代码一样写C++</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2012-07-30T17:11:00+08:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>30</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>5:11 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>忘记最早接触函数式编程语言是什么时候了，也忘记接触的第一门函数式语言是哪一门。断断续续接触过好几种函数式语言（当然都算不纯的，ruby/lisp不算纯吧），这些语言的思想在潜移默化中多多少少对我有所影响。</p>
+
+<p>我是个C++程序员，我不知道我平时写的都是些什么代码。最让人印象深刻就是我会经常写遍历STL容器的代码，是经常，这样的遍历你可能也不陌生：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">for</span> <span class="p">(</span><span class="n">ListType</span><span class="o">::</span><span class="n">iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">con</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span> <span class="n">it</span> <span class="o">!=</span> <span class="n">con</span><span class="p">.</span><span class="n">end</span><span class="p">();</span> <span class="o">++</span><span class="n">it</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">something</span>
+<span class="p">}</span></code></pre></div>
+
+
+
+
+<!-- more -->
+
+
+<p>或者针对std::map/set等的查找：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">Table</span><span class="o">::</span><span class="n">iterator</span> <span class="n">it</span> <span class="o">=</span> <span class="n">table</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">key</span><span class="p">);</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">it</span> <span class="o">==</span> <span class="n">table</span><span class="p">.</span><span class="n">end</span><span class="p">())</span>
+    <span class="k">do</span><span class="o">-</span><span class="n">something</span>
+<span class="k">do</span><span class="o">-</span><span class="n">something</span></code></pre></div>
+
+
+<p>多亏STL接口的一致性，这让我们写出了很多“一致性“代码。慢慢地我觉得恶心，不禁想起函数式编程语言中，对于这种需求一般都会提供类似的接口：</p>
+
+<div class="highlight"><pre><code class="language-lua" data-lang="lua"><span class="n">con</span><span class="p">.</span><span class="n">map</span><span class="p">(</span><span class="k">function</span> <span class="p">(</span><span class="n">it</span><span class="p">)</span> <span class="k">if</span> <span class="p">(</span><span class="n">it</span><span class="o">-&gt;</span><span class="n">some</span><span class="o">-</span><span class="n">filed</span> <span class="o">==</span> <span class="n">some</span><span class="o">-</span><span class="n">value</span><span class="p">)</span> <span class="k">return</span> <span class="n">something</span> <span class="k">end</span><span class="p">)</span>
+<span class="o">#</span> <span class="err">或者</span>
+<span class="n">con</span><span class="p">.</span><span class="n">each</span> <span class="k">do</span> <span class="err">|</span><span class="n">it</span><span class="err">|</span> <span class="k">if</span> <span class="n">it</span><span class="p">.</span><span class="n">some</span><span class="o">-</span><span class="n">filed</span> <span class="o">==</span> <span class="n">some</span><span class="o">-</span><span class="n">value</span> <span class="k">then</span> <span class="k">return</span> <span class="n">something</span> <span class="k">end</span> <span class="k">end</span>
+<span class="o">#</span> <span class="err">或者</span>
+<span class="p">(</span><span class="n">con</span><span class="p">.</span><span class="n">map</span> <span class="p">(</span><span class="n">lambda</span> <span class="p">(</span><span class="n">it</span><span class="p">)</span> <span class="p">(</span><span class="k">if</span> <span class="p">((</span><span class="o">=</span> <span class="n">it</span><span class="p">.</span><span class="n">some</span><span class="o">-</span><span class="n">filed</span> <span class="n">some</span><span class="o">-</span><span class="n">value</span><span class="p">))</span> <span class="p">(</span><span class="k">return</span> <span class="n">something</span><span class="p">))))</span></code></pre></div>
+
+
+<p>（好吧，lisp我又忘了）总之，这种针对容器的遍历操作，都会成为一种内置接口，并且通过lambda来让用户直接编写处理代码，少去写循环的冗余。然后，我写了类似下面的一组宏（随手敲的不保证能运行）：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="cp">#define IT_N __it</span>
+
+<span class="cp">#define TRAVERSE_MAP(type, map, exps) \</span>
+<span class="cp">    for (type::iterator IT_N = map.begin(); IT_N != map.end(); ++IT_N) { \</span>
+<span class="cp">        exps; \</span>
+<span class="cp">    }</span>
+<span class="cp">#define I_KEY (IT_N-&gt;first)</span>
+<span class="cp">#define I_VALUE (IT_N-&gt;second)</span>
+
+<span class="cp">#define TRAVERSE_LIST(type, list, exps) \</span>
+<span class="cp">    for (type::iterator IT_N = list.begin(); IT_N != list.end(); ++IT_N) { \</span>
+<span class="cp">        exps; \</span>
+<span class="cp">    }</span>
+<span class="cp">#define L_VALUE (*IT_N)</span>
+
+<span class="cp">#define FIND_MAP_ITEM(type, map, key, fexps, texps) \</span>
+<span class="cp">    do { \</span>
+<span class="cp">        type::iterator IT_N = map.find(key); \</span>
+<span class="cp">        if (IT_N == map.end()) { \</span>
+<span class="cp">            fexps; \</span>
+<span class="cp">        } else { \</span>
+<span class="cp">            texps; \</span>
+<span class="cp">        } \</span>
+<span class="cp">    } while(0)</span>
+
+<span class="cp">#define VAL_N __val</span>
+<span class="cp">#define FIND_LIST_ITEM_IF(type, list, cmp, fexps, texps) \</span>
+<span class="cp">    do { \</span>
+<span class="cp">        struct Comp { \</span>
+<span class="cp">            bool operator() (const type::value_type &amp;VAL_N) const { \</span>
+<span class="cp">                return cmp; \</span>
+<span class="cp">            } \</span>
+<span class="cp">        }; \</span>
+<span class="cp">        type::iterator IT_N = std::find_if(list.begin(), list.end(), Comp()); \</span>
+<span class="cp">        if (IT_N != list.end()) { \</span>
+<span class="cp">            texps; \</span>
+<span class="cp">        } else { \</span>
+<span class="cp">            fexps; \</span>
+<span class="cp">        } \</span>
+<span class="cp">    } while(0)</span>
+
+<span class="cp">#define NULL_EXP ;</span></code></pre></div>
+
+
+<p>当然，以上接口都还包含一些const版本，用于const容器的使用。使用的时候（截取的项目中的使用例子）：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">TRAVERSE_MAP</span><span class="p">(</span><span class="n">TimerTable</span><span class="p">,</span> <span class="n">m_timers</span><span class="p">,</span> 
+        <span class="n">I_VALUE</span><span class="p">.</span><span class="n">obj</span><span class="o">-&gt;</span><span class="n">OnTimerCancel</span><span class="p">(</span><span class="n">I_KEY</span><span class="p">,</span> <span class="n">I_VALUE</span><span class="p">.</span><span class="n">arg</span><span class="p">);</span>
+        <span class="n">TIMER_CANCEL</span><span class="p">(</span><span class="n">I_VALUE</span><span class="p">.</span><span class="n">id</span><span class="p">));</span> 
+
+<span class="n">TRAVERSE_LIST</span><span class="p">(</span><span class="n">AreaList</span><span class="p">,</span> <span class="n">areas</span><span class="p">,</span>
+        <span class="n">ids</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">L_VALUE</span><span class="o">-&gt;</span><span class="n">ID</span><span class="p">()));</span>
+
+<span class="n">FIND_MAP_ITEM</span><span class="p">(</span><span class="n">PropertyTable</span><span class="p">,</span> <span class="n">m_properties</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span>
+        <span class="n">LogWarn</span><span class="p">(</span><span class="s">&quot;set a non-existed property %s&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">.</span><span class="n">c_str</span><span class="p">());</span> <span class="k">return</span> <span class="n">NIL_VALUE</span><span class="p">,</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">val</span><span class="p">.</span><span class="n">Type</span><span class="p">()</span> <span class="o">!=</span> <span class="n">I_VALUE</span><span class="p">.</span><span class="n">type</span><span class="p">())</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">NIL_VALUE</span><span class="p">;</span> 
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="n">GValue</span> <span class="n">old</span> <span class="o">=</span> <span class="n">I_VALUE</span><span class="p">;</span>
+            <span class="n">I_VALUE</span> <span class="o">=</span> <span class="n">val</span><span class="p">;</span> 
+            <span class="k">return</span> <span class="n">old</span><span class="p">;</span>
+        <span class="p">});</span></code></pre></div>
+
+
+<p>多亏了C/C++宏对一切内容的可容纳性，可以让我往宏参数里塞进像if这种复合语句，甚至多条语句（例如最后一个例子）。这些宏我使用了一段时间，开始觉得挺爽，很多函数的实现里，我再也不用写那些重复的代码了。但是后来我发觉这些代码越来越恶心了。最大的弊端在于不可调试，我只能将断点下到更深的代码层；然后就是看起来特不直观，连作者自己都看得觉得不直观了，可想而知那些连函数式编程语言都不知道是什么的C++程序员看到这些代码会是什么心情（可以想象哥已经被诅咒了多少次）。</p>
+
+<p>函数式语言让人写出更短的代码，这一点也对我有影响，例如我最近又写下了一些邪恶代码：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// split a string into several sub strings by a split character i.e:</span>
+<span class="c1">// &quot;a;b;c;&quot; =&gt; &quot;a&quot;, &quot;b&quot;, &quot;c&quot;</span>
+<span class="c1">// &quot;a;b;c&quot; =&gt; &quot;a&quot;, &quot;b&quot;, &quot;c&quot;</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">SplitString</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">str</span><span class="p">,</span> <span class="kt">char</span> <span class="n">split</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">ret</span><span class="p">;</span>
+    <span class="kt">size_t</span> <span class="n">last</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">pos</span> <span class="o">=</span> <span class="n">str</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">split</span><span class="p">);</span> <span class="n">pos</span> <span class="o">!=</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">::</span><span class="n">npos</span><span class="p">;</span> <span class="n">last</span> <span class="o">=</span> <span class="n">pos</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">pos</span> <span class="o">=</span> <span class="n">str</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">split</span><span class="p">,</span> <span class="n">last</span><span class="p">))</span> <span class="p">{</span>
+        <span class="n">ret</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">str</span><span class="p">.</span><span class="n">substr</span><span class="p">(</span><span class="n">last</span><span class="p">,</span> <span class="n">pos</span> <span class="o">-</span> <span class="n">last</span><span class="p">));</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">last</span> <span class="o">&lt;</span> <span class="n">str</span><span class="p">.</span><span class="n">length</span><span class="p">()</span> <span class="o">?</span> <span class="n">ret</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">str</span><span class="p">.</span><span class="n">substr</span><span class="p">(</span><span class="n">last</span><span class="p">))</span> <span class="o">:</span> <span class="mi">0</span><span class="p">,</span> <span class="n">ret</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div>
+
+
+<p>恶心的就是最后那条return语句，因为我需要处理"a;b;c"这种c后面没加分隔符的情况，但我并不愿意为了这个需求再写一个会占超过一行的if语句。因为，我太喜欢ruby里的if了：</p>
+
+<div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="k">do</span><span class="o">-</span><span class="n">something</span> <span class="k">if</span> <span class="n">exp</span></code></pre></div>
+
+
+<p>也就是ruby里允许这种只有一行if的代码将if放在其后并作为一条语句。我的不愿意其实是有理由的，在c/c++中有太多只有一行条件体的if语句，对这些语句参合进编程风格/可读性进来后，就不得不让你写出不安的代码，例如：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">if</span> <span class="p">(</span><span class="n">something</span><span class="p">)</span> <span class="k">return</span> <span class="n">something</span><span class="p">;</span> <span class="c1">// 某些编程风格里不允许这样做，因为它不方便调试</span>
+
+<span class="k">if</span> <span class="p">(</span><span class="n">something</span><span class="p">)</span> 
+    <span class="k">return</span> <span class="n">something</span><span class="p">;</span> <span class="c1">// 某些风格里又有大括号的统一要求</span>
+
+<span class="k">if</span> <span class="p">(</span><span class="n">something</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">something</span><span class="p">;</span> <span class="c1">// 就算符合风格了，但这一条语句就得多个大括号</span>
+<span class="p">}</span>
+
+<span class="k">if</span> <span class="p">(</span><span class="n">something</span><span class="p">)</span> 
+<span class="p">{</span>
+    <span class="k">return</span> <span class="n">something</span><span class="p">;</span> <span class="c1">// 某些风格里这大括号就更奢侈了</span>
+<span class="p">}</span></code></pre></div>
+
+
+<p>这个return除了乍看上去有点纠结外，其实也不算什么大问题，但是那个问号表达式返回的0实在没有任何意义，而正是没有意义才会让它误导人。本来我是可以写成：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">return</span> <span class="n">last</span> <span class="o">&lt;</span> <span class="n">str</span><span class="p">.</span><span class="n">length</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="n">ret</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">str</span><span class="p">.</span><span class="n">substr</span><span class="p">(</span><span class="n">last</span><span class="p">)),</span> <span class="n">ret</span><span class="p">;</span></code></pre></div>
+
+
+<p>这样利用条件表达式的短路运算，代码也清晰多了。但是，std::vector::push_back是一个没有返回值的函数，所以。</p>
+
+<p>全文完。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2012/07/30/write-cpp-like-fp/'>http://codemacro.com/2012/07/30/write-cpp-like-fp/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2012-07-30T17:11:00+08:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>30</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>5:11 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/categories/c-slash-c-plus-plus/'>c/c++</a>, <a class='category' href='/categories/tips/'>tips</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/2012/07/26/post-footer-plugin-for-octopress/" title="Previous Post: 为octopress每篇文章添加一个文章信息">&laquo; 为octopress每篇文章添加一个文章信息</a>
+      
+      
+        <a class="basic-alignment right" href="/2012/08/02/simple-oo-in-lua/" title="Next Post: Lua里实现简单的类-对象">Lua里实现简单的类-对象 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><!-- UY BEGIN -->
+<div id="uyan_frame"></div>
+<script type="text/javascript" src="http://v2.uyan.cc/code/uyan.js?uid=1537634"></script>
+<!-- UY END -->
+
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/05/18/memcache-proxy/">实现一个memcache proxy</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/04/23/xmemcached/">Xmemcached源码阅读</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/04/09/xnio-source/">XNIO源码阅读</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/03/09/toy-jit/">实现JVM中的JIT</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+<div id="recentcomments" class="dsq-widget">
+<h1 class="dsq-widget-title">Recent Comments</h1>
+</div>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - Kevin Lynx -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
+<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
+
+</p>
+
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

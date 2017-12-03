@@ -1,0 +1,666 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>loop in codes</title>
+  <meta name="author" content="Kevin Lynx">
+
+  
+  <meta name="description" content="dhtcrawler2最开始使用mongodb自带的全文搜索引擎搜索资源。搜索一些短关键字时很容易导致erlang进程call timeout，也就是查询时间太长。对于像avi这种关键字，搜索时间长达十几秒。搜索的资源数量200万左右。这其中大部分资源只是对root文件名进行了索引， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://codemacro.com/posts/5">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <!--script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script-->
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<!--link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css"-->
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">loop in codes</a></h1>
+  
+    <h2>Kevin Lynx BLOG</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:codemacro.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about.html">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2013/08/08/sphinx-dhtcrawler/">dhtcrawler2换用sphinx搜索</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-08-08T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>8</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>dhtcrawler2最开始使用mongodb自带的全文搜索引擎搜索资源。搜索一些短关键字时很容易导致erlang进程call timeout，也就是查询时间太长。对于像<code>avi</code>这种关键字，搜索时间长达十几秒。搜索的资源数量200万左右。这其中大部分资源只是对root文件名进行了索引，即对于多文件资源而言没有索引单个文件名。索引方式有部分资源是按照字符串子串的形式，没有拆词，非常占用存储空间；有部分是使用了rmmseg（我编译了rmmseg-cpp作为erlang nif库调用 <a href="https://github.com/kevinlynx/erl-rmmseg">erl-rmmseg</a>）进行了拆词，占用空间小了很多，但由于词库问题很多片里的词汇没拆出来。</p>
+
+<p>很早以前我以为搜索耗时的原因是因为数据库太忙，想部署个mongodb集群出来。后来发现数据库没有任何读写的状态下，查询依然慢。终于只好放弃mongodb自带的文本搜索。于是我改用sphinx。简单起见，我直接下载了<a href="http://www.coreseek.cn/">coreseek4.1</a>（sphinx的一个支持中文拆词的包装）。</p>
+
+<p>现在，已经导入了200多万的资源进sphinx，并且索引了所有文件名，索引文件达800M。对于<code>avi</code>关键字的搜索大概消耗0.2秒的时间。<a href="http://bt.cm/e/http_handler:search?q=avi">搜索试试</a>。</p>
+
+<p>以下记录下sphinx在dhtcrawler的应用</p>
+
+<h3>sphinx简介</h3>
+
+<p>sphinx包含两个主要的程序：indexer和searchd。indexer用于建立文本内容的索引，然后searchd基于这些索引提供文本搜索功能，而要使用该功能，可以遵循searchd的网络协议连接searchd这个服务来使用。</p>
+
+<p>indexer可以通过多种方式来获取这些文本内容，文本内容的来源称为数据源。sphinx内置mysql这种数据源，意思是可以直接从mysql数据库中取得数据。sphinx还支持xmlpipe2这种数据源，其数据以xml格式提供给indexer。要导入mongodb数据库里的内容，可以选择使用xmlpipe2这种方式。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/08/08/sphinx-dhtcrawler/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2013/07/02/dhtcrawler2/">磁力搜索第二版-dhtcrawler2</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-07-02T00:00:00+08:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>2</span><span class='date-suffix'>nd</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>接<a href="http://codemacro.com/2013/06/21/magnet-search-impl/">上篇</a>。</p>
+
+<h2>下载使用</h2>
+
+<p>目前为止dhtcrawler2相对dhtcrawler而言，数据库部分调整很大，DHT部分基本沿用之前。但单纯作为一个爬资源的程序而言，DHT部分可以进行大幅削减，这个以后再说。这个版本更快、更稳定。为了方便，我将编译好的erlang二进制文件作为git的主分支，我还添加了一些Windows下的批处理脚本，总之基本上下载源码以后即可运行。</p>
+
+<p>项目地址：<a href="https://github.com/kevinlynx/dhtcrawler2">https://github.com/kevinlynx/dhtcrawler2</a></p>
+
+<h3>使用方法</h3>
+
+<ul>
+<li>下载erlang，我测试的是R16B版本，确保erl等程序被加入<code>Path</code>环境变量</li>
+<li><p>下载mongodb，解压即用：</p>
+
+<pre><code>  mongod --dbpath xxx --setParameter textSearchEnabled=true
+</code></pre></li>
+<li><p>下载dhtcrawler2</p>
+
+<pre><code>  git clone https://github.com/kevinlynx/dhtcrawler2.git
+</code></pre></li>
+<li><p>运行<code>win_start_crawler.bat</code></p></li>
+<li>运行<code>win_start_hash.bat</code></li>
+<li>运行<code>win_start_http.bat</code></li>
+<li>打开<code>localhost:8000</code>查看<code>stats</code></li>
+</ul>
+
+
+<p>爬虫每次运行都会保存DHT节点状态，早期运行的时候收集速度会不够。dhtcrawler2将程序分为3部分：</p>
+
+<ul>
+<li>crawler，即DHT爬虫部分，仅负责收集hash</li>
+<li>hash，准确来讲叫<code>hash reader</code>，处理爬虫收集的hash，处理过程主要涉及到下载种子文件</li>
+<li>http，使用hash处理出来的数据库，以作为Web端接口</li>
+</ul>
+
+
+<p>我没有服务器，但程序有被部署在别人的服务器上：<a href="http://bt.cm">bt.cm</a>，<a href="http://222.175.114.126:8000/">http://222.175.114.126:8000/</a>。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/07/02/dhtcrawler2/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2013/06/21/magnet-search-impl/">使用erlang实现P2P磁力搜索-实现</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-06-21T00:00:00+08:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>接<a href="http://codemacro.com/2013/06/20/magnet-search/">上篇</a>，本篇谈谈一些实现细节。</p>
+
+<p>这个爬虫程序主要的问题在于如何获取P2P网络中分享的资源，获取到资源后索引到数据库中，搜索就是自然而然的事情。</p>
+
+<h2>DHT</h2>
+
+<p>DHT网络本质上是一个用于查询的网络，其用于查询一个资源有哪些计算机正在下载。每个资源都有一个20字节长度的ID用于标示，称为infohash。当一个程序作为DHT节点加入这个网络时，就会有其他节点来向你查询，当你做出回应后，对方就会记录下你。对方还会询问其他节点，当对方开始下载这个infohash对应的资源时，他就会告诉所有曾经询问过的节点，包括你。这个时候就可以确定，这个infohash对应的资源在这个网络中是有效的。</p>
+
+<p>关于这个网络的工作原理，参看：<a href="http://codemacro.com/2013/05/19/crawl-dht/">P2P中DHT网络爬虫</a>以及<a href="http://xiaoxia.org/2013/05/11/magnet-search-engine/">写了个磁力搜索的网页</a>。</p>
+
+<p>获取到infohash后能做什么？关键点在于，我们现在使用的磁力链接(magnet url)，是和infohash对应起来的。也就是拿到infohash，就等于拿到一个磁力链接。但是这个爬虫还需要建立资源的信息，这些信息来源于种子文件。种子文件其实也是对应到一个资源，种子文件包含资源名、描述、文件列表、文件大小等信息。获取到infohash时，其实也获取到了对应的计算机地址，我们可以在这些计算机上下载到对应的种子文件。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/06/21/magnet-search-impl/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2013/06/20/magnet-search/">使用erlang实现P2P磁力搜索(开源)</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-06-20T00:00:00+08:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>20</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>接上回对<a href="http://codemacro.com/2013/05/19/crawl-dht/">DHT网络的研究</a>，我用erlang克隆了一个<a href="http://bt.shousibaocai.com/">磁力搜索引擎</a>。我这个实现包含了完整的功能，DHT网络的加入、infohash的接收、种子的获取、资源信息的索引、搜索。</p>
+
+<p>如下图：</p>
+
+<p><img src="https://raw.github.com/kevinlynx/dhtcrawler/master/screenshot.png" alt="screenshot" /></p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/06/20/magnet-search/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2013/06/09/ice-web-client/">使用ActionScript开发Ice Web客户端</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-06-09T00:00:00+08:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>9</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>我们目前的项目服务器端使用了<a href="http://codemacro.com/2013/02/15/ice-overview/">Ice</a>来构建。Ice有一套自己的网络协议，客户端和服务器端可以基于此协议来交互。由于Ice使用Slice这种中间语言来描述服务器和客户端的交互接口，所以它可以做到极大限度地屏蔽网络协议这个细节。也就是说，我们只要借助Ice和Slice，我们可以轻松地编写网络程序。</p>
+
+<p>然后，我们的后端现在需要一个运行在Web浏览器上的客户端。要与Ice做交互，如果使用TCP协议的话，得保证是长连接的。但HTTP是短连接的。而另一方面，我们还需要选择一个Ice支持的和Web相关的语言来做这件事情。如果要在浏览器端直接与Ice服务建立连接，可供选择的语言/平台包括：</p>
+
+<ul>
+<li>Flash</li>
+<li>Silverlight</li>
+</ul>
+
+
+<p>因为我之前用erlang简单写了个Ice的客户端库，所以我对Ice底层协议有一定了解，可以不一定使用Ice支持的语言，所以HTML5其实也是个选择。此外，如果在浏览器端使用Applet，Java可能也是个选择。</p>
+
+<p>其实几个月前在这块的技术选择问题上我就做过简单的研究，当时确定的方案是使用Flash。但是，后来人员招聘上遇到了问题，看起来要招一个会ActionScript和前端页面技术的程序员来做我们这种项目，似乎大材小用，成本显高了。</p>
+
+<p>那么，考虑到团队里有现成的Java程序员，而且看起来招一个会用Java写网站的程序员简单又便宜，似乎是排除技术原因的最好选择。但是，如果不在浏览器端直接连接服务器来做交互，而是让Web服务器端来做中转的话，会面临不少问题：</p>
+
+<ul>
+<li>浏览器端操作结果的获取问题，说白了就是非实时了，得用Ajax等等技术去模拟实时，代价就是不断轮训，也就是通常说的poll</li>
+<li>Web服务器端需要编写大量代码：对用户操作的映射，结果缓存等等</li>
+</ul>
+
+
+<p>如果能用Flash包装与服务器交互的部分，而把UI相关的东西留给HTML/JS/CSS去做，那是不是可行一点？如果只是用ActionScript编写与服务器端的交互逻辑代码，我就不需要花时间去系统学习ActionScript，甚至如何用Flash做界面，我甚至不用搞懂这些技术之间的关系。基本上看些Ice for ActionScript的例子代码，就可以完成这件事情。</p>
+
+<p>以下记录一些主要的过程/方法：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/06/09/ice-web-client/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2013/06/03/erlang-code-snippets/">erlang编程技巧若干</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-06-03T21:53:00+08:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>3</span><span class='date-suffix'>rd</span>, <span class='date-year'>2013</span></span> <span class='time'>9:53 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>guard</h2>
+
+<p>guard可以以逗号或者分号分隔，以逗号分隔表示最终的结果为各个guard的and结果，以分号则是只要任意一个guard为true则最终结果为true。</p>
+
+<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nf">guard</span><span class="p">(</span><span class="nv">X</span><span class="p">,</span> <span class="nv">Y</span><span class="p">)</span> <span class="k">when</span> <span class="ow">not</span><span class="p">(</span><span class="nv">X</span><span class="o">&gt;</span><span class="nv">Y</span><span class="p">),</span> <span class="nb">is_atom</span><span class="p">(</span><span class="nv">X</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nv">X</span> <span class="o">+</span> <span class="nv">Y</span><span class="p">.</span></code></pre></div>
+
+
+<p>guard在list comprehension中可以筛选元素：</p>
+
+<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nv">NewNodes</span>  <span class="o">=</span> <span class="p">[</span><span class="nv">Node</span> <span class="p">||</span> <span class="nv">Node</span> <span class="o">&lt;-</span> <span class="nv">AllNodes</span><span class="p">,</span> <span class="ow">not</span> <span class="nn">gb_sets</span><span class="p">:</span><span class="nf">is_member</span><span class="p">(</span><span class="nv">Node</span><span class="p">,</span> <span class="nv">NewQueried</span><span class="p">)],</span></code></pre></div>
+
+
+<p>guard中不能使用自定义函数，因为guard应该保证没有副作用，但自定义函数无法保证这一点，所以erlang禁止在guard中使用自定义函数。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/06/03/erlang-code-snippets/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2013/05/19/crawl-dht/">P2P中DHT网络爬虫</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-05-19T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>19</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>DHT网络爬虫基于DHT网络构建了一个P2P资源搜索引擎。这个搜索引擎不但可以用于构建DHT网络中活跃的资源索引（活跃的资源意味着该网络中肯定有人至少持有该资源的部分数据），还可以分析出该网络中的热门分享资源。<a href="http://xiaoxia.org/">小虾</a>不久前发布了一个这样的搜索引擎：<a href="http://bt.shousibaocai.com/">磁力搜索</a>。他也写博客对此稍作了介绍：<a href="http://xiaoxia.org/2013/05/11/magnet-search-engine/">写了个磁力搜索的网页 － 收录最近热门分享的资源</a>。网络上其实也有其他人做了类似的应用：<a href="http://pacsec.jp/psj11/PacSec2011_Massive-Monitoring_en.pdf">DHT monitoring</a>，<a href="https://www.defcon.org/images/defcon-18/dc-18-presentations/Wolchok/DEFCON-18-Wolchok-Crawling-Bittorrent-DHTS.pdf">Crawling Bittorrent DHT</a></p>
+
+<p>但是他的这篇文章仅介绍了DHT网络的大致工作原理，并且这个爬虫的具体工作原理也没有提到。对此我查阅了些文章及代码，虽然从原理上梳理出了整个实现方案，但很多细节还是不甚清楚。所以本文仅作概要介绍。</p>
+
+<h2>DHT/Magnet/Torrent</h2>
+
+<p>在P2P网络中，要通过种子文件下载一个资源，需要知道整个P2P网络中有哪些计算机正在下载/上传该资源。这里将这些提供某个资源下载的计算机定义为<code>peer</code>。传统的P2P网络中，存在一些<code>tracker</code>服务器，这些服务器的作用主要用于跟踪某个资源有哪些关联的peer。下载这个资源当然得首先取得这些peer。</p>
+
+<p>DHT的出现用于解决当tracker服务器不可用时，P2P客户端依然可以取得某个资源的peer。DHT解决这个问题，是因为它将原来tracker上的资源peer信息分散到了整个网络中。这里将实现了DHT协议的计算机定义为节点(node)。通常一个P2P客户端程序既是peer也是节点。DHT网络有多种实现算法，例如Kademlia。</p>
+
+<p>当某个P2P客户端通过种子文件下载资源时，如果没有tracker服务器，它就会向DHT网络查询这个资源对应的peer列表。资源的标识在DHT网络中称为<code>infohash</code>，是一个20字节长的字符串，一般通过sha1算法获得，也就是一个类似UUID的东西。</p>
+
+<p>实际上，种子文件本身就对应着一个infohash，这个infohash是通过种子文件的文件描述信息动态计算得到。一个种子文件包含了对应资源的描述信息，例如文件名、文件大小等。Magnet，这里指的是磁力链接，它是一个类似URL的字符串地址。P2P软件通过磁力链接，会下载到一个种子文件，然后根据该种子文件继续真实资源的下载。</p>
+
+<p>磁力链接中包含的最重要的信息就是infohash。这个infohash一般为40字节或32字节，它其实只是资源infohash（20字节）的一种编码形式。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/05/19/crawl-dht/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2013/05/08/thought-about-erlang/">erlang使用感受</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-05-08T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>8</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>用erlang也算写了些代码了，主要包括<a href="http://codemacro.com/2013/04/11/rabbitmq-erlang/">使用RabbitMQ的练习</a>，以及最近写的<a href="https://github.com/kevinlynx/erlang-tcpserver">kl_tserver</a>和<a href="https://github.com/kevinlynx/icerl">icerl</a>。其中icerl是一个实现了<a href="http://www.zeroc.com/">Ice</a>的erlang库。</p>
+
+<p>erlang的书较少，我主要读过\<Programming Erlang\>和\<Erlang/OTP in Action\>。其实erlang本身就语言来说的话比较简单，同ruby一样，类似这种本身目标是应用于实际软件项目的语言都比较简单，对应的语法书很快可以翻完。</p>
+
+<p>这里我仅谈谈自己在编写erlang代码过程中的一些感受。</p>
+
+<h2>语法</h2>
+
+<p>erlang语法很简单，接触过函数式语言的程序员上手会很快。它没有类似common lisp里宏这种较复杂的语言特性。其语法元素很紧凑，不存在一些用处不大的特性。在这之前，我学习过ruby和common lisp。ruby代码写的比common lisp多。但是在学习erlang的过程中我的脑海里却不断出现common lisp里的语法特性。这大概是因为common lisp的语法相对ruby来说，更接近erlang。</p>
+
+<h3>编程模式</h3>
+
+<p>erlang不是一个面向对象的语言，它也不同common lisp提供多种编程模式。它的代码就是靠一个个函数组织出来的。面向对象语言在语法上有一点让我很爽的是，其函数调用更自然。erlang的接口调用就像C语言里接口的调用一样：</p>
+
+<pre><code>func(Obj, args)
+Obj-&gt;func(args)
+</code></pre>
+
+<p>即需要在函数第一个参数传递操作对象。但是面向对象语言也会带来一些语法的复杂性。如果一门语言可以用很少的语法元素表达很多信息，那么我觉得这门语言就是门优秀的语言。</p>
+
+<h3>表达式/语句</h3>
+
+<p>erlang里没有语句，全部是表达式，意思是所有语法元素都是有返回值的。这实在太好了，全世界都有返回值可以让代码写起来简单多了：</p>
+
+<div class="highlight"><pre><code class="language-erlang" data-lang="erlang"><span class="nv">Flag</span> <span class="o">=</span> <span class="k">case</span> <span class="n">func</span><span class="p">()</span> <span class="k">of</span> <span class="mi">1</span> <span class="o">-&gt;</span> <span class="n">true</span><span class="p">;</span> <span class="mi">0</span> <span class="o">-&gt;</span> <span class="n">false</span> <span class="k">end</span><span class="p">,</span></code></pre></div>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/05/08/thought-about-erlang/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2013/04/11/rabbitmq-erlang/">erlang和RabbitMQ学习总结</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-04-11T00:00:00+08:00'><span class='date'><span class='date-month'>Apr</span> <span class='date-day'>11</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>AMQP和RabbitMQ概述</h2>
+
+<p><a href="http://www.amqp.org/">AMQP</a>(Advanced Message Queue Protocol)定义了一种消息系统规范。这个规范描述了在一个分布式的系统中各个子系统如何通过消息交互。而<a href="http://www.rabbitmq.com/">RabbitMQ</a>则是AMQP的一种基于erlang的实现。</p>
+
+<p>AMQP将分布式系统中各个子系统隔离开来，子系统之间不再有依赖。子系统仅依赖于消息。子系统不关心消息的发送者，也不关心消息的接受者。</p>
+
+<p>AMQP中有一些概念，用于定义与应用层的交互。这些概念包括：message、queue、exchange、channel, connection, broker、vhost。</p>
+
+<p><em>注：到目前为止我并没有打算使用AMQP，所以没有做更深入的学习，仅为了找个机会写写erlang代码，以下信息仅供参考。</em></p>
+
+<ul>
+<li>message，即消息，简单来说就是应用层需要发送的数据</li>
+<li>queue，即队列，用于存储消息</li>
+<li>exchange，有翻译为“路由”，它用于投递消息，<strong>应用程序在发送消息时并不是指定消息被发送到哪个队列，而是将消息投递给路由，由路由投递到队列</strong></li>
+<li>channel，几乎所有操作都在channel中进行，有点类似一个沟通通道</li>
+<li>connection，应用程序与broker的网络连接</li>
+<li>broker，可简单理解为实现AMQP的服务，例如RabbitMQ服务</li>
+</ul>
+
+
+<p>关于AMQP可以通过一篇很有名的文章了解更多：<a href="http://blog.ftofficer.com/2010/03/translation-rabbitmq-python-rabbits-and-warrens/">RabbitMQ+Python入门经典 兔子和兔子窝</a></p>
+
+<p>RabbitMQ的运行需要erlang的支持，erlang和RabbitMQ在windows下都可以直接使用安装程序，非常简单。RabbitMQ还支持网页端的管理，这需要开启一些RabbitMQ的插件，可以参考<a href="http://www.rabbitmq.com/management.html">官方文档</a>。</p>
+
+<p>RabbitMQ本质上其实是一个服务器，与这个服务器做交互则是通过AMQP定义的协议，应用可以使用一个实现了AMQP协议的库来与服务器交互。这里我使用erlang的一个客户端，对应着RabbitMQ的tutorial，使用erlang实现了一遍。基于这个过程我将一些关键实现罗列出来以供记忆：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/04/11/rabbitmq-erlang/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2013/03/21/rup/">浅析软件工程开发方法学RUP</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-03-21T00:00:00+08:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>前言</h2>
+
+<p>因为之前一直处在游戏开发行业，由于种种原因一直对软件工程中的项目管理、项目开发方法缺乏体验。虽然项目中也曾倡导编写更多的文档，无论是模块说明文档还是设计文档，但效果一直不好。不甚理想的地方主要体现在文档的规范性欠缺、不统一、浮于表面没有实质内容。文档的编写缺乏详尽的方法指导，那么所谓的设计文档要么是用来敷衍上级要么就是随着开发人员的水平不一而千差万别。</p>
+
+<p>当我开始目前这个非游戏项目时，我也曾想，前期做好结构设计，制定好关键问题的解决方案，那么要完成这个项目就不在话下了。但是我很快就面临了一个问题：需求不定。回想身处游戏公司的那些日子，程序员总是抱怨策划需求变更过快过多，在每一次策划提出一个需求变更时，谨慎的程序员都会再三让策划保证：放心，不会变了。而我面临的问题则更为严峻。我意识到，项目的需求，就连用户也无法一一罗列出来。我们需要的是需求调研。但就算你将客户的所有需求全部挖掘出来后（这几乎不可能，因为他们自己也不太清楚自己想要什么），当你交付了第一个软件版本，几乎可以肯定客户会提出一大堆的需求变更：我要的不是这个，我要的那个怎么没有，哦，我当初以为你说的是另一个意思。</p>
+
+<p>当然，需求调研这种工作不是让程序员去做的（那会更悲剧，无论是对客户还是对程序员而言，他们都是在对牛弹琴）。但需求的不确定性也总是存在的。</p>
+
+<p>事实上，需求变化本身就是一个很正常的现象。我一向愿意更悲观地处理软件开发方面的问题，所谓小心使得万年船。基于此，我决定摆好心态学学软件开发的方法学。</p>
+
+<h2>概要</h2>
+
+<p>本文简要描述、总结了RUP开发方法学的主要内容，结合我自己的感受阐述了一些RUP的核心原则。我相信我所理解的内容是肤浅的，对于非代码的表达我更相信其是存在歧义的。所以本文仅当是一种经验参考，不必当真。</p>
+
+<p>RUP据传是用于指导大型甚至超大型项目开发的，我们做的不是这样规模的项目。但是我们需要记录下整个项目的开发过程，通过这个过程中产出的<strong>工件</strong>任何一个人可以看出这个项目是如何实现出来的，其目的在于规避唯有从海量代码中才能熟悉项目实现这种问题。这里出现了一个概念：工件，其指的是软件项目开发过程中任何留下记录的事物，例如文档、图、代码等。<strong>RUP的一个重要思想，在于其整个软件开发过程都是可推导的</strong>。例如我们通常说的软件架构，或小一点的模块结构，都是通过开发过程中前面阶段产出的工件推导得出，而<strong>不是凭借程序员的经验拍脑袋想出来的</strong>（经验不太可靠，并且千差万别，而<strong>推导</strong>意味着将每个环节变得可靠）。我们借助RUP的这个特性，创建这些工件，用以建立起软件实现的可靠知识库。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/03/21/rup/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+      <a class="prev" href="/posts/6">&larr; Older</a>
+    
+    <a href="/blog/archives">Blog Archives</a>
+    
+    <a class="next" href="/posts/4">Newer &rarr;</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/05/18/memcache-proxy/">实现一个memcache proxy</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/04/23/xmemcached/">Xmemcached源码阅读</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/04/09/xnio-source/">XNIO源码阅读</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/03/09/toy-jit/">实现JVM中的JIT</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+<div id="recentcomments" class="dsq-widget">
+<h1 class="dsq-widget-title">Recent Comments</h1>
+</div>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+</section>
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - Kevin Lynx -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
+<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
+
+</p>
+
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

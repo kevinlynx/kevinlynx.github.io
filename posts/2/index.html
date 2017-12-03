@@ -1,0 +1,787 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>loop in codes</title>
+  <meta name="author" content="Kevin Lynx">
+
+  
+  <meta name="description" content="Java GC相关的文章有很多，本文只做概要性总结，主要内容来源于&lt;深入理解Java虚拟机>。 对象存活性判定 对象存活性判定用于确定一个对象是死是活，死掉的对象则需要被垃圾回收。主要包括的方法： 引用计数
+可达性分析 可达性分析的基本思想是： 通过一系列的称为&#8221;GC Roots &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://codemacro.com/posts/2">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <!--script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script-->
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<!--link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css"-->
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">loop in codes</a></h1>
+  
+    <h2>Kevin Lynx BLOG</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:codemacro.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about.html">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2015/08/10/java-gc-summary/">Java GC总结</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-08-10T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>10</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>Java GC相关的文章有很多，本文只做概要性总结，主要内容来源于&lt;深入理解Java虚拟机>。</p>
+
+<h2>对象存活性判定</h2>
+
+<p>对象存活性判定用于确定一个对象是死是活，死掉的对象则需要被垃圾回收。主要包括的方法：</p>
+
+<ul>
+<li>引用计数</li>
+<li>可达性分析</li>
+</ul>
+
+
+<p>可达性分析的基本思想是：</p>
+
+<blockquote><p>通过一系列的称为&#8221;GC Roots&#8221;的对象作为起始点，从这些节点开始向下搜索，搜索所走过的路径称为引用链，当一个对象到GC Roots没有任何引用链项链时，则证明此对象是不可用的。</p></blockquote>
+
+<p>在Java中有很多种类的对象可以作为GC Roots，例如类静态属性引用的对象。</p>
+
+<h2>垃圾收集算法</h2>
+
+<p>确定了哪些对象是需要回收之后，就可以运用各种垃圾收集算法收集这些对象，例如直接回收内存，或者回收并移动整理内存。</p>
+
+<p>主要包括：</p>
+
+<ul>
+<li>标记清除(Mark-Sweep)算法：首先标记出需要回收的对象，然后统一回收被标记的对象</li>
+<li>复制(Copying)算法：将可用内存分块，当一块内存用完后将存活对象复制到其他块，并统一回收不使用的块。Java中新生代对象一般使用该方法</li>
+<li>标记整理(Mark-Compact)算法：基本同标记清除，不同的是回收时是把可用对象进行移动，以避免内存碎片问题</li>
+<li>分代收集，将内存分区域，不同区域采用不同的算法，例如Java中的新生代及老年代</li>
+</ul>
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2015/08/10/java-gc-summary/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2015/07/04/jcm/">写了一个分布式名字服务JCM</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-07-04T00:00:00+08:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>4</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>之前在公司里维护了一个名字服务，这个名字服务日常管理了近4000台机器，有4000个左右的客户端连接上来获取机器信息，由于其基本是一个单点服务，所以某些模块接近瓶颈。后来倒是有重构计划，详细设计做了，代码都写了一部分，结果由于某些原因重构就被终止了。</p>
+
+<p><a href="https://github.com/kevinlynx/jcm">JCM</a>是我业余时间用Java重写的一个版本，功能上目前只实现了基础功能。由于它是个完全分布式的架构，所以理论上可以横向扩展，大大增强系统的服务能力。</p>
+
+<h2>名字服务</h2>
+
+<p>在分布式系统中，某个服务为了提升整体服务能力，通常部署了很多实例。这里我把这些提供相同服务的实例统称为集群(<code>cluster</code>)，每个实例称为一个节点(<code>Node</code>)。一个应用可能会使用很多cluster，每次访问一个cluster时，就通过名字服务获取该cluster下一个可用的node。那么，名字服务至少需要包含的功能：</p>
+
+<ul>
+<li>根据cluster名字获取可用的node</li>
+<li>对管理的所有cluster下的所有node进行健康度的检测，以保证始终返回可用的node</li>
+</ul>
+
+
+<p>有些名字服务仅对node管理，不参与应用与node间的通信，而有些则可能作为应用与node间的通信转发器。虽然名字服务功能简单，但是要做一个分布式的名字服务还是比较复杂的，因为数据一旦分布式了，就会存在同步、一致性问题的考虑等。</p>
+
+<h2>What&rsquo;s JCM</h2>
+
+<p>JCM围绕前面说的名字服务基础功能实现。包含的功能：</p>
+
+<ul>
+<li>管理cluster到node的映射</li>
+<li>分布式架构，可水平扩展以实现管理10,000个node的能力，足以管理一般公司的后台服务集群</li>
+<li>对每个node进行健康检查，健康检查可基于HTTP协议层的检测或TCP连接检测</li>
+<li>持久化cluster/node数据，通过zookeeper保证数据一致性</li>
+<li>提供JSON HTTP API管理cluster/node数据，后续可提供Web管理系统</li>
+<li>以库的形式提供与server的交互，库本身提供各种负载均衡策略，保证对一个cluster下node的访问达到负载均衡</li>
+</ul>
+
+
+<p>项目地址<a href="https://github.com/kevinlynx/jcm">git jcm</a></p>
+
+<p>JCM主要包含两部分：</p>
+
+<ul>
+<li>jcm.server，JCM名字服务，需要连接zookeeper以持久化数据</li>
+<li>jcm.subscriber，客户端库，负责与jcm.server交互，提供包装了负载均衡的API给应用使用</li>
+</ul>
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2015/07/04/jcm/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2015/06/07/servlet-web-framework/">基于servlet实现一个web框架</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-06-07T00:00:00+08:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>7</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>servlet作为一个web规范，其本身就算做一个web开发框架，但是其web action (响应某个URI的实现)的实现都是基于类的，不是很方便，并且3.0之前的版本还必须通过web.xml配置来增加新的action。servlet中有一个filter的功能，可以配置所有URI的功能都经过filter。我们可以基于filter的功能来实现一个简单的web框架。在这个框架中，主要改进URI action的映射，就像<a href="https://www.playframework.com/">play framework</a>中route的配置：</p>
+
+<pre><code>GET     /hello      com.codemacro.webdemo.test.TestController.hello
+GET     /route      com.codemacro.webdemo.test.TestController.route
+POST    /hello      com.codemacro.webdemo.test.TestController.sayHello
+</code></pre>
+
+<p>即把某个URI映射到类接口级别。基于servlet实现web框架的好处不仅实现简单，还能运行在所有支持servlet容器规范的web server上，例如Tomcat、Jetty。</p>
+
+<p>本文提到的web framework demo可以从我的github 上取得：<a href="https://github.com/kevinlynx/servlet-web-framework-demo">servlet-web-framework-demo</a></p>
+
+<h2>功能</h2>
+
+<p>这个web framework URI action部分（或者说URI routing）如同前面描述，action的编写如：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestController</span> <span class="kd">extends</span> <span class="n">BaseController</span> <span class="o">{</span>
+  <span class="c1">// 返回字符串</span>
+  <span class="kd">public</span> <span class="n">Result</span> <span class="nf">index</span><span class="o">()</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="nf">ok</span><span class="o">(</span><span class="s">&quot;hello world&quot;</span><span class="o">);</span>
+  <span class="o">}</span>
+
+  <span class="c1">// HTTP 404</span>
+  <span class="kd">public</span> <span class="n">Result</span> <span class="nf">code404</span><span class="o">()</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="nf">status</span><span class="o">(</span><span class="mi">404</span><span class="o">,</span> <span class="s">&quot;not found&quot;</span><span class="o">);</span>
+  <span class="o">}</span>
+
+  <span class="c1">// 使用JSP模板渲染</span>
+  <span class="kd">public</span> <span class="n">Result</span> <span class="nf">template</span><span class="o">()</span> <span class="o">{</span>
+    <span class="n">String</span><span class="o">[]</span> <span class="n">langs</span> <span class="o">=</span> <span class="k">new</span> <span class="n">String</span><span class="o">[]</span> <span class="o">{</span><span class="s">&quot;c++&quot;</span><span class="o">,</span> <span class="s">&quot;java&quot;</span><span class="o">,</span> <span class="s">&quot;python&quot;</span><span class="o">};</span>
+    <span class="k">return</span> <span class="nf">ok</span><span class="o">(</span><span class="n">jsp</span><span class="o">(</span><span class="s">&quot;index.jsp&quot;</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="s">&quot;name&quot;</span><span class="o">,</span> <span class="s">&quot;kevin&quot;</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="s">&quot;langs&quot;</span><span class="o">,</span>  <span class="n">langs</span><span class="o">)</span>
+        <span class="o">);</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2015/06/07/servlet-web-framework/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2015/05/31/java-refect-ioc/">Java中的反射及Bean容器的实现</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-05-31T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>31</span><span class='date-suffix'>st</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>编程语言中的反射(Refection)指的是可以在程序运行期动态加载一个类。与之相关的是自省(Introspection)，这个指的是程序自己可以获取一个类型的描述信息，例如获取一个类的所有接口定义、一个接口的所有形参。当编程语言有了这些语言特性之后，可以在很大程度上解决代码耦合问题，所以在Java的世界里，可以看到很多库/框架使用了反射技术。</p>
+
+<p>类似Spring的Bean容器实现就是大量运用了反射机制。Bean容器维护了一些Bean对象，简单来说就是一些普通对象。Bean容器可以根据配置创建这些对象，创建时如果这些对象依赖了其他对象，Bean容器还会负责将依赖的对象注入到目标对象中，也就是所谓的依赖注入(dependence injection)。放在模块设计中，又衍生出控制反转(IoC, Inverse of Control)概念，用于描述应用程序在使用一个框架时，不是框架来控制/限制应用程序的架构模式，而是由应用程序来控制框架。</p>
+
+<p>本文就简单描述下Bean容器是如何使用反射来实现的，最终代码参考<a href="https://github.com/kevinlynx/ioc-sample">github ioc-sample</a></p>
+
+<h2>类的动态加载</h2>
+
+<p>可以简单地使用<code>Class.forName</code>，传入某个class的完整名：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">loadClass</span><span class="o">(</span><span class="n">String</span> <span class="n">fullName</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">ClassNotFoundException</span> <span class="o">{</span>
+  <span class="k">return</span> <span class="n">Class</span><span class="o">.</span><span class="na">forName</span><span class="o">(</span><span class="n">fullName</span><span class="o">);</span>
+<span class="o">}</span></code></pre></div>
+
+
+<p>类的加载涉及到class loader，这块内容是可以进一步深化的。加载了类之后就可以创建出类的实例，但还没有完成依赖注入的功能：</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">c</span> <span class="o">=</span> <span class="n">loadClass</span><span class="o">(</span><span class="s">&quot;com.codemacro.bean.test.Test1&quot;</span><span class="o">);</span>
+<span class="n">Object</span> <span class="n">o</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">newInstance</span><span class="o">();</span></code></pre></div>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2015/05/31/java-refect-ioc/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2015/05/30/drill-http-plugin/">Drill中实现HTTP storage plugin</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-05-30T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>30</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>Apache Drill可用于大数据的实时分析，引用一段介绍：</p>
+
+<blockquote><p>受到Google Dremel启发，Apache的Drill项目是对大数据集进行交互式分析的分布式系统。Drill并不会试图取代已有的大数据批处理框架（Big Data batch processing framework），如Hadoop MapReduce或流处理框架（stream processing framework），如S4和Storm。相反，它是要填充现有空白的——对大数据集的实时交互式处理</p></blockquote>
+
+<p>简单来说，Drill可接收SQL查询语句，然后后端从多个数据源例如HDFS、MongoDB等获取数据并分析产出分析结果。在一次分析中，它可以汇集多个数据源的数据。而且基于分布式的架构，可以支持秒级查询。</p>
+
+<p>Drill在架构上是比较灵活的，它的前端可以不一定是SQL查询语言，后端数据源也可以接入Storage plugin来支持其他数据来源。这里我就实现了一个从HTTP服务获取数据的Storage plugin demo。这个demo可以接入基于GET请求，返回JSON格式的HTTP服务。源码可从我的Github获取：<a href="https://github.com/kevinlynx/drill-storage-http">drill-storage-http</a></p>
+
+<p>例子包括：</p>
+
+<pre><code>select name, length from http.`/e/api:search` where $p=2 and $q='avi'
+select name, length from http.`/e/api:search?q=avi&amp;p=2` where length &gt; 0 
+</code></pre>
+
+<h2>实现</h2>
+
+<p>要实现一个自己的storage plugin，目前Drill这方面文档几乎没有，只能从已有的其他storage plugin源码入手，例如mongodb的，参考Drill子项目<code>drill-mongo-storage</code>。实现的storage plugin打包为jar放到<code>jars</code>目录，Drill启动时会自动载入，然后web上配置指定类型即可。</p>
+
+<p>主要需要实现的类包括：</p>
+
+<pre><code>AbstractStoragePlugin
+StoragePluginConfig
+SchemaFactory
+BatchCreator
+AbstractRecordReader
+AbstractGroupScan
+</code></pre>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2015/05/30/drill-http-plugin/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2015/05/05/lock_free_list/">无锁有序链表的实现</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-05-05T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>5</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>无锁有序链表可以保证元素的唯一性，使其可用于哈希表的桶，甚至直接作为一个效率不那么高的map。普通链表的无锁实现相对简单点，因为插入元素可以在表头插，而有序链表的插入则是任意位置。</p>
+
+<p>本文主要基于论文<a href="http://www.research.ibm.com/people/m/michael/spaa-2002.pdf">High Performance Dynamic Lock-Free Hash Tables</a>实现。</p>
+
+<h2>主要问题</h2>
+
+<p>链表的主要操作包含<code>insert</code>和<code>remove</code>，先简单实现一个版本，就会看到问题所在，以下代码只用作示例：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">struct</span> <span class="kt">node_t</span> <span class="p">{</span>
+        <span class="kt">key_t</span> <span class="n">key</span><span class="p">;</span>
+        <span class="kt">value_t</span> <span class="n">val</span><span class="p">;</span>
+        <span class="kt">node_t</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span>
+    <span class="p">};</span>
+
+    <span class="kt">int</span> <span class="nf">l_find</span><span class="p">(</span><span class="kt">node_t</span> <span class="o">**</span><span class="n">pred_ptr</span><span class="p">,</span> <span class="kt">node_t</span> <span class="o">**</span><span class="n">item_ptr</span><span class="p">,</span> <span class="kt">node_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">key_t</span> <span class="n">key</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">node_t</span> <span class="o">*</span><span class="n">pred</span> <span class="o">=</span> <span class="n">head</span><span class="p">;</span>
+        <span class="kt">node_t</span> <span class="o">*</span><span class="n">item</span> <span class="o">=</span> <span class="n">head</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+        <span class="k">while</span> <span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="p">{</span>
+            <span class="kt">int</span> <span class="n">d</span> <span class="o">=</span> <span class="n">KEY_CMP</span><span class="p">(</span><span class="n">item</span><span class="o">-&gt;</span><span class="n">key</span><span class="p">,</span> <span class="n">key</span><span class="p">);</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">d</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+                <span class="o">*</span><span class="n">pred_ptr</span> <span class="o">=</span> <span class="n">pred</span><span class="p">;</span>
+                <span class="o">*</span><span class="n">item_ptr</span> <span class="o">=</span> <span class="n">item</span><span class="p">;</span>
+                <span class="k">return</span> <span class="n">d</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">?</span> <span class="nl">TRUE</span> <span class="p">:</span> <span class="n">FALSE</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="n">pred</span> <span class="o">=</span> <span class="n">item</span><span class="p">;</span>
+            <span class="n">item</span> <span class="o">=</span> <span class="n">item</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+        <span class="p">}</span> 
+        <span class="o">*</span><span class="n">pred_ptr</span> <span class="o">=</span> <span class="n">pred</span><span class="p">;</span>
+        <span class="o">*</span><span class="n">item_ptr</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+        <span class="k">return</span> <span class="n">FALSE</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="kt">int</span> <span class="nf">l_insert</span><span class="p">(</span><span class="kt">node_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">key_t</span> <span class="n">key</span><span class="p">,</span> <span class="kt">value_t</span> <span class="n">val</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">node_t</span> <span class="o">*</span><span class="n">pred</span><span class="p">,</span> <span class="o">*</span><span class="n">item</span><span class="p">,</span> <span class="o">*</span><span class="n">new_item</span><span class="p">;</span>
+        <span class="k">while</span> <span class="p">(</span><span class="n">TRUE</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">l_find</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">item</span><span class="p">,</span> <span class="n">head</span><span class="p">,</span> <span class="n">key</span><span class="p">))</span> <span class="p">{</span>
+                <span class="k">return</span> <span class="n">FALSE</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="n">new_item</span> <span class="o">=</span> <span class="p">(</span><span class="kt">node_t</span><span class="o">*</span><span class="p">)</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">node_t</span><span class="p">));</span>
+            <span class="n">new_item</span><span class="o">-&gt;</span><span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="p">;</span>
+            <span class="n">new_item</span><span class="o">-&gt;</span><span class="n">val</span> <span class="o">=</span> <span class="n">val</span><span class="p">;</span>
+            <span class="n">new_item</span><span class="o">-&gt;</span><span class="n">next</span> <span class="o">=</span> <span class="n">item</span><span class="p">;</span>
+            <span class="c1">// A. 如果pred本身被移除了</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">new_item</span><span class="p">))</span> <span class="p">{</span>
+                <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="n">free</span><span class="p">(</span><span class="n">new_item</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="kt">int</span> <span class="nf">l_remove</span><span class="p">(</span><span class="kt">node_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">key_t</span> <span class="n">key</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">node_t</span> <span class="o">*</span><span class="n">pred</span><span class="p">,</span> <span class="o">*</span><span class="n">item</span><span class="p">;</span>
+        <span class="k">while</span> <span class="p">(</span><span class="n">TRUE</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">l_find</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">item</span><span class="p">,</span> <span class="n">head</span><span class="p">,</span> <span class="n">key</span><span class="p">))</span> <span class="p">{</span>
+                <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="c1">// B. 如果pred被移除；如果item也被移除</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">item</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">))</span> <span class="p">{</span>
+                <span class="n">haz_free</span><span class="p">(</span><span class="n">item</span><span class="p">);</span>
+                <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span></code></pre></div>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2015/05/05/lock_free_list/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2015/05/03/hazard-pointer/">并行编程中的内存回收Hazard Pointer</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-05-03T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>3</span><span class='date-suffix'>rd</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>接上篇<a href="http://codemacro.com/2015/04/19/rw_thread_gc/">使用RCU技术实现读写线程无锁</a>，在没有GC机制的语言中，要实现Lock free的算法，就免不了要自己处理内存回收的问题。</p>
+
+<p>Hazard Pointer是另一种处理这个问题的算法，而且相比起来不但简单，功能也很强大。<a href="http://blog.csdn.net/pongba/article/details/589864">锁无关的数据结构与Hazard指针</a>中讲得很好，<a href="http://en.wikipedia.org/wiki/Hazard_pointer">Wikipedia Hazard pointer</a>也描述得比较清楚，所以我这里就不讲那么细了。</p>
+
+<p>一个简单的实现可以参考<a href="https://github.com/kevinlynx/lockfree-list/blob/master/haz_ptr.c">我的github haz_ptr.c</a></p>
+
+<h2>原理</h2>
+
+<p>基本原理无非也是读线程对指针进行标识，指针(指向的内存)要释放时都会缓存起来延迟到确认没有读线程了才对其真正释放。</p>
+
+<p><code>&lt;Lock-Free Data Structures with Hazard Pointers&gt;</code>中的描述：</p>
+
+<blockquote><p>Each reader thread owns a single-writer/multi-reader shared pointer called &ldquo;hazard pointer.&rdquo; When a reader thread assigns the address of a map to its hazard pointer, it is basically announcing to other threads (writers), &ldquo;I am reading this map. You can replace it if you want, but don&rsquo;t change its contents and certainly keep your deleteing hands off it.&rdquo;</p></blockquote>
+
+<p>关键的结构包括：<code>Hazard pointer</code>、<code>Thread Free list</code></p>
+
+<p><code>Hazard pointer</code>：一个读线程要使用一个指针时，就会创建一个Hazard pointer包装这个指针。一个Hazard pointer会被一个线程写，多个线程读。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2015/05/03/hazard-pointer/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2015/04/19/rw_thread_gc/">使用RCU技术实现读写线程无锁</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-04-19T00:00:00+08:00'><span class='date'><span class='date-month'>Apr</span> <span class='date-day'>19</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>在一个系统中有一个写线程和若干个读线程，读写线程通过一个指针共用了一个数据结构，写线程改写这个结构，读线程读取该结构。在写线程改写这个数据结构的过程中，加锁情况下读线程由于等待锁耗时会增加。</p>
+
+<p>可以利用RCU (Read Copy Update <a href="http://www.rdrop.com/~paulmck/RCU/whatisRCU.html">What is rcu</a>)的思想来去除这个锁。本文提到的主要实现代码：<a href="https://gist.github.com/kevinlynx/ba728f2f1b33c763a6c3">gist</a></p>
+
+<h2>RCU</h2>
+
+<p>RCU可以说是一种替代读写锁的方法。其基于一个事实：当写线程在改变一个指针时，读线程获取这个指针，要么获取到老的值，要么获取到新的值。RCU的基本思想其实很简单，参考<a href="http://www.rdrop.com/~paulmck/RCU/whatisRCU.html">What is RCU</a>中Toy implementation可以很容易理解。一种简单的RCU流程可以描述为：</p>
+
+<p>写线程：</p>
+
+<pre><code>old_ptr = _ptr
+tmp_ptr = copy(_ptr)     // copy
+change(tmp_ptr)          // change 
+_ptr = tmp_ptr           // update
+synchroize(tmp_ptr)
+</code></pre>
+
+<p>写线程要更新<code>_ptr</code>指向的内容时，先复制一份新的，基于新的进行改变，更新<code>_ptr</code>指针，最后同步释放老的内存。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2015/04/19/rw_thread_gc/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2015/04/06/tcmalloc-getstacktrace/">记一次tcmalloc分配内存引起的coredump</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-04-06T00:00:00+08:00'><span class='date'><span class='date-month'>Apr</span> <span class='date-day'>6</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>现象</h2>
+
+<p>线上的服务出现coredump，堆栈为：</p>
+
+<pre><code>#0  0x000000000045d145 in GetStackTrace(void**, int, int) ()
+#1  0x000000000045ec22 in tcmalloc::PageHeap::GrowHeap(unsigned long) ()
+#2  0x000000000045eeb3 in tcmalloc::PageHeap::New(unsigned long) ()
+#3  0x0000000000459ee8 in tcmalloc::CentralFreeList::Populate() ()
+#4  0x000000000045a088 in tcmalloc::CentralFreeList::FetchFromSpansSafe() ()
+#5  0x000000000045a10a in tcmalloc::CentralFreeList::RemoveRange(void**, void**, int) ()
+#6  0x000000000045c282 in tcmalloc::ThreadCache::FetchFromCentralCache(unsigned long, unsigned long) ()
+#7  0x0000000000470766 in tc_malloc ()
+#8  0x00007f75532cd4c2 in __conhash_get_rbnode (node=0x22c86870, hash=30)
+        at build/release64/cm_sub/conhash/conhash_inter.c:88
+#9  0x00007f75532cd76e in __conhash_add_replicas (conhash=0x24fbc7e0, iden=&lt;value optimized out&gt;)
+        at build/release64/cm_sub/conhash/conhash_inter.c:45
+#10 0x00007f75532cd1fa in conhash_add_node (conhash=0x24fbc7e0, iden=0) at build/release64/cm_sub/conhash/conhash.c:72
+#11 0x00007f75532c651b in cm_sub::TopoCluster::initLBPolicyInfo (this=0x2593a400)
+        at build/release64/cm_sub/topo_cluster.cpp:114
+#12 0x00007f75532cad73 in cm_sub::TopoClusterManager::processClusterMapTable (this=0xa219e0, ref=0x267ea8c0)
+        at build/release64/cm_sub/topo_cluster_manager.cpp:396
+#13 0x00007f75532c5a93 in cm_sub::SubRespMsgProcess::reinitCluster (this=0x9c2f00, msg=0x4e738ed0)
+        at build/release64/cm_sub/sub_resp_msg_process.cpp:157
+...
+</code></pre>
+
+<p>查看了应用层相关数据结构，基本数据都是没有问题的。所以最初怀疑是tcmalloc内部维护了错误的内存，在分配内存时出错，这个堆栈只是问题的表象。几天后，线上的另一个服务，基于同样的库，也core了，堆栈还是一样的。</p>
+
+<p>最初定位问题都是从最近更新的东西入手，包括依赖的server环境，但都没有明显的问题，所以最后只能从core的直接原因入手。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2015/04/06/tcmalloc-getstacktrace/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2015/03/31/intro-java-bytecode/">初识JVM byte code</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-03-31T00:00:00+08:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>31</span><span class='date-suffix'>st</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>关于JVM和其上的byte code，网上其实有足够多的资料了，我这里就简单做个提纲和介绍，权当记录吧。</p>
+
+<h2>stack-based VM</h2>
+
+<p>Java byte code运行在JVM上，就像机器指令运行在物理机上，是需要遵循这个机器的指令规范的。所以认识JVM byte code，是需要稍微了解下JVM的。JVM是一个基于栈(stack-based)的虚拟机。很久以前我还写过类似<a href="http://www.cppblog.com/kevinlynx/archive/2010/04/15/112704.html">简单的虚拟机</a>。</p>
+
+<p>基于栈的虚拟机其操作数和指令运算的中间结果全部都在一个虚拟栈中，与之对应的是基于寄存器(register-based)的虚拟机，其操作数和指令运算结果会存放在若干个寄存器（也就是存储单元）里。x86机器就可以理解为基于寄存器的机器。</p>
+
+<p>byte code其实和x86汇编代码本质一样，无非是对应机器制定的一堆指令，这里可以举例说明下两类虚拟机的不同：</p>
+
+<pre><code># stack-based 
+push 1       # 压立即数1到栈顶
+push 2       # 压立即数2到栈顶
+add          # 弹出栈顶2个数相加，将结果3压到栈顶
+
+# register-based
+mov ax, 1    # 写立即数到寄存器ax
+add ax, 2    # 取ax中的值1与立即数2进行相加，存放结果到ax
+</code></pre>
+
+<p>关于两类实现的比较，网上也有不少资料，例如<a href="http://www.zhihu.com/question/20207106">Dalvik 虚拟机和 Sun JVM 在架构和执行方面有什么本质区别？</a>。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2015/03/31/intro-java-bytecode/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+      <a class="prev" href="/posts/3">&larr; Older</a>
+    
+    <a href="/blog/archives">Blog Archives</a>
+    
+    <a class="next" href="/index.html">Newer &rarr;</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/05/18/memcache-proxy/">实现一个memcache proxy</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/04/23/xmemcached/">Xmemcached源码阅读</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/04/09/xnio-source/">XNIO源码阅读</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/03/09/toy-jit/">实现JVM中的JIT</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+<div id="recentcomments" class="dsq-widget">
+<h1 class="dsq-widget-title">Recent Comments</h1>
+</div>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+</section>
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - Kevin Lynx -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
+<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
+
+</p>
+
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

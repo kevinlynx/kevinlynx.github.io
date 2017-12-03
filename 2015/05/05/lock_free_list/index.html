@@ -1,0 +1,430 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>无锁有序链表的实现 - loop in codes</title>
+  <meta name="author" content="Kevin Lynx">
+
+  
+  <meta name="description" content="无锁有序链表可以保证元素的唯一性，使其可用于哈希表的桶，甚至直接作为一个效率不那么高的map。普通链表的无锁实现相对简单点，因为插入元素可以在表头插，而有序链表的插入则是任意位置。 本文主要基于论文High Performance Dynamic Lock-Free Hash Tables实现。 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://codemacro.com/2015/05/05/lock_free_list">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <!--script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script-->
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<!--link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css"-->
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">loop in codes</a></h1>
+  
+    <h2>Kevin Lynx BLOG</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:codemacro.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about.html">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">无锁有序链表的实现</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-05-05T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>5</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>无锁有序链表可以保证元素的唯一性，使其可用于哈希表的桶，甚至直接作为一个效率不那么高的map。普通链表的无锁实现相对简单点，因为插入元素可以在表头插，而有序链表的插入则是任意位置。</p>
+
+<p>本文主要基于论文<a href="http://www.research.ibm.com/people/m/michael/spaa-2002.pdf">High Performance Dynamic Lock-Free Hash Tables</a>实现。</p>
+
+<h2>主要问题</h2>
+
+<p>链表的主要操作包含<code>insert</code>和<code>remove</code>，先简单实现一个版本，就会看到问题所在，以下代码只用作示例：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">struct</span> <span class="kt">node_t</span> <span class="p">{</span>
+        <span class="kt">key_t</span> <span class="n">key</span><span class="p">;</span>
+        <span class="kt">value_t</span> <span class="n">val</span><span class="p">;</span>
+        <span class="kt">node_t</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span>
+    <span class="p">};</span>
+
+    <span class="kt">int</span> <span class="nf">l_find</span><span class="p">(</span><span class="kt">node_t</span> <span class="o">**</span><span class="n">pred_ptr</span><span class="p">,</span> <span class="kt">node_t</span> <span class="o">**</span><span class="n">item_ptr</span><span class="p">,</span> <span class="kt">node_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">key_t</span> <span class="n">key</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">node_t</span> <span class="o">*</span><span class="n">pred</span> <span class="o">=</span> <span class="n">head</span><span class="p">;</span>
+        <span class="kt">node_t</span> <span class="o">*</span><span class="n">item</span> <span class="o">=</span> <span class="n">head</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+        <span class="k">while</span> <span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="p">{</span>
+            <span class="kt">int</span> <span class="n">d</span> <span class="o">=</span> <span class="n">KEY_CMP</span><span class="p">(</span><span class="n">item</span><span class="o">-&gt;</span><span class="n">key</span><span class="p">,</span> <span class="n">key</span><span class="p">);</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">d</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+                <span class="o">*</span><span class="n">pred_ptr</span> <span class="o">=</span> <span class="n">pred</span><span class="p">;</span>
+                <span class="o">*</span><span class="n">item_ptr</span> <span class="o">=</span> <span class="n">item</span><span class="p">;</span>
+                <span class="k">return</span> <span class="n">d</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">?</span> <span class="nl">TRUE</span> <span class="p">:</span> <span class="n">FALSE</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="n">pred</span> <span class="o">=</span> <span class="n">item</span><span class="p">;</span>
+            <span class="n">item</span> <span class="o">=</span> <span class="n">item</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+        <span class="p">}</span> 
+        <span class="o">*</span><span class="n">pred_ptr</span> <span class="o">=</span> <span class="n">pred</span><span class="p">;</span>
+        <span class="o">*</span><span class="n">item_ptr</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+        <span class="k">return</span> <span class="n">FALSE</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="kt">int</span> <span class="nf">l_insert</span><span class="p">(</span><span class="kt">node_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">key_t</span> <span class="n">key</span><span class="p">,</span> <span class="kt">value_t</span> <span class="n">val</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">node_t</span> <span class="o">*</span><span class="n">pred</span><span class="p">,</span> <span class="o">*</span><span class="n">item</span><span class="p">,</span> <span class="o">*</span><span class="n">new_item</span><span class="p">;</span>
+        <span class="k">while</span> <span class="p">(</span><span class="n">TRUE</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">l_find</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">item</span><span class="p">,</span> <span class="n">head</span><span class="p">,</span> <span class="n">key</span><span class="p">))</span> <span class="p">{</span>
+                <span class="k">return</span> <span class="n">FALSE</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="n">new_item</span> <span class="o">=</span> <span class="p">(</span><span class="kt">node_t</span><span class="o">*</span><span class="p">)</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">node_t</span><span class="p">));</span>
+            <span class="n">new_item</span><span class="o">-&gt;</span><span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="p">;</span>
+            <span class="n">new_item</span><span class="o">-&gt;</span><span class="n">val</span> <span class="o">=</span> <span class="n">val</span><span class="p">;</span>
+            <span class="n">new_item</span><span class="o">-&gt;</span><span class="n">next</span> <span class="o">=</span> <span class="n">item</span><span class="p">;</span>
+            <span class="c1">// A. 如果pred本身被移除了</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">new_item</span><span class="p">))</span> <span class="p">{</span>
+                <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="n">free</span><span class="p">(</span><span class="n">new_item</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="kt">int</span> <span class="nf">l_remove</span><span class="p">(</span><span class="kt">node_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">key_t</span> <span class="n">key</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">node_t</span> <span class="o">*</span><span class="n">pred</span><span class="p">,</span> <span class="o">*</span><span class="n">item</span><span class="p">;</span>
+        <span class="k">while</span> <span class="p">(</span><span class="n">TRUE</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">l_find</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">item</span><span class="p">,</span> <span class="n">head</span><span class="p">,</span> <span class="n">key</span><span class="p">))</span> <span class="p">{</span>
+                <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="c1">// B. 如果pred被移除；如果item也被移除</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">item</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">))</span> <span class="p">{</span>
+                <span class="n">haz_free</span><span class="p">(</span><span class="n">item</span><span class="p">);</span>
+                <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span></code></pre></div>
+
+
+
+
+<!-- more -->
+
+
+<p><code>l_find</code>函数返回查找到的前序元素和元素本身，代码A和B虽然拿到了<code>pred</code>和<code>item</code>，但在<code>CAS</code>的时候，其可能被其他线程移除。甚至，在<code>l_find</code>过程中，其每一个元素都可能被移除。问题在于，<strong>任何时候拿到一个元素时，都不确定其是否还有效</strong>。元素的有效性包括其是否还在链表中，其指向的内存是否还有效。</p>
+
+<h2>解决方案</h2>
+
+<p><strong>通过为元素指针增加一个有效性标志位，配合CAS操作的互斥性</strong>，就可以解决元素有效性判定问题。</p>
+
+<p>因为<code>node_t</code>放在内存中是会对齐的，所以指向<code>node_t</code>的指针值低几位是不会用到的，从而可以在低几位里设置标志，这样在做CAS的时候，就实现了DCAS的效果，相当于将两个逻辑上的操作变成了一个原子操作。想象下引用计数对象的线程安全性，其内包装的指针是线程安全的，但对象本身不是。</p>
+
+<p>CAS的互斥性，在若干个线程CAS相同的对象时，只有一个线程会成功，失败的线程就可以以此判定目标对象发生了变更。改进后的代码（代码仅做示例用，不保证正确）：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">typedef</span> <span class="kt">size_t</span> <span class="kt">markable_t</span><span class="p">;</span>
+    <span class="c1">// 最低位置1，表示元素被删除</span>
+    <span class="cp">#define HAS_MARK(p) ((markable_t)p &amp; 0x01)</span>
+    <span class="cp">#define MARK(p) ((markable_t)p | 0x01)</span>
+    <span class="cp">#define STRIP_MARK(p) ((markable_t)p &amp; ~0x01)</span>
+
+    <span class="kt">int</span> <span class="nf">l_insert</span><span class="p">(</span><span class="kt">node_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">key_t</span> <span class="n">key</span><span class="p">,</span> <span class="kt">value_t</span> <span class="n">val</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">node_t</span> <span class="o">*</span><span class="n">pred</span><span class="p">,</span> <span class="o">*</span><span class="n">item</span><span class="p">,</span> <span class="o">*</span><span class="n">new_item</span><span class="p">;</span>
+        <span class="k">while</span> <span class="p">(</span><span class="n">TRUE</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">l_find</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">item</span><span class="p">,</span> <span class="n">head</span><span class="p">,</span> <span class="n">key</span><span class="p">))</span> <span class="p">{</span> 
+                <span class="k">return</span> <span class="n">FALSE</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="n">new_item</span> <span class="o">=</span> <span class="p">(</span><span class="kt">node_t</span><span class="o">*</span><span class="p">)</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">node_t</span><span class="p">));</span>
+            <span class="n">new_item</span><span class="o">-&gt;</span><span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="p">;</span>
+            <span class="n">new_item</span><span class="o">-&gt;</span><span class="n">val</span> <span class="o">=</span> <span class="n">val</span><span class="p">;</span>
+            <span class="n">new_item</span><span class="o">-&gt;</span><span class="n">next</span> <span class="o">=</span> <span class="n">item</span><span class="p">;</span>
+            <span class="c1">// A. 虽然find拿到了合法的pred，但是在以下代码之前pred可能被删除，此时pred-&gt;next被标记</span>
+            <span class="c1">//    pred-&gt;next != item，该CAS会失败，失败后重试</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">new_item</span><span class="p">))</span> <span class="p">{</span>
+                <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="n">free</span><span class="p">(</span><span class="n">new_item</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">FALSE</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="kt">int</span> <span class="nf">l_remove</span><span class="p">(</span><span class="kt">node_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">key_t</span> <span class="n">key</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">node_t</span> <span class="o">*</span><span class="n">pred</span><span class="p">,</span> <span class="o">*</span><span class="n">item</span><span class="p">;</span>
+        <span class="k">while</span> <span class="p">(</span><span class="n">TRUE</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">l_find</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">item</span><span class="p">,</span> <span class="n">head</span><span class="p">,</span> <span class="n">key</span><span class="p">))</span> <span class="p">{</span>
+                <span class="k">return</span> <span class="n">FALSE</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="kt">node_t</span> <span class="o">*</span><span class="n">inext</span> <span class="o">=</span> <span class="n">item</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+            <span class="c1">// B. 删除item前先标记item-&gt;next，如果CAS失败，那么情况同insert一样，有其他线程在find之后</span>
+            <span class="c1">//    删除了item，失败后重试</span>
+            <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">item</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">,</span> <span class="n">inext</span><span class="p">,</span> <span class="n">MARK</span><span class="p">(</span><span class="n">inext</span><span class="p">)))</span> <span class="p">{</span>
+                <span class="k">continue</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="c1">// C. 对同一个元素item删除时，只会有一个线程成功走到这里</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">STRIP_MARK</span><span class="p">(</span><span class="n">item</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">)))</span> <span class="p">{</span>
+                <span class="n">haz_defer_free</span><span class="p">(</span><span class="n">item</span><span class="p">);</span>
+                <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">FALSE</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="kt">int</span> <span class="nf">l_find</span><span class="p">(</span><span class="kt">node_t</span> <span class="o">**</span><span class="n">pred_ptr</span><span class="p">,</span> <span class="kt">node_t</span> <span class="o">**</span><span class="n">item_ptr</span><span class="p">,</span> <span class="kt">node_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">key_t</span> <span class="n">key</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kt">node_t</span> <span class="o">*</span><span class="n">pred</span> <span class="o">=</span> <span class="n">head</span><span class="p">;</span>
+        <span class="kt">node_t</span> <span class="o">*</span><span class="n">item</span> <span class="o">=</span> <span class="n">head</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+        <span class="kt">hazard_t</span> <span class="o">*</span><span class="n">hp1</span> <span class="o">=</span> <span class="n">haz_get</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+        <span class="kt">hazard_t</span> <span class="o">*</span><span class="n">hp2</span> <span class="o">=</span> <span class="n">haz_get</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+        <span class="k">while</span> <span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">haz_set_ptr</span><span class="p">(</span><span class="n">hp1</span><span class="p">,</span> <span class="n">pred</span><span class="p">);</span>
+            <span class="n">haz_set_ptr</span><span class="p">(</span><span class="n">hp2</span><span class="p">,</span> <span class="n">item</span><span class="p">);</span>
+            <span class="cm">/* </span>
+<span class="cm">             如果已被标记，那么紧接着item可能被移除链表甚至释放，所以需要重头查找</span>
+<span class="cm">            */</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">HAS_MARK</span><span class="p">(</span><span class="n">item</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">))</span> <span class="p">{</span> 
+                <span class="k">return</span> <span class="n">l_find</span><span class="p">(</span><span class="n">pred_ptr</span><span class="p">,</span> <span class="n">item_ptr</span><span class="p">,</span> <span class="n">head</span><span class="p">,</span> <span class="n">key</span><span class="p">);</span>
+            <span class="p">}</span>
+            <span class="kt">int</span> <span class="n">d</span> <span class="o">=</span> <span class="n">KEY_CMP</span><span class="p">(</span><span class="n">item</span><span class="o">-&gt;</span><span class="n">key</span><span class="p">,</span> <span class="n">key</span><span class="p">);</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">d</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+                <span class="o">*</span><span class="n">pred_ptr</span> <span class="o">=</span> <span class="n">pred</span><span class="p">;</span>
+                <span class="o">*</span><span class="n">item_ptr</span> <span class="o">=</span> <span class="n">item</span><span class="p">;</span>
+                <span class="k">return</span> <span class="n">d</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">?</span> <span class="nl">TRUE</span> <span class="p">:</span> <span class="n">FALSE</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="n">pred</span> <span class="o">=</span> <span class="n">item</span><span class="p">;</span>
+            <span class="n">item</span> <span class="o">=</span> <span class="n">item</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+        <span class="p">}</span> 
+        <span class="o">*</span><span class="n">pred_ptr</span> <span class="o">=</span> <span class="n">pred</span><span class="p">;</span>
+        <span class="o">*</span><span class="n">item_ptr</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+        <span class="k">return</span> <span class="n">FALSE</span><span class="p">;</span>
+    <span class="p">}</span></code></pre></div>
+
+
+<p><code>haz_get</code>、<code>haz_set_ptr</code>之类的函数是一个hazard pointer实现，用于支持多线程下内存的GC。上面的代码中，要删除一个元素<code>item</code>时，会标记<code>item-&gt;next</code>，从而使得<code>insert</code>时中那个<code>CAS</code>不需要做任何调整。总结下这里的线程竞争情况：</p>
+
+<ul>
+<li><code>insert</code>中<code>find</code>到正常的<code>pred</code>及<code>item</code>，<code>pred-&gt;next == item</code>，然后在<code>CAS</code>前有线程删除了<code>pred</code>，此时<code>pred-&gt;next == MARK(item)</code>，<code>CAS</code>失败，重试；删除分为2种情况：a) 从链表移除，得到标记，<code>pred</code>可继续访问；b) <code>pred</code>可能被释放内存，此时再使用<code>pred</code>会错误。为了处理情况b，所以引入了类似hazard pointer的机制，可以有效保障任意一个指针<code>p</code>只要还有线程在使用它，它的内存就不会被真正释放</li>
+<li><code>insert</code>中有多个线程在<code>pred</code>后插入元素，此时同样由<code>insert</code>中的<code>CAS</code>保证，这个不多说</li>
+<li><code>remove</code>中情况同<code>insert</code>，<code>find</code>拿到了有效的<code>pred</code>和<code>next</code>，但在<code>CAS</code>的时候<code>pred</code>被其他线程删除，此时情况同<code>insert</code>，<code>CAS</code>失败，重试</li>
+<li>任何时候改变链表结构时，无论是<code>remove</code>还是<code>insert</code>，都需要重试该操作</li>
+<li><code>find</code>中遍历时，可能会遇到被标记删除的<code>item</code>，此时<code>item</code>根据<code>remove</code>的实现很可能被删除，所以需要重头开始遍历</li>
+</ul>
+
+
+<h2>ABA问题</h2>
+
+<p>ABA问题还是存在的，<code>insert</code>中：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">if</span> <span class="p">(</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">new_item</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
+    <span class="p">}</span></code></pre></div>
+
+
+<p>如果<code>CAS</code>之前，<code>pred</code>后的<code>item</code>被移除，又以相同的地址值加进来，但其value变了，此时<code>CAS</code>会成功，但链表可能就不是有序的了。<code>pred-&gt;val &lt; new_item-&gt;val &gt; item-&gt;val</code></p>
+
+<p>为了解决这个问题，可以利用指针值地址对齐的其他位来存储一个计数，用于表示<code>pred-&gt;next</code>的改变次数。当<code>insert</code>拿到<code>pred</code>时，<code>pred-&gt;next</code>中存储的计数假设是0，<code>CAS</code>之前其他线程移除了<code>pred-&gt;next</code>又新增回了<code>item</code>，此时<code>pred-&gt;next</code>中的计数增加，从而导致<code>insert</code>中<code>CAS</code>失败。</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// 最低位留作删除标志</span>
+    <span class="cp">#define MASK ((sizeof(node_t) - 1) &amp; ~0x01)</span>
+
+    <span class="cp">#define GET_TAG(p) ((markable_t)p &amp; MASK)</span>
+    <span class="cp">#define TAG(p, tag) ((markable_t)p | (tag))</span>
+    <span class="cp">#define MARK(p) ((markable_t)p | 0x01)</span>
+    <span class="cp">#define HAS_MARK(p) ((markable_t)p &amp; 0x01)</span>
+    <span class="cp">#define STRIP_MARK(p) ((node_t*)((markable_t)p &amp; ~(MASK | 0x01)))</span></code></pre></div>
+
+
+<p><code>remove</code>的实现：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="cm">/* 先标记再删除 */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">sitem</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">,</span> <span class="n">inext</span><span class="p">,</span> <span class="n">MARK</span><span class="p">(</span><span class="n">inext</span><span class="p">)))</span> <span class="p">{</span>
+        <span class="k">continue</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="kt">int</span> <span class="n">tag</span> <span class="o">=</span> <span class="n">GET_TAG</span><span class="p">(</span><span class="n">pred</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">TAG</span><span class="p">(</span><span class="n">STRIP_MARK</span><span class="p">(</span><span class="n">sitem</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">),</span> <span class="n">tag</span><span class="p">)))</span> <span class="p">{</span>
+        <span class="n">haz_defer_free</span><span class="p">(</span><span class="n">sitem</span><span class="p">);</span>
+        <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
+    <span class="p">}</span></code></pre></div>
+
+
+<p><code>insert</code>中也可以更新<code>pred-&gt;next</code>的计数。</p>
+
+<h2>总结</h2>
+
+<p>无锁的实现，本质上都会依赖于<code>CAS</code>的互斥性。从头实现一个lock free的数据结构，可以深刻感受到lock free实现的tricky。最终代码可以从<a href="https://github.com/kevinlynx/lockfree-list">这里github</a>获取。代码中为了简单，实现了一个不是很强大的hazard pointer，可以<a href="http://codemacro.com/2015/05/03/hazard-pointer/">参考之前的博文</a>。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2015/05/05/lock_free_list/'>http://codemacro.com/2015/05/05/lock_free_list/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-05-05T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>5</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/categories/c-slash-c-plus-plus/'>c/c++</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/2015/05/03/hazard-pointer/" title="Previous Post: 并行编程中的内存回收Hazard Pointer">&laquo; 并行编程中的内存回收Hazard Pointer</a>
+      
+      
+        <a class="basic-alignment right" href="/2015/05/30/drill-http-plugin/" title="Next Post: Drill中实现HTTP storage plugin">Drill中实现HTTP storage plugin &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><!-- UY BEGIN -->
+<div id="uyan_frame"></div>
+<script type="text/javascript" src="http://v2.uyan.cc/code/uyan.js?uid=1537634"></script>
+<!-- UY END -->
+
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/05/18/memcache-proxy/">实现一个memcache proxy</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/04/23/xmemcached/">Xmemcached源码阅读</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/04/09/xnio-source/">XNIO源码阅读</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/03/09/toy-jit/">实现JVM中的JIT</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+<div id="recentcomments" class="dsq-widget">
+<h1 class="dsq-widget-title">Recent Comments</h1>
+</div>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - Kevin Lynx -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
+<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
+
+</p>
+
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

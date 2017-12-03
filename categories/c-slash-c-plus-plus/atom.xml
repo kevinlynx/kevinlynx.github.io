@@ -1,0 +1,1063 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: c/c++ | loop in codes]]></title>
+  <link href="http://codemacro.com/categories/c-slash-c-plus-plus/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2017-05-18T20:10:14+08:00</updated>
+  <id>http://codemacro.com/</id>
+  <author>
+    <name><![CDATA[Kevin Lynx]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[记一次线程局部存储与动态库引起的core]]></title>
+    <link href="http://codemacro.com/2016/05/08/tls_so_coredump/"/>
+    <updated>2016-05-08T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2016/05/08/tls_so_coredump</id>
+    <content type="html"><![CDATA[<p>线上的服务退出时coredump，显示堆栈为：</p>
+
+<p><img src="/assets/res/tls_so_core/core.JPG" alt="" /></p>
+
+<p>google一下发现<a href="http://www.tuicool.com/articles/YJ3A7f">有人遇到过</a>，产生这个core的条件为：</p>
+
+<ul>
+<li>使用TLS时注册了destructor (<code>pthread_key_create</code>)，这个回调函数会在线程退出时被调用</li>
+<li>这个destructor符号位于.so中</li>
+<li>在线程退出时，这个.so已经被dlclose</li>
+</ul>
+
+
+<p>我们的程序模型中，类似于一个Web App server，有一个线程池包装了IO处理，将请求派发给应用插件，处理完后回应给客户端。应用插件是一个.so，被动态载入(dlopen)，该.so由于实现需要引入了较多的第三方.so(隐式载入)。初步排查时，整个实现是没有问题的，线程池是在.so close前关闭的。</p>
+
+<p>没有线索，于是尝试找到该TLS是哪个模块引入的。通过gdb断<code>pthread_key_create</code>，以及不为空的destructor回调可以确定几个模块，但范围不够小，这些模块基本还是些基础模块，如zookeeper/mxml以及网络模块。</p>
+
+<p>多看了几个core，发现这个回调的偏移地址都是固定的960，如上图中的<code>0x7f0f26c9f960</code>。.so被载入时，基址是会变的，但偏移是不会变的，例如通过nm查看.so中的符号时：</p>
+
+<pre><code>$nm lib/libsp_kit.so | grep loadConfig
+00000000002de170 T _ZN8sp_basic14SortRailConfig10loadConfigEPKc
+</code></pre>
+
+<!-- more -->
+
+
+<p>其中<code>2de170</code>中<code>170</code>是确定不变的。所以范围可以进一步缩小，destructor是<code>pthread_key_create</code>第二个参数，每次断点触发时查看<code>rsi</code>寄存器的值就可以确定，然后发现落在了mxml库里的符号：</p>
+
+<p><img src="/assets/res/tls_so_core/mxml.JPG" alt="" /></p>
+
+<p>程序在启动时载入配置，触发了mxml在当前线程创建了TLS，这个线程是程序主线程。主线程当然是在.so被close后才退出的。如果这是问题，那应该很早前就会暴露。这是一个问题，后面会解释。但是问题排查到这个地方，又陷入了僵局。</p>
+
+<p>回头再看下core环境，可以从线程环境确定是哪个模块：</p>
+
+<p><img src="/assets/res/tls_so_core/arpc-threads.JPG" alt="" /></p>
+
+<p>core的线程31956和线程31955靠近，查看31955堆栈，发现是我们内部的rpc库(arpc)线程。那可以确定core的线程有可能和arpc有关系。函数在调用时，返回地址留在堆栈中，堆栈不一定会被其他内容覆盖，所以可以查看线程堆栈里的符号地址，大概确定是什么模块。<code>x/200a $rsp-0x300</code>查看core线程堆栈：</p>
+
+<p><img src="/assets/res/tls_so_core/arpc-stack.JPG" alt="" /></p>
+
+<p>可以看到其中确实有arpc库里的符号信息，综合线程号关系，基本可以确定core的线程是arpc线程。这个时候就突然灵关一闪，想起我们程序中有热切换机制。该机制会在收到arpc请求时，重新载入所有配置，而这个动作是发生在arpc开的线程里。查看相关代码，发现arpc资源释放确实是晚于.so的close的。于是做了下实验，程序开启后进行一次热切换，退出后果然必core。程序在生产环境时，只在业务上线时进行一次热切换，而每天又会被自动重启，重启后并不进行热切换，所以线上基本上没有暴露出来，只在部分灰度环境偶尔触发(连续两次业务上线)。</p>
+
+<p>回过头来，主线程问题怎么解释？google一圈发现，<strong>主线程退出，是不会调用TLS destructor的</strong>。参考<a href="https://github.com/rust-lang/rust/issues/28129">这里</a>，<a href="http://stackoverflow.com/questions/6357154/destruction-order-of-the-main-thread-and-the-use-of-pthread-key-create">这里</a>，以及<a href="https://github.com/rust-lang/rust/issues/19776">这里</a>。但是可以在主线程中显示调用<code>pthread_exit</code>来触发，普通线程会默认调用<code>pthread_exit</code>。</p>
+
+<p>完。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[无锁有序链表的实现]]></title>
+    <link href="http://codemacro.com/2015/05/05/lock_free_list/"/>
+    <updated>2015-05-05T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2015/05/05/lock_free_list</id>
+    <content type="html"><![CDATA[<p>无锁有序链表可以保证元素的唯一性，使其可用于哈希表的桶，甚至直接作为一个效率不那么高的map。普通链表的无锁实现相对简单点，因为插入元素可以在表头插，而有序链表的插入则是任意位置。</p>
+
+<p>本文主要基于论文<a href="http://www.research.ibm.com/people/m/michael/spaa-2002.pdf">High Performance Dynamic Lock-Free Hash Tables</a>实现。</p>
+
+<h2>主要问题</h2>
+
+<p>链表的主要操作包含<code>insert</code>和<code>remove</code>，先简单实现一个版本，就会看到问题所在，以下代码只用作示例：</p>
+
+<p>{% highlight c++ %}
+    struct node_t {
+        key_t key;
+        value_t val;
+        node_t *next;
+    };</p>
+
+<pre><code>int l_find(node_t **pred_ptr, node_t **item_ptr, node_t *head, key_t key) {
+    node_t *pred = head;
+    node_t *item = head-&gt;next;
+    while (item) {
+        int d = KEY_CMP(item-&gt;key, key);
+        if (d &gt;= 0) {
+            *pred_ptr = pred;
+            *item_ptr = item;
+            return d == 0 ? TRUE : FALSE;
+        }
+        pred = item;
+        item = item-&gt;next;
+    } 
+    *pred_ptr = pred;
+    *item_ptr = NULL;
+    return FALSE;
+}
+
+int l_insert(node_t *head, key_t key, value_t val) {
+    node_t *pred, *item, *new_item;
+    while (TRUE) {
+        if (l_find(&amp;pred, &amp;item, head, key)) {
+            return FALSE;
+        }
+        new_item = (node_t*) malloc(sizeof(node_t));
+        new_item-&gt;key = key;
+        new_item-&gt;val = val;
+        new_item-&gt;next = item;
+        // A. 如果pred本身被移除了
+        if (CAS(&amp;pred-&gt;next, item, new_item)) {
+            return TRUE;
+        }
+        free(new_item);
+    }
+}
+
+int l_remove(node_t *head, key_t key) {
+    node_t *pred, *item;
+    while (TRUE) {
+        if (!l_find(&amp;pred, &amp;item, head, key)) {
+            return TRUE;
+        }
+        // B. 如果pred被移除；如果item也被移除
+        if (CAS(&amp;pred-&gt;next, item, item-&gt;next)) {
+            haz_free(item);
+            return TRUE;
+        }
+    }
+}
+</code></pre>
+
+<p>{% endhighlight %}</p>
+
+<!-- more -->
+
+
+<p><code>l_find</code>函数返回查找到的前序元素和元素本身，代码A和B虽然拿到了<code>pred</code>和<code>item</code>，但在<code>CAS</code>的时候，其可能被其他线程移除。甚至，在<code>l_find</code>过程中，其每一个元素都可能被移除。问题在于，<strong>任何时候拿到一个元素时，都不确定其是否还有效</strong>。元素的有效性包括其是否还在链表中，其指向的内存是否还有效。</p>
+
+<h2>解决方案</h2>
+
+<p><strong>通过为元素指针增加一个有效性标志位，配合CAS操作的互斥性</strong>，就可以解决元素有效性判定问题。</p>
+
+<p>因为<code>node_t</code>放在内存中是会对齐的，所以指向<code>node_t</code>的指针值低几位是不会用到的，从而可以在低几位里设置标志，这样在做CAS的时候，就实现了DCAS的效果，相当于将两个逻辑上的操作变成了一个原子操作。想象下引用计数对象的线程安全性，其内包装的指针是线程安全的，但对象本身不是。</p>
+
+<p>CAS的互斥性，在若干个线程CAS相同的对象时，只有一个线程会成功，失败的线程就可以以此判定目标对象发生了变更。改进后的代码（代码仅做示例用，不保证正确）：</p>
+
+<p>{% highlight c++ %}
+    typedef size_t markable_t;
+    // 最低位置1，表示元素被删除
+    #define HAS_MARK(p) ((markable_t)p &amp; 0x01)
+    #define MARK(p) ((markable_t)p | 0x01)
+    #define STRIP_MARK(p) ((markable_t)p &amp; ~0x01)</p>
+
+<pre><code>int l_insert(node_t *head, key_t key, value_t val) {
+    node_t *pred, *item, *new_item;
+    while (TRUE) {
+        if (l_find(&amp;pred, &amp;item, head, key)) { 
+            return FALSE;
+        }
+        new_item = (node_t*) malloc(sizeof(node_t));
+        new_item-&gt;key = key;
+        new_item-&gt;val = val;
+        new_item-&gt;next = item;
+        // A. 虽然find拿到了合法的pred，但是在以下代码之前pred可能被删除，此时pred-&gt;next被标记
+        //    pred-&gt;next != item，该CAS会失败，失败后重试
+        if (CAS(&amp;pred-&gt;next, item, new_item)) {
+            return TRUE;
+        }
+        free(new_item);
+    }
+    return FALSE;
+}
+
+int l_remove(node_t *head, key_t key) {
+    node_t *pred, *item;
+    while (TRUE) {
+        if (!l_find(&amp;pred, &amp;item, head, key)) {
+            return FALSE;
+        }
+        node_t *inext = item-&gt;next;
+        // B. 删除item前先标记item-&gt;next，如果CAS失败，那么情况同insert一样，有其他线程在find之后
+        //    删除了item，失败后重试
+        if (!CAS(&amp;item-&gt;next, inext, MARK(inext))) {
+            continue;
+        }
+        // C. 对同一个元素item删除时，只会有一个线程成功走到这里
+        if (CAS(&amp;pred-&gt;next, item, STRIP_MARK(item-&gt;next))) {
+            haz_defer_free(item);
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+int l_find(node_t **pred_ptr, node_t **item_ptr, node_t *head, key_t key) {
+    node_t *pred = head;
+    node_t *item = head-&gt;next;
+    hazard_t *hp1 = haz_get(0);
+    hazard_t *hp2 = haz_get(1);
+    while (item) {
+        haz_set_ptr(hp1, pred);
+        haz_set_ptr(hp2, item);
+        /* 
+         如果已被标记，那么紧接着item可能被移除链表甚至释放，所以需要重头查找
+        */
+        if (HAS_MARK(item-&gt;next)) { 
+            return l_find(pred_ptr, item_ptr, head, key);
+        }
+        int d = KEY_CMP(item-&gt;key, key);
+        if (d &gt;= 0) {
+            *pred_ptr = pred;
+            *item_ptr = item;
+            return d == 0 ? TRUE : FALSE;
+        }
+        pred = item;
+        item = item-&gt;next;
+    } 
+    *pred_ptr = pred;
+    *item_ptr = NULL;
+    return FALSE;
+}
+</code></pre>
+
+<p>{% endhighlight %}</p>
+
+<p><code>haz_get</code>、<code>haz_set_ptr</code>之类的函数是一个hazard pointer实现，用于支持多线程下内存的GC。上面的代码中，要删除一个元素<code>item</code>时，会标记<code>item-&gt;next</code>，从而使得<code>insert</code>时中那个<code>CAS</code>不需要做任何调整。总结下这里的线程竞争情况：</p>
+
+<ul>
+<li><code>insert</code>中<code>find</code>到正常的<code>pred</code>及<code>item</code>，<code>pred-&gt;next == item</code>，然后在<code>CAS</code>前有线程删除了<code>pred</code>，此时<code>pred-&gt;next == MARK(item)</code>，<code>CAS</code>失败，重试；删除分为2种情况：a) 从链表移除，得到标记，<code>pred</code>可继续访问；b) <code>pred</code>可能被释放内存，此时再使用<code>pred</code>会错误。为了处理情况b，所以引入了类似hazard pointer的机制，可以有效保障任意一个指针<code>p</code>只要还有线程在使用它，它的内存就不会被真正释放</li>
+<li><code>insert</code>中有多个线程在<code>pred</code>后插入元素，此时同样由<code>insert</code>中的<code>CAS</code>保证，这个不多说</li>
+<li><code>remove</code>中情况同<code>insert</code>，<code>find</code>拿到了有效的<code>pred</code>和<code>next</code>，但在<code>CAS</code>的时候<code>pred</code>被其他线程删除，此时情况同<code>insert</code>，<code>CAS</code>失败，重试</li>
+<li>任何时候改变链表结构时，无论是<code>remove</code>还是<code>insert</code>，都需要重试该操作</li>
+<li><code>find</code>中遍历时，可能会遇到被标记删除的<code>item</code>，此时<code>item</code>根据<code>remove</code>的实现很可能被删除，所以需要重头开始遍历</li>
+</ul>
+
+
+<h2>ABA问题</h2>
+
+<p>ABA问题还是存在的，<code>insert</code>中：</p>
+
+<p>{% highlight c++ %}
+    if (CAS(&amp;pred->next, item, new_item)) {
+        return TRUE;
+    }
+{% endhighlight %}</p>
+
+<p>如果<code>CAS</code>之前，<code>pred</code>后的<code>item</code>被移除，又以相同的地址值加进来，但其value变了，此时<code>CAS</code>会成功，但链表可能就不是有序的了。<code>pred-&gt;val &lt; new_item-&gt;val &gt; item-&gt;val</code></p>
+
+<p>为了解决这个问题，可以利用指针值地址对齐的其他位来存储一个计数，用于表示<code>pred-&gt;next</code>的改变次数。当<code>insert</code>拿到<code>pred</code>时，<code>pred-&gt;next</code>中存储的计数假设是0，<code>CAS</code>之前其他线程移除了<code>pred-&gt;next</code>又新增回了<code>item</code>，此时<code>pred-&gt;next</code>中的计数增加，从而导致<code>insert</code>中<code>CAS</code>失败。</p>
+
+<p>{% highlight c++ %}
+    // 最低位留作删除标志
+    #define MASK ((sizeof(node_t) - 1) &amp; ~0x01)</p>
+
+<pre><code>#define GET_TAG(p) ((markable_t)p &amp; MASK)
+#define TAG(p, tag) ((markable_t)p | (tag))
+#define MARK(p) ((markable_t)p | 0x01)
+#define HAS_MARK(p) ((markable_t)p &amp; 0x01)
+#define STRIP_MARK(p) ((node_t*)((markable_t)p &amp; ~(MASK | 0x01)))
+</code></pre>
+
+<p>{% endhighlight %}</p>
+
+<p><code>remove</code>的实现：</p>
+
+<p>{% highlight c++ %}
+    /<em> 先标记再删除 </em>/
+    if (!CAS(&amp;sitem->next, inext, MARK(inext))) {
+        continue;
+    }
+    int tag = GET_TAG(pred->next) + 1;
+    if (CAS(&amp;pred->next, item, TAG(STRIP_MARK(sitem->next), tag))) {
+        haz_defer_free(sitem);
+        return TRUE;
+    }
+{% endhighlight %}</p>
+
+<p><code>insert</code>中也可以更新<code>pred-&gt;next</code>的计数。</p>
+
+<h2>总结</h2>
+
+<p>无锁的实现，本质上都会依赖于<code>CAS</code>的互斥性。从头实现一个lock free的数据结构，可以深刻感受到lock free实现的tricky。最终代码可以从<a href="https://github.com/kevinlynx/lockfree-list">这里github</a>获取。代码中为了简单，实现了一个不是很强大的hazard pointer，可以<a href="http://codemacro.com/2015/05/03/hazard-pointer/">参考之前的博文</a>。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[并行编程中的内存回收Hazard Pointer]]></title>
+    <link href="http://codemacro.com/2015/05/03/hazard-pointer/"/>
+    <updated>2015-05-03T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2015/05/03/hazard-pointer</id>
+    <content type="html"><![CDATA[<p>接上篇<a href="http://codemacro.com/2015/04/19/rw_thread_gc/">使用RCU技术实现读写线程无锁</a>，在没有GC机制的语言中，要实现Lock free的算法，就免不了要自己处理内存回收的问题。</p>
+
+<p>Hazard Pointer是另一种处理这个问题的算法，而且相比起来不但简单，功能也很强大。<a href="http://blog.csdn.net/pongba/article/details/589864">锁无关的数据结构与Hazard指针</a>中讲得很好，<a href="http://en.wikipedia.org/wiki/Hazard_pointer">Wikipedia Hazard pointer</a>也描述得比较清楚，所以我这里就不讲那么细了。</p>
+
+<p>一个简单的实现可以参考<a href="https://github.com/kevinlynx/lockfree-list/blob/master/haz_ptr.c">我的github haz_ptr.c</a></p>
+
+<h2>原理</h2>
+
+<p>基本原理无非也是读线程对指针进行标识，指针(指向的内存)要释放时都会缓存起来延迟到确认没有读线程了才对其真正释放。</p>
+
+<p><code>&lt;Lock-Free Data Structures with Hazard Pointers&gt;</code>中的描述：</p>
+
+<blockquote><p>Each reader thread owns a single-writer/multi-reader shared pointer called &ldquo;hazard pointer.&rdquo; When a reader thread assigns the address of a map to its hazard pointer, it is basically announcing to other threads (writers), &ldquo;I am reading this map. You can replace it if you want, but don&rsquo;t change its contents and certainly keep your deleteing hands off it.&rdquo;</p></blockquote>
+
+<p>关键的结构包括：<code>Hazard pointer</code>、<code>Thread Free list</code></p>
+
+<p><code>Hazard pointer</code>：一个读线程要使用一个指针时，就会创建一个Hazard pointer包装这个指针。一个Hazard pointer会被一个线程写，多个线程读。</p>
+
+<!-- more -->
+
+
+<p>{% highlight c++ %}
+    struct HazardPointer {
+        void *real_ptr; // 包装的指针
+        &hellip; // 不同的实现有不同的成员
+    };</p>
+
+<pre><code>void func() {
+    HazardPointer *hp = accquire(_real_ptr);
+    ... // use _real_ptr
+    release(hp);
+}
+</code></pre>
+
+<p>{% endhighlight %}</p>
+
+<p><code>Thread Free List</code>：每个线程都有一个这样的列表，保存着将要释放的指针列表，这个列表仅对应的线程读写</p>
+
+<p>{% highlight c++ %}
+    void defer_free(void *ptr) {
+        _free_list.push_back(ptr);
+    }
+{% endhighlight %}</p>
+
+<p>当某个线程要尝试释放Free List中的指针时，例如指针<code>ptr</code>，就检查所有其他线程使用的Hazard pointer，检查是否存在包装了<code>ptr</code>的Hazard pointer，如果没有则说明没有读线程正在使用<code>ptr</code>，可以安全释放<code>ptr</code>。</p>
+
+<p>{% highlight c++ %}
+    void gc() {
+        for(ptr in <em>free_list) {
+            conflict = false
+            for (hp in </em>all_hazard_pointers) {
+                if (hp->_real_ptr == ptr) {
+                    confilict = true
+                    break
+                }
+            }
+            if (!conflict)
+                delete ptr
+        }
+    }
+{% endhighlight %}</p>
+
+<p>以上，其实就是<code>Hazard Pointer</code>的主要内容。</p>
+
+<h2>Hazard Pointer的管理</h2>
+
+<p>上面的代码中没有提到<code>_all_hazard_pointers</code>及<code>accquire</code>的具体实现，这就是Hazard Pointer的管理问题。</p>
+
+<p>《锁无关的数据结构与Hazard指针》文中创建了一个Lock free的链表来表示这个全局的Hazard Pointer List。每个Hazard Pointer有一个成员标识其是否可用。这个List中也就保存了已经被使用的Hazard Pointer集合和未被使用的Hazard Pointer集合，当所有Hazard Pointer都被使用时，就会新分配一个加进这个List。当读线程不使用指针时，需要归还Hazard Pointer，直接设置可用成员标识即可。要<code>gc()</code>时，就直接遍历这个List。</p>
+
+<p>要实现一个Lock free的链表，并且仅需要实现头插入，还是非常简单的。本身Hazard Pointer标识某个指针时，都是用了后立即标识，所以这个实现直接支持了动态线程，支持线程的挂起等。</p>
+
+<p>在<a href="https://code.google.com/p/nbds/">nbds</a>项目中也有一个Hazard Pointer的实现，相对要弱一点。它为每个线程都设置了自己的Hazard Pointer池，写线程要释放指针时，就访问所有其他线程的Hazard Pointer池。</p>
+
+<p>{% highlight c++ %}
+    typedef struct haz_local {
+        // Free List
+        pending_t *pending; // to be freed
+        int pending_size;
+        int pending_count;</p>
+
+<pre><code>    // Hazard Pointer 池，动态和静态两种
+    haz_t static_haz[STATIC_HAZ_PER_THREAD];
+
+    haz_t **dynamic;
+    int dynamic_size;
+    int dynamic_count;
+
+} __attribute__ ((aligned(CACHE_LINE_SIZE))) haz_local_t;
+
+static haz_local_t haz_local_[MAX_NUM_THREADS] = {};
+</code></pre>
+
+<p>{% endhighlight %}</p>
+
+<p>每个线程当然就涉及到<code>haz_local_</code>索引(ID)的分配，就像<a href="http://codemacro.com/2015/04/19/rw_thread_gc/">使用RCU技术实现读写线程无锁</a>中的一样。这个实现为了支持线程动态创建，就需要一套线程ID的重用机制，相对复杂多了。</p>
+
+<h2>附录</h2>
+
+<p>最后，附上一些并行编程中的一些概念。</p>
+
+<h3>Lock Free &amp; Wait Free</h3>
+
+<p>常常看到<code>Lock Free</code>和<code>Wait Free</code>的概念，这些概念用于衡量一个系统或者说一段代码的并行级别，并行级别可参考<a href="http://www.cnblogs.com/jiayy/p/3246167.html">并行编程——并发级别</a>。总之Wait Free是一个比Lock Free更牛逼的级别。</p>
+
+<p>我自己的理解，例如《锁无关的数据结构与Hazard指针》中实现的Hazard Pointer链表就可以说是Lock Free的，注意它在插入新元素到链表头时，因为使用<code>CAS</code>，总免不了一个busy loop，有这个特征的情况下就算是<code>Lock Free</code>，虽然没锁，但某个线程的执行情况也受其他线程的影响。</p>
+
+<p>相对而言，<code>Wait Free</code>则是每个线程的执行都是独立的，例如《锁无关的数据结构与Hazard指针》中的<code>Scan</code>函数。<code>“每个线程的执行时间都不依赖于其它任何线程的行为”</code></p>
+
+<blockquote><p>锁无关(Lock-Free)意味着系统中总存在某个线程能够得以继续执行；而等待无关(Wait-Free)则是一个更强的条件，它意味着所有线程都能往下进行。</p></blockquote>
+
+<h3>ABA问题</h3>
+
+<p>在实现<code>Lock Free</code>算法的过程中，总是要使用<code>CAS</code>原语的，而<code>CAS</code>就会带来<code>ABA</code>问题。</p>
+
+<blockquote><p>在进行CAS操作的时候，因为在更改V之前，CAS主要询问“V的值是否仍然为A”，所以在第一次读取V之后以及对V执行CAS操作之前，如果将值从A改为B，然后再改回A，会使基于CAS的算法混乱。在这种情况下，CAS操作会成功。这类问题称为ABA问题。</p></blockquote>
+
+<p><a href="http://en.wikipedia.org/wiki/Hazard_pointer">Wiki Hazard Pointer</a>提到了一个ABA问题的好例子：在一个Lock free的栈实现中，现在要出栈，栈里的元素是<code>[A, B, C]</code>，<code>head</code>指向栈顶，那么就有<code>compare_and_swap(target=&amp;head, newvalue=B, expected=A)</code>。但是在这个操作中，其他线程把<code>A</code> <code>B</code>都出栈，且删除了<code>B</code>，又把<code>A</code>压入栈中，即<code>[A, C]</code>。那么前一个线程的<code>compare_and_swap</code>能够成功，此时<code>head</code>指向了一个已经被删除的<code>B</code>。stackoverflow上也有个例子 <a href="http://stackoverflow.com/questions/14535948/real-world-examples-for-aba-in-multithreading">Real-world examples for ABA in multithreading</a></p>
+
+<blockquote><p>对于CAS产生的这个ABA问题，通常的解决方案是采用CAS的一个变种DCAS。DCAS，是对于每一个V增加一个引用的表示修改次数的标记符。对于每个V，如果引用修改了一次，这个计数器就加1。然后再这个变量需要update的时候，就同时检查变量的值和计数器的值。</p></blockquote>
+
+<p>但也早有人提出<code>DCAS</code>也不是<a href="http://people.csail.mit.edu/shanir/publications/DCAS.pdf">ABA problem 的银弹</a>。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[使用RCU技术实现读写线程无锁]]></title>
+    <link href="http://codemacro.com/2015/04/19/rw_thread_gc/"/>
+    <updated>2015-04-19T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2015/04/19/rw_thread_gc</id>
+    <content type="html"><![CDATA[<p>在一个系统中有一个写线程和若干个读线程，读写线程通过一个指针共用了一个数据结构，写线程改写这个结构，读线程读取该结构。在写线程改写这个数据结构的过程中，加锁情况下读线程由于等待锁耗时会增加。</p>
+
+<p>可以利用RCU (Read Copy Update <a href="http://www.rdrop.com/~paulmck/RCU/whatisRCU.html">What is rcu</a>)的思想来去除这个锁。本文提到的主要实现代码：<a href="https://gist.github.com/kevinlynx/ba728f2f1b33c763a6c3">gist</a></p>
+
+<h2>RCU</h2>
+
+<p>RCU可以说是一种替代读写锁的方法。其基于一个事实：当写线程在改变一个指针时，读线程获取这个指针，要么获取到老的值，要么获取到新的值。RCU的基本思想其实很简单，参考<a href="http://www.rdrop.com/~paulmck/RCU/whatisRCU.html">What is RCU</a>中Toy implementation可以很容易理解。一种简单的RCU流程可以描述为：</p>
+
+<p>写线程：</p>
+
+<pre><code>old_ptr = _ptr
+tmp_ptr = copy(_ptr)     // copy
+change(tmp_ptr)          // change 
+_ptr = tmp_ptr           // update
+synchroize(tmp_ptr)
+</code></pre>
+
+<p>写线程要更新<code>_ptr</code>指向的内容时，先复制一份新的，基于新的进行改变，更新<code>_ptr</code>指针，最后同步释放老的内存。</p>
+
+<!-- more -->
+
+
+<p>读线程：</p>
+
+<pre><code>tmp_ptr = _ptr
+use(tmp_ptr)
+dereference(tmp_ptr)
+</code></pre>
+
+<p>读线程直接使用<code>_ptr</code>，使用完后需要告诉写线程自己不再使用<code>_ptr</code>。读线程获取<code>_ptr</code>时，可能会获取到老的也可能获取到新的，无论哪种RCU都需要保证这块内存是有效的。重点在<code>synchroize</code>和<code>dereference</code>。<code>synchroize</code>会等待所有使用老的<code>_ptr</code>的线程<code>dereference</code>，对于新的<code>_ptr</code>使用者其不需要等待。这个问题说白了就是写线程如何知道<code>old_ptr</code>没有任何读线程在使用，可以安全地释放。</p>
+
+<p>这个问题实际上在<code>wait-free</code>的各种实现中有好些解法，<a href="http://stackoverflow.com/questions/22263874/how-when-to-release-memory-in-wait-free-algorithms">how-when-to-release-memory-in-wait-free-algorithms</a>这里有人总结了几种方法，例如<code>Hazard pointers</code>、<code>Quiescence period based reclamation</code>。</p>
+
+<p>简单地使用引用计数智能指针是无法解决这个问题的，因为智能指针自己不是线程安全的，例如：</p>
+
+<pre><code>tmp_ptr = _ptr      // 1
+tmp_ptr-&gt;addRef()   // 2
+use
+tmp_ptr-&gt;release()
+</code></pre>
+
+<p>代码1/2行不是原子的，所以当取得<code>tmp_ptr</code>准备<code>addRef</code>时，<code>tmp_ptr</code>可能刚好被释放了。</p>
+
+<p><code>Quiescence period based reclamation</code>方法指的是读线程需要声明自己处于<code>Quiescence period</code>，也就是不使用<code>_ptr</code>的时候，当其使用<code>_ptr</code>的时候实际是进入了一个逻辑上的临界区，当所有读线程都不再使用<code>_ptr</code>的时候，写线程就可以对内存进行安全地释放。</p>
+
+<p>本文正是描述了一种<code>Quiescence period based reclamation</code>实现。这个实现可以用于有一个写线程和多个读线程共用若干个数据的场景。</p>
+
+<h2>实现</h2>
+
+<p>该方法本质上把数据同步分解为基本的内存单元读写。使用方式上可描述为：</p>
+
+<p>读线程：</p>
+
+<pre><code>tmp_ptr = _ptr
+use
+update() // 标识自己不再使用任何共享数据
+</code></pre>
+
+<p>写线程：</p>
+
+<pre><code>old_ptr = _ptr
+tmp_ptr = copy(_ptr)
+change(tmp_ptr)
+_ptr = tmp_ptr
+gc()
+defer_free(old_ptr)
+</code></pre>
+
+<p>以下具体描述读写线程的实现。</p>
+
+<h3>写线程</h3>
+
+<p>写线程负责标识内存需要被释放，以及检查何时可以真正释放内存。其维护了一个释放内存队列：</p>
+
+<p>{% highlight c++ %}
+    void *<em>pending[8]
+    uint64_t </em>head, _tail</p>
+
+<pre><code>void defer_free(void *p) {
+    _head ++
+    _pending[PENDING_POS(_head)] = p
+}
+
+gc() {
+    for (_tail -&gt; find_free_pos())
+        free(_pending[_tail])
+}
+</code></pre>
+
+<p>{% endhighlight %}</p>
+
+<p><code>find_free_pos</code>找到一个可释放内存位置，在<code>[_tail, find_free_pos())</code>这个区间内所有内存是可以安全被释放的。</p>
+
+<p>队列位置<code>_head/_tail</code>一直增大，<code>PENDING_POS</code>就是对这个位置取模，限定在队列大小范围内也是可行的，无论哪种方式，<code>_head</code>从逻辑上说一直<code>&gt;=_tail</code>，但在实际中可能小于<code>_tail</code>，所以实现时不使用大小判定，而是：</p>
+
+<p>{% highlight c++ %}
+    gc() {
+        pos = find_free_pos()
+        while (<em>tail != pos) {
+            free(</em>pending[PENDING_POS(<em>tail)])
+            </em>tail ++
+        }
+    }
+{% endhighlight %}</p>
+
+<h3>读线程</h3>
+
+<p>读线程不再使用共享内存时，就标识自己：</p>
+
+<p>{% highlight c++ %}
+    update() {
+        static <em><em>thread int tid
+        </em>tmark[tid] = </em>head
+    }
+{% endhighlight %}</p>
+
+<p>读线程的状态会影响写线程的回收逻辑，其状态分为：</p>
+
+<ul>
+<li>初始</li>
+<li>活跃，会调用到<code>update</code></li>
+<li>暂停，其他地方同步，或被挂起</li>
+<li>退出</li>
+</ul>
+
+
+<p>读线程处于活跃状态时，它会不断地更新自己可释放内存位置(<code>_tmark[tid]</code>)。写线程检查所有读线程的<code>_tmark[tid]</code>，<code>[_tail, min(_tmark[]))</code>是所有读线程都不再使用的内存区间，可以被安全释放。</p>
+
+<p>{% highlight c++ %}
+    find_free_pos() {
+        min = MAX_INTEGER
+        pos = 0
+        for (tid = 0; tid &lt; max_threads; ++tid) {
+            tpos = _tmark[tid]
+            offset = tpos - tail
+            if (offset &lt; min) {
+                min = offset
+                pos = tpos
+            }
+        }
+        return pos
+    }
+{% endhighlight %}</p>
+
+<p>当读线程暂停时，其<code>_tmark[tid]</code>可能会在很长一段时间里得不到更新，此时会阻碍写线程释放内存。所以需要方法来标识读线程是否进入暂停状态。通过设置一个上次释放内存位置<code>_tfreeds[tid]</code>，标识每个线程当前内存释放到的位置。如果一个线程处于暂停状态了，那么在一定时间后，<code>_tfreeds[tid] == _tmark[tid]</code>。在查找可释放位置时，就需要忽略暂停状态的读线程：</p>
+
+<p>{% highlight c++ %}
+    find_free_pos() {
+        min = MAX_INTEGER
+        pos = <em>head
+        for (tid = 0; tid &lt; max_threads; ++tid) {
+            tpos = </em>tmark[tid]
+            if (tpos == <em>tfreeds[tid]) continue
+            offset = tpos - tail
+            if (offset &lt; min) {
+                min = offset
+                pos = tpos
+            }
+        }
+        for (tid = 0; tid &lt; max_threads; ++tid) {
+            if (</em>tfreeds[tid] != <em>tmark[tid])
+                </em>tfreeds[tid] = pos
+        }
+        return pos
+    }
+{% endhighlight %}</p>
+
+<p>但是当所有线程都处于暂停状态时，写线程可能还在工作，上面的实现就会返回<code>_head</code>，此时写线程依然可以正常释放内存。</p>
+
+<p><strong>小结</strong>，该方法原理可用下图表示：</p>
+
+<p><img src="/assets/res/rw_thread.png" alt="" /></p>
+
+<h3>线程动态增加/减少</h3>
+
+<p>如果读线程可能中途退出，中途动态增加，那么<code>_tmark[]</code>就需要被复用，此时线程<code>tid</code>的分配调整为动态的即可：</p>
+
+<p>{% highlight c++ %}
+    class ThreadIdPool {
+    public:
+        // 动态获取一个线程tid，某线程每次调用该接口返回相同的值
+        int get()
+        // 线程退出时回收该tid
+        void put(int id)
+    }
+{% endhighlight %}</p>
+
+<p><code>ThreadIdPool</code>的实现无非就是利用TLS，以及在线程退出时得到通知以回收tid。那么对于读线程的<code>update</code>实现变为：</p>
+
+<p>{% highlight c++ %}
+    update() {
+        tid = <em>idPool->get()
+        </em>tmark[tid] = _head
+    }
+{% endhighlight %}</p>
+
+<p>当某个线程退出时，<code>_tmark[tid]</code>和<code>_tfreeds[tid]</code>不需要做任何处理，当新创建的线程复用了该<code>tid</code>时，可以立即复用<code>_tmark[tid]</code>和<code>_tfreeds[tid]</code>，此时这2个值必然是相等的。</p>
+
+<p>以上，就是整个方法的实现。</p>
+
+<h2>线程可读可写</h2>
+
+<p>以上方法适用场景还是不够通用。在<a href="https://code.google.com/p/nbds/">nbds</a>项目（实现了一些无锁数据结构的toy project）中有一份虽然简单但也有启发的实现(rcu.c)。该实现支持任意线程<code>defer_free</code>，所有线程<code>update</code>。<code>update</code>除了声明不再使用任何共享内存外，还可能回收内存。任意线程都可能维护一些待释放的内存，任意一块内存可能被任意其他线程使用。那么它是如何内存回收的？</p>
+
+<p>本文描述的方法是所有读线程自己声明自己，然后由写线程主动来检查。不同于此方法， nbds的实现，基于一种<strong>通知扩散</strong>的方式。该方式以这样一种方式工作：</p>
+
+<p>当某个线程尝试内存回收时，它需要知道所有其他线程的空闲位置（相当于<code>_tmark[tid]</code>），它通知下一个线程我需要释放的范围。当下一个线程<code>update</code>时（离开临界区），它会将上个线程的通知继续告诉下一个线程，直到最后这个通知回到发起线程。那么对于发起线程而言，这个释放请求在所有线程中走了一遍，得到了大家的认可，可以安全释放。每个线程都以这样的方式工作。</p>
+
+<p>{% highlight c++ %}
+    void rcu_defer_free (void *x) {
+        &hellip;
+        rcu<em>[next_thread_id][tid</em>] = rcu_last_posted<em>[tid</em>][tid<em>] = pending</em>[tid_]->head;
+        &hellip;
+    }</p>
+
+<pre><code>void rcu_update (void) {
+    ...
+    for (i = 0; i &lt; num_threads_; ++i) {
+        ...     
+        uint64_t x = rcu_[tid_][i]; // 其它线程发给自己的通知
+        rcu_[next_thread_id][i] = rcu_last_posted_[tid_][i] = x; // 扩散出去
+        ...
+    }
+    ...
+    while (q-&gt;tail != rcu_[tid_][tid_]) {
+        free
+    }     
+    ...
+}
+</code></pre>
+
+<p>{% endhighlight %}</p>
+
+<p>这个实现相对简单，不支持线程暂停，以及线程动态增加和减少。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[记一次tcmalloc分配内存引起的coredump]]></title>
+    <link href="http://codemacro.com/2015/04/06/tcmalloc-getstacktrace/"/>
+    <updated>2015-04-06T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2015/04/06/tcmalloc-getstacktrace</id>
+    <content type="html"><![CDATA[<h2>现象</h2>
+
+<p>线上的服务出现coredump，堆栈为：</p>
+
+<pre><code>#0  0x000000000045d145 in GetStackTrace(void**, int, int) ()
+#1  0x000000000045ec22 in tcmalloc::PageHeap::GrowHeap(unsigned long) ()
+#2  0x000000000045eeb3 in tcmalloc::PageHeap::New(unsigned long) ()
+#3  0x0000000000459ee8 in tcmalloc::CentralFreeList::Populate() ()
+#4  0x000000000045a088 in tcmalloc::CentralFreeList::FetchFromSpansSafe() ()
+#5  0x000000000045a10a in tcmalloc::CentralFreeList::RemoveRange(void**, void**, int) ()
+#6  0x000000000045c282 in tcmalloc::ThreadCache::FetchFromCentralCache(unsigned long, unsigned long) ()
+#7  0x0000000000470766 in tc_malloc ()
+#8  0x00007f75532cd4c2 in __conhash_get_rbnode (node=0x22c86870, hash=30)
+        at build/release64/cm_sub/conhash/conhash_inter.c:88
+#9  0x00007f75532cd76e in __conhash_add_replicas (conhash=0x24fbc7e0, iden=&lt;value optimized out&gt;)
+        at build/release64/cm_sub/conhash/conhash_inter.c:45
+#10 0x00007f75532cd1fa in conhash_add_node (conhash=0x24fbc7e0, iden=0) at build/release64/cm_sub/conhash/conhash.c:72
+#11 0x00007f75532c651b in cm_sub::TopoCluster::initLBPolicyInfo (this=0x2593a400)
+        at build/release64/cm_sub/topo_cluster.cpp:114
+#12 0x00007f75532cad73 in cm_sub::TopoClusterManager::processClusterMapTable (this=0xa219e0, ref=0x267ea8c0)
+        at build/release64/cm_sub/topo_cluster_manager.cpp:396
+#13 0x00007f75532c5a93 in cm_sub::SubRespMsgProcess::reinitCluster (this=0x9c2f00, msg=0x4e738ed0)
+        at build/release64/cm_sub/sub_resp_msg_process.cpp:157
+...
+</code></pre>
+
+<p>查看了应用层相关数据结构，基本数据都是没有问题的。所以最初怀疑是tcmalloc内部维护了错误的内存，在分配内存时出错，这个堆栈只是问题的表象。几天后，线上的另一个服务，基于同样的库，也core了，堆栈还是一样的。</p>
+
+<p>最初定位问题都是从最近更新的东西入手，包括依赖的server环境，但都没有明显的问题，所以最后只能从core的直接原因入手。</p>
+
+<!-- more -->
+
+
+<h2>分析GetStackTrace</h2>
+
+<p>确认core的详细位置：</p>
+
+<pre><code># core在该指令
+0x000000000045d145 &lt;_Z13GetStackTracePPvii+21&gt;: mov    0x8(%rax),%r9
+
+(gdb) p/x $rip              # core 的指令位置
+$9 = 0x45d145
+(gdb) p/x $rax              
+$10 = 0x4e73aa58
+(gdb) x/1a $rax+0x8         # rax + 8 = 0x4e73aa60
+0x4e73aa60:     0x0
+</code></pre>
+
+<p>该指令尝试从[0x4e73aa60]处读取内容，然后出错，这个内存单元不可读。但是具体这个指令在代码中是什么意思，<strong>需要将这个指令对应到代码中</strong>。获取tcmalloc的源码，发现<code>GetStackTrace</code>根据编译选项有很多实现，所以这里选择最可能的实现，然后对比汇编以确认代码是否匹配。最初选择的是<code>stacktrace_x86-64-inl.h</code>，后来发现完全不匹配，又选择了<code>stacktrace_x86-inl.h</code>。这个实现版本里也有对64位平台的支持。</p>
+
+<p><code>stacktrace_x86-inl.h</code>里使用了一些宏来生成函数名和参数，精简后代码大概为：</p>
+
+<p>{% highlight c++ %}
+    int GET_STACK_TRACE_OR_FRAMES {
+      void <strong>sp;
+      unsigned long rbp;
+      <strong>asm</strong> volatile (&ldquo;mov %%rbp, %0&rdquo; : &ldquo;=r&rdquo; (rbp));
+      sp = (void </strong>) rbp;</p>
+
+<pre><code>  int n = 0;
+  while (sp &amp;&amp; n &lt; max_depth) {
+    if (*(sp+1) == reinterpret_cast&lt;void *&gt;(0)) {
+      break;
+    }
+    void **next_sp = NextStackFrame&lt;!IS_STACK_FRAMES, IS_WITH_CONTEXT&gt;(sp, ucp);
+    if (skip_count &gt; 0) {
+      skip_count--;
+    } else {
+      result[n] = *(sp+1);
+      n++;
+    }
+    sp = next_sp;
+  }
+  return n;
+}
+</code></pre>
+
+<p>{% endhighlight %}</p>
+
+<p><code>NextStackFrame</code>是一个模板函数，包含一大堆代码，精简后非常简单：</p>
+
+<p>{% highlight c++ %}
+    template<bool STRICT_UNWINDING, bool WITH_CONTEXT>
+    static void <strong>NextStackFrame(void </strong>old_sp, const void <em>uc) {
+      void <strong>new_sp = (void </strong>) </em>old_sp;
+      if (STRICT_UNWINDING) {
+        if (new_sp &lt;= old_sp) return NULL;
+        if ((uintptr_t)new_sp - (uintptr_t)old_sp > 100000) return NULL;
+      } else {
+        if (new_sp == old_sp) return NULL;
+        if ((new_sp > old_sp)
+            &amp;&amp; ((uintptr_t)new_sp - (uintptr_t)old_sp > 1000000)) return NULL;
+      }
+      if ((uintptr_t)new_sp &amp; (sizeof(void *) - 1)) return NULL;</p>
+
+<pre><code>  return new_sp;
+}
+</code></pre>
+
+<p>{% endhighlight %}</p>
+
+<p>上面这个代码到汇编的对比过程还是花了些时间，其中汇编中出现的一些常量可以大大缩短对比时间，例如上面出现了<code>100000</code>，汇编中就有：</p>
+
+<pre><code>0x000000000045d176 &lt;_Z13GetStackTracePPvii+70&gt;: cmp    $0x186a0,%rbx  # 100000=0x186a0
+</code></pre>
+
+<p><em>注意<code>NextStackFrame</code>中的 <code>if (STRICT_UNWINDING)</code>使用的是模板参数，这导致生成的代码中根本没有else部分，也就没有<code>1000000</code>这个常量</em></p>
+
+<p>在对比代码的过程中，可以<strong>知道关键的几个寄存器、内存位置对应到代码中的变量，从而可以还原core时的现场环境</strong>。分析过程中不一定要从第一行汇编读，可以从较明显的位置读，从而还原整个代码，<strong>函数返回指令、跳转指令、比较指令、读内存指令、参数寄存器</strong>等都是比较明显对应的地方。</p>
+
+<p>另外注意<code>GetStackTrace</code>在<code>RecordGrowth</code>中调用，传入了3个参数：</p>
+
+<pre><code>GetStackTrace(t-&gt;stack, kMaxStackDepth-1, 3); // kMaxStackDepth = 31
+</code></pre>
+
+<p>以下是我分析的简单注解：</p>
+
+<pre><code>(gdb) disassemble
+Dump of assembler code for function _Z13GetStackTracePPvii:
+0x000000000045d130 &lt;_Z13GetStackTracePPvii+0&gt;:  push   %rbp
+0x000000000045d131 &lt;_Z13GetStackTracePPvii+1&gt;:  mov    %rsp,%rbp
+0x000000000045d134 &lt;_Z13GetStackTracePPvii+4&gt;:  push   %rbx
+0x000000000045d135 &lt;_Z13GetStackTracePPvii+5&gt;:  mov    %rbp,%rax
+0x000000000045d138 &lt;_Z13GetStackTracePPvii+8&gt;:  xor    %r8d,%r8d
+0x000000000045d13b &lt;_Z13GetStackTracePPvii+11&gt;: test   %rax,%rax
+0x000000000045d13e &lt;_Z13GetStackTracePPvii+14&gt;: je     0x45d167 &lt;_Z13GetStackTracePPvii+55&gt;
+0x000000000045d140 &lt;_Z13GetStackTracePPvii+16&gt;: cmp    %esi,%r8d        # while ( .. max_depth &gt; n ?
+0x000000000045d143 &lt;_Z13GetStackTracePPvii+19&gt;: jge    0x45d167 &lt;_Z13GetStackTracePPvii+55&gt;
+0x000000000045d145 &lt;_Z13GetStackTracePPvii+21&gt;: mov    0x8(%rax),%r9    # 关键位置：*(sp+1) -&gt; r9, rax 对应 sp变量
+0x000000000045d149 &lt;_Z13GetStackTracePPvii+25&gt;: test   %r9,%r9          # *(sp+1) == 0 ?
+0x000000000045d14c &lt;_Z13GetStackTracePPvii+28&gt;: je     0x45d167 &lt;_Z13GetStackTracePPvii+55&gt;
+0x000000000045d14e &lt;_Z13GetStackTracePPvii+30&gt;: mov    (%rax),%rcx      # new_sp = *old_sp，这里已经是NextStackFrame的代码
+0x000000000045d151 &lt;_Z13GetStackTracePPvii+33&gt;: cmp    %rcx,%rax        # new_sp &lt;= old_sp ? 
+0x000000000045d154 &lt;_Z13GetStackTracePPvii+36&gt;: jb     0x45d170 &lt;_Z13GetStackTracePPvii+64&gt;  # new_sp &gt; old_sp 跳转
+0x000000000045d156 &lt;_Z13GetStackTracePPvii+38&gt;: xor    %ecx,%ecx
+0x000000000045d158 &lt;_Z13GetStackTracePPvii+40&gt;: test   %edx,%edx        # skip_count &gt; 0 ?
+0x000000000045d15a &lt;_Z13GetStackTracePPvii+42&gt;: jle    0x45d186 &lt;_Z13GetStackTracePPvii+86&gt;
+0x000000000045d15c &lt;_Z13GetStackTracePPvii+44&gt;: sub    $0x1,%edx        # skip_count--
+0x000000000045d15f &lt;_Z13GetStackTracePPvii+47&gt;: mov    %rcx,%rax        
+0x000000000045d162 &lt;_Z13GetStackTracePPvii+50&gt;: test   %rax,%rax        # while (sp ?
+0x000000000045d165 &lt;_Z13GetStackTracePPvii+53&gt;: jne    0x45d140 &lt;_Z13GetStackTracePPvii+16&gt;
+0x000000000045d167 &lt;_Z13GetStackTracePPvii+55&gt;: pop    %rbx
+0x000000000045d168 &lt;_Z13GetStackTracePPvii+56&gt;: leaveq 
+0x000000000045d169 &lt;_Z13GetStackTracePPvii+57&gt;: mov    %r8d,%eax        # r8 存储了返回值，r8=n
+0x000000000045d16c &lt;_Z13GetStackTracePPvii+60&gt;: retq                    # return n
+0x000000000045d16d &lt;_Z13GetStackTracePPvii+61&gt;: nopl   (%rax)
+0x000000000045d170 &lt;_Z13GetStackTracePPvii+64&gt;: mov    %rcx,%rbx        
+0x000000000045d173 &lt;_Z13GetStackTracePPvii+67&gt;: sub    %rax,%rbx        # offset = new_sp - old_sp
+0x000000000045d176 &lt;_Z13GetStackTracePPvii+70&gt;: cmp    $0x186a0,%rbx    # offset &gt; 100000 ?
+0x000000000045d17d &lt;_Z13GetStackTracePPvii+77&gt;: ja     0x45d156 &lt;_Z13GetStackTracePPvii+38&gt; # return NULL
+0x000000000045d17f &lt;_Z13GetStackTracePPvii+79&gt;: test   $0x7,%cl         # new_sp &amp; (sizeof(void*) - 1)
+0x000000000045d182 &lt;_Z13GetStackTracePPvii+82&gt;: je     0x45d158 &lt;_Z13GetStackTracePPvii+40&gt;
+0x000000000045d184 &lt;_Z13GetStackTracePPvii+84&gt;: jmp    0x45d156 &lt;_Z13GetStackTracePPvii+38&gt;
+0x000000000045d186 &lt;_Z13GetStackTracePPvii+86&gt;: movslq %r8d,%rax        # rax = n
+0x000000000045d189 &lt;_Z13GetStackTracePPvii+89&gt;: add    $0x1,%r8d        # n++
+0x000000000045d18d &lt;_Z13GetStackTracePPvii+93&gt;: mov    %r9,(%rdi,%rax,8)# 关键位置：result[n] = *(sp+1)
+0x000000000045d191 &lt;_Z13GetStackTracePPvii+97&gt;: jmp    0x45d15f &lt;_Z13GetStackTracePPvii+47&gt;
+</code></pre>
+
+<p>分析过程比较耗时，同时还可以分析下<code>GetStackTrace</code>函数的实现原理，其实就是利用RBP寄存器不断回溯，从而得到整个调用堆栈各个函数的地址（严格来说是返回地址）。简单示意下函数调用中RBP的情况：</p>
+
+<pre><code>   ...
+saved registers          # i.e push rbx
+local variabes           # i.e sub 0x10, rsp
+return address           # call xxx
+last func RBP            # push rbp; mov rsp, rbp
+saved registers
+local variables 
+return address
+last func RBP
+...                      # rsp
+</code></pre>
+
+<p>总之，<strong>一般情况下，任何一个函数中，RBP寄存器指向了当前函数的栈基址，该栈基址中又存储了调用者的栈基址，同时该栈基址前面还存储了调用者的返回地址</strong>。所以，<code>GetStackTrace</code>的实现，简单来说大概就是：</p>
+
+<p>{% highlight c++ %}
+    sp = rbp  // 取得当前函数GetStackTrace的栈基址
+    while (n &lt; max_depth) {
+        new_sp = <em>sp
+        result[n] = </em>(new_sp+1)
+        n++
+    }
+{% endhighlight %}</p>
+
+<p>以上，最终就知道了以下关键信息：</p>
+
+<ul>
+<li>r8 对应变量 n，表示当前取到第几个栈帧了</li>
+<li>rax 对应变量 sp，代码core在 *(sp+1)</li>
+<li>rdi 对应变量 result，用于存储取得的各个地址</li>
+</ul>
+
+
+<p>然后可以看看现场是怎样的：</p>
+
+<pre><code>(gdb) x/10a $rdi
+0x1ffc9b98:     0x45a088 &lt;_ZN8tcmalloc15CentralFreeList18FetchFromSpansSafeEv+40&gt;       0x45a10a &lt;_ZN8tcmalloc15CentralFreeList11RemoveRangeEPPvS2_i+106&gt;
+0x1ffc9ba8:     0x45c282 &lt;_ZN8tcmalloc11ThreadCache21FetchFromCentralCacheEmm+114&gt;      0x470766 &lt;tc_malloc+790&gt;
+0x1ffc9bb8:     0x7f75532cd4c2 &lt;__conhash_get_rbnode+34&gt;        0x0
+0x1ffc9bc8:     0x0     0x0
+0x1ffc9bd8:     0x0     0x0
+
+(gdb) p/x $r8
+$3 = 0x5
+
+(gdb) p/x $rax
+$4 = 0x4e73aa58
+</code></pre>
+
+<p><strong>小结：</strong></p>
+
+<p><code>GetStackTrace</code>在取调用<code>__conhash_get_rbnode</code>的函数时出错，取得了5个函数地址。当前使用的RBP为<code>0x4e73aa58</code>。</p>
+
+<h2>错误的RBP</h2>
+
+<p>RBP也是从堆栈中取出来的，既然这个地址有问题，首先想到的就是有代码局部变量/数组写越界。例如<code>sprintf</code>的使用。而且，<strong>一般写越界破坏堆栈，都可能是把调用者的堆栈破坏了</strong>，例如：</p>
+
+<pre><code>char s[32];
+memcpy(s, p, 1024);
+</code></pre>
+
+<p>因为写入都是从低地址往高地址写，而调用者的堆栈在高地址。当然，也会遇到写坏调用者的调用者的堆栈，也就是跨栈帧越界写，例如以前遇到的：</p>
+
+<pre><code>len = vsnprintf(buf, sizeof(buf), fmt, wtf-long-string);
+buf[len] = 0;
+</code></pre>
+
+<p><code>__conhash_get_rbnode</code>的RBP是在tcmalloc的堆栈中取的：</p>
+
+<pre><code>(gdb) f 7
+#7  0x0000000000470766 in tc_malloc ()
+(gdb) x/10a $rsp
+0x4e738b80:     0x4e73aa58      0x22c86870
+0x4e738b90:     0x4e738bd0      0x85
+0x4e738ba0:     0x4e73aa58      0x7f75532cd4c2 &lt;__conhash_get_rbnode+34&gt;   # 0x4e73aa58
+</code></pre>
+
+<p>所以这里就会怀疑是<code>tcmalloc</code>这个函数里有把堆栈破坏，这个时候就是读代码，看看有没有疑似危险的地方，未果。这里就陷入了僵局，怀疑又遇到了跨栈帧破坏的情况，这个时候就只能<code>__conhash_get_rbnode</code>调用栈中周围的函数翻翻，例如调用<code>__conhash_get_rbnode</code>的函数<code>__conhash_add_replicas</code>中恰好有字符串操作：</p>
+
+<p>{% highlight c++ %}
+    void <strong>conhash_add_replicas(conhash_t <em>conhash, int32_t iden)
+    {
+        node_t</em> node = </strong>conhash_create_node(iden, conhash->replica);
+        &hellip;
+        char buf[buf_len]; // buf_len = 64
+        &hellip;
+        snprintf(buf, buf_len, VIRT_NODE_HASH_FMT, node->iden, i);
+        uint32_t hash = conhash->cb_hashfunc(buf);
+        if(util_rbtree_search(&amp;(conhash->vnode_tree), hash) == NULL)
+        {
+            util_rbtree_node_t* rbnode = __conhash_get_rbnode(node, hash);
+            &hellip;</p>
+
+<p>{% endhighlight %}</p>
+
+<p>这段代码最终发现是没有问题的，这里又耗费了不少时间。后来发现若干个函数里的RBP都有点奇怪，这个调用栈比较正常的范围是：0x4e738c90</p>
+
+<pre><code>(gdb) f 8
+#8  0x00007f75532cd4c2 in __conhash_get_rbnode (node=0x22c86870, hash=30)
+(gdb) p/x $rbp
+$6 = 0x4e73aa58     # 这个还不算特别可疑
+(gdb) f 9
+#9  0x00007f75532cd76e in __conhash_add_replicas (conhash=0x24fbc7e0, iden=&lt;value optimized out&gt;)
+(gdb) p/x $rbp
+$7 = 0x4e738c60     # 这个也不算特别可疑
+(gdb) f 10
+#10 0x00007f75532cd1fa in conhash_add_node (conhash=0x24fbc7e0, iden=0) at build/release64/cm_sub/conhash/conhash.c:72
+(gdb) p/x $rbp      # 可疑
+$8 = 0x0
+(gdb) f 11
+#11 0x00007f75532c651b in cm_sub::TopoCluster::initLBPolicyInfo (this=0x2593a400)
+(gdb) p/x $rbp      # 可疑
+$9 = 0x2598fef0
+</code></pre>
+
+<p><strong>为什么很多函数中RBP都看起来不正常？</strong> 想了想真要是代码里把堆栈破坏了，这错误得发生得多巧妙？</p>
+
+<h2>错误RBP的来源</h2>
+
+<p>然后转机来了，脑海中突然闪出<code>-fomit-frame-pointer</code>。编译器生成的代码中是可以不需要栈基址指针的，也就是RBP寄存器不作为栈基址寄存器。大部分函数或者说开启了<code>frame-pointer</code>的函数，其函数头都会有以下指令：</p>
+
+<pre><code>push   %rbp
+mov    %rsp,%rbp
+...
+</code></pre>
+
+<p>表示保存调用者的栈基址到栈中，以及设置自己的栈基址。看下<code>__conhash</code>系列函数；</p>
+
+<pre><code>Dump of assembler code for function __conhash_get_rbnode:
+0x00007f75532cd4a0 &lt;__conhash_get_rbnode+0&gt;:    mov    %rbx,-0x18(%rsp)
+0x00007f75532cd4a5 &lt;__conhash_get_rbnode+5&gt;:    mov    %rbp,-0x10(%rsp)
+...
+</code></pre>
+
+<p>这个库是单独编译的，没有显示指定<code>-fno-omit-frame-pointer</code>，查阅<a href="https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html">gcc手册</a>，o2优化是开启了<code>omit-frame-pinter</code> 的。</p>
+
+<p>在没有RBP的情况下，tcmalloc的<code>GetStackTrace</code>尝试读RBP取获取调用返回地址，自然是有问题的。但是，<strong>如果整个调用栈中的函数，要么有RBP，要么没有RBP，那么<code>GetStackTrace</code>取出的结果最多就是跳过一些栈帧，不会出错。</strong> 除非，这中间的某个函数把RBP寄存器另作他用（编译器省出这个寄存器肯定是要另作他用的）。所以这里继续追查这个错误地址<code>0x4e73aa58</code>的来源。</p>
+
+<p>来源已经比较明显，肯定是<code>__conhash_get_rbnode</code>中设置的，因为这个函数的RBP是在被调用者<code>tcmalloc</code>中保存的。</p>
+
+<pre><code>Dump of assembler code for function __conhash_get_rbnode:
+0x00007f75532cd4a0 &lt;__conhash_get_rbnode+0&gt;:    mov    %rbx,-0x18(%rsp)
+0x00007f75532cd4a5 &lt;__conhash_get_rbnode+5&gt;:    mov    %rbp,-0x10(%rsp)
+0x00007f75532cd4aa &lt;__conhash_get_rbnode+10&gt;:   mov    %esi,%ebp                    # 改写了RBP
+0x00007f75532cd4ac &lt;__conhash_get_rbnode+12&gt;:   mov    %r12,-0x8(%rsp)
+0x00007f75532cd4b1 &lt;__conhash_get_rbnode+17&gt;:   sub    $0x18,%rsp
+0x00007f75532cd4b5 &lt;__conhash_get_rbnode+21&gt;:   mov    %rdi,%r12
+0x00007f75532cd4b8 &lt;__conhash_get_rbnode+24&gt;:   mov    $0x30,%edi
+0x00007f75532cd4bd &lt;__conhash_get_rbnode+29&gt;:   callq  0x7f75532b98c8 &lt;malloc@plt&gt;  # 调用tcmalloc，汇编到这里即可
+</code></pre>
+
+<p>这里打印RSI寄存器的值可能会被误导，因为任何时候打印寄存器的值可能都是错的，除非它有被显示保存。不过这里可以看出RSI的值来源于参数(RSI对应第二个参数)：</p>
+
+<p>{% highlight c++ %}
+    void <strong>conhash_add_replicas(conhash_t <em>conhash, int32_t iden)
+    {
+        node_t</em> node = </strong>conhash_create_node(iden, conhash->replica);
+        &hellip;
+        char buf[buf_len]; // buf_len = 64
+        &hellip;
+        snprintf(buf, buf_len, VIRT_NODE_HASH_FMT, node->iden, i);
+        uint32_t hash = conhash->cb_hashfunc(buf); // hash值由一个字符串哈希函数计算
+        if(util_rbtree_search(&amp;(conhash->vnode_tree), hash) == NULL)
+        {
+            util_rbtree_node_t* rbnode = __conhash_get_rbnode(node, hash);  // hash值
+            &hellip;</p>
+
+<p>{% endhighlight %}</p>
+
+<p>追到<code>__conhash_add_replicas</code>：</p>
+
+<pre><code>0x00007f75532cd764 &lt;__conhash_add_replicas+164&gt;:        mov    %ebx,%esi    # 来源于rbx
+0x00007f75532cd766 &lt;__conhash_add_replicas+166&gt;:        mov    %r15,%rdi
+0x00007f75532cd769 &lt;__conhash_add_replicas+169&gt;:        callq  0x7f75532b9e48 &lt;__conhash_get_rbnode@plt&gt;
+
+(gdb) p/x $rbx
+$11 = 0x4e73aa58
+(gdb) p/x hash
+$12 = 0x4e73aa58      # 0x4e73aa58
+</code></pre>
+
+<p>找到了<code>0x4e73aa58</code>的来源。这个地址值竟然是一个字符串哈希算法算出来的！这里还可以看看这个字符串的内容：</p>
+
+<pre><code>(gdb) x/1s $rsp
+0x4e738bd0:      "conhash-00000-00133"
+</code></pre>
+
+<p>这个碉堡的哈希函数是<code>conhash_hash_def</code>。</p>
+
+<h2>coredump的条件</h2>
+
+<p>以上，既然只要某个库<code>omit-frame-pointer</code>，那tcmalloc就可能出错，为什么发生的频率并不高呢？这个可以回到<code>GetStackTrace</code>尤其是<code>NextStackFrame</code>的实现，其中包含了几个合法RBP的判定：</p>
+
+<p>{% highlight c++ %}</p>
+
+<pre><code>    if (new_sp &lt;= old_sp) return NULL;  // 上一个栈帧的RBP肯定比当前的大
+    if ((uintptr_t)new_sp - (uintptr_t)old_sp &gt; 100000) return NULL; // 指针值范围还必须在100000内
+    ...
+if ((uintptr_t)new_sp &amp; (sizeof(void *) - 1)) return NULL; // 由于本身保存的是指针，所以还必须是sizeof(void*)的整数倍，对齐
+</code></pre>
+
+<p>{% endhighlight %}</p>
+
+<p>有了以上条件，才使得这个core几率变得很低。</p>
+
+<h2>总结</h2>
+
+<p>最后，如果你很熟悉tcmalloc，整个问题估计就被秒解了：<a href="http://gperftools.googlecode.com/svn/trunk/INSTALL">tcmalloc INSTALL</a></p>
+
+<h2>附</h2>
+
+<p>另外附上另一个有意思的东西。</p>
+
+<p>在分析<code>__conhash_add_replicas</code>时，其内定义了一个64字节的字符数组，查看其堆栈：</p>
+
+<pre><code>(gdb) x/20a $rsp
+0x4e738bd0:     0x2d687361686e6f63      0x30302d3030303030          # 这些是字符串conhash-00000-00133
+0x4e738be0:     0x333331        0x0
+0x4e738bf0:     0x0     0x7f75532cd69e &lt;__conhash_create_node+78&gt;
+0x4e738c00:     0x24fbc7e0      0x4e738c60
+0x4e738c10:     0x24fbc7e0      0x7f75532cd6e3 &lt;__conhash_add_replicas+35&gt;
+0x4e738c20:     0x0     0x24fbc7e8
+0x4e738c30:     0x4e738c20      0x24fbc7e0
+0x4e738c40:     0x22324360      0x246632c0
+0x4e738c50:     0x0     0x0
+0x4e738c60:     0x0     0x7f75532cd1fa &lt;conhash_add_node+74&gt;
+</code></pre>
+
+<p>最开始我觉得<code>buf</code>占64字节，也就是整个[0x4e738bd0, 0x4e738c10)内存，但是这块内存里居然有函数地址，这一度使我怀疑这里有问题。后来醒悟这些地址是定义<code>buf</code>前调用<code>__conhash_create_node</code>产生的，调用过程中写到堆栈里，调用完后栈指针改变，但并不需要清空栈中的内容。</p>
+]]></content>
+  </entry>
+  
+</feed>

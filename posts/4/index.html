@@ -1,0 +1,719 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>loop in codes</title>
+  <meta name="author" content="Kevin Lynx">
+
+  
+  <meta name="description" content="当我们的程序core掉之后，如果能获取到core时的函数调用堆栈将非常有利于定位问题。在Windows下可以使用SEH机制；在Linux下通过gdb使用coredump文件即可。 但有时候由于某些错误导致堆栈被破坏，发生拿不到调用堆栈的情况。 一些基础预备知识本文不再详述，可以参考以下文章： &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://codemacro.com/posts/4">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <!--script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script-->
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<!--link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css"-->
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">loop in codes</a></h1>
+  
+    <h2>Kevin Lynx BLOG</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:codemacro.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about.html">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2014/09/02/stack-frame/">C/C++中手动获取调用堆栈</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-09-02T00:00:00+08:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>2</span><span class='date-suffix'>nd</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>当我们的程序core掉之后，如果能获取到core时的函数调用堆栈将非常有利于定位问题。在Windows下可以使用<a href="http://blog.csdn.net/starlee/article/details/6630816">SEH机制</a>；在Linux下通过gdb使用coredump文件即可。</p>
+
+<p>但有时候由于某些错误导致堆栈被破坏，发生拿不到调用堆栈的情况。</p>
+
+<p>一些基础预备知识本文不再详述，可以参考以下文章：</p>
+
+<ul>
+<li><a href="http://hutaow.com/blog/2013/10/15/dump-stack/">函数调用栈的获取原理分析</a></li>
+<li><a href="http://www.findfunaax.com/notes/file/262">寄存器、函数调用与栈帧</a></li>
+</ul>
+
+
+<p>需要知道的信息：</p>
+
+<ul>
+<li>函数调用对应的<code>call</code>指令本质上是先压入下一条指令的地址到堆栈，然后跳转到目标函数地址</li>
+<li>函数返回指令<code>ret</code>则是从堆栈取出一个地址，然后跳转到该地址</li>
+<li>EBP寄存器始终指向当前执行函数相关信息（局部变量）所在栈中的位置，ESP则始终指向栈顶</li>
+<li>每一个函数入口都会保存调用者的EBP值，在出口处都会重设EBP值，从而实现函数调用的现场保存及现场恢复</li>
+<li>64位机器增加了不少寄存器，从而使得函数调用的参数大部分时候可以通过寄存器传递；同时寄存器名字发生改变，例如EBP变为RBP</li>
+</ul>
+
+
+<p>在函数调用中堆栈的情况可用下图说明：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/09/02/stack-frame/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2014/08/31/protobuf-rpc/">基于protobuf的RPC实现</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-08-31T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>31</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>可以对照<a href="http://www.codedump.info/?p=169">使用google protobuf RPC实现echo service</a>一文看，细节本文不再描述。</p>
+
+<p>google protobuf只负责消息的打包和解包，并不包含RPC的实现，但其包含了RPC的定义。假设有下面的RPC定义：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">service</span> <span class="n">MyService</span> <span class="p">{</span>
+        <span class="n">rpc</span> <span class="n">Echo</span><span class="p">(</span><span class="n">EchoReqMsg</span><span class="p">)</span> <span class="n">returns</span><span class="p">(</span><span class="n">EchoRespMsg</span><span class="p">)</span> 
+    <span class="p">}</span></code></pre></div>
+
+
+<p>那么要实现这个RPC需要最少做哪些事？总结起来需要完成以下几步：</p>
+
+<h2>客户端</h2>
+
+<p>RPC客户端需要实现<code>google::protobuf::RpcChannel</code>。主要实现<code>RpcChannel::CallMethod</code>接口。客户端调用任何一个RPC接口，最终都是调用到<code>CallMethod</code>。这个函数的典型实现就是将RPC调用参数序列化，然后投递给网络模块进行发送。</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">CallMethod</span><span class="p">(</span><span class="k">const</span> <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">MethodDescriptor</span><span class="o">*</span> <span class="n">method</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">RpcController</span><span class="o">*</span> <span class="n">controller</span><span class="p">,</span>
+                  <span class="k">const</span> <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Message</span><span class="o">*</span> <span class="n">request</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Message</span><span class="o">*</span> <span class="n">response</span><span class="p">,</span>
+                  <span class="o">::</span><span class="n">google</span><span class="o">::</span><span class="n">protobuf</span><span class="o">::</span><span class="n">Closure</span><span class="o">*</span> <span class="n">done</span><span class="p">)</span> <span class="p">{</span>
+        <span class="p">...</span>
+        <span class="n">DataBufferOutputStream</span> <span class="n">outputStream</span><span class="p">(...)</span> <span class="c1">// 取决于你使用的网络实现</span>
+        <span class="n">request</span><span class="o">-&gt;</span><span class="n">SerializeToZeroCopyStream</span><span class="p">(</span><span class="o">&amp;</span><span class="n">outputStream</span><span class="p">);</span>
+        <span class="n">_connection</span><span class="o">-&gt;</span><span class="n">postData</span><span class="p">(</span><span class="n">outputStream</span><span class="p">.</span><span class="n">getData</span><span class="p">(),</span> <span class="p">...</span>
+        <span class="p">...</span>
+    <span class="p">}</span></code></pre></div>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/08/31/protobuf-rpc/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2014/08/25/lb-policy/">分布式环境中的负载均衡策略</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-08-25T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>25</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>在分布式系统中相同的服务常常会部署很多台，每一台被称为一个服务节点（实例）。通过一些负载均衡策略将服务请求均匀地分布到各个节点，以实现整个系统支撑海量请求的需求。本文描述一些简单的负载均衡策略。</p>
+
+<h2>Round-robin</h2>
+
+<p>简单地轮询。记录一个选择位置，每次请求来时调整该位置到下一个节点：</p>
+
+<pre><code>curId = ++curId % nodeCnt
+</code></pre>
+
+<h2>随机选择</h2>
+
+<p>随机地在所有节点中选择：</p>
+
+<pre><code>id = random(nodeCnt);
+</code></pre>
+
+<h2>本机优先</h2>
+
+<p>访问后台服务的访问者可能本身是一个整合服务，或者是一个proxy，如果后台服务节点恰好有节点部署在本机的，则可以优先使用。在未找到本机节点时则可以继续走Round-robin策略：</p>
+
+<pre><code>if (node-&gt;ip() == local_ip) {
+    return node;
+} else {
+    return roundRobin();
+}
+</code></pre>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/08/25/lb-policy/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2014/06/01/select-limit/">select真的有限制吗</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-06-01T00:00:00+08:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>1</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>在刚开始学习网络编程时，似乎莫名其妙地就会被某人/某资料告诉<code>select</code>函数是有fd(file descriptor)数量限制的。在最近的一次记忆里还有个人笑说<code>select</code>只支持64个fd。我甚至还写过一篇不负责任甚至错误的博客(<a href="http://www.cppblog.com/kevinlynx/archive/2008/05/20/50500.html">突破select的FD_SETSIZE限制</a>)。有人说，直接重新定义<code>FD_SETSIZE</code>就可以突破这个<code>select</code>的限制，也有人说除了重定义这个宏之外还的重新编译内核。</p>
+
+<p>事实具体是怎样的？实际上，造成这些混乱的原因恰好是不同平台对<code>select</code>的实现不一样。</p>
+
+<h2>Windows的实现</h2>
+
+<p><a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms740141(v=vs.85">MSDN</a>.aspx)上对<code>select</code>的说明：</p>
+
+<pre><code>int select(
+  _In_     int nfds,
+  _Inout_  fd_set *readfds,
+  _Inout_  fd_set *writefds,
+  _Inout_  fd_set *exceptfds,
+  _In_     const struct timeval *timeout
+);
+
+nfds [in] Ignored. The nfds parameter is included only for compatibility with Berkeley sockets.
+</code></pre>
+
+<p>第一个参数MSDN只说没有使用，其存在仅仅是为了保持与Berkeley Socket的兼容。</p>
+
+<blockquote><p>The variable FD_SETSIZE determines the maximum number of descriptors in a set. (The default value of FD_SETSIZE is 64, which can be modified by defining FD_SETSIZE to another value before including Winsock2.h.) Internally, socket handles in an fd_set structure are not represented as bit flags as in Berkeley Unix.</p></blockquote>
+
+<p>Windows上<code>select</code>的实现不同于Berkeley Unix，<strong>后者使用位标志来表示socket</strong>。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/06/01/select-limit/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2014/05/04/muduo-source/">muduo源码阅读</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-05-04T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>4</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>最近简单读了下<a href="http://blog.csdn.net/solstice/article/details/5848547">muduo</a>的源码，本文对其主要实现/结构简单总结下。</p>
+
+<p>muduo的主要源码位于net文件夹下，base文件夹是一些基础代码，不影响理解网络部分的实现。muduo主要类包括：</p>
+
+<ul>
+<li>EventLoop</li>
+<li>Channel</li>
+<li>Poller</li>
+<li>TcpConnection</li>
+<li>TcpClient</li>
+<li>TcpServer</li>
+<li>Connector</li>
+<li>Acceptor</li>
+<li>EventLoopThread</li>
+<li>EventLoopThreadPool</li>
+</ul>
+
+
+<p>其中，Poller（及其实现类）包装了Poll/EPoll，封装了OS针对设备(fd)的操作；Channel是设备fd的包装，在muduo中主要包装socket；TcpConnection抽象一个TCP连接，无论是客户端还是服务器只要建立了网络连接就会使用TcpConnection；TcpClient/TcpServer分别抽象TCP客户端和服务器；Connector/Acceptor分别包装TCP客户端和服务器的建立连接/接受连接；EventLoop是一个主控类，是一个事件发生器，它驱动Poller产生/发现事件，然后将事件派发到Channel处理；EventLoopThread是一个带有EventLoop的线程；EventLoopThreadPool自然是一个EventLoopThread的资源池，维护一堆EventLoopThread。</p>
+
+<p>阅读库源码时可以从库的接口层着手，看看关键功能是如何实现的。对于muduo而言，可以从TcpServer/TcpClient/EventLoop/TcpConnection这几个类着手。接下来看看主要功能的实现：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/05/04/muduo-source/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2014/02/21/dhtcrawler-process/">dhtcrawler的进程模型经验</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-02-21T00:00:00+08:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>距离写<a href="http://codemacro.com/2013/07/02/dhtcrawler2/">dhtcrawler</a>已经有半年时间。半年前就想总结点心得经验，但最后写出来的并没有表达出我特别有感慨的地方。最近又被人问到这方面的经验问题，才静下心来思考整理了下。</p>
+
+<p>我的经验是关于在写一个网络项目时所涉及到的架构（或者说是模型）。</p>
+
+<p>在dhtcrawler中，一个主要的问题是：程序在网络中需要尽可能快尽可能多地收集请求，然后程序需要尽可能快地加工处理这些信息。本质上就这么简单，我觉得很多网络系统面临的都可能是类似的问题。</p>
+
+<p>详细点说，dhtcrawler高峰期每天会收到2000万的DHT协议请求，收到这些请求后，dhtcrawler需要对这些请求做处理，包括：合并相同的请求；从外部网站请求下载种子文件；新增/更新种子信息到数据库；建立种子sphinx索引等。在实际运行期间，高峰期每天能新录入14万个种子。</p>
+
+<p>那么如何架构这个系统来让处理速度尽可能地快呢？首先，毫无疑问这个系统是多线程/多进程，甚至是分布式的。写一个多线程程序学几个API谁都会，但是如何组织这些线程以让系统最优则是一个较困难的问题。根据dhtcrawler的经验，我简单总结了以下几种模型/架构：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/02/21/dhtcrawler-process/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2014/02/02/2013/">my 2013</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-02-02T00:00:00+08:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>2</span><span class='date-suffix'>nd</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>技术</h2>
+
+<p>这一年里个人的技术感觉进步不是那么大。一方面技术之外的事情多了起来，另一方面由于工作原因接触的技术也较为杂乱，没有机会专注。技术的提升还是得靠业余时间。</p>
+
+<h3>系统分析设计</h3>
+
+<p>学了些RUP的方法，对规范化的系统分析设计算是有了一定认识。但这个东西在实践的过程中往往较难运用，好的方法学还是得看项目的实际情况而定。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/02/02/2013/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2013/09/23/scala-feature-overview/">scala主要特性一览</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-09-23T00:00:00+08:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>23</span><span class='date-suffix'>rd</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>概述</h2>
+
+<p>scala语言包含了函数式语言和面向对象语言的语法特性，从我目前的感受来看，这不是一门简单的语言。同Ruby/Erlang相比，其语法集大多了。scala基于JVM或.NET平台，其可以几乎无缝地使用Java库（不但使用上没有负担，其运行效率上也不会增加负担），配合其强大的语言表达能力，还是很有吸引力。</p>
+
+<h2>类型</h2>
+
+<h3>类/对象</h3>
+
+<p>scala中一切都是对象，虽然Java也是这样说的（其实ruby也是这样说的）。在Java中一个数字仅仅是个值，但在scala中却真的是对象：</p>
+
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="n">println</span><span class="o">(</span><span class="s">&quot;2 type: &quot;</span> <span class="o">+</span> <span class="mf">2.</span><span class="n">getClass</span><span class="o">())</span></code></pre></div>
+
+
+<p>scala同Java一样将所有类型都设定了一个基类：<code>Any</code>。不同的是，<code>Any</code>下还区分了<code>AnyVal</code>和<code>AnyRef</code>。</p>
+
+<h3>类型推断</h3>
+
+<p>scala是一门静态类型语言，但是其强大的类型推断可以避免很多冗余信息的代码。例如：</p>
+
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">map</span><span class="k">:</span><span class="kt">Map</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">HashMap</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]</span>
+<span class="c1">// 可简写为</span>
+<span class="k">val</span> <span class="n">map</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">HashMap</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]</span>
+
+<span class="k">def</span> <span class="n">func</span><span class="o">()</span><span class="k">:</span><span class="kt">String</span> <span class="o">=</span> <span class="o">{</span>
+    <span class="s">&quot;hello&quot;</span>
+<span class="o">}</span>
+<span class="c1">// 可简写为</span>
+<span class="k">def</span> <span class="n">func</span><span class="o">()</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="s">&quot;hello&quot;</span>
+<span class="o">}</span></code></pre></div>
+
+
+<p>类型推断可以根据表达式的类型决定这个变量/函数的类型，这就如同C++11中的<code>auto</code>关键字。</p>
+
+<h3>函数</h3>
+
+<p>scala既然包含了函数式语言的特性，那么函数作为first citizen就是自然而言的事情。而function literal的语法形式也就必须更自然（想想common lisp里lambda那蛋疼的关键字）：</p>
+
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">factor</span> <span class="k">=</span> <span class="mi">3</span>
+<span class="k">val</span> <span class="n">multiplier</span> <span class="k">=</span> <span class="o">(</span><span class="n">i</span><span class="k">:</span><span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">i</span> <span class="o">*</span> <span class="n">factor</span> <span class="c1">// function literal, lexical bind to factor</span>
+<span class="k">val</span> <span class="n">l1</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">,</span> <span class="mi">5</span><span class="o">)</span> <span class="n">map</span> <span class="n">multiplier</span> <span class="c1">// map `multiplier` to every element in List l1</span>
+
+<span class="k">def</span> <span class="n">add</span><span class="o">(</span><span class="n">a</span><span class="k">:</span><span class="kt">Int</span><span class="o">,</span> <span class="n">b</span><span class="k">:</span><span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+<span class="o">}</span>
+
+<span class="k">val</span> <span class="n">f</span><span class="k">:</span><span class="o">(</span><span class="kt">Int</span><span class="o">,</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">Int</span> <span class="k">=</span> <span class="n">add</span> <span class="c1">// f is a function type: (Int, Int) =&gt; Int</span>
+<span class="n">println</span><span class="o">(</span><span class="s">&quot;f:&quot;</span> <span class="o">+</span> <span class="n">f</span><span class="o">(</span><span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">))</span></code></pre></div>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/09/23/scala-feature-overview/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2013/08/21/javascript-overview/">Javascript Overview</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-08-21T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>Lexical Structure</h2>
+
+<p>In JavaScript, identifiers are used to name variables and functions and to provide labels for certain loops in JavaScript code. A JavaScript identifier must begin with a letter, an underscore (_), or a dollar sign ($). Subsequent characters can be letters, digits, underscores, or dollar signs</p>
+
+<pre><code>i
+abc
+v1
+$str
+</code></pre>
+
+<p>JavaScript allows identifiers to contain letters and digits from the entire Unicode character set.</p>
+
+<p>Like many programming languages, JavaScript uses the semicolon (;) to separate statements from each other. In JavaScript, you can usually omit the semicolon between two statements if those statements are written on separate lines.</p>
+
+<h2>Types/Values/Variables</h2>
+
+<h3>Numbers</h3>
+
+<p>Unlike many languages, JavaScript does not make a distinction between integer values and floating-point values. All numbers in JavaScript are represented as floating-point values.</p>
+
+<pre><code>0
+3
+0xff
+3.14
+</code></pre>
+
+<h3>Strings</h3>
+
+<pre><code>"hello world"
+'hello world'
+"Wouldn't you prefer O'Reilly's book?"  
+</code></pre>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/08/21/javascript-overview/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2013/08/15/debug-esp-bug/">记一次堆栈平衡错误</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-08-15T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>15</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>最近在一个使用Visual Studio开发的C++程序中，出现了如下错误：</p>
+
+<blockquote><p>Run-Time Check Failure #0 - The value of ESP was not properly saved across a function call.  This is usually a result of calling a function declared with one calling convention with a function pointer declared with a different calling convention.</p></blockquote>
+
+<p>这个错误主要指的就是函数调用堆栈不平衡。在C/C++程序中，调用一个函数前会保存当前堆栈信息，目标函数返回后会把堆栈恢复到调用前的状态。函数的参数、局部变量会影响堆栈。而函数堆栈不平衡，一般是因为函数调用方式和目标函数定义方式不一致导致，例如：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="kr">__stdcall</span> <span class="nf">func</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">)</span> <span class="p">{</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span> <span class="p">{</span>
+    <span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">funcptr</span><span class="p">)(</span><span class="kt">int</span><span class="p">);</span>
+    <span class="n">funcptr</span> <span class="n">ptr</span> <span class="o">=</span> <span class="p">(</span><span class="n">funcptr</span><span class="p">)</span> <span class="n">func</span><span class="p">;</span>
+    <span class="n">ptr</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span> <span class="c1">// 返回后导致堆栈不平衡</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div>
+
+
+<p><code>__stdcall</code>修饰的函数，其函数参数的出栈由被调用者自己完成，而<code>__cdecl</code>，也就是C/C++函数的默认调用约定，则是调用者完成参数出栈。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/08/15/debug-esp-bug/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+      <a class="prev" href="/posts/5">&larr; Older</a>
+    
+    <a href="/blog/archives">Blog Archives</a>
+    
+    <a class="next" href="/posts/3">Newer &rarr;</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/05/18/memcache-proxy/">实现一个memcache proxy</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/04/23/xmemcached/">Xmemcached源码阅读</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/04/09/xnio-source/">XNIO源码阅读</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/03/09/toy-jit/">实现JVM中的JIT</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+<div id="recentcomments" class="dsq-widget">
+<h1 class="dsq-widget-title">Recent Comments</h1>
+</div>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+</section>
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - Kevin Lynx -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
+<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
+
+</p>
+
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,448 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>C++构造/析构函数中的多态(二) - loop in codes</title>
+  <meta name="author" content="Kevin Lynx">
+
+  
+  <meta name="description" content="本来是几年以前写的一篇博客：C++陷阱：构造函数中的多态。然后有同学在评论中讨论了起来，为了记录我就在这里单独写一篇，基本上就是用编译器的实现去证明了早就被大家熟知的一些结论。 默认构造函数/析构函数不是在所有情况下都会被生成出来的。为此我还特地翻出《Inside C++ object model &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://codemacro.com/2014/09/06/necessary-dtor">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <!--script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script-->
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<!--link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css"-->
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">loop in codes</a></h1>
+  
+    <h2>Kevin Lynx BLOG</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:codemacro.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about.html">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">C++构造/析构函数中的多态(二)</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-09-06T00:00:00+08:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>6</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>本来是几年以前写的一篇博客：<a href="http://codemacro.com/2012/09/17/c-plus-plus-ctor-virtual/">C++陷阱：构造函数中的多态</a>。然后有同学在评论中讨论了起来，为了记录我就在这里单独写一篇，基本上就是用编译器的实现去证明了早就被大家熟知的一些结论。</p>
+
+<p><strong>默认构造函数/析构函数不是在所有情况下都会被生成出来的。</strong>为此我还特地翻出《Inside C++ object model》：</p>
+
+<blockquote><p>2.1 Default Constructor Construction</p>
+
+<p>The C++ Annotated Reference Manual (ARM) [ELLIS90] (Section 12.1) tells us that &ldquo;default constructors…are generated (by the compiler) where needed….&rdquo;</p></blockquote>
+
+<p>后面别人还罗列了好些例子告诉你哪些情况才算<code>needed</code>。本文我就解释<code>构造函数中的多态</code>评论中的问题。</p>
+
+<!-- more -->
+
+
+<p>实验代码如下：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="cp">#include &lt;stdio.h&gt;</span>
+
+<span class="k">class</span> <span class="nc">Base</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="n">Base</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">Init</span><span class="p">();</span>
+    <span class="p">}</span>
+
+    <span class="c1">//virtual</span>
+     <span class="o">~</span><span class="n">Base</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Base dtor</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+        <span class="n">Release</span><span class="p">();</span>
+    <span class="p">}</span>
+
+    <span class="k">virtual</span> <span class="kt">void</span> <span class="n">Init</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Base::Init</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">virtual</span> <span class="kt">void</span> <span class="n">Release</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Base::Release</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="k">class</span> <span class="nc">Derived</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Base</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="cm">/*</span>
+<span class="cm">    ~Derived() {</span>
+<span class="cm">        printf(&quot;Derived dtor\n&quot;);</span>
+<span class="cm">    } // */</span>
+
+    <span class="k">virtual</span> <span class="kt">void</span> <span class="n">Init</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Derived::Init</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">virtual</span> <span class="kt">void</span> <span class="n">Release</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Derived:Release</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="n">Base</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Derived</span><span class="p">();</span>
+    <span class="k">delete</span> <span class="n">obj</span><span class="p">;</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div>
+
+
+<p>去掉<code>Derived</code>的析构函数，去掉<code>Base</code>析构函数的<code>virtual</code>：</p>
+
+<pre><code># g++ -Wa,-adhln -g test.cpp &gt; test.s
+
+  44:test.cpp      ****     delete obj;
+ 227                    .loc 1 44 0
+ 228 0028 488B45F0      movq    -16(%rbp), %rax
+ 229 002c 488945E0      movq    %rax, -32(%rbp)
+ 230 0030 48837DE0      cmpq    $0, -32(%rbp)       
+ 230      00
+ 231 0035 7520          jne .L17                   
+ 232 0037 EB30          jmp .L18
+...
+ 244                .L17:
+ 245                    .loc 1 44 0
+ 246 0057 488B7DE0      movq    -32(%rbp), %rdi
+ 247 005b E8000000      call    _ZN4BaseD1Ev             # 直接call
+</code></pre>
+
+<p>从这里甚至可以看到<code>delete</code>对空指针的判定。<code>Base</code>的析构函数不是<code>virtual</code>，所以这里编译器生成的析构函数调用代码根本不需要用到<code>vptr</code>，直接<code>call</code>就可以。而具体<code>call</code>谁则是根据<code>obj</code>指向的类型<code>Base</code>确定。<em>即使<code>Derived</code>用户定义了析构函数也不会调用，无论是否<code>virtual</code>。</em></p>
+
+<p>事实上编译器甚至不需要生成<code>Derived</code>的析构函数，<em>多傻的编译器才会生成这些什么事都不做的代码而光进出函数就得好几条指令？</em></p>
+
+<p>查看程序中的符号，没有生成<code>Derived</code>析构函数：</p>
+
+<pre><code># nm test
+...
+0000000000400816 W _ZN4Base4InitEv
+00000000004007fe W _ZN4Base7ReleaseEv
+000000000040082e W _ZN4BaseC2Ev
+0000000000400876 W _ZN4BaseD1Ev             
+00000000004007e6 W _ZN7Derived4InitEv
+00000000004007ce W _ZN7Derived7ReleaseEv
+0000000000400852 W _ZN7DerivedC1Ev
+...
+</code></pre>
+
+<p>现在把<code>Base</code>析构函数变为<code>virtual</code>的：</p>
+
+<pre><code>  44:test.cpp      ****     delete obj;
+ 170                    .loc 1 44 0
+ 171 0028 48837DF0      cmpq    $0, -16(%rbp)
+ 171      00
+ 172 002d 7520          jne .L12
+ 173 002f EB32          jmp .L13
+...
+ 185                .L12:
+ 186                    .loc 1 44 0
+ 187 004f 488B45F0      movq    -16(%rbp), %rax     # this -&gt; rax
+ 188 0053 488B00        movq    (%rax), %rax        # *rax -&gt; vptr
+ 189 0056 4883C008      addq    $8, %rax            # vptr += 8
+ 190 005a 488B00        movq    (%rax), %rax        # *vptr -&gt; Base::~Base
+ 191 005d 488B7DF0      movq    -16(%rbp), %rdi     # this as first argument (passed by rdi)
+ 192 0061 FFD0          call    *%rax               # call
+</code></pre>
+
+<p>析构函数动态调用这也是预期的。至于为什么是偏移<code>vptr+8</code>，是因为第一个指针指向的是<code>type_info</code>，具体可看<a href="http://www.cnblogs.com/zhyg6516/archive/2011/03/07/1971898.html">浅议 Dynamic_cast 和 RTTI</a>。<em>vptr和virtual function table还需要详述吗？</em></p>
+
+<p>此时就会生成<code>Derived</code>的析构函数：</p>
+
+<pre><code>...
+000000000040084c W _ZN4Base4InitEv
+00000000004008ac W _ZN4Base7ReleaseEv
+0000000000400864 W _ZN4BaseC2Ev
+0000000000400970 W _ZN4BaseD0Ev
+00000000004009b0 W _ZN4BaseD1Ev
+00000000004008c4 W _ZN4BaseD2Ev
+0000000000400834 W _ZN7Derived4InitEv
+000000000040081c W _ZN7Derived7ReleaseEv
+0000000000400888 W _ZN7DerivedC1Ev
+0000000000400904 W _ZN7DerivedD0Ev          
+000000000040093a W _ZN7DerivedD1Ev
+...
+</code></pre>
+
+<p>细心的人就会发现无论是<code>Base</code>还是<code>Derived</code>都会生成多个析构函数，这个深入下去还有很多内容，具体可以参看：<a href="http://stackoverflow.com/questions/6613870/gnu-gcc-g-why-does-it-generate-multiple-dtors">GNU GCC (g++): Why does it generate multiple dtors?</a>。</p>
+
+<p>甚至可以运行这个例子看到调用到了<code>Derived</code>的析构函数：</p>
+
+<pre><code>(gdb) ni
+0x000000000040080d      45          return 0;
+1: x/3i $pc
+0x40080d &lt;main()+117&gt;:  callq  *%rax                  # 调用
+0x40080f &lt;main()+119&gt;:  mov    $0x0,%eax
+0x400814 &lt;main()+124&gt;:  add    $0x28,%rsp
+(gdb) si
+Derived::~Derived (this=0x7ffff7ffd000, __in_chrg=&lt;value optimized out&gt;) at test.cpp:24
+24      class Derived : public Base {
+1: x/3i $pc
+0x400904 &lt;Derived::~Derived()&gt;: push   %rbp
+0x400905 &lt;Derived::~Derived()+1&gt;:       mov    %rsp,%rbp
+0x400908 &lt;Derived::~Derived()+4&gt;:       sub    $0x10,%rsp
+</code></pre>
+
+<p>其实看<code>Derived</code>的析构函数实现会发现很多有趣的东西：</p>
+
+<pre><code>(gdb) disassemble 'Derived::~Derived'
+Dump of assembler code for function Derived::~Derived():
+0x0000000000400904 &lt;Derived::~Derived()+0&gt;:     push   %rbp
+0x0000000000400905 &lt;Derived::~Derived()+1&gt;:     mov    %rsp,%rbp
+0x0000000000400908 &lt;Derived::~Derived()+4&gt;:     sub    $0x10,%rsp
+0x000000000040090c &lt;Derived::~Derived()+8&gt;:     mov    %rdi,-0x8(%rbp)
+0x0000000000400910 &lt;Derived::~Derived()+12&gt;:    mov    $0x400b50,%edx
+0x0000000000400915 &lt;Derived::~Derived()+17&gt;:    mov    -0x8(%rbp),%rax
+0x0000000000400919 &lt;Derived::~Derived()+21&gt;:    mov    %rdx,(%rax)
+0x000000000040091c &lt;Derived::~Derived()+24&gt;:    mov    -0x8(%rbp),%rdi
+0x0000000000400920 &lt;Derived::~Derived()+28&gt;:    callq  0x4008c4 &lt;Base::~Base()&gt;
+0x0000000000400925 &lt;Derived::~Derived()+33&gt;:    mov    $0x1,%eax
+0x000000000040092a &lt;Derived::~Derived()+38&gt;:    test   %al,%al
+0x000000000040092c &lt;Derived::~Derived()+40&gt;:    je     0x400937 &lt;Derived::~Derived()+51&gt;
+0x000000000040092e &lt;Derived::~Derived()+42&gt;:    mov    -0x8(%rbp),%rdi
+0x0000000000400932 &lt;Derived::~Derived()+46&gt;:    callq  0x400670 &lt;_ZdlPv@plt&gt;               
+0x0000000000400937 &lt;Derived::~Derived()+51&gt;:    leaveq
+0x0000000000400938 &lt;Derived::~Derived()+52&gt;:    retq
+</code></pre>
+
+<p>实际上这个析构函数就是上面的<code>D0</code>版本，它做了一件重要的事就是<code>delete this</code>。具体的可以google gcc对析构函数的实现。</p>
+
+<p>构造函数和析构函数中根本就不会启用多态，这个是结论或者说是标准，但不是原因(真怕又有人告诉我c++ standard某section这样写的所以这就是理由)。既然反正已经看实现了，就索性看一眼编译器怎么处理这个问题：</p>
+
+<pre><code>// Base::~Base
+ 261 0000 55            pushq   %rbp
+ 262                .LCFI22:
+ 263 0001 4889E5        movq    %rsp, %rbp
+ 264                .LCFI23:
+ 265 0004 4883EC10      subq    $16, %rsp
+ 266                .LCFI24:
+ 267 0008 48897DF8      movq    %rdi, -8(%rbp)
+ 268                    .loc 1 10 0
+ 269 000c BA000000      movl    $_ZTV4Base+16, %edx
+ 269      00
+ 270 0011 488B45F8      movq    -8(%rbp), %rax
+ 271 0015 488910        movq    %rdx, (%rax)
+ 272                    .loc 1 11 0
+ 273 0018 BF000000      movl    $.LC4, %edi
+ 273      00
+ 274 001d E8000000      call    puts
+ 274      00
+ 275                    .loc 1 12 0
+ 276 0022 488B7DF8      movq    -8(%rbp), %rdi
+ 277 0026 E8000000      call    _ZN4Base7ReleaseEv  # 直接call绝对地址
+</code></pre>
+
+<p>构造函数一样：</p>
+
+<pre><code>  94 0000 55            pushq   %rbp
+  95                .LCFI9:
+  96 0001 4889E5        movq    %rsp, %rbp
+  97                .LCFI10:
+  98 0004 4883EC10      subq    $16, %rsp
+  99                .LCFI11:
+ 100 0008 48897DF8      movq    %rdi, -8(%rbp)
+ 101                .LBB2:
+ 102                    .loc 1 5 0
+ 103 000c B8000000      movl    $_ZTV4Base+16, %eax
+ 103      00
+ 104 0011 488B55F8      movq    -8(%rbp), %rdx
+ 105 0015 488902        movq    %rax, (%rdx)
+ 106                    .loc 1 6 0
+ 107 0018 488B7DF8      movq    -8(%rbp), %rdi
+ 108 001c E8000000      call    _ZN4Base4InitEv  # 直接call地址
+</code></pre>
+
+<p><em>END</em></p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2014/09/06/necessary-dtor/'>http://codemacro.com/2014/09/06/necessary-dtor/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2014-09-06T00:00:00+08:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>6</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/categories/c-slash-c-plus-plus/'>c/c++</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/2014/09/02/stack-frame/" title="Previous Post: C/C++中手动获取调用堆栈">&laquo; C/C++中手动获取调用堆栈</a>
+      
+      
+        <a class="basic-alignment right" href="/2014/09/09/understand-git/" title="Next Post: 理解git常用命令原理">理解git常用命令原理 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><!-- UY BEGIN -->
+<div id="uyan_frame"></div>
+<script type="text/javascript" src="http://v2.uyan.cc/code/uyan.js?uid=1537634"></script>
+<!-- UY END -->
+
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/05/18/memcache-proxy/">实现一个memcache proxy</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/04/23/xmemcached/">Xmemcached源码阅读</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/04/09/xnio-source/">XNIO源码阅读</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/03/09/toy-jit/">实现JVM中的JIT</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+<div id="recentcomments" class="dsq-widget">
+<h1 class="dsq-widget-title">Recent Comments</h1>
+</div>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - Kevin Lynx -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
+<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
+
+</p>
+
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,447 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>浅析静态库链接原理 - loop in codes</title>
+  <meta name="author" content="Kevin Lynx">
+
+  
+  <meta name="description" content="静态库的链接基本上同链接目标文件.obj/.o相同，但也有些不同的地方。本文简要描述linux下静态库在链接过程中的一些细节。 静态库文件格式 静态库远远不同于动态库，不涉及到符号重定位之类的问题。静态库本质上只是将一堆目标文件进行打包而已。静态库没有标准，不同的linux下都会有些细微的差别。 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://codemacro.com/2014/09/15/inside-static-library">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <!--script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script-->
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<!--link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css"-->
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">loop in codes</a></h1>
+  
+    <h2>Kevin Lynx BLOG</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:codemacro.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about.html">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">浅析静态库链接原理</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-09-15T00:00:00+08:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>15</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>静态库的链接基本上同链接目标文件<code>.obj/.o</code>相同，但也有些不同的地方。本文简要描述linux下静态库在链接过程中的一些细节。</p>
+
+<h2>静态库文件格式</h2>
+
+<p>静态库远远不同于动态库，不涉及到符号重定位之类的问题。静态库本质上只是将一堆目标文件进行打包而已。静态库没有标准，不同的linux下都会有些细微的差别。大致的格式<a href="http://en.wikipedia.org/wiki/Ar_%28Unix%29#File_format_details">wiki</a>上描述的较清楚：</p>
+
+<pre><code>Global header
+-----------------        +-------------------------------
+File header 1       ---&gt; | File name
+File content 1  |        | File modification timestamp 
+-----------------        | Owner ID
+File header 2            | Group ID
+File content 2           | File mode
+-----------------        | File size in bytes
+...                      | File magic
+                         +-------------------------------
+</code></pre>
+
+<p><code>File header</code>很多字段都是以ASCII码表示，所以可以用文本编辑器打开。</p>
+
+<p>静态库本质上就是使用<code>ar</code>命令打包一堆<code>.o</code>文件。我们甚至可以用<code>ar</code>随意打包一些文件：</p>
+
+<pre><code>$ echo 'hello' &gt; a.txt &amp;&amp; echo 'world' &gt; b.txt
+$ ar -r test.a a.txt b.txt
+$ cat test.a
+!&lt;arch&gt;
+a.txt/          1410628755  60833 100   100644  6         `
+hello
+b.txt/          1410628755  60833 100   100644  6         `
+world
+</code></pre>
+
+<!-- more -->
+
+
+<h2>链接过程</h2>
+
+<p>链接器在链接静态库时，同链接一般的<code>.o</code>基本相似。链接过程大致可以归纳下图：</p>
+
+<p><img src="/assets/res/link-process.png" alt="" /></p>
+
+<p>总结为：</p>
+
+<ul>
+<li><strong>所有传入链接器的<code>.o</code>都会被链接进最终的可执行程序</strong>；链接<code>.o</code>时，会将<code>.o</code>中的<code>global symbol</code>和<code>unresolved symbol</code>放入一个临时表</li>
+<li>如果多个<code>.o</code>定义了相同的<code>global symbol</code>，那么就会得到多重定义的链接错误</li>
+<li>如果链接结束了，<code>unresolved symbol</code>表不为空，那么就会得到符号未定义的链接错误</li>
+<li><code>.a</code>静态库处理本质上就是处理其中的每一个<code>.o</code>，不同的是，如果某个<code>.o</code>中没有一个符号属于<code>unresolved symbol</code>表，也就是链接器此时怀疑该<code>.o</code>没有必要，那么其就会被忽略</li>
+</ul>
+
+
+<p>可以通过一些代码来展示以上过程。在开发C++程序时，可以利用文件静态变量会先于<code>main</code>之前执行做一些可能利于程序结构的事情。如果某个<code>.o</code>（包含静态库中打包的<code>.o</code>）被链接进程序，那么其文件静态变量就会先于<code>main</code>初始化。</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// test.cpp</span>
+<span class="cp">#include &lt;stdio.h&gt;</span>
+
+<span class="k">class</span> <span class="nc">Test</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="n">Test</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Test ctor</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="k">static</span> <span class="n">Test</span> <span class="n">s_test</span><span class="p">;</span>
+
+<span class="c1">// lib.cpp</span>
+<span class="cp">#include &lt;stdio.h&gt;</span>
+
+<span class="k">class</span> <span class="nc">Lib</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+    <span class="n">Lib</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Lib ctor</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="k">static</span> <span class="n">Lib</span> <span class="n">s_lib</span><span class="p">;</span>
+
+<span class="c1">// main.cpp</span>
+<span class="cp">#include &lt;stdio.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;main</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div>
+
+
+<p>以上代码<code>main.cpp</code>中未引用任何<code>test.cpp``lib.cpp</code>中的符号：</p>
+
+<pre><code>$ g++ -o test test.o lib.o main.o
+$ ./test
+Lib ctor
+Test ctor
+main
+</code></pre>
+
+<p>生成的可执行程序执行如预期，其链接了<code>test.o``lib.o</code>。但是如果把<code>lib.o</code>以静态库的形式进行链接，情况就不一样了：为了做对比，基于以上的代码再加一个文件，及修改<code>main.cpp</code>：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// libfn.cpp</span>
+<span class="kt">int</span> <span class="nf">sum</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">,</span> <span class="kt">int</span> <span class="n">b</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// main.cpp</span>
+<span class="cp">#include &lt;stdio.h&gt;</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;main</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="k">extern</span> <span class="kt">int</span> <span class="n">sum</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;sum: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">sum</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">));</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div>
+
+
+<p>将<code>libfn.o</code>和<code>lib.o</code>创建为静态库：</p>
+
+<pre><code>$ ar -r libfn.a libfn.o lib.o
+$ g++ -o test main.o test.o -lfn -L.
+$ ./test
+Test ctor
+main
+sum: 5
+</code></pre>
+
+<p>因为<code>lib.o</code>没有被链接，导致其文件静态变量也未得到初始化。</p>
+
+<p>调整链接顺序，可以进一步检验前面的链接过程：</p>
+
+<pre><code># 将libfn.a的链接放在main.o前面
+
+$ g++ -o test test.o -lfn main.o  -L.
+main.o: In function `main':
+main.cpp:(.text+0x19): undefined reference to `sum(int, int)'
+collect2: ld returned 1 exit status
+</code></pre>
+
+<p>这个问题遇到得比较多，也有点让人觉得莫名其妙。其原因就在于链接器在链接<code>libfn.a</code>的时候，发现<code>libfn.o</code>依然没有<strong>被之前链接的<code>*.o</code>引用到，也就是没有任何符号在<code>unresolved symbol table</code>中</strong>，所以<code>libfn.o</code>也被忽略。</p>
+
+<h2>一些实践</h2>
+
+<p>在实际开发中还会遇到一些静态库相关的问题。</p>
+
+<h3>链接顺序问题</h3>
+
+<p>前面的例子已经展示了这个问题。<strong>调整库的链接顺序</strong>可以解决大部分问题，但当静态库之间存在环形依赖时，则无法通过调整顺序来解决。</p>
+
+<h4>-whole-archive</h4>
+
+<p><code>-whole-archive</code>选项告诉链接器把静态库中的所有<code>.o</code>都进行链接，针对以上例子：</p>
+
+<pre><code>$ g++ -o test -L. test.o -Wl,--whole-archive -lfn main.o -Wl,--no-whole-archive
+$ ./test
+Lib ctor
+Test ctor
+main
+sum: 5
+</code></pre>
+
+<p>连<code>lib.o</code>也被链接了进来。<em><code>-Wl</code>选项告诉gcc将其作为链接器参数传入；之所以在命令行结尾加上<code>--no-whole-archive</code>是为了告诉编译器不要链接gcc默认的库</em></p>
+
+<p>可以看出这个方法还是有点暴力了。</p>
+
+<h4>&ndash;start-group</h4>
+
+<p>格式为：</p>
+
+<pre><code>--start-group archives --end-group
+</code></pre>
+
+<p>位于<code>--start-group</code>  <code>--end-group</code>中的所有静态库将被反复搜索，而不是默认的只搜索一次，直到不再有新的<code>unresolved symbol</code>产生为止。也就是说，出现在这里的<code>.o</code>如果发现有<code>unresolved symbol</code>，则可能回到之前的静态库中继续搜索。</p>
+
+<pre><code>$ g++ -o test -L. test.o -Wl,--start-group -lfn main.o -Wl,--end-group
+$ ./test
+Test ctor
+main
+sum: 5
+</code></pre>
+
+<p>查看<code>ldd</code>关于该参数的man page还可以一窥链接过程的细节：</p>
+
+<blockquote><p>The specified archives are searched repeatedly until no new undefined references are created. Normally, an archive is searched only once in the order that it is specified on the command line. If a symbol in that archive is needed to resolve an undefined symbol referred to by an object in an archive that appears later on the command line, the linker would not be able to resolve that reference. By grouping the archives, they all be searched repeatedly until all possible references are resolved.</p></blockquote>
+
+<h3>嵌套静态库</h3>
+
+<p>由于<code>ar</code>创建静态库时本质上只是对文件进行打包，所以甚至可以创建一个嵌套的静态库，从而测试链接器是否会递归处理静态库中的<code>.o</code>：</p>
+
+<pre><code>$ ar -r libfn.a libfn.o
+$ ar -r liboutfn.a libfn.a lib.o
+$ g++ -o test -L. test.o main.o -loutfn
+main.o: In function `main':
+main.cpp:(.text+0x19): undefined reference to `sum(int, int)'
+collect2: ld returned 1 exit status
+</code></pre>
+
+<p><strong>可见链接器并不会递归处理静态库中的文件</strong></p>
+
+<p>之所以要提到嵌套静态库这个问题，是因为我发现很多时候我们喜欢为一个静态库工程链接其他静态库。当然，这里的链接并非真正的链接（仅是打包），这个过程当然可以聪明到将其他静态库里的<code>.o</code>提取出来然后打包到新的静态库。</p>
+
+<p>如果我们使用的是类似<a href="http://www.scons.org/">scons</a>这种封装更高的依赖项管理工具，那么它是否会这样干呢？</p>
+
+<p>基于之前的例子，我们使用scons来创建<code>liboutfn.a</code>：</p>
+
+<pre><code># Sconstruct
+StaticLibrary('liboutfn.a', ['libfn.a', 'lib.o'])
+</code></pre>
+
+<p>使用文本编辑器打开<code>liboutfn.a</code>就可以看到其内容，或者使用：</p>
+
+<pre><code>$ ar -tv liboutfn.a
+rw-r--r-- 60833/100   1474 Sep 14 02:59 2014 libfn.a
+rw-r--r-- 60833/100   2448 Sep 14 02:16 2014 lib.o
+</code></pre>
+
+<p>可见scons也只是单纯地打包。<strong>所以，在scons中构建一个静态库时，再<code>链接</code>其他静态库是没有意义的</strong></p>
+
+<h2>参考文档</h2>
+
+<ul>
+<li><a href="http://en.wikipedia.org/wiki/Ar_%28Unix%29#File_format_details">ar (Unix)</a></li>
+<li><a href="http://linux.die.net/man/1/ld">ld man page</a></li>
+<li><a href="http://wen00072-blog.logdown.com/posts/188339-study-on-the-gnu-ld">GNU ld初探</a></li>
+<li><a href="http://eli.thegreenplace.net/2013/07/09/library-order-in-static-linking/">Library order in static linking</a></li>
+<li><a href="http://www.linuxjournal.com/article/6463?page=0,1">Linkers and Loaders</a></li>
+<li><a href="http://www.scons.org/doc/0.96.1/HTML/scons-user/c549.html">scons Building and Linking with Libraries</a></li>
+</ul>
+
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2014/09/15/inside-static-library/'>http://codemacro.com/2014/09/15/inside-static-library/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2014-09-15T00:00:00+08:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>15</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/categories/c-slash-c-plus-plus/'>c/c++</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/2014/09/09/understand-git/" title="Previous Post: 理解git常用命令原理">&laquo; 理解git常用命令原理</a>
+      
+      
+        <a class="basic-alignment right" href="/2014/09/21/zk-watch-benchmark/" title="Next Post: zookeeper节点数与watch的性能测试">zookeeper节点数与watch的性能测试 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><!-- UY BEGIN -->
+<div id="uyan_frame"></div>
+<script type="text/javascript" src="http://v2.uyan.cc/code/uyan.js?uid=1537634"></script>
+<!-- UY END -->
+
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/05/18/memcache-proxy/">实现一个memcache proxy</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/04/23/xmemcached/">Xmemcached源码阅读</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/04/09/xnio-source/">XNIO源码阅读</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/03/09/toy-jit/">实现JVM中的JIT</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+<div id="recentcomments" class="dsq-widget">
+<h1 class="dsq-widget-title">Recent Comments</h1>
+</div>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - Kevin Lynx -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
+<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
+
+</p>
+
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

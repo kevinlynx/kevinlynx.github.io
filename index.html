@@ -1,0 +1,711 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>loop in codes</title>
+  <meta name="author" content="Kevin Lynx">
+
+  
+  <meta name="description" content="通常我们会使用多台memcached构成一个集群，通过客户端库来实现缓存数据的分片(replica)。这会带来2个主要问题： memcached机器连接数过多
+不利于做整体的服务化；缺少可运维性。例如想对接入的客户端做应用级隔离；或者对缓存数据做多区域(机房)的冗余 实现一个memcache &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://codemacro.com">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <!--script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script-->
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<!--link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css"-->
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">loop in codes</a></h1>
+  
+    <h2>Kevin Lynx BLOG</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:codemacro.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about.html">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2017/05/18/memcache-proxy/">实现一个memcache proxy</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2017-05-18T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>18</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>通常我们会使用多台memcached构成一个集群，通过客户端库来实现缓存数据的分片(replica)。这会带来2个主要问题：</p>
+
+<ul>
+<li>memcached机器连接数过多</li>
+<li>不利于做整体的服务化；缺少可运维性。例如想对接入的客户端做应用级隔离；或者对缓存数据做多区域(机房)的冗余</li>
+</ul>
+
+
+<p>实现一个memcache proxy，相对于减少连接数来说，主要可以提供更多的扩展性。目前已经存在一些不错的memcache proxy，例如twitter的<a href="https://github.com/twitter/twemproxy">twemproxy</a>，facebook的<a href="https://github.com/facebook/mcrouter">mcrouter</a>。稍微调研了下，发现twemproxy虽然轻量，但功能较弱；mcrouter功能齐全，类似多区域多写的需求也满足。处于好玩的目的，之前又读过网络库<a href="http://codemacro.com/2017/04/09/xnio-source/">xnio</a>源码，我还是决定自己实现一个。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2017/05/18/memcache-proxy/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2017/04/23/xmemcached/">Xmemcached源码阅读</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2017-04-23T00:00:00+08:00'><span class='date'><span class='date-month'>Apr</span> <span class='date-day'>23</span><span class='date-suffix'>rd</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><a href="https://github.com/killme2008/xmemcached">Xmemcached</a> 是一个memcached客户端库。由于它提供的是同步API，而我想看下如何增加异步接口。所以就大致浏览了下它的源码。</p>
+
+<h2>主要结构</h2>
+
+<p>针对memcache客户端的实现，主要结构如下：</p>
+
+<p><img src="http://i.imgur.com/7r4Y35O.jpg" alt="" /></p>
+
+<ul>
+<li><code>XMemcachedClient</code> 是应用主要使用的类，所有针对memcache的接口都在这里</li>
+<li><code>Command</code> 用于抽象二进制协议或文本协议下各个操作，这里称为Command。<code>CommandFactory</code> 用于创建这些command</li>
+<li><code>MemcachedSessionLocator</code> 用于抽象不同的负载均衡策略，或者说数据分布策略。在一个memcached集群中，数据具体存放在哪个replica中，主要就是由这个类的实现具体的，例如<code>KetamaMemcachedSessionLocator</code> 实现了一致性哈希策略</li>
+<li><code>MemcachedConnector</code> 包装了网络部分，与每一个memcached建立连接后，就得到一个<code>Session</code>。command的发送都在<code>MemcachedConnector</code>中实现</li>
+<li>各个Session类/接口，则涉及到Xmemcached使用的网络库yanf4j。这个库也是Xmemcached作者的。</li>
+</ul>
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2017/04/23/xmemcached/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2017/04/09/xnio-source/">XNIO源码阅读</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2017-04-09T00:00:00+08:00'><span class='date'><span class='date-month'>Apr</span> <span class='date-day'>9</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><a href="http://xnio.jboss.org/">XNIO</a>是JBoss的一个IO框架。最开始我想找个lightweight servlet container库，于是看到了<a href="http://undertow.io/">undertow</a>，发现其网络部分使用的就是XNIO。所以干脆就先把XNIO的源码读下。</p>
+
+<p>XNIO文档非常匮乏，能找到都是<a href="https://docs.jboss.org/author/display/XNIO/About+XNIO">3.0的版本</a>，而且描述也不完全。Git上已经出到3.5.0。我读的是3.3.6.Final。</p>
+
+<h2>使用方式</h2>
+
+<p>可以参考<a href="https://github.com/ecki/xnio-samples/blob/master/src/main/java/org/xnio/samples/SimpleEchoServer.java">SimpleEchoServer.java</a>，不过这个例子使用的API已经被deprecated，仅供参考。使用方式大致为：</p>
+
+<ul>
+<li>创建服务，提供acceptListener</li>
+<li>在acceptListener中accept新的连接，并注册连接listener</li>
+<li>在连接listener回调中完成IO读写</li>
+</ul>
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2017/04/09/xnio-source/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2017/03/09/toy-jit/">实现JVM中的JIT</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2017-03-09T00:00:00+08:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>9</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>在JVM中，JIT (Just-in-Time) 即时编译指的是在Java程序运行过程中JVM优化部分指令为本地指令，从而大幅提升性能。在上一篇文章<a href="http://codemacro.com/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>中实现了一个基本可以运行Java字节码的JVM。本篇文章描述我是如何在这个玩具JVM中实现JIT的。</p>
+
+<p>推荐文章<a href="http://eli.thegreenplace.net/2013/11/05/how-to-jit-an-introduction/">&ldquo;How to JIT - an introduction&rdquo;</a>，介绍了JIT的基本实现原理。作者把JIT分为两个阶段：</p>
+
+<ul>
+<li>运行期生成机器代码(本地指令)</li>
+<li>执行机器代码</li>
+</ul>
+
+
+<p>生成机器代码很好理解，就是一个JVM指令到机器指令的翻译；而执行机器代码，原理上是利用了OS提供了API可以分配可以执行的内存，然后往这块内存中写入机器码，从而实现运行期可以执行动态生成的机器码功能。</p>
+
+<p>我们可以利用这个原理来实现JIT，但是未免太底层了点，需要做很多工作来完成这件事情。我们可以利用<a href="https://www.gnu.org/software/libjit/">libjit</a>来简化实现。这个作者博客里还有些libjit的教程，其中<a href="http://eli.thegreenplace.net/2013/10/17/getting-started-with-libjit-part-1">part 1</a>值得阅读。 简单来说，libjit对机器指令做了抽象，利用它的API来描述一个函数包含了哪些指令，实现了什么功能。然后具体的指令生成以及指令执行则交给libjit完成。</p>
+
+<p>例如以下使用libjit的代码：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// t = u
+</span><span class='line'>jit_insn_store(F, t, u); // 类似 mov 指令
+</span><span class='line'>// u = v
+</span><span class='line'>jit_insn_store(F, u, v);
+</span><span class='line'>
+</span><span class='line'>// v = t % v
+</span><span class='line'>jit_value_t rem = jit_insn_rem(F, t, v); // 求余指令
+</span><span class='line'>jit_insn_store(F, v, rem);</span></code></pre></td></tr></table></div></figure>
+
+
+<p>所以，我们需要做的，就是将JVM的字节码，翻译成一堆libjit的API调用。但是我希望能够稍微做点抽象，我们写个翻译器，能够将JVM这种基于栈的指令，翻译成基于寄存器的指令，才方便后面无论是使用libjit还是直接翻译成机器码。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2017/03/09/toy-jit/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2017-02-25T00:00:00+08:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>25</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>本文描述了一个用Java实现的玩具JVM，用Java实现的好处是可以不用处理JVM中的垃圾回收。</p>
+
+<p>Java虚拟机是基于栈的虚拟机。栈虚拟机的特点是所有临时操作数都存放在栈中。编译器生成的指令都会围绕着这个栈展开，相对而言，解释执行这些指令会比较容易。基于栈的虚拟机可能会生成如下指令：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>push 3   # 把立即数3压栈
+</span><span class='line'>push 4   # 把立即数4压栈
+</span><span class='line'>add      # 从栈中弹出两个操作数进行相加，结果压回栈中</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Java .class文件存储的主要就是编译后的指令，一个玩具JVM，简单来说就是解释执行这里面的指令。接下来就说说为了让这个JVM跑起来需要实现哪些功能。</p>
+
+<h2>class 文件解析</h2>
+
+<p>推荐一下 <a href="https://www.codeproject.com/articles/35915/java-class-viewer">Java class viewer</a>，里面有个工具可以可视化class文件内容。另外我直接复用了他解析class文件的代码。</p>
+
+<p>class文件描述的信息是以class为单位的，一个类如果有嵌套类，这个嵌套类也会生成为单独的class文件。从c/c++程序员的视角来看，class文件的生成有点类似编译，编译器在编译期间只做依赖符号存在与否的检查。所有引用其他class的地方，不同于c/c++，java class的引用都是在运行期定位的。这里看看一个简单的类class文件结构是怎样的：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2017/02/25/toy-jvm/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2017/02/05/mini-requirejs/">RequireJS最简实现</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2017-02-05T00:00:00+08:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>5</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>网上有不少解析RequireJS源码的文章，我觉得意义不大。阅读源代码的目的不是为了熟悉代码，而是为了学习核心实现原理。相对RequireJS的源码，<a href="https://github.com/zengjialuo/kittyjs">kitty.js</a>的实现更简单，更容易理解。本文正是抄了kitty.js的实现，是一个更精简的RequireJS，用于理解RequireJS的实现原理。</p>
+
+<p><a href="https://github.com/kevinlynx/dummy-requirejs">github dummy-requirejs</a>。这个实现仅支持核心feature：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>require(deps, callback) // deps 是依赖数组
+</span><span class='line'>define(id, deps, factory) // factory是一个函数
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>例子参考git中rect.js/main.js。</p>
+
+<p>从实现来看，require/define是基本一致的，require的callback等同于define的factory：都会要求deps被加载且被执行，获得deps的exports作为整个module传入callback/factory。不同的是，factory的返回值会被作为define出来的模块的export，可被视为模块本身；而callback返回值被忽略。</p>
+
+<p>从用法来看，define仅是定义了模块，这个模块可能被作为deps被其他模块依赖，但define传入的factory此时是不执行的；而require则会触发各个模块的factory执行。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2017/02/05/mini-requirejs/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2017/01/08/react-plugin/">ReactJS项目中基于webpack实现页面插件</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2017-01-08T00:00:00+08:00'><span class='date'><span class='date-month'>Jan</span> <span class='date-day'>8</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>整个Web页面是基于ReactJS的，js打包用的webpack，现在想在Web页面端实现一种插件机制，可以动态载入第三方写的js插件。这个插件有一个约定的入口，插件被载入后调用该入口函数，插件内部实现渲染逻辑。插件的实现也使用了ReactJS，当然理论上也可以不使用。预期的交互关系是这样的：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// 主页面
+</span><span class='line'>load('/plugin/my-plugin.js', function (plugin) {
+</span><span class='line'>    plugin.init($('#plugin-main'), args)
+</span><span class='line'>})
+</span><span class='line'>
+</span><span class='line'>// 基于ReactJS的插件
+</span><span class='line'>function init($elem, args) {
+</span><span class='line'>    ReactDOM.render((&lt;Index /&gt;), $elem)
+</span><span class='line'>}
+</span><span class='line'>export {init}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在主页面上支持这种插件机制，有点类似一个应用市场，主页面作为应用平台，插件就是应用，用户可以在主页面上选用各种插件。</p>
+
+<h2>问题</h2>
+
+<p>目前主页面里ReactJS被webpack打包进了bundle.js，如果插件也把ReactjS打包进去，最终在载入插件后，浏览器环境中就会初始化两次ReactJS。<strong>而ReactJS是不能被初始化多次的</strong>。此外，为了插件编写方便，我把一些可重用的组件打包成一个单独的库，让主页面和插件都去依赖。这个库自然也不能把ReactJS打包进来。何况还有很多三方库，例如underscore、ReactDOM最好也能避免重复打包，从而可以去除重复的内容。所以，这里就涉及到如何在webpack中拆分这些库。</p>
+
+<p>需要解决的问题：</p>
+
+<ul>
+<li>拆分三方库，避免打包进bundle.js</li>
+<li>动态载入js文件，且能拿到其module，或者至少能知道js什么时候被载入，才能调用其入口函数</li>
+</ul>
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2017/01/08/react-plugin/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2016/08/16/reverse_html/">一次逆向网页内容加密</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-08-16T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>16</span><span class='date-suffix'>th</span>, <span class='date-year'>2016</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>最近写一个爬虫要从这个<a href="http://cpquery.sipo.gov.cn/txnQueryFeeData.do?select-key:shenqingh=2007200071873&amp;select-key:zhuanlilx=2&amp;select-key:gonggaobj=&amp;select-key:backPage=http%3A%2F%2Fcpquery.sipo.gov.cn%2FtxnQueryOrdinaryPatents.do%3Fselect-key%3Ashenqingh%3D2015204531832%26select-key%3Azhuanlimc%3D%26select-key%3Ashenqingrxm%3D%26select-key%3Azhuanlilx%3D%26select-key%3Ashenqingr_from%3D%26select-key%3Ashenqingr_to%3D%26inner-flag%3Aopen-type%3Dwindow%26inner-flag%3Aflowno%3D1470846836440&amp;inner-flag:open-type=window&amp;inner-flag:flowno=1471142917509">网页</a>爬取内容。以往爬取网页内容复杂点的，一般就是处理下页面内容动态载入，动态载入的内容可能会要求复杂奇怪的参数，或者找到这个动态载入的HTTP接口在哪里麻烦点。但是这个网页不同。类似：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;td&gt;&lt;span name="record_yijiaof:feiyongzldm" title="pos||"&gt;&lt;span id="5d299905633d4aa288b65f5bf74e414c" class="nlkfqirnlfjerldfgzxcyiuro"&gt;专&lt;/span&gt;&lt;span id="546c73d012f74931aa5d45707121eb50" class="nlkfqirnlfjerldfgzxcyiuro"&gt;实&lt;/span&gt;&lt;span id="e0285e05974b4577b23b2ced8e453005" class="nlkfqirnlfjerldfgzxcyiuro"&gt;新&lt;/span&gt;&lt;span id="82b9e003de4e4577aa7617681a0d3777" class="nlkfqirnlfjerldfgzxcyiuro"&gt;用&lt;/span&gt;&lt;span id="417aaf4c6ad14b7781db02a688a4f885" class="nlkfqirnlfjerldfgzxcyiuro"&gt;用&lt;/span&gt;&lt;span id="a3f326efa35e4fe898d2f751e77d6777" class="nlkfqirnlfjerldfgzxcyiuro"&gt;新&lt;/span&gt;&lt;span id="c6c5135b931c48c09c6529735f4c6434" class="nlkfqirnlfjerldfgzxcyiuro"&gt;型&lt;/span&gt;&lt;span id="8c55b119929147ddbe178776903554e5" class="nlkfqirnlfjerldfgzxcyiuro"&gt;专&lt;/span&gt;&lt;span id="f8e47702c9f5420198a6f9b9aa132c9c" class="nlkfqirnlfjerldfgzxcyiuro"&gt;利&lt;/span&gt;&lt;span id="60cc2e23682e4ca2b850a92f55029458" class="nlkfqirnlfjerldfgzxcyiuro"&gt;第9年年费&lt;/span&gt;&lt;/span&gt;&lt;/td&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>最终希望得到的内容其实是<code>实用新型专利第9年年费</code>，但是得到的网页确实乱序后的字符串，并且每次刷新得到的乱序还不一样，试过几次也看不出规律。</p>
+
+<p>按照以往的思路，猜测肯定是某个js文件中包含了还原算法，我的目的，就是找出这个算法，在爬虫程序中实现这个算法，以还原出可读的字符串。</p>
+
+<p>js中要完成这样的事，首先得找到网页元素，包括：根据外层span <code>name=record_yijiaof:feiyongzldm</code>；根据再外层的table；根据内层span <code>class='nlkfqirnlfjerldfgzxcyiuro'</code>。以前我一直想要个工具，可以在某网页载入的所有js文件中搜索特定字符串，从而帮助逆向，但是一直没有这个工具。所以这次也只有人肉看每个js。根据js的名字猜测这个逻辑会放在哪里。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2016/08/16/reverse_html/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2016/05/08/tls_so_coredump/">记一次线程局部存储与动态库引起的core</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-05-08T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>8</span><span class='date-suffix'>th</span>, <span class='date-year'>2016</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>线上的服务退出时coredump，显示堆栈为：</p>
+
+<p><img src="/assets/res/tls_so_core/core.JPG" alt="" /></p>
+
+<p>google一下发现<a href="http://www.tuicool.com/articles/YJ3A7f">有人遇到过</a>，产生这个core的条件为：</p>
+
+<ul>
+<li>使用TLS时注册了destructor (<code>pthread_key_create</code>)，这个回调函数会在线程退出时被调用</li>
+<li>这个destructor符号位于.so中</li>
+<li>在线程退出时，这个.so已经被dlclose</li>
+</ul>
+
+
+<p>我们的程序模型中，类似于一个Web App server，有一个线程池包装了IO处理，将请求派发给应用插件，处理完后回应给客户端。应用插件是一个.so，被动态载入(dlopen)，该.so由于实现需要引入了较多的第三方.so(隐式载入)。初步排查时，整个实现是没有问题的，线程池是在.so close前关闭的。</p>
+
+<p>没有线索，于是尝试找到该TLS是哪个模块引入的。通过gdb断<code>pthread_key_create</code>，以及不为空的destructor回调可以确定几个模块，但范围不够小，这些模块基本还是些基础模块，如zookeeper/mxml以及网络模块。</p>
+
+<p>多看了几个core，发现这个回调的偏移地址都是固定的960，如上图中的<code>0x7f0f26c9f960</code>。.so被载入时，基址是会变的，但偏移是不会变的，例如通过nm查看.so中的符号时：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$nm lib/libsp_kit.so | grep loadConfig
+</span><span class='line'>00000000002de170 T _ZN8sp_basic14SortRailConfig10loadConfigEPKc</span></code></pre></td></tr></table></div></figure>
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2016/05/08/tls_so_coredump/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2015/09/05/java-lightweight-container/">Java中隔离容器的实现</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-09-05T00:00:00+08:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>5</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>Java中隔离容器用于隔离各个依赖库环境，解决Jar包冲突问题。</p>
+
+<h2>问题</h2>
+
+<p>应用App依赖库LibA和LibB，而LibA和LibB又同时依赖LibBase，而LibA和LibB都是其他团队开发的，其中LibA发布了一个重要的修复版本，但是依赖LibBase v2.0，而LibB还没有升级版本，LibBase还不是兼容的，那么此时升级就会面临困难。在生产环境中这种情况往往更恶劣，可能是好几层的间接依赖关系。</p>
+
+<p>隔离容器用于解决这种问题。它把LibA和LibB的环境完全隔离开来，LibBase即使类名完全相同也不互相冲突，使得LibA和LibB的升级互不影响。众所周知，Java中判定两个类是否相同，看的是类名和其对应的class loader，两者同时相同才表示相等。隔离容器正是利用这种特性实现的。</p>
+
+<h2>KContainer</h2>
+
+<p>这里我实现了一个demo，称为KContainer，源码见<a href="https://github.com/kevinlynx/kcontainer">github kcontainer</a>。这个container模仿了一些OSGI的东西，这里把LibA和LibB看成是两个bundle，bundle之间是互相隔离的，每个bundle有自己所依赖的第三方库，bundle之间的第三方库完全对外隐藏。bundle可以导出一些类给其他bundle用，bundle可以开启自己的服务。由于是个demo，我只实现关键的部分。</p>
+
+<p>KContainer的目录结构类似：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>.
+</span><span class='line'>|-- bundle
+</span><span class='line'>    |-- test1
+</span><span class='line'>        |-- test1.prop
+</span><span class='line'>        |-- classes
+</span><span class='line'>        |-- lib
+</span><span class='line'>            |-- a.jar
+</span><span class='line'>            |-- b.jar
+</span><span class='line'>    |-- test2
+</span><span class='line'>        |-- test2.prop
+</span><span class='line'>        |-- classes
+</span><span class='line'>|-- lib
+</span><span class='line'>    |-- kcontainer.jar
+</span><span class='line'>    |-- kcontainer.interface.jar</span></code></pre></td></tr></table></div></figure>
+
+
+<p>bundle目录存放了所有会被自动载入的bundle。每一个bundle都有一个配置文件<code>bundle-name.prop</code>，用于描述自己导出哪些类，例如：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>init=com.codemacro.test.B
+</span><span class='line'>export-class=com.codemacro.test.Export; com.codemacro.test.Export2</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>init</code>指定bundle启动时需要调用的类，用户可以在这个类里开启自己的服务；<code>export-class</code>描述需要导出的类列表。bundle之间的所有类都是隔离的，但<code>export-class</code>会被统一放置，作为所有bundle共享的类。后面会描述KContainer如何处理类加载问题，这也是隔离容器的主要内容。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2015/09/05/java-lightweight-container/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+      <a class="prev" href="/posts/2">&larr; Older</a>
+    
+    <a href="/blog/archives">Blog Archives</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/05/18/memcache-proxy/">实现一个memcache proxy</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/04/23/xmemcached/">Xmemcached源码阅读</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/04/09/xnio-source/">XNIO源码阅读</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/03/09/toy-jit/">实现JVM中的JIT</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+<div id="recentcomments" class="dsq-widget">
+<h1 class="dsq-widget-title">Recent Comments</h1>
+</div>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+</section>
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - Kevin Lynx -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
+<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
+
+</p>
+
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

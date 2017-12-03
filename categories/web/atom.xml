@@ -1,0 +1,428 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: web | loop in codes]]></title>
+  <link href="http://codemacro.com/categories/web/atom.xml" rel="self"/>
+  <link href="http://codemacro.com/"/>
+  <updated>2017-05-18T20:10:14+08:00</updated>
+  <id>http://codemacro.com/</id>
+  <author>
+    <name><![CDATA[Kevin Lynx]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[使用ActionScript开发Ice Web客户端]]></title>
+    <link href="http://codemacro.com/2013/06/09/ice-web-client/"/>
+    <updated>2013-06-09T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2013/06/09/ice-web-client</id>
+    <content type="html"><![CDATA[<p>我们目前的项目服务器端使用了<a href="http://codemacro.com/2013/02/15/ice-overview/">Ice</a>来构建。Ice有一套自己的网络协议，客户端和服务器端可以基于此协议来交互。由于Ice使用Slice这种中间语言来描述服务器和客户端的交互接口，所以它可以做到极大限度地屏蔽网络协议这个细节。也就是说，我们只要借助Ice和Slice，我们可以轻松地编写网络程序。</p>
+
+<p>然后，我们的后端现在需要一个运行在Web浏览器上的客户端。要与Ice做交互，如果使用TCP协议的话，得保证是长连接的。但HTTP是短连接的。而另一方面，我们还需要选择一个Ice支持的和Web相关的语言来做这件事情。如果要在浏览器端直接与Ice服务建立连接，可供选择的语言/平台包括：</p>
+
+<ul>
+<li>Flash</li>
+<li>Silverlight</li>
+</ul>
+
+
+<p>因为我之前用erlang简单写了个Ice的客户端库，所以我对Ice底层协议有一定了解，可以不一定使用Ice支持的语言，所以HTML5其实也是个选择。此外，如果在浏览器端使用Applet，Java可能也是个选择。</p>
+
+<p>其实几个月前在这块的技术选择问题上我就做过简单的研究，当时确定的方案是使用Flash。但是，后来人员招聘上遇到了问题，看起来要招一个会ActionScript和前端页面技术的程序员来做我们这种项目，似乎大材小用，成本显高了。</p>
+
+<p>那么，考虑到团队里有现成的Java程序员，而且看起来招一个会用Java写网站的程序员简单又便宜，似乎是排除技术原因的最好选择。但是，如果不在浏览器端直接连接服务器来做交互，而是让Web服务器端来做中转的话，会面临不少问题：</p>
+
+<ul>
+<li>浏览器端操作结果的获取问题，说白了就是非实时了，得用Ajax等等技术去模拟实时，代价就是不断轮训，也就是通常说的poll</li>
+<li>Web服务器端需要编写大量代码：对用户操作的映射，结果缓存等等</li>
+</ul>
+
+
+<p>如果能用Flash包装与服务器交互的部分，而把UI相关的东西留给HTML/JS/CSS去做，那是不是可行一点？如果只是用ActionScript编写与服务器端的交互逻辑代码，我就不需要花时间去系统学习ActionScript，甚至如何用Flash做界面，我甚至不用搞懂这些技术之间的关系。基本上看些Ice for ActionScript的例子代码，就可以完成这件事情。</p>
+
+<p>以下记录一些主要的过程/方法：</p>
+
+<!-- more -->
+
+
+<h2>ActionScript程序的开发</h2>
+
+<p>开发一个嵌入到网页中的FLASH，只需要Flex SDK。SDK里自带了一些编译器相关工具。我不打算使用IDE，因为看起来IDE更复杂。简单的google之后，基本就可以构建出一个Flash文件：</p>
+
+<ul>
+<li>构建基本的程序需要一个mxml文件，这个文件里主要用来捕获Flash在页面上初始化完成这个事件，以初始化内部逻辑</li>
+<li>编写ActionScript源码，看起来其文件、类的组织方式很像Java</li>
+<li><p>使用Flex SDK中的mxmlc程序来编译，生成swf文件，例如：</p>
+
+<p>  mxmlc myflexapp.mxml -library-path+=xxx.swc</p></li>
+<li><p>嵌入到网页中，简单的做法可以借助swfobject.js这个库，嵌入的方式：</p></li>
+</ul>
+
+
+<p>{% highlight html %}
+{% raw %}
+    <script type="text/javascript" src="swfobject.js"></script>
+    <script type="text/javascript">
+        var flashvars = {};
+        var params = {};
+      params.play = &ldquo;true&rdquo;;
+        params.quality = &ldquo;high&rdquo;;
+        params.bgcolor = &ldquo;white&rdquo;;
+        params.allowscriptaccess = &ldquo;always&rdquo;;
+        params.allowfullscreen = &ldquo;true&rdquo;;
+        var attributes = {};
+        attributes.id = &ldquo;asclient&rdquo;;
+        attributes.name = &ldquo;asclient&rdquo;;
+        attributes.align = &ldquo;middle&rdquo;;
+        swfobject.embedSWF(&ldquo;asclient.swf&rdquo;, &ldquo;flashContent&rdquo;, &ldquo;1&rdquo;, &ldquo;1&rdquo;,
+            &ldquo;0&rdquo;, &ldquo;&rdquo;,
+            flashvars, params, attributes);
+        swfobject.createCSS(&ldquo;#flashContent&rdquo;, &ldquo;display:none;&rdquo;);
+    </script>
+{% endraw %}
+{% endhighlight %}</p>
+
+<p>自然，页面中需加入flashContent这个div：</p>
+
+<p>{% highlight html %}
+    <div id="flashContent">
+        <p>no flash</p>
+    </div>
+{% endhighlight %}</p>
+
+<p>我的mxml文件也很简单：</p>
+
+<p>{% highlight xml %}
+{% raw %}
+&lt;?xml version=&ldquo;1.0&rdquo; encoding=&ldquo;utf-8&rdquo;?>
+&lt;s:Application
+    xmlns:fx=&ldquo;<a href="http://ns.adobe.com/mxml/2009">http://ns.adobe.com/mxml/2009</a>&rdquo;
+    xmlns:s=&ldquo;library://ns.adobe.com/flex/spark&rdquo;
+    xmlns:mx=&ldquo;library://ns.adobe.com/flex/mx&rdquo;
+    applicationComplete=&ldquo;doApplicationComplete()&rdquo; >
+    &lt;fx:Script>
+    &lt;![CDATA[
+       import ASClient.Coordinator;
+       import flash.external.ExternalInterface;</p>
+
+<pre><code>   private var _coordinator:Coordinator;
+
+   public function doApplicationComplete():void
+   {
+        trace("doApplicationComplete");
+        _coordinator = new Coordinator();
+        _coordinator.reg_methods();
+        ExternalInterface.call("as_ready"); 
+   } 
+ ]]&gt;
+&lt;/fx:Script&gt;
+</code></pre>
+
+<p>&lt;/s:Application>
+{% endraw %}
+{% endhighlight %}</p>
+
+<h2>ActionScript日志</h2>
+
+<p>我通过日志来调试ActionScript代码。最简单的方式就是通过trace函数来输出日志。要成功输出日志包含以下步骤：</p>
+
+<ul>
+<li>给浏览器安装调试版本的Flash Player</li>
+<li><p>日志是输出到用户目录下的，并且需要手动创建日志目录(Administrator替换为用户名)：</p>
+
+<pre><code>  C:\Users\Administrator\AppData\Roaming\Macromedia\Flash Player\Logs
+</code></pre></li>
+<li><p>用户目录下新建配置文件mm.cfg：</p>
+
+<pre><code>  AS3StaticProfile=0
+  AS3Verbose=0
+  TraceOutputFileEnable=1 
+  TraceOutputBuffered=0
+  ErrorReportingEnable=1  
+  AS3Trace=0
+</code></pre></li>
+<li><p>编译DEBUG版本的Flash文件，可以修改flex sdk下的flex-config.xml文件，里面增加debug=true配置即可</p></li>
+</ul>
+
+
+<p>在开发过程中需要注意浏览器缓存问题，当编译出新的Flash文件后，浏览器即使页面刷新也可能使用的是缓存里的Flash。当然，最重要的，是通过浏览器来访问这个包含了Flash的网页，Web服务器随意。</p>
+
+<h2>Flash Policy文件</h2>
+
+<p>在Flash的某个版本后，Flash中如果要向外建立socket连接，是首先要取得目标主机返回的policy文件的。也就是在建立连接前，Flash底层会先向目标主机询问得到一个描述访问权限的文件。</p>
+
+<p>简单来说，目标主机需要在843端口上建立TCP监听，一旦有网络连接，就发送以下内容，内容后需添加0x00用于标示结束。（当然，具体细节还挺多，自行google）</p>
+
+<pre><code>&lt;cross-domain-policy&gt;
+     &lt;allow-access-from domain="*" to-ports="*" /&gt;
+&lt;/cross-domain-policy&gt;
+</code></pre>
+
+<p>最开始我使用的是朋友给的现成的Policy服务，虽然我写的Flash可以成功连接我的Ice服务，但始终要等待2秒以上的时间。google Flash Policy相关内容，可以发现确实存在一个延时，但那是因为目标主机没有在843端口服务。后来我自己用erlang写了个Policy服务，延时就没有了。猜测可能是他的Policy服务没有添加0x00作为结束导致。</p>
+
+<h2>ActionScript与JavaScript的交互</h2>
+
+<p>既然我使用ActionScript来包装与服务器的交互，那么JavaScript就必然需要和ActionScript通信。这个通信过程也就是在JavaScript中调用ActionScript中的函数，反过来亦然。这个过程很简单：</p>
+
+<p>在JavaScript中调用ActionScript函数：</p>
+
+<p>首先是ActionScript需要注册哪些函数可以被调用：</p>
+
+<pre><code>ExternalInterface.addCallback("service_loadall", loadAll);
+</code></pre>
+
+<p>通过<code>ExternalInterface.addCallback</code>注册的函数，其实是个closure，所以在类中注册自己的成员函数都可以（因为成员函数会使用this，形成了一个closure）。</p>
+
+<p>然后在JavaScript中调用：</p>
+
+<p>{% highlight javascript %}
+{% raw %}
+    function asObject() {
+        // asclient是嵌入Flash时填入的name和(或?)id
+        return window.document.asclient;
+    }
+    var as = asObject();
+    as.service_loadall();</p>
+
+<p>{% endraw %}
+{% endhighlight %}</p>
+
+<p>在ActionScript中调用JavaScript中调用则更简单，一句话：</p>
+
+<pre><code>ExternalInterface.call("service_load_done", args);
+</code></pre>
+
+<p>至于在两者之间的函数参数传递，其类型都可以自动映射。但因为我的应用里数据较为复杂，我就将数据转换为JSON格式，在JavaScript这边操作较为简单。</p>
+
+<h2>页面切换</h2>
+
+<p>这里我们需要的Web前端页面，更像是一个管理系统，所以页面切换是很有可能的。问题在于，当出现页面跳转时，Flash对象会重新初始化，新的页面无法使用前一个页面建立好的网络连接（或者能？）。为了解决这个问题，服务器当然可以设计一种重登录机制，方便客户端以一种特殊的方式进入系统，绕过正常的登录环节。但是我们使用了Glacier2这个网关，在这个网关上有针对连接的超时管理，这样反复建立新的连接对资源太浪费了。</p>
+
+<p>综上，我想只能通过前端去规避这个问题。例如，前端开发人员依然可以分开设计很多页面，页面里也可以使用正常的链接。我们编写一些JavaScript代码，将页面里的链接替换成对应的JavaScript代码，动态载入新的页面内容，然后对页面内的部分内容进行替换，从而尽可能让页面设计人员编写正常的网页，同时也解决页面切换问题。</p>
+
+<p>这是个蹩脚的方法，但在我有限的前端知识体系下，似乎也只能这样干了。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[HTML中table的高亮以及tooltip]]></title>
+    <link href="http://codemacro.com/2012/07/24/html-table-hover/"/>
+    <updated>2012-07-24T16:08:00+08:00</updated>
+    <id>http://codemacro.com/2012/07/24/html-table-hover</id>
+    <content type="html"><![CDATA[<p>在一个需要显示很多数据的表格(table)中，为了更友好地查看一行数据，常常需要在鼠标指针移到某一行时，高亮此行。要实现这个效果有很多方法，这里列举一个方法：</p>
+
+<p>{% highlight javascript %}
+{% raw %}
+function setTableHover(t) {
+  $(t + &ldquo; tbody tr&rdquo;)
+      .mouseover(function() { $(this).addClass(&ldquo;hover&rdquo;);})
+      .mouseout(function() { $(this).removeClass(&ldquo;hover&rdquo;); })
+}
+{% endraw %}
+{% endhighlight %}</p>
+
+<p>主要就是在鼠标移到某一行时，为该行添加一个高亮的css class，鼠标离开时移除该class即可。可以为一个特定的table设定：</p>
+
+<!-- more -->
+
+
+<p>{% highlight html %}
+{% raw %}</p>
+
+<table id="test">
+</table>
+
+
+<script>
+    setTableHover('#test')
+</script>
+
+
+<p>{% endraw %}
+{% endhighlight %}</p>
+
+<p>甚至可以为将某个页面的所有table设为高亮：</p>
+
+<p>{% highlight html %}
+{% raw %}</p>
+
+<script>
+    setTableHover('table')
+</script>
+
+
+<p>{% endraw %}
+{% endhighlight %}</p>
+
+<p>css里需要编写这个hover：</p>
+
+<p>{% highlight css %}
+{% raw %}
+.hover {
+  background: #e9cffa;
+}
+{% endraw %}
+{% endhighlight %}</p>
+
+<hr/>
+
+
+<p>除了高亮显示某一行外，可能还需要在鼠标移动到某个单元格时，弹出一个tooltip。这里的tooltip可以是<a href="http://codemacro.com/2012/07/19/popup-window-in-html/">弹出窗口</a>，也就是一个div元素。</p>
+
+<p>{% highlight html %}
+{% raw %}
+<tr>
+  <td class="tip">
+    hello
+    <div class='popup' style='display:none;'>this is the tip</div>
+  </td>
+</tr>
+{% endraw %}
+{% endhighlight %}</p>
+
+<p>要实现此效果，可以通过修改包含tip class的鼠标事件响应：</p>
+
+<p>{% highlight javascript %}
+{% raw %}
+$(function () {
+    $(&lsquo;.tip&rsquo;).hover(
+        function () {
+            show_popupex($(this).find(&ldquo;div&rdquo;), $(this));
+        },
+        function () {
+            $(this).find(&ldquo;div&rdquo;).hide();
+        }
+        );
+});
+{% endraw %}
+{% endhighlight %}</p>
+
+<p>hover的第一个参数表示鼠标进入的响应，第二个参数表示鼠标离开的响应。show_popupex用于将一个元素以绝对位置显示在指定元素（这里是单元格）附近，可以参看<a href="http://codemacro.com/2012/07/19/popup-window-in-html/">弹出窗口</a>那篇文章。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Rails中获取客户端时区]]></title>
+    <link href="http://codemacro.com/2012/07/20/get-client-timezone-in-rails/"/>
+    <updated>2012-07-20T16:42:00+08:00</updated>
+    <id>http://codemacro.com/2012/07/20/get-client-timezone-in-rails</id>
+    <content type="html"><![CDATA[<p>开发网站功能时，有时候需要获取客户端（浏览器）所在的时区，然后根据不同的时区做一些不同的逻辑功能。这里提供一种方法，其思路为客户端通过js获取时区，然后发送给服务器，服务器存储时区到session中。</p>
+
+<p>{% highlight javascript %}
+{% raw %}
+function submit_timezone(url) {
+  $.get(url, {&lsquo;offset_min&rsquo; : (-1 * (new Date()).getTimezoneOffset())});
+}</p>
+
+<p>$(document).ready(function() {
+    submit_timezone(&lsquo;&lt;%= sys_timezone_path %>&rsquo;);
+});
+{% endraw %}
+{% endhighlight %}</p>
+
+<!-- more -->
+
+
+<p>sys_timezone_path是一个特地用来处理时区的route。其实主要需要的是offset_min这个请求参数，你可以把这个参数附加到其他请求里。</p>
+
+<p>然后根据offset_min获取到时区名：</p>
+
+<p>{% highlight ruby %}
+def timezone
+  offset_sec = params[:offset_min].to_i * 60
+  zone = ActiveSupport::TimeZone[offset_sec]
+  zone = ActiveSupport::TimeZone[&ldquo;UTC&rdquo;] unless zone
+  session[:zone_name] = zone.name if zone
+  respond_to do |format|
+    format.js
+  end
+end
+{% endhighlight %}</p>
+
+<p>以上，获取到时区名后存储到session[:zone_name]里。在之后处理这个客户端的请求时，就可以通过这个时区名取得对应的时区，例如：</p>
+
+<p>{% highlight ruby %}
+zone_name = session[:zone_name]
+zone = ActiveSupport::TimeZone[zone_name] if zone_name
+{% endhighlight %}</p>
+
+<p>但经过我实际测试，部署在heroku上的应用偶尔会发现session[:zone_name]取出来是nil，尽管我确认了timezone函数是被调用过的。这难道跟session的超时有关？后来我只好将timezone name写到客户端页面中，然后在其他请求中再把这个时区名发回来。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[HTML中实现弹出窗口]]></title>
+    <link href="http://codemacro.com/2012/07/19/popup-window-in-html/"/>
+    <updated>2012-07-19T14:56:00+08:00</updated>
+    <id>http://codemacro.com/2012/07/19/popup-window-in-html</id>
+    <content type="html"><![CDATA[<p>{% img right /assets/res/popup-window-tip.png %}</p>
+
+<p>做网页时弹出一个窗口显示一些内容是一种很常见的交互方式，如图中用户点击“个人资料“时并不是转到一个新页面，而是在当前页面弹出修改密码的窗口。弹出窗口的实现方式有很多，这里罗列一种。</p>
+
+<p>弹出窗口的内容是作为一个单独的div存在的，这个div可以在页面刚开始载入时不填入内容，而在以后通过json或者直接返回js来填入。其次，弹出窗口的显示位置一般是绝对位置，一方面是不影响页面布局，另一方面也希望其作为一个顶层窗口来呈现，所以需要指定其position css。</p>
+
+<!-- more -->
+
+
+<p>{% highlight html %}</p>
+
+<div id='userprofile' class='popup' style="display:none;"></div>
+
+
+<p>{% endhighlight %}</p>
+
+<p>{% highlight css %}
+{% raw %}
+.popup {
+  position: absolute;
+  z-index: 200;
+  left: 0px;
+  top: 0px;
+  border: 1px solid #666;
+  background: white;
+  padding: 8px 5px 5px;
+  margin: 10px 5px;
+}
+{% endraw %}
+{% endhighlight %}</p>
+
+<p>我这里div里的内容是后面填入的，预先填入也可以。当要显示时，就通过js将这个div显示即可。为此我封装了几个js函数。</p>
+
+<p>{% highlight javascript %}
+{% raw %}
+function show_popupex(pannel, target, manual) {
+    var pos = target.position();
+    var height = target.outerHeight();
+    pannel.css(&lsquo;left&rsquo;, pos.left + &lsquo;px&rsquo;);
+    pannel.css(&lsquo;top&rsquo;, pos.top + height + &lsquo;px&rsquo;);
+    pannel.show();
+    if (!manual) {
+        pannel.mouseleave(function() { pannel.hide(); });
+    }
+}</p>
+
+<p>function show_popup(pannel_id, target_id, manual) {
+    var target = $(target_id);
+    var pannel = $(pannel_id);
+    show_popupex(pannel, target, manual);
+}</p>
+
+<p>function hide_popup(pannel_id) {
+    $(pannel_id).hide();
+}
+{% endraw %}
+{% endhighlight %}</p>
+
+<p>show_popup函数主要就是将目标元素的位置做调整，然后显示。通常情况下我只需传入元素的id，manual属性指定弹出窗口是否手动关闭。对于tooltip的实现，则需要让其自动关闭。针对以上例子，使用方式为：</p>
+
+<p>{% highlight js %}
+show_popup(&lsquo;#userprofile&rsquo;, &lsquo;#profile-link&rsquo;, true);
+{% endhighlight %}</p>
+
+<p>其中profile-link就是那个“个人资料“链接。</p>
+]]></content>
+  </entry>
+  
+</feed>

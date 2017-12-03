@@ -1,0 +1,335 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>实现一个memcache proxy - loop in codes</title>
+  <meta name="author" content="Kevin Lynx">
+
+  
+  <meta name="description" content="通常我们会使用多台memcached构成一个集群，通过客户端库来实现缓存数据的分片(replica)。这会带来2个主要问题： memcached机器连接数过多
+不利于做整体的服务化；缺少可运维性。例如想对接入的客户端做应用级隔离；或者对缓存数据做多区域(机房)的冗余 实现一个memcache &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://codemacro.com/2017/05/18/memcache-proxy">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <!--script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script-->
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<!--link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css"-->
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">loop in codes</a></h1>
+  
+    <h2>Kevin Lynx BLOG</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:codemacro.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about.html">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">实现一个memcache proxy</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2017-05-18T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>18</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>通常我们会使用多台memcached构成一个集群，通过客户端库来实现缓存数据的分片(replica)。这会带来2个主要问题：</p>
+
+<ul>
+<li>memcached机器连接数过多</li>
+<li>不利于做整体的服务化；缺少可运维性。例如想对接入的客户端做应用级隔离；或者对缓存数据做多区域(机房)的冗余</li>
+</ul>
+
+
+<p>实现一个memcache proxy，相对于减少连接数来说，主要可以提供更多的扩展性。目前已经存在一些不错的memcache proxy，例如twitter的<a href="https://github.com/twitter/twemproxy">twemproxy</a>，facebook的<a href="https://github.com/facebook/mcrouter">mcrouter</a>。稍微调研了下，发现twemproxy虽然轻量，但功能较弱；mcrouter功能齐全，类似多区域多写的需求也满足。处于好玩的目的，之前又读过网络库<a href="http://codemacro.com/2017/04/09/xnio-source/">xnio</a>源码，我还是决定自己实现一个。</p>
+
+<!-- more -->
+
+
+<p>这个项目简单取名为<a href="https://github.com/kevinlynx/kvproxy">kvproxy</a>，通过简单的抽象可以实现为memcache或redis等key-value形式的服务proxy。 这是一些预想中的<a href="https://github.com/kevinlynx/kvproxy/blob/master/design.md">feature</a>。</p>
+
+<p>在目前的阶段，主要关注于其性能。因为memcached本身的RT非常小，所以这个proxy的性能就要求比较高。这里主要先关注下核心功能的实现。</p>
+
+<h2>架构</h2>
+
+<p>如下图：</p>
+
+<p><img src="http://i.imgur.com/VxrSdKT.png" alt="" /></p>
+
+<ul>
+<li><code>Service</code>，用于抽象key-value服务，如memcache；<code>MemcacheService</code>是其实现之一</li>
+<li><code>ServerLocator</code>，用于定位memcached机器列表，例如<code>ConstantLocator</code>则是从配置文件中读取。可以实现一个从名字服务读取列表的locator。</li>
+<li><code>Connection</code>，配合<code>KVProxy</code>，基于xnio，表示一个与客户端的连接</li>
+<li><code>ConnectionListener</code>，用于处理网络连接上的请求，例如<code>RequestHandler</code>则是<code>MemcaheService</code>中的listener，用于处理从客户端发过来的memcache协议请求</li>
+<li><code>MemClient</code>，包装memcache客户端，用于proxy将请求转发到后端的memcache服务</li>
+<li><code>GroupClient</code>，包装<code>MemClient</code>，可以用于多区域数据的同时写入，目前实现为单个primary及多个slave。写数据同步写入primary异步写入slave；读取数据则只从primary读。</li>
+</ul>
+
+
+<p>本身要抽象的东西不复杂，所以结构其实是很简单的，也没有花太多心思。接下来关注下性能方面的问题。</p>
+
+<h2>异步性</h2>
+
+<p>作为一个proxy，异步基本是必然选择的方案，指的是，proxy在收到memcache的请求时，不阻塞当前的IO线程，形成一个请求context，在收到回应时拿到这个context来回应客户端。这样通过增加消耗的内存，来释放CPU资源，可以让IO模块尽可能多地接收从客户端来的请求。当然，如果请求过多，可能就会耗尽内存。</p>
+
+<p>为了简单，我没有自己实现memcache client。网络上有很多开源的memcache client。我试了几个，例如<a href="http://codemacro.com/2017/04/23/xmemcached/">xmemcached</a>(为此还读过它的源码)，但由于这些客户端都是同步的，虽然可以自己起线程池来把同步包装为异步，但始终不是最优方案。最后无意发现了<a href="https://github.com/spotify/folsom">folsom</a>，集成到kvproxy后性能表现还不错。当然，真正要做到性能最优，最好还是自己实现memcache client，这样可以使用同一个xnio reactor，不用开那么多IO线程，拿到数据后就可以直接得到ByteBuffer，应该可以减少内存拷贝操作(能提高多少也不确定)。</p>
+
+<h2>性能测试</h2>
+
+<p>我使用了<a href="https://github.com/RedisLabs/memtier_benchmark">memtier_benchmark</a>来做压力测试。测试环境是16core的虚拟机(宿主机不同)，benchmark工具同目标测试服务部署在不同的机器，proxy同memcache部署在相同机器。目标服务基于OS centos7，测试命令为：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>./memtier_benchmark -s 127.0.0.1 -p 22122 -P memcache_text --test-time 60 -d 4096 --hide-histogram</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>默认开启4个压测线程，每个线程建立50个连接，测试60秒，默认设置是1:10的set/get。</p>
+
+<p>首先是直接压测memcached：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ALL STATS
+</span><span class='line'>========================================================================
+</span><span class='line'>Type        Ops/sec     Hits/sec   Misses/sec      Latency       KB/sec
+</span><span class='line'>------------------------------------------------------------------------
+</span><span class='line'>Sets        5729.65          ---          ---      3.27500     23141.85
+</span><span class='line'>Gets       57279.42        80.33     57199.09      3.16000      1771.99
+</span><span class='line'>Waits          0.00          ---          ---      0.00000          ---
+</span><span class='line'>Totals     63009.07        80.33     57199.09      3.17000     24913.84</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>然后我压测了twitter的twemproxy，RT差不多增加70%。</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ALL STATS
+</span><span class='line'>========================================================================
+</span><span class='line'>Type        Ops/sec     Hits/sec   Misses/sec      Latency       KB/sec
+</span><span class='line'>------------------------------------------------------------------------
+</span><span class='line'>Sets        3344.58          ---          ---      5.58400     13508.68
+</span><span class='line'>Gets       33430.28        40.00     33390.28      5.41900      1006.32
+</span><span class='line'>Waits          0.00          ---          ---      0.00000          ---
+</span><span class='line'>Totals     36774.85        40.00     33390.28      5.43400     14515.00
+</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>最后是压测kvproxy (jdk8)，只与memcache建立一个连接，RT增加95%，基本上翻倍。不过由于是Java实现，相对于twemproxy的C实现感觉也不差。当然，机器资源消耗更大(主要是内存)。</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ALL STATS
+</span><span class='line'>========================================================================
+</span><span class='line'>Type        Ops/sec     Hits/sec   Misses/sec      Latency       KB/sec
+</span><span class='line'>------------------------------------------------------------------------
+</span><span class='line'>Sets        2959.41          ---          ---      6.62400     11953.00
+</span><span class='line'>Gets       29578.47        33.90     29544.57      6.20800       884.38
+</span><span class='line'>Waits          0.00          ---          ---      0.00000          ---
+</span><span class='line'>Totals     32537.88        33.90     29544.57      6.24600     12837.37
+</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>压测中IO线程CPU并没有跑满，推测是虚拟机之间的网络带宽还是不够。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2017/05/18/memcache-proxy/'>http://codemacro.com/2017/05/18/memcache-proxy/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2017-05-18T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>18</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/categories/java/'>java</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/2017/04/23/xmemcached/" title="Previous Post: Xmemcached源码阅读">&laquo; Xmemcached源码阅读</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><!-- UY BEGIN -->
+<div id="uyan_frame"></div>
+<script type="text/javascript" src="http://v2.uyan.cc/code/uyan.js?uid=1537634"></script>
+<!-- UY END -->
+
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/05/18/memcache-proxy/">实现一个memcache proxy</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/04/23/xmemcached/">Xmemcached源码阅读</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/04/09/xnio-source/">XNIO源码阅读</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/03/09/toy-jit/">实现JVM中的JIT</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+<div id="recentcomments" class="dsq-widget">
+<h1 class="dsq-widget-title">Recent Comments</h1>
+</div>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - Kevin Lynx -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
+<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
+
+</p>
+
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>
