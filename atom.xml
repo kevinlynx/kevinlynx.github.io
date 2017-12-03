@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2017-05-18T20:08:06+08:00</updated>
+  <updated>2017-12-03T18:38:32+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,84 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[协程并发模型及使用感受]]></title>
+    <link href="http://codemacro.com/2017/12/03/coroutine/"/>
+    <updated>2017-12-03T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2017/12/03/coroutine</id>
+    <content type="html"><![CDATA[<p>协程可以简单理解为更轻量的线程，但有很多显著的不同：</p>
+
+<ul>
+<li>不是OS级别的调度单元，通常是编程语言或库实现</li>
+<li>可能需要应用层自己切换</li>
+<li>由于切换点是可控制的，所以对于CPU资源是非抢占式的</li>
+<li>通常用于有大量阻塞操作的应用，例如大量IO</li>
+</ul>
+
+
+<p>协程与actor模式的实现有一定关系。由于协程本身是应用级的并发调度单元，所以理论上可以大量创建。在协程之上做队列及通信包装，即可得到一个actor框架，例如<a href="https://github.com/jrydberg/python-actors">python-actor</a></p>
+
+<p>最近1年做了一个python项目。这个项目中利用gevent wsgi对外提供HTTP API，使用gevent greelet来支撑上层应用的开发。当可以使用协程后，编程模型会得到一定简化，例如相对于传统线程池+队列的并发实现，协程可以抛弃这个模型，直接一个协程对应于一个并发任务，例如网络服务中一个协程对应一个socket fd。</p>
+
+<p>但是python毕竟是单核的，这个项目内部虽然有大量IO请求，但随着业务增长，CPU很快就到达了瓶颈。后来改造为多进程结构，将业务单元分散到各个worker进程上。</p>
+
+<p>python gevent中的协议切换是自动的，在遇到阻塞操作后gevent会自动挂起当前协程，并切换到其他需要激活的协程。阻塞操作完成，对应的协程就会处于待激活状态。</p>
+
+<p>在这个项目过程中，我发现协程也存在很多陷阱。</p>
+
+<!-- more -->
+
+
+<h2>协程的陷阱</h2>
+
+<ul>
+<li>死循环</li>
+</ul>
+
+
+<p>普通的死循环很难遇到，间接的死循环一旦发生，就会一直占用CPU资源，导致其他协程被饿死。</p>
+
+<ul>
+<li>留意非协程化的阻塞接口</li>
+</ul>
+
+
+<p>gevent中通常会将python内置的各种阻塞操作green化，也就是我这里说的协程化，例如socket IO接口、time.sleep、各种锁等待。如果在系统中引入一个不能被协程化的库，例如<a href="https://github.com/farcepest/MySQLdb1">MySQL-python</a>。当协程被阻塞在这种库的接口时，协程不能被切走，而是等到python内线程的抢占式切换，实际上对于gevent的协程调度其总计可用的CPU就不是100%了。在压力较大的情况下，协程就可能出现延迟调度。意思是在协程阻塞操作完成后，在负载较小的情况下，该协程会立即得到切换。</p>
+
+<p>这里有一个小技巧，可以写一个time.sleep延时的协程，检查真实的延时情况和time.sleep的延时参数相差多少，就可以衡量整个系统中协程切换的延时情况。</p>
+
+<ul>
+<li>注意不同角色协程的CPU资源分配</li>
+</ul>
+
+
+<p>这个问题本质上类似于在基于线程的应用中，需要为不同角色的线程设定不同的优先级。在多核程序中由于总的CPU资源比较多，所以一般也不会遇到需要分配不同优先级的情况。但在基于协程的单核程序中，由于单核CPU资源很快就会被压榨到80-90%，所以就需要关注不同角色协程的优先级。</p>
+
+<p>例如，系统中有用于服务HTTP API的协程集，有用于做耗时任务的协程集。耗时任务正常情况下可能需要分钟级，所以做任务的协程就算慢几秒也没什么关系。但是对外提供API的协程，本身API时延就在毫秒到秒级，如果晚几秒到几十秒，对上游系统或者用于就会造成不良的影响，表现为服务质量差。</p>
+
+<p>但是通常协程库是没有设定优先级的功能的。所以这个时候就要从应用层解决。例如前面的耗时任务例子，一般情况下，为了编程简单，我们会为每一个任务分配一个协程去做。由于所有协程优先级相同，大家被切换的机会是均等的，那么当任务增多后，API相关的协程获得的切换机会更少，影响服务质量。所以这个时候，就会创建一个用于完成耗时任务的协程池，以限制耗时任务占用的总协程数量。这就又回到了基于线程的并发模型中。</p>
+
+<ul>
+<li>留意协程切换</li>
+</ul>
+
+
+<p>在gevent这种协程切换不需要程序员显示操作的协程库中，程序员会慢慢忘掉自己是在协程环境下编程。前面的例子中，我们创建了一个协程池去限制耗时任务可用的协程数量。在实际项目中可能会对调度做一些包装，让应用层只关注自己的业务代码。那么，在业务代码中，对于一些需要重试的失败操作，我sleep一段较长的时间也很合情理吧。这个时候如果由于外部依赖服务异常，而导致部分业务协程失败，处于sleep中。这个时候，协程池内有限的协程都被挂起了。导致很多本来可以获得CPU资源的任务无法得到消费，导致整个系统的吞吐量下降。</p>
+
+<h2>总结</h2>
+
+<p>协程会在低CPU系统中获得不少易于编程的好处，但是当系统总CPU上去后就需要付出等价于甚至大于多线程编程中的代价。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2017/12/03/coroutine/'>http://codemacro.com/2017/12/03/coroutine/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[实现一个memcache proxy]]></title>
@@ -3961,176 +4039,6 @@ $12 = 0x4e73aa58      # 0x4e73aa58
 <p class='post-footer'>
             原文地址：
             <a href='http://codemacro.com/2015/04/06/tcmalloc-getstacktrace/'>http://codemacro.com/2015/04/06/tcmalloc-getstacktrace/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[初识JVM byte code]]></title>
-    <link href="http://codemacro.com/2015/03/31/intro-java-bytecode/"/>
-    <updated>2015-03-31T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2015/03/31/intro-java-bytecode</id>
-    <content type="html"><![CDATA[<p>关于JVM和其上的byte code，网上其实有足够多的资料了，我这里就简单做个提纲和介绍，权当记录吧。</p>
-
-<h2>stack-based VM</h2>
-
-<p>Java byte code运行在JVM上，就像机器指令运行在物理机上，是需要遵循这个机器的指令规范的。所以认识JVM byte code，是需要稍微了解下JVM的。JVM是一个基于栈(stack-based)的虚拟机。很久以前我还写过类似<a href="http://www.cppblog.com/kevinlynx/archive/2010/04/15/112704.html">简单的虚拟机</a>。</p>
-
-<p>基于栈的虚拟机其操作数和指令运算的中间结果全部都在一个虚拟栈中，与之对应的是基于寄存器(register-based)的虚拟机，其操作数和指令运算结果会存放在若干个寄存器（也就是存储单元）里。x86机器就可以理解为基于寄存器的机器。</p>
-
-<p>byte code其实和x86汇编代码本质一样，无非是对应机器制定的一堆指令，这里可以举例说明下两类虚拟机的不同：</p>
-
-<pre><code># stack-based 
-push 1       # 压立即数1到栈顶
-push 2       # 压立即数2到栈顶
-add          # 弹出栈顶2个数相加，将结果3压到栈顶
-
-# register-based
-mov ax, 1    # 写立即数到寄存器ax
-add ax, 2    # 取ax中的值1与立即数2进行相加，存放结果到ax
-</code></pre>
-
-<p>关于两类实现的比较，网上也有不少资料，例如<a href="http://www.zhihu.com/question/20207106">Dalvik 虚拟机和 Sun JVM 在架构和执行方面有什么本质区别？</a>。</p>
-
-<!-- more -->
-
-
-<p><em>至于有人说基于栈的虚拟机更利于移植，我不是很理解，因为即使是基于寄存器的实现，也不一定真的必须把这些寄存器映射到物理机CPU上的寄存器，使用内存来模拟性能上跟基于栈的方式不是八九不离十吗？</em></p>
-
-<p>了解了JVM的这个特点，JVM上的各种指令就可以更好地理解，如果要理解JVM如何运行byte code的，那还需要了解JVM内部的各种结构，例如符号解析、class loader、内存分配甚至垃圾回收等。这个以后再谈。</p>
-
-<h2>byte-code</h2>
-
-<p><code>*.class</code>文件就已经是编译好的byte code文件，就像C/C++编译出来的目标文件一样，已经是各种二进制指令了。这个时候可以通过JDK中带的<code>javap</code>工具来反汇编，以查看对应的byte code。</p>
-
-<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="c1">// Test.java</span>
-    <span class="kd">public</span> <span class="kd">class</span> <span class="nc">Test</span> <span class="o">{</span>
-        <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
-            <span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mh">0xae</span><span class="o">;</span>
-            <span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="mh">0x10</span><span class="o">;</span>
-            <span class="kt">int</span> <span class="n">c</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="o">;</span>
-            <span class="kt">int</span> <span class="n">d</span> <span class="o">=</span> <span class="n">c</span> <span class="o">+</span> <span class="mi">1</span><span class="o">;</span>
-            <span class="n">String</span> <span class="n">s</span><span class="o">;</span>
-            <span class="n">s</span> <span class="o">=</span> <span class="s">&quot;hello&quot;</span><span class="o">;</span>
-        <span class="o">}</span>
-    <span class="o">}</span></code></pre></div>
-
-
-<p>编译该文件：<code>javac Test.java</code>得到<code>Test.class</code>，然后<code>javap -c Test</code>即得到：</p>
-
-<pre><code>Compiled from "Test.java"
-public class Test {
-  public Test();
-    Code:
-       0: aload_0
-       1: invokespecial #1                  // Method java/lang/Object."&lt;init&gt;":()V
-       4: return
-
-  public static void main(java.lang.String[]);
-    Code:
-       0: sipush        174           # push a short onto the stack 0xae=174
-       3: istore_1                    # store int value into variable 1: a = 0xae
-       4: bipush        16            # push a byte onto the stack 0x10=16
-       6: istore_2                    # store int value into variable 2: b = 0x10
-       7: iload_1                     # load value from variable 1 and push onto the stack
-       8: iload_2                   
-       9: iadd                        # add two ints: a + b
-      10: istore_3                    # c = a + b
-      11: iload_3                     
-      12: iconst_1                    # 1
-      13: iadd                        # c + 1
-      14: istore        4             # d = c + 1
-      16: ldc           #2                  // String hello
-      18: astore        5
-      20: return
-}
-</code></pre>
-
-<p>这个时候对照着JVM指令表看上面的代码，比起x86汇编浅显易懂多了，秒懂，参考<a href="http://en.wikipedia.org/wiki/Java_bytecode_instruction_listings">Java bytecode instruction listings</a>。JVM中每个指令只占一个字节，操作数是变长的，所以其一条完整的指令（操作码+操作数）也是变长的。上面每条指令前都有一个偏移，实际是按字节来偏移的。<em>想起Lua VM的指令竟然是以bit来干的</em></p>
-
-<p>从上面的byte code中，以x86汇编的角度来看会发现一些不同的东西：</p>
-
-<ul>
-<li>局部变量竟是以索引来区分：<code>istore_1</code> 写第一个局部变量，<code>istore_2</code>写第二个局部变量，第4个局部变量则需要用操作数来指定了：<code>istore 4</code></li>
-<li>函数调用<code>invokespecial #1</code>竟然也是类似的索引，这里调用的是<code>Object</code>基类构造函数</li>
-<li>常量字符串也是类似的索引：<code>ldc #2</code></li>
-<li><code>*.class</code>中是不是也分了常量数据段和代码段呢</li>
-</ul>
-
-
-<p>以上需要我们进一步了解<code>*.class</code>文件的格式。</p>
-
-<h2>class file format</h2>
-
-<p>class 文件格式网上也有讲得很详细的了，例如这篇<a href="http://www.importnew.com/15161.html">Java Class文件详解</a>。整个class文件完全可以用以下结构来描述：</p>
-
-<pre><code>ClassFile {
-    u4 magic;                                        //魔数
-    u2 minor_version;                                //次版本号
-    u2 major_version;                                //主版本号
-    u2 constant_pool_count;                          //常量池大小
-    cp_info constant_pool[constant_pool_count-1];    //常量池
-    u2 access_flags;                                 //类和接口层次的访问标志（通过|运算得到）
-    u2 this_class;                                   //类索引（指向常量池中的类常量）
-    u2 super_class;                                  //父类索引（指向常量池中的类常量）
-    u2 interfaces_count;                             //接口索引计数器
-    u2 interfaces[interfaces_count];                 //接口索引集合
-    u2 fields_count;                                 //字段数量计数器
-    field_info fields[fields_count];                 //字段表集合
-    u2 methods_count;                                //方法数量计数器
-    method_info methods[methods_count];              //方法表集合
-    u2 attributes_count;                             //属性个数
-    attribute_info attributes[attributes_count];     //属性表
-}
-</code></pre>
-
-<p>这明显已经不是以区段来分的格式了，上面提到的函数索引、常量字符串索引，都是保存在<code>constant_pool</code>常量池中。常量池中存储了很多信息，包括：</p>
-
-<ul>
-<li>各种字面常量，例如字符串</li>
-<li>类、数据成员、接口引用</li>
-</ul>
-
-
-<p>常量池的索引从1开始。对于上面例子<code>Test.java</code>，可以使用<code>javap -v Test</code>来查看其中的常量池，例如：</p>
-
-<pre><code>Constant pool:
-   #1 = Methodref          #4.#13         //  java/lang/Object."&lt;init&gt;":()V
-   #2 = String             #14            //  hello
-   #3 = Class              #15            //  Test
-   #4 = Class              #16            //  java/lang/Object
-   #5 = Utf8               &lt;init&gt;
-   #6 = Utf8               ()V
-   #7 = Utf8               Code
-   #8 = Utf8               LineNumberTable
-   #9 = Utf8               main
-  #10 = Utf8               ([Ljava/lang/String;)V
-  #11 = Utf8               SourceFile
-  #12 = Utf8               Test.java
-  #13 = NameAndType        #5:#6          //  "&lt;init&gt;":()V
-  #14 = Utf8               hello
-  #15 = Utf8               Test
-  #16 = Utf8               java/lang/Object
-</code></pre>
-
-<p>每一个类都会有一个常量池。</p>
-
-<h2>summary</h2>
-
-<p>要想了解JVM运行byte code，还需要了解更多JVM本身的东西，例如符号解析，内存管理等，可参考：</p>
-
-<ul>
-<li><a href="http://blog.jamesdbloom.com/JVMInternals.html">JVM Internals</a></li>
-<li><a href="http://www.cubrid.org/blog/dev-platform/understanding-jvm-internals/">Understanding JVM Internals</a></li>
-</ul>
-
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2015/03/31/intro-java-bytecode/'>http://codemacro.com/2015/03/31/intro-java-bytecode/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>

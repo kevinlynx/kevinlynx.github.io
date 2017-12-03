@@ -9,8 +9,10 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="通常我们会使用多台memcached构成一个集群，通过客户端库来实现缓存数据的分片(replica)。这会带来2个主要问题： memcached机器连接数过多
-不利于做整体的服务化；缺少可运维性。例如想对接入的客户端做应用级隔离；或者对缓存数据做多区域(机房)的冗余 实现一个memcache &hellip;">
+  <meta name="description" content="协程可以简单理解为更轻量的线程，但有很多显著的不同： 不是OS级别的调度单元，通常是编程语言或库实现
+可能需要应用层自己切换
+由于切换点是可控制的，所以对于CPU资源是非抢占式的
+通常用于有大量阻塞操作的应用，例如大量IO 协程与actor模式的实现有一定关系。由于协程本身是应用级的并发调度单元， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -65,6 +67,58 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2017/12/03/coroutine/">协程并发模型及使用感受</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2017-12-03T00:00:00+08:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>3</span><span class='date-suffix'>rd</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>协程可以简单理解为更轻量的线程，但有很多显著的不同：</p>
+
+<ul>
+<li>不是OS级别的调度单元，通常是编程语言或库实现</li>
+<li>可能需要应用层自己切换</li>
+<li>由于切换点是可控制的，所以对于CPU资源是非抢占式的</li>
+<li>通常用于有大量阻塞操作的应用，例如大量IO</li>
+</ul>
+
+
+<p>协程与actor模式的实现有一定关系。由于协程本身是应用级的并发调度单元，所以理论上可以大量创建。在协程之上做队列及通信包装，即可得到一个actor框架，例如<a href="https://github.com/jrydberg/python-actors">python-actor</a></p>
+
+<p>最近1年做了一个python项目。这个项目中利用gevent wsgi对外提供HTTP API，使用gevent greelet来支撑上层应用的开发。当可以使用协程后，编程模型会得到一定简化，例如相对于传统线程池+队列的并发实现，协程可以抛弃这个模型，直接一个协程对应于一个并发任务，例如网络服务中一个协程对应一个socket fd。</p>
+
+<p>但是python毕竟是单核的，这个项目内部虽然有大量IO请求，但随着业务增长，CPU很快就到达了瓶颈。后来改造为多进程结构，将业务单元分散到各个worker进程上。</p>
+
+<p>python gevent中的协议切换是自动的，在遇到阻塞操作后gevent会自动挂起当前协程，并切换到其他需要激活的协程。阻塞操作完成，对应的协程就会处于待激活状态。</p>
+
+<p>在这个项目过程中，我发现协程也存在很多陷阱。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2017/12/03/coroutine/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -544,92 +598,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2015/09/05/java-lightweight-container/">Java中隔离容器的实现</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2015-09-05T00:00:00+08:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>5</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>Java中隔离容器用于隔离各个依赖库环境，解决Jar包冲突问题。</p>
-
-<h2>问题</h2>
-
-<p>应用App依赖库LibA和LibB，而LibA和LibB又同时依赖LibBase，而LibA和LibB都是其他团队开发的，其中LibA发布了一个重要的修复版本，但是依赖LibBase v2.0，而LibB还没有升级版本，LibBase还不是兼容的，那么此时升级就会面临困难。在生产环境中这种情况往往更恶劣，可能是好几层的间接依赖关系。</p>
-
-<p>隔离容器用于解决这种问题。它把LibA和LibB的环境完全隔离开来，LibBase即使类名完全相同也不互相冲突，使得LibA和LibB的升级互不影响。众所周知，Java中判定两个类是否相同，看的是类名和其对应的class loader，两者同时相同才表示相等。隔离容器正是利用这种特性实现的。</p>
-
-<h2>KContainer</h2>
-
-<p>这里我实现了一个demo，称为KContainer，源码见<a href="https://github.com/kevinlynx/kcontainer">github kcontainer</a>。这个container模仿了一些OSGI的东西，这里把LibA和LibB看成是两个bundle，bundle之间是互相隔离的，每个bundle有自己所依赖的第三方库，bundle之间的第三方库完全对外隐藏。bundle可以导出一些类给其他bundle用，bundle可以开启自己的服务。由于是个demo，我只实现关键的部分。</p>
-
-<p>KContainer的目录结构类似：</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>.
-</span><span class='line'>|-- bundle
-</span><span class='line'>    |-- test1
-</span><span class='line'>        |-- test1.prop
-</span><span class='line'>        |-- classes
-</span><span class='line'>        |-- lib
-</span><span class='line'>            |-- a.jar
-</span><span class='line'>            |-- b.jar
-</span><span class='line'>    |-- test2
-</span><span class='line'>        |-- test2.prop
-</span><span class='line'>        |-- classes
-</span><span class='line'>|-- lib
-</span><span class='line'>    |-- kcontainer.jar
-</span><span class='line'>    |-- kcontainer.interface.jar</span></code></pre></td></tr></table></div></figure>
-
-
-<p>bundle目录存放了所有会被自动载入的bundle。每一个bundle都有一个配置文件<code>bundle-name.prop</code>，用于描述自己导出哪些类，例如：</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>init=com.codemacro.test.B
-</span><span class='line'>export-class=com.codemacro.test.Export; com.codemacro.test.Export2</span></code></pre></td></tr></table></div></figure>
-
-
-<p><code>init</code>指定bundle启动时需要调用的类，用户可以在这个类里开启自己的服务；<code>export-class</code>描述需要导出的类列表。bundle之间的所有类都是隔离的，但<code>export-class</code>会被统一放置，作为所有bundle共享的类。后面会描述KContainer如何处理类加载问题，这也是隔离容器的主要内容。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2015/09/05/java-lightweight-container/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/2">&larr; Older</a>
@@ -642,11 +610,15 @@
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (9)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/12/03/coroutine/">协程并发模型及使用感受</a>
+      </li>
     
       <li class="post">
         <a href="/2017/05/18/memcache-proxy/">实现一个memcache proxy</a>
@@ -664,10 +636,6 @@
         <a href="/2017/03/09/toy-jit/">实现JVM中的JIT</a>
       </li>
     
-      <li class="post">
-        <a href="/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -677,7 +645,7 @@
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 120.76923076923077%'>other(9)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
 </section>
 
   

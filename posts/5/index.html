@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="dhtcrawler2最开始使用mongodb自带的全文搜索引擎搜索资源。搜索一些短关键字时很容易导致erlang进程call timeout，也就是查询时间太长。对于像avi这种关键字，搜索时间长达十几秒。搜索的资源数量200万左右。这其中大部分资源只是对root文件名进行了索引， &hellip;">
+  <meta name="description" content="最近在一个使用Visual Studio开发的C++程序中，出现了如下错误： Run-Time Check Failure #0 - The value of ESP was not properly saved across a function call. This is usually a &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,57 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2013/08/15/debug-esp-bug/">记一次堆栈平衡错误</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-08-15T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>15</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>最近在一个使用Visual Studio开发的C++程序中，出现了如下错误：</p>
+
+<blockquote><p>Run-Time Check Failure #0 - The value of ESP was not properly saved across a function call.  This is usually a result of calling a function declared with one calling convention with a function pointer declared with a different calling convention.</p></blockquote>
+
+<p>这个错误主要指的就是函数调用堆栈不平衡。在C/C++程序中，调用一个函数前会保存当前堆栈信息，目标函数返回后会把堆栈恢复到调用前的状态。函数的参数、局部变量会影响堆栈。而函数堆栈不平衡，一般是因为函数调用方式和目标函数定义方式不一致导致，例如：</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="kr">__stdcall</span> <span class="nf">func</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">)</span> <span class="p">{</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span> <span class="p">{</span>
+    <span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">funcptr</span><span class="p">)(</span><span class="kt">int</span><span class="p">);</span>
+    <span class="n">funcptr</span> <span class="n">ptr</span> <span class="o">=</span> <span class="p">(</span><span class="n">funcptr</span><span class="p">)</span> <span class="n">func</span><span class="p">;</span>
+    <span class="n">ptr</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span> <span class="c1">// 返回后导致堆栈不平衡</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div>
+
+
+<p><code>__stdcall</code>修饰的函数，其函数参数的出栈由被调用者自己完成，而<code>__cdecl</code>，也就是C/C++函数的默认调用约定，则是调用者完成参数出栈。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2013/08/15/debug-esp-bug/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -535,54 +586,6 @@ Obj-&gt;func(args)
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2013/03/21/rup/">浅析软件工程开发方法学RUP</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2013-03-21T00:00:00+08:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>前言</h2>
-
-<p>因为之前一直处在游戏开发行业，由于种种原因一直对软件工程中的项目管理、项目开发方法缺乏体验。虽然项目中也曾倡导编写更多的文档，无论是模块说明文档还是设计文档，但效果一直不好。不甚理想的地方主要体现在文档的规范性欠缺、不统一、浮于表面没有实质内容。文档的编写缺乏详尽的方法指导，那么所谓的设计文档要么是用来敷衍上级要么就是随着开发人员的水平不一而千差万别。</p>
-
-<p>当我开始目前这个非游戏项目时，我也曾想，前期做好结构设计，制定好关键问题的解决方案，那么要完成这个项目就不在话下了。但是我很快就面临了一个问题：需求不定。回想身处游戏公司的那些日子，程序员总是抱怨策划需求变更过快过多，在每一次策划提出一个需求变更时，谨慎的程序员都会再三让策划保证：放心，不会变了。而我面临的问题则更为严峻。我意识到，项目的需求，就连用户也无法一一罗列出来。我们需要的是需求调研。但就算你将客户的所有需求全部挖掘出来后（这几乎不可能，因为他们自己也不太清楚自己想要什么），当你交付了第一个软件版本，几乎可以肯定客户会提出一大堆的需求变更：我要的不是这个，我要的那个怎么没有，哦，我当初以为你说的是另一个意思。</p>
-
-<p>当然，需求调研这种工作不是让程序员去做的（那会更悲剧，无论是对客户还是对程序员而言，他们都是在对牛弹琴）。但需求的不确定性也总是存在的。</p>
-
-<p>事实上，需求变化本身就是一个很正常的现象。我一向愿意更悲观地处理软件开发方面的问题，所谓小心使得万年船。基于此，我决定摆好心态学学软件开发的方法学。</p>
-
-<h2>概要</h2>
-
-<p>本文简要描述、总结了RUP开发方法学的主要内容，结合我自己的感受阐述了一些RUP的核心原则。我相信我所理解的内容是肤浅的，对于非代码的表达我更相信其是存在歧义的。所以本文仅当是一种经验参考，不必当真。</p>
-
-<p>RUP据传是用于指导大型甚至超大型项目开发的，我们做的不是这样规模的项目。但是我们需要记录下整个项目的开发过程，通过这个过程中产出的<strong>工件</strong>任何一个人可以看出这个项目是如何实现出来的，其目的在于规避唯有从海量代码中才能熟悉项目实现这种问题。这里出现了一个概念：工件，其指的是软件项目开发过程中任何留下记录的事物，例如文档、图、代码等。<strong>RUP的一个重要思想，在于其整个软件开发过程都是可推导的</strong>。例如我们通常说的软件架构，或小一点的模块结构，都是通过开发过程中前面阶段产出的工件推导得出，而<strong>不是凭借程序员的经验拍脑袋想出来的</strong>（经验不太可靠，并且千差万别，而<strong>推导</strong>意味着将每个环节变得可靠）。我们借助RUP的这个特性，创建这些工件，用以建立起软件实现的可靠知识库。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2013/03/21/rup/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/6">&larr; Older</a>
@@ -597,11 +600,15 @@ Obj-&gt;func(args)
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (8)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (9)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/12/03/coroutine/">协程并发模型及使用感受</a>
+      </li>
     
       <li class="post">
         <a href="/2017/05/18/memcache-proxy/">实现一个memcache proxy</a>
@@ -619,10 +626,6 @@ Obj-&gt;func(args)
         <a href="/2017/03/09/toy-jit/">实现JVM中的JIT</a>
       </li>
     
-      <li class="post">
-        <a href="/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -632,7 +635,7 @@ Obj-&gt;func(args)
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 118.46153846153845%'>other(8)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 120.76923076923077%'>other(9)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
 </section>
 
   

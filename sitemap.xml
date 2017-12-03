@@ -1,581 +1,431 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  
-  
-  <url>
-    <loc>http://codemacro.com/2017/05/18/memcache-proxy/</loc>
-    <lastmod>2017-05-18T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2017/04/23/xmemcached/</loc>
-    <lastmod>2017-04-23T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2017/04/09/xnio-source/</loc>
-    <lastmod>2017-04-09T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2017/03/09/toy-jit/</loc>
-    <lastmod>2017-03-09T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2017/02/25/toy-jvm/</loc>
-    <lastmod>2017-02-25T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2017/02/05/mini-requirejs/</loc>
-    <lastmod>2017-02-05T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2017/01/08/react-plugin/</loc>
-    <lastmod>2017-01-08T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2016/08/16/reverse_html/</loc>
-    <lastmod>2016-08-16T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2016/05/08/tls_so_coredump/</loc>
-    <lastmod>2016-05-08T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2015/09/05/java-lightweight-container/</loc>
-    <lastmod>2015-09-05T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2015/08/10/java-gc-summary/</loc>
-    <lastmod>2015-08-10T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2015/07/04/jcm/</loc>
-    <lastmod>2015-07-04T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2015/06/07/servlet-web-framework/</loc>
-    <lastmod>2015-06-07T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2015/05/31/java-refect-ioc/</loc>
-    <lastmod>2015-05-31T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2015/05/30/drill-http-plugin/</loc>
-    <lastmod>2015-05-30T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2015/05/05/lock_free_list/</loc>
-    <lastmod>2015-05-05T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2015/05/03/hazard-pointer/</loc>
-    <lastmod>2015-05-03T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2015/04/19/rw_thread_gc/</loc>
-    <lastmod>2015-04-19T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2015/04/06/tcmalloc-getstacktrace/</loc>
-    <lastmod>2015-04-06T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2015/03/31/intro-java-bytecode/</loc>
-    <lastmod>2015-03-31T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2014/12/03/gdb_stl/</loc>
-    <lastmod>2014-12-03T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2014/11/04/linux-dynamic-library/</loc>
-    <lastmod>2014-11-04T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2014/10/19/zk-fastleaderelection/</loc>
-    <lastmod>2014-10-19T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2014/10/15/explain-poxos/</loc>
-    <lastmod>2014-10-15T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2014/10/12/diamond/</loc>
-    <lastmod>2014-10-12T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2014/10/07/pthread-tls-bug/</loc>
-    <lastmod>2014-10-07T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2014/09/21/zk-watch-benchmark/</loc>
-    <lastmod>2014-09-21T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2014/09/15/inside-static-library/</loc>
-    <lastmod>2014-09-15T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2014/09/09/understand-git/</loc>
-    <lastmod>2014-09-09T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2014/09/06/necessary-dtor/</loc>
-    <lastmod>2014-09-06T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2014/09/02/stack-frame/</loc>
-    <lastmod>2014-09-02T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2014/08/31/protobuf-rpc/</loc>
-    <lastmod>2014-08-31T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2014/08/25/lb-policy/</loc>
-    <lastmod>2014-08-25T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2014/06/01/select-limit/</loc>
-    <lastmod>2014-06-01T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2014/05/04/muduo-source/</loc>
-    <lastmod>2014-05-04T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2014/02/21/dhtcrawler-process/</loc>
-    <lastmod>2014-02-21T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2014/02/02/2013/</loc>
-    <lastmod>2014-02-02T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2013/09/23/scala-feature-overview/</loc>
-    <lastmod>2013-09-23T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2013/08/21/javascript-overview/</loc>
-    <lastmod>2013-08-21T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2013/08/15/debug-esp-bug/</loc>
-    <lastmod>2013-08-15T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2013/08/08/sphinx-dhtcrawler/</loc>
-    <lastmod>2013-08-08T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2013/07/02/dhtcrawler2/</loc>
-    <lastmod>2013-07-02T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2013/06/21/magnet-search-impl/</loc>
-    <lastmod>2013-06-21T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2013/06/20/magnet-search/</loc>
-    <lastmod>2013-06-20T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2013/06/09/ice-web-client/</loc>
-    <lastmod>2013-06-09T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2013/06/03/erlang-code-snippets/</loc>
-    <lastmod>2013-06-03T21:53:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2013/05/19/crawl-dht/</loc>
-    <lastmod>2013-05-19T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2013/05/08/thought-about-erlang/</loc>
-    <lastmod>2013-05-08T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2013/04/11/rabbitmq-erlang/</loc>
-    <lastmod>2013-04-11T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2013/03/21/rup/</loc>
-    <lastmod>2013-03-21T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2013/02/15/ice-overview/</loc>
-    <lastmod>2013-02-15T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2013/02/12/using-clang/</loc>
-    <lastmod>2013-02-12T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/09/17/c-plus-plus-ctor-virtual/</loc>
-    <lastmod>2012-09-17T16:01:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/09/13/c-plus-plus-virtual-destructor/</loc>
-    <lastmod>2012-09-13T17:03:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/09/06/octopress-seo/</loc>
-    <lastmod>2012-09-06T19:02:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/09/04/bit-operation-in-c-slash-c-plus-plus/</loc>
-    <lastmod>2012-09-04T19:49:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/09/03/goes-to-operator/</loc>
-    <lastmod>2012-09-03T15:14:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/08/29/branch-predictor/</loc>
-    <lastmod>2012-08-29T19:55:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/08/29/null-object-pattern/</loc>
-    <lastmod>2012-08-29T15:57:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/08/29/mmo-chat-server/</loc>
-    <lastmod>2012-08-29T09:54:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/08/21/c-plus-plus-11-lambda-overview/</loc>
-    <lastmod>2012-08-21T16:44:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/08/17/memcmp-on-copy-value/</loc>
-    <lastmod>2012-08-17T11:37:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/08/14/dynamic-scope-in-lisp/</loc>
-    <lastmod>2012-08-14T15:53:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/08/13/dynamic-method-in-lua/</loc>
-    <lastmod>2012-08-13T15:56:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/08/09/ruby-usage-example/</loc>
-    <lastmod>2012-08-09T14:26:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/08/07/write-standalone-ruby-script/</loc>
-    <lastmod>2012-08-07T14:33:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/08/07/edit-item-wxlistctrl/</loc>
-    <lastmod>2012-08-07T13:48:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/08/03/ruby-element-to-java/</loc>
-    <lastmod>2012-08-03T14:14:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/08/02/simple-oo-in-lua/</loc>
-    <lastmod>2012-08-02T10:18:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/07/30/write-cpp-like-fp/</loc>
-    <lastmod>2012-07-30T17:11:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/07/26/post-footer-plugin-for-octopress/</loc>
-    <lastmod>2012-07-26T14:27:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/07/26/ruby-case-when/</loc>
-    <lastmod>2012-07-26T10:13:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/07/24/html-table-hover/</loc>
-    <lastmod>2012-07-24T16:08:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/07/20/get-client-timezone-in-rails/</loc>
-    <lastmod>2012-07-20T16:42:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/07/19/popup-window-in-html/</loc>
-    <lastmod>2012-07-19T14:56:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/07/18/start-to-write-tips/</loc>
-    <lastmod>2012-07-18T17:01:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/07/18/add-tag-to-octopress/</loc>
-    <lastmod>2012-07-18T16:37:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/07/18/add-category-list-to-octopress/</loc>
-    <lastmod>2012-07-18T16:10:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/05/10/tolua-api/</loc>
-    <lastmod>2012-05-10T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/04/25/game-server-info-2/</loc>
-    <lastmod>2012-04-25T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/04/23/game-server-info-1/</loc>
-    <lastmod>2012-04-23T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/04/20/blog-on-github/</loc>
-    <lastmod>2012-04-20T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2012/02/04/codertrace/</loc>
-    <lastmod>2012-02-04T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2011/09/29/build-blog-by-lisp/</loc>
-    <lastmod>2011-09-29T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2011/05/09/lua-function-arg/</loc>
-    <lastmod>2011-05-09T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2011/05/02/entity-property/</loc>
-    <lastmod>2011-05-02T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2011/04/30/multi-inherit-void/</loc>
-    <lastmod>2011-04-30T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2011/04/04/module-level/</loc>
-    <lastmod>2011-04-04T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2011/03/30/lisp-rss/</loc>
-    <lastmod>2011-03-30T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2011/03/21/lisp-symbol/</loc>
-    <lastmod>2011-03-21T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/2011/03/13/lisp-writer/</loc>
-    <lastmod>2011-03-13T00:00:00+08:00</lastmod>
-    <priority>0.8</priority>
-  </url>
-  
-  
-  <url>
-    <loc>http://codemacro.com/about.html</loc>
-    <lastmod>2017-05-18T20:10:14+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/</loc>
-    <lastmod>2017-05-18T20:10:14+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/blog/archives/</loc>
-    <lastmod>2017-05-18T20:10:14+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  
-  <url>
-    <loc>http://codemacro.com/tips/</loc>
-    <lastmod>2017-05-18T20:10:14+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  
-  
+<url>
+<loc>http://codemacro.com/2017/12/03/coroutine/</loc>
+<lastmod>2017-12-03T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2017/05/18/memcache-proxy/</loc>
+<lastmod>2017-05-18T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2017/04/23/xmemcached/</loc>
+<lastmod>2017-04-23T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2017/04/09/xnio-source/</loc>
+<lastmod>2017-04-09T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2017/03/09/toy-jit/</loc>
+<lastmod>2017-03-09T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2017/02/25/toy-jvm/</loc>
+<lastmod>2017-02-25T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2017/02/05/mini-requirejs/</loc>
+<lastmod>2017-02-05T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2017/01/08/react-plugin/</loc>
+<lastmod>2017-01-08T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2016/08/16/reverse_html/</loc>
+<lastmod>2016-08-16T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2016/05/08/tls_so_coredump/</loc>
+<lastmod>2016-05-08T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2015/09/05/java-lightweight-container/</loc>
+<lastmod>2015-09-05T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2015/08/10/java-gc-summary/</loc>
+<lastmod>2015-08-10T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2015/07/04/jcm/</loc>
+<lastmod>2015-07-04T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2015/06/07/servlet-web-framework/</loc>
+<lastmod>2015-06-07T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2015/05/31/java-refect-ioc/</loc>
+<lastmod>2015-05-31T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2015/05/30/drill-http-plugin/</loc>
+<lastmod>2015-05-30T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2015/05/05/lock_free_list/</loc>
+<lastmod>2015-05-05T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2015/05/03/hazard-pointer/</loc>
+<lastmod>2015-05-03T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2015/04/19/rw_thread_gc/</loc>
+<lastmod>2015-04-19T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2015/04/06/tcmalloc-getstacktrace/</loc>
+<lastmod>2015-04-06T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2015/03/31/intro-java-bytecode/</loc>
+<lastmod>2015-03-31T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2014/12/03/gdb_stl/</loc>
+<lastmod>2014-12-03T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2014/11/04/linux-dynamic-library/</loc>
+<lastmod>2014-11-04T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2014/10/19/zk-fastleaderelection/</loc>
+<lastmod>2014-10-19T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2014/10/15/explain-poxos/</loc>
+<lastmod>2014-10-15T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2014/10/12/diamond/</loc>
+<lastmod>2014-10-12T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2014/10/07/pthread-tls-bug/</loc>
+<lastmod>2014-10-07T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2014/09/21/zk-watch-benchmark/</loc>
+<lastmod>2014-09-21T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2014/09/15/inside-static-library/</loc>
+<lastmod>2014-09-15T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2014/09/09/understand-git/</loc>
+<lastmod>2014-09-09T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2014/09/06/necessary-dtor/</loc>
+<lastmod>2014-09-06T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2014/09/02/stack-frame/</loc>
+<lastmod>2014-09-02T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2014/08/31/protobuf-rpc/</loc>
+<lastmod>2014-08-31T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2014/08/25/lb-policy/</loc>
+<lastmod>2014-08-25T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2014/06/01/select-limit/</loc>
+<lastmod>2014-06-01T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2014/05/04/muduo-source/</loc>
+<lastmod>2014-05-04T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2014/02/21/dhtcrawler-process/</loc>
+<lastmod>2014-02-21T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2014/02/02/2013/</loc>
+<lastmod>2014-02-02T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2013/09/23/scala-feature-overview/</loc>
+<lastmod>2013-09-23T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2013/08/21/javascript-overview/</loc>
+<lastmod>2013-08-21T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2013/08/15/debug-esp-bug/</loc>
+<lastmod>2013-08-15T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2013/08/08/sphinx-dhtcrawler/</loc>
+<lastmod>2013-08-08T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2013/07/02/dhtcrawler2/</loc>
+<lastmod>2013-07-02T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2013/06/21/magnet-search-impl/</loc>
+<lastmod>2013-06-21T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2013/06/20/magnet-search/</loc>
+<lastmod>2013-06-20T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2013/06/09/ice-web-client/</loc>
+<lastmod>2013-06-09T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2013/06/03/erlang-code-snippets/</loc>
+<lastmod>2013-06-03T21:53:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2013/05/19/crawl-dht/</loc>
+<lastmod>2013-05-19T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2013/05/08/thought-about-erlang/</loc>
+<lastmod>2013-05-08T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2013/04/11/rabbitmq-erlang/</loc>
+<lastmod>2013-04-11T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2013/03/21/rup/</loc>
+<lastmod>2013-03-21T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2013/02/15/ice-overview/</loc>
+<lastmod>2013-02-15T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2013/02/12/using-clang/</loc>
+<lastmod>2013-02-12T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/09/17/c-plus-plus-ctor-virtual/</loc>
+<lastmod>2012-09-17T16:01:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/09/13/c-plus-plus-virtual-destructor/</loc>
+<lastmod>2012-09-13T17:03:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/09/06/octopress-seo/</loc>
+<lastmod>2012-09-06T19:02:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/09/04/bit-operation-in-c-slash-c-plus-plus/</loc>
+<lastmod>2012-09-04T19:49:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/09/03/goes-to-operator/</loc>
+<lastmod>2012-09-03T15:14:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/08/29/branch-predictor/</loc>
+<lastmod>2012-08-29T19:55:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/08/29/null-object-pattern/</loc>
+<lastmod>2012-08-29T15:57:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/08/29/mmo-chat-server/</loc>
+<lastmod>2012-08-29T09:54:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/08/21/c-plus-plus-11-lambda-overview/</loc>
+<lastmod>2012-08-21T16:44:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/08/17/memcmp-on-copy-value/</loc>
+<lastmod>2012-08-17T11:37:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/08/14/dynamic-scope-in-lisp/</loc>
+<lastmod>2012-08-14T15:53:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/08/13/dynamic-method-in-lua/</loc>
+<lastmod>2012-08-13T15:56:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/08/09/ruby-usage-example/</loc>
+<lastmod>2012-08-09T14:26:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/08/07/write-standalone-ruby-script/</loc>
+<lastmod>2012-08-07T14:33:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/08/07/edit-item-wxlistctrl/</loc>
+<lastmod>2012-08-07T13:48:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/08/03/ruby-element-to-java/</loc>
+<lastmod>2012-08-03T14:14:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/08/02/simple-oo-in-lua/</loc>
+<lastmod>2012-08-02T10:18:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/07/30/write-cpp-like-fp/</loc>
+<lastmod>2012-07-30T17:11:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/07/26/post-footer-plugin-for-octopress/</loc>
+<lastmod>2012-07-26T14:27:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/07/26/ruby-case-when/</loc>
+<lastmod>2012-07-26T10:13:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/07/24/html-table-hover/</loc>
+<lastmod>2012-07-24T16:08:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/07/20/get-client-timezone-in-rails/</loc>
+<lastmod>2012-07-20T16:42:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/07/19/popup-window-in-html/</loc>
+<lastmod>2012-07-19T14:56:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/07/18/start-to-write-tips/</loc>
+<lastmod>2012-07-18T17:01:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/07/18/add-tag-to-octopress/</loc>
+<lastmod>2012-07-18T16:37:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/07/18/add-category-list-to-octopress/</loc>
+<lastmod>2012-07-18T16:10:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/05/10/tolua-api/</loc>
+<lastmod>2012-05-10T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/04/25/game-server-info-2/</loc>
+<lastmod>2012-04-25T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/04/23/game-server-info-1/</loc>
+<lastmod>2012-04-23T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/04/20/blog-on-github/</loc>
+<lastmod>2012-04-20T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2012/02/04/codertrace/</loc>
+<lastmod>2012-02-04T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2011/09/29/build-blog-by-lisp/</loc>
+<lastmod>2011-09-29T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2011/05/09/lua-function-arg/</loc>
+<lastmod>2011-05-09T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2011/05/02/entity-property/</loc>
+<lastmod>2011-05-02T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2011/04/30/multi-inherit-void/</loc>
+<lastmod>2011-04-30T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2011/04/04/module-level/</loc>
+<lastmod>2011-04-04T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2011/03/30/lisp-rss/</loc>
+<lastmod>2011-03-30T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2011/03/21/lisp-symbol/</loc>
+<lastmod>2011-03-21T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/2011/03/13/lisp-writer/</loc>
+<lastmod>2011-03-13T00:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://codemacro.com/about.html</loc>
+</url>
+<url>
+<loc>http://codemacro.com/blog/archives/</loc>
+</url>
+<url>
+<loc>http://codemacro.com/</loc>
+</url>
+<url>
+<loc>http://codemacro.com/tips/</loc>
+</url>
+<url>
+<loc>http://codemacro.com/categories/lisp/</loc>
+</url>
+<url>
+<loc>http://codemacro.com/categories/module/</loc>
+</url>
+<url>
+<loc>http://codemacro.com/categories/c-slash-c-plus-plus/</loc>
+</url>
+<url>
+<loc>http://codemacro.com/categories/game-develop/</loc>
+</url>
+<url>
+<loc>http://codemacro.com/categories/lua/</loc>
+</url>
+<url>
+<loc>http://codemacro.com/categories/other/</loc>
+</url>
+<url>
+<loc>http://codemacro.com/categories/tips/</loc>
+</url>
+<url>
+<loc>http://codemacro.com/categories/web/</loc>
+</url>
+<url>
+<loc>http://codemacro.com/categories/ruby/</loc>
+</url>
+<url>
+<loc>http://codemacro.com/categories/clang/</loc>
+</url>
+<url>
+<loc>http://codemacro.com/categories/ice/</loc>
+</url>
+<url>
+<loc>http://codemacro.com/categories/erlang/</loc>
+</url>
+<url>
+<loc>http://codemacro.com/categories/network/</loc>
+</url>
+<url>
+<loc>http://codemacro.com/categories/javascript/</loc>
+</url>
+<url>
+<loc>http://codemacro.com/categories/scala/</loc>
+</url>
+<url>
+<loc>http://codemacro.com/categories/java/</loc>
+</url>
 </urlset>

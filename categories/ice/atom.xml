@@ -4,7 +4,7 @@
   <title><![CDATA[Category: ice | loop in codes]]></title>
   <link href="http://codemacro.com/categories/ice/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2017-05-18T20:10:14+08:00</updated>
+  <updated>2017-12-03T18:38:32+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -61,68 +61,58 @@
 </ul>
 
 
-<p>{% highlight html %}
-{% raw %}
-    <script type="text/javascript" src="swfobject.js"></script>
-    <script type="text/javascript">
-        var flashvars = {};
-        var params = {};
-      params.play = &ldquo;true&rdquo;;
-        params.quality = &ldquo;high&rdquo;;
-        params.bgcolor = &ldquo;white&rdquo;;
-        params.allowscriptaccess = &ldquo;always&rdquo;;
-        params.allowfullscreen = &ldquo;true&rdquo;;
-        var attributes = {};
-        attributes.id = &ldquo;asclient&rdquo;;
-        attributes.name = &ldquo;asclient&rdquo;;
-        attributes.align = &ldquo;middle&rdquo;;
-        swfobject.embedSWF(&ldquo;asclient.swf&rdquo;, &ldquo;flashContent&rdquo;, &ldquo;1&rdquo;, &ldquo;1&rdquo;,
-            &ldquo;0&rdquo;, &ldquo;&rdquo;,
-            flashvars, params, attributes);
-        swfobject.createCSS(&ldquo;#flashContent&rdquo;, &ldquo;display:none;&rdquo;);
-    </script>
-{% endraw %}
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-html" data-lang="html"><span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span> <span class="na">src=</span><span class="s">&quot;swfobject.js&quot;</span><span class="nt">&gt;&lt;/script&gt;</span>
+    <span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span><span class="nt">&gt;</span>
+        <span class="kd">var</span> <span class="nx">flashvars</span> <span class="o">=</span> <span class="p">{};</span>
+        <span class="kd">var</span> <span class="nx">params</span> <span class="o">=</span> <span class="p">{};</span>
+      <span class="nx">params</span><span class="p">.</span><span class="nx">play</span> <span class="o">=</span> <span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="kc">true</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;;</span>
+        <span class="nx">params</span><span class="p">.</span><span class="nx">quality</span> <span class="o">=</span> <span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="nx">high</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;;</span>
+        <span class="nx">params</span><span class="p">.</span><span class="nx">bgcolor</span> <span class="o">=</span> <span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="nx">white</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;;</span>
+        <span class="nx">params</span><span class="p">.</span><span class="nx">allowscriptaccess</span> <span class="o">=</span> <span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="nx">always</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;;</span>
+        <span class="nx">params</span><span class="p">.</span><span class="nx">allowfullscreen</span> <span class="o">=</span> <span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="kc">true</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;;</span>
+        <span class="kd">var</span> <span class="nx">attributes</span> <span class="o">=</span> <span class="p">{};</span>
+        <span class="nx">attributes</span><span class="p">.</span><span class="nx">id</span> <span class="o">=</span> <span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="nx">asclient</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;;</span>
+        <span class="nx">attributes</span><span class="p">.</span><span class="nx">name</span> <span class="o">=</span> <span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="nx">asclient</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;;</span>
+        <span class="nx">attributes</span><span class="p">.</span><span class="nx">align</span> <span class="o">=</span> <span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="nx">middle</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;;</span>
+        <span class="nx">swfobject</span><span class="p">.</span><span class="nx">embedSWF</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="nx">asclient</span><span class="p">.</span><span class="nx">swf</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="nx">flashContent</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="mi">1</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="mi">1</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;,</span>
+            <span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="mi">0</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;,</span>
+            <span class="nx">flashvars</span><span class="p">,</span> <span class="nx">params</span><span class="p">,</span> <span class="nx">attributes</span><span class="p">);</span>
+        <span class="nx">swfobject</span><span class="p">.</span><span class="nx">createCSS</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="err">#</span><span class="nx">flashContent</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="nx">ldquo</span><span class="p">;</span><span class="nx">display</span><span class="o">:</span><span class="nx">none</span><span class="p">;</span><span class="o">&amp;</span><span class="nx">rdquo</span><span class="p">;);</span>
+    <span class="nt">&lt;/script&gt;</span></code></pre></div></p>
 
 <p>自然，页面中需加入flashContent这个div：</p>
 
-<p>{% highlight html %}
-    <div id="flashContent">
-        <p>no flash</p>
-    </div>
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-html" data-lang="html"><span class="nt">&lt;div</span> <span class="na">id=</span><span class="s">&quot;flashContent&quot;</span><span class="nt">&gt;</span>
+        <span class="nt">&lt;p&gt;</span>no flash<span class="nt">&lt;/p&gt;</span>
+    <span class="nt">&lt;/div&gt;</span></code></pre></div></p>
 
 <p>我的mxml文件也很简单：</p>
 
-<p>{% highlight xml %}
-{% raw %}
-&lt;?xml version=&ldquo;1.0&rdquo; encoding=&ldquo;utf-8&rdquo;?>
-&lt;s:Application
-    xmlns:fx=&ldquo;<a href="http://ns.adobe.com/mxml/2009">http://ns.adobe.com/mxml/2009</a>&rdquo;
-    xmlns:s=&ldquo;library://ns.adobe.com/flex/spark&rdquo;
-    xmlns:mx=&ldquo;library://ns.adobe.com/flex/mx&rdquo;
-    applicationComplete=&ldquo;doApplicationComplete()&rdquo; >
-    &lt;fx:Script>
-    &lt;![CDATA[
+<p><div class="highlight"><pre><code class="language-xml" data-lang="xml"><span class="ni">&amp;lt;</span>?xml version=<span class="ni">&amp;ldquo;</span>1.0<span class="ni">&amp;rdquo;</span> encoding=<span class="ni">&amp;ldquo;</span>utf-8<span class="ni">&amp;rdquo;</span>?&gt;
+<span class="ni">&amp;lt;</span>s:Application
+    xmlns:fx=<span class="ni">&amp;ldquo;</span><span class="nt">&lt;a</span> <span class="na">href=</span><span class="s">&quot;http://ns.adobe.com/mxml/2009&quot;</span><span class="nt">&gt;</span>http://ns.adobe.com/mxml/2009<span class="nt">&lt;/a&gt;</span><span class="ni">&amp;rdquo;</span>
+    xmlns:s=<span class="ni">&amp;ldquo;</span>library://ns.adobe.com/flex/spark<span class="ni">&amp;rdquo;</span>
+    xmlns:mx=<span class="ni">&amp;ldquo;</span>library://ns.adobe.com/flex/mx<span class="ni">&amp;rdquo;</span>
+    applicationComplete=<span class="ni">&amp;ldquo;</span>doApplicationComplete()<span class="ni">&amp;rdquo;</span> &gt;
+    <span class="ni">&amp;lt;</span>fx:Script&gt;
+    <span class="ni">&amp;lt;</span>![CDATA[
        import ASClient.Coordinator;
-       import flash.external.ExternalInterface;</p>
+       import flash.external.ExternalInterface;<span class="nt">&lt;/p&gt;</span>
 
-<pre><code>   private var _coordinator:Coordinator;
+<span class="nt">&lt;pre&gt;&lt;code&gt;</span>   private var _coordinator:Coordinator;
 
    public function doApplicationComplete():void
    {
-        trace("doApplicationComplete");
+        trace(&quot;doApplicationComplete&quot;);
         _coordinator = new Coordinator();
         _coordinator.reg_methods();
-        ExternalInterface.call("as_ready"); 
+        ExternalInterface.call(&quot;as_ready&quot;); 
    } 
- ]]&gt;
-&lt;/fx:Script&gt;
-</code></pre>
+ ]]<span class="ni">&amp;gt;</span>
+<span class="ni">&amp;lt;</span>/fx:Script<span class="ni">&amp;gt;</span>
+<span class="nt">&lt;/code&gt;&lt;/pre&gt;</span>
 
-<p>&lt;/s:Application>
-{% endraw %}
-{% endhighlight %}</p>
+<span class="nt">&lt;p&gt;</span><span class="ni">&amp;lt;</span>/s:Application&gt;</code></pre></div></p>
 
 <h2>ActionScript日志</h2>
 
@@ -177,17 +167,14 @@
 
 <p>然后在JavaScript中调用：</p>
 
-<p>{% highlight javascript %}
-{% raw %}
-    function asObject() {
-        // asclient是嵌入Flash时填入的name和(或?)id
-        return window.document.asclient;
-    }
-    var as = asObject();
-    as.service_loadall();</p>
+<p><div class="highlight"><pre><code class="language-javascript" data-lang="javascript"><span class="kd">function</span> <span class="nx">asObject</span><span class="p">()</span> <span class="p">{</span>
+        <span class="c1">// asclient是嵌入Flash时填入的name和(或?)id</span>
+        <span class="k">return</span> <span class="nb">window</span><span class="p">.</span><span class="nb">document</span><span class="p">.</span><span class="nx">asclient</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="kd">var</span> <span class="nx">as</span> <span class="o">=</span> <span class="nx">asObject</span><span class="p">();</span>
+    <span class="nx">as</span><span class="p">.</span><span class="nx">service_loadall</span><span class="p">();</span><span class="o">&lt;</span><span class="err">/p&gt;</span>
 
-<p>{% endraw %}
-{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>在ActionScript中调用JavaScript中调用则更简单，一句话：</p>
 
@@ -217,10 +204,8 @@
 
 <p><a href="http://www.zeroc.com/index.html">ICE</a>，Internet Communications Engine，按照官方介绍，是一个支持C++、.Net、Java、Python、Objective-C、Ruby、PHP及ActionScript等语言的分布式程序开发平台。按照我的理解，简单来说它是一个核心功能包装RPC的库。要把这个RPC包装得漂亮，自然而然，对于使用者而言，调用一个远端的接口和调用一个本地的接口没有什么区别，例如：</p>
 
-<p>{% highlight c++ %}
-    Object *obj = xxx
-    obj->sayHello();
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">Object</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="n">xxx</span>
+    <span class="n">obj</span><span class="o">-&gt;</span><span class="n">sayHello</span><span class="p">();</span></code></pre></div></p>
 
 <p>ICE包装<code>sayHello</code>接口，当应用层调用该接口时，ICE发送调用请求到远端服务器，接收返回结果并返回给应用层。ICE在接口提供方面，做到了这一点。</p>
 
@@ -257,21 +242,18 @@
 </ul>
 
 
-<p>{% highlight c++ %}
-    // Printer.ice，Slice源码后缀为ice
-    module Demo {
-        interface Printer {
-            void printString(string s);
-        };
-    };</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// Printer.ice，Slice源码后缀为ice</span>
+    <span class="n">module</span> <span class="n">Demo</span> <span class="p">{</span>
+        <span class="n">interface</span> <span class="n">Printer</span> <span class="p">{</span>
+            <span class="kt">void</span> <span class="n">printString</span><span class="p">(</span><span class="n">string</span> <span class="n">s</span><span class="p">);</span>
+        <span class="p">};</span>
+    <span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 
-<p>{% endhighlight %}</p>
+<span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span></code></pre></div></p>
 
 <p>使用ICE提供的程序翻译为C++代码：</p>
 
-<p>{% highlight c++ %}
-    $ slice2cpp Printer.ice
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="err">$</span> <span class="n">slice2cpp</span> <span class="n">Printer</span><span class="p">.</span><span class="n">ice</span></code></pre></div></p>
 
 <p>得到Printer.cpp和Printer.h。Slice翻译出来的目标代码除了封装RPC交互的一些细节外，最重要的，因为本身Slice文件其实是定义接口，但接口的实现，则需要应用层来做。</p>
 
@@ -280,26 +262,22 @@
 </ul>
 
 
-<p>{% highlight c++ %}
-    // 翻译出来的Printer.h中有对应于Slice中定义的Printer类，及需要实现的printString接口
-    class PrinterI : public Printer {
-    public:
-        virtual void printString(const string&amp; s, const Ice::Current&amp;) {
-            count &lt;&lt; s &lt;&lt; endl;
-        }
-    };
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// 翻译出来的Printer.h中有对应于Slice中定义的Printer类，及需要实现的printString接口</span>
+    <span class="k">class</span> <span class="nc">PrinterI</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Printer</span> <span class="p">{</span>
+    <span class="k">public</span><span class="o">:</span>
+        <span class="k">virtual</span> <span class="kt">void</span> <span class="n">printString</span><span class="p">(</span><span class="k">const</span> <span class="n">string</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="n">s</span><span class="p">,</span> <span class="k">const</span> <span class="n">Ice</span><span class="o">::</span><span class="n">Current</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;)</span> <span class="p">{</span>
+            <span class="n">count</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">s</span> <span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span> <span class="n">endl</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">};</span></code></pre></div></p>
 
 <ul>
 <li>客户端使用生成的Printer.cpp/.h，通过ICE获得一个<code>Printer</code>对象，然后调用其<code>printString</code>接口</li>
 </ul>
 
 
-<p>{% highlight c++ %}
-    // don&rsquo;t care about this
-    PrinterPrx printer = PrinterPrx::checkedCast(base);
-    printer->printString(&ldquo;Hello World!&rdquo;);
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// don&amp;rsquo;t care about this</span>
+    <span class="n">PrinterPrx</span> <span class="n">printer</span> <span class="o">=</span> <span class="n">PrinterPrx</span><span class="o">::</span><span class="n">checkedCast</span><span class="p">(</span><span class="n">base</span><span class="p">);</span>
+    <span class="n">printer</span><span class="o">-&gt;</span><span class="n">printString</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Hello</span> <span class="n">World</span><span class="o">!&amp;</span><span class="n">rdquo</span><span class="p">;);</span></code></pre></div></p>
 
 <p>使用ICE开发应用程序，整体过程即为以上展示。</p>
 
@@ -317,14 +295,12 @@
 
 <p>对于<code>Printer</code>例子，一个<code>Printer</code>对象可以被看作是一个ICE Objects。Object可以说是服务器端提供给客户端的接口。所以在服务器端通常会创建出很多个Object。服务器端使用Object Adapter对象去保存这些Object。例如，一个典型的ICE对象在初始化时可能包含以下代码：</p>
 
-<p>{% highlight c++ %}
-    // 创建一个Object Adapter
-    Ice::ObjectAdapterPtr adapter = communicator()->createObjectAdapter(&ldquo;Hello&rdquo;);
-    // 创建一个Object，形如Printer
-    Demo::HelloPtr hello = new HelloI;
-    // 将Object加入到Object Adapter
-    adapter->add(hello, communicator()->stringToIdentity(&ldquo;hello&rdquo;));
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// 创建一个Object Adapter</span>
+    <span class="n">Ice</span><span class="o">::</span><span class="n">ObjectAdapterPtr</span> <span class="n">adapter</span> <span class="o">=</span> <span class="n">communicator</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">createObjectAdapter</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Hello</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+    <span class="c1">// 创建一个Object，形如Printer</span>
+    <span class="n">Demo</span><span class="o">::</span><span class="n">HelloPtr</span> <span class="n">hello</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HelloI</span><span class="p">;</span>
+    <span class="c1">// 将Object加入到Object Adapter</span>
+    <span class="n">adapter</span><span class="o">-&gt;</span><span class="n">add</span><span class="p">(</span><span class="n">hello</span><span class="p">,</span> <span class="n">communicator</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">stringToIdentity</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">hello</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;));</span></code></pre></div></p>
 
 <p>Facet是Object的一部分，或者说Object是Facet的一个集合，摘Ice manual中的一句话：</p>
 
@@ -334,12 +310,10 @@
 
 <p>Proxy是ICE客户端里的概念。客户端通过Proxy访问服务器端上的Object，通过Proxy调用服务器端Object上提供的接口。在客户端上一般有类似以下代码：</p>
 
-<p>{% highlight c++ %}
-    Ice::ObjectPrx base = ic->stringToProxy(&ldquo;SimplePrinter:default -p 10000&rdquo;);
-    // Printer Proxy
-    PrinterPrx printer = PrinterPrx::checkedCast(base);
-    printer->printString(&ldquo;Hello World!&rdquo;);
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">Ice</span><span class="o">::</span><span class="n">ObjectPrx</span> <span class="n">base</span> <span class="o">=</span> <span class="n">ic</span><span class="o">-&gt;</span><span class="n">stringToProxy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="nl">SimplePrinter</span><span class="p">:</span><span class="k">default</span> <span class="o">-</span><span class="n">p</span> <span class="mi">10000</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+    <span class="c1">// Printer Proxy</span>
+    <span class="n">PrinterPrx</span> <span class="n">printer</span> <span class="o">=</span> <span class="n">PrinterPrx</span><span class="o">::</span><span class="n">checkedCast</span><span class="p">(</span><span class="n">base</span><span class="p">);</span>
+    <span class="n">printer</span><span class="o">-&gt;</span><span class="n">printString</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Hello</span> <span class="n">World</span><span class="o">!&amp;</span><span class="n">rdquo</span><span class="p">;);</span></code></pre></div></p>
 
 <p>Proxy又分为几种，包括：</p>
 
@@ -376,9 +350,7 @@
 
 <p>Asynchronous Method Invocation，对于客户端而言，用于表示某个服务器端接口是异步操作，需在Slice中使用metadata来修饰这个接口，例如：</p>
 
-<p>{% highlight c++ %}
-    [&ldquo;ami&rdquo;]  void sayHello(int delay)
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="p">[</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">ami</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;]</span>  <span class="kt">void</span> <span class="n">sayHello</span><span class="p">(</span><span class="kt">int</span> <span class="n">delay</span><span class="p">)</span></code></pre></div></p>
 
 <ul>
 <li>AMD</li>
@@ -387,9 +359,7 @@
 
 <p>Asynchronous method dispatch，这个针对于服务器端，同样表示这个接口是异步操作，需在Slice中使用metadata来修饰这个接口：</p>
 
-<p>{% highlight c++ %}
-    [&ldquo;ami&rdquo;, &ldquo;amd&rdquo;]  void sayHello(int delay)
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="p">[</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">ami</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">amd</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;]</span>  <span class="kt">void</span> <span class="n">sayHello</span><span class="p">(</span><span class="kt">int</span> <span class="n">delay</span><span class="p">)</span></code></pre></div></p>
 
 <p>通常对于这种异步接口而言，都需要使用Slice metadata <code>ami</code>和<code>amd</code>同时修饰。</p>
 
@@ -462,13 +432,11 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
 
 <p>对于需要管理服务器的客户端而言，可以大致通过如下代码来完成：</p>
 
-<p>{% highlight c++ %}
-    // 可以通过communicator来获取这个admin object
-    Ice::ObjectPrx adminObj = &hellip;;
-    // 获取admin object里的property facet
-    Ice::PropertiesAdminPrx propAdmin = Ice::PropertiesAdminPrx::checkedCast(adminObj, &ldquo;Properties&rdquo;);
-    Ice::PropertyDict props = propAdmin->getPropertiesForPrefix(&ldquo;&rdquo;);
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// 可以通过communicator来获取这个admin object</span>
+    <span class="n">Ice</span><span class="o">::</span><span class="n">ObjectPrx</span> <span class="n">adminObj</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;;</span>
+    <span class="c1">// 获取admin object里的property facet</span>
+    <span class="n">Ice</span><span class="o">::</span><span class="n">PropertiesAdminPrx</span> <span class="n">propAdmin</span> <span class="o">=</span> <span class="n">Ice</span><span class="o">::</span><span class="n">PropertiesAdminPrx</span><span class="o">::</span><span class="n">checkedCast</span><span class="p">(</span><span class="n">adminObj</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Properties</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span>
+    <span class="n">Ice</span><span class="o">::</span><span class="n">PropertyDict</span> <span class="n">props</span> <span class="o">=</span> <span class="n">propAdmin</span><span class="o">-&gt;</span><span class="n">getPropertiesForPrefix</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;);</span></code></pre></div></p>
 
 <p>详细参看ICE Manual <a href="http://doc.zeroc.com/display/Ice/Administrative+Facility">Administrative Facility</a></p>
 
@@ -476,17 +444,13 @@ Server activation is taken care of by IceGrid nodes. You must run an IceGrid nod
 
 <p>前已述及，ICE中的网络连接隐藏于Proxy之下。Proxy有两个接口可以获取这个连接对象：</p>
 
-<p>{% highlight c++ %}
-    ice_getConnection
-    ice_getCachedConnection
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">ice_getConnection</span>
+    <span class="n">ice_getCachedConnection</span></code></pre></div></p>
 
 <p>例如：</p>
 
-<p>{% highlight c++ %}
-    HelloPrx hello = HelloPrx::uncheckedCast(communicator->stringToProxy(&ldquo;hello:tcp -h remote.host.com -p 10000&rdquo;));
-    ConnectionPtr conn = hello->ice_getConnection();
-{% endhighlight %}</p>
+<p><div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">HelloPrx</span> <span class="n">hello</span> <span class="o">=</span> <span class="n">HelloPrx</span><span class="o">::</span><span class="n">uncheckedCast</span><span class="p">(</span><span class="n">communicator</span><span class="o">-&gt;</span><span class="n">stringToProxy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="nl">hello</span><span class="p">:</span><span class="n">tcp</span> <span class="o">-</span><span class="n">h</span> <span class="n">remote</span><span class="p">.</span><span class="n">host</span><span class="p">.</span><span class="n">com</span> <span class="o">-</span><span class="n">p</span> <span class="mi">10000</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;));</span>
+    <span class="n">ConnectionPtr</span> <span class="n">conn</span> <span class="o">=</span> <span class="n">hello</span><span class="o">-&gt;</span><span class="n">ice_getConnection</span><span class="p">();</span></code></pre></div></p>
 
 <p>ICE隐藏了网络连接的细节。当ICE发现需要建立连接时才会去建立，例如以上例子中当获得一个Proxy时（这里是HelloPrx），ICE并不建立网络连接，当某个时刻通过该Proxy调用服务器端的某个接口时，ICE发现对应的网络连接没有建立，则发起网络连接。</p>
 
