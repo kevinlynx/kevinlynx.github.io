@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2017-12-03T18:38:32+08:00</updated>
+  <updated>2017-12-12T22:10:04+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,172 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[写了一个棋牌游戏服务器框架]]></title>
+    <link href="http://codemacro.com/2017/12/12/chess-gameserver/"/>
+    <updated>2017-12-12T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2017/12/12/chess-gameserver</id>
+    <content type="html"><![CDATA[<p>最近业余时间写了一个棋牌游戏服务端框架：<a href="https://github.com/kevinlynx/pigy">pigy</a>。对于棋牌游戏服务端框架，我的定义是：</p>
+
+<ul>
+<li>分布式的</li>
+<li>包含网络棋牌游戏中包括登陆、大厅、游戏框架、数据持久化等基础组件</li>
+<li>提供具体游戏框架，游戏逻辑程序员可以基于这个框架focus在游戏的开发上</li>
+</ul>
+
+
+<p>写得差不多的时候，我在网上搜索了下，发现棋牌游戏源码已经烂大街，自己精力有限，也没有心思和动力去研究现有实现的优缺点而做出一个更好的替代。所以我这份实现仅作为一个demo放出来让大家开心下好了。</p>
+
+<p><a href="https://github.com/kevinlynx/pigy">pigy</a>基于<a href="https://github.com/cloudwu/skynet">skynet</a>实现。之所以选择skynet是看中其中已经有不少网络游戏基础组件可以使用，结合开发下来稍微花点业余时间就可以完成雏形。除此之外，部分源码也参考/复制了<a href="https://github.com/fztcjjl/metoo">metoo</a>项目。</p>
+
+<!-- more -->
+
+
+<h2>架构</h2>
+
+<p><img src="https://i.imgur.com/7RLkaWm.png" alt="" /></p>
+
+<p>服务器主要有3类角色：</p>
+
+<ul>
+<li>Login，登陆/账号服务器，负责玩家账号相关</li>
+<li>Hall，大厅服务器，职责包括：
+
+<ul>
+<li>获取玩家信息及公告推送等独立于具体游戏的逻辑</li>
+<li>房间相关管理，分配玩家到游戏服务器</li>
+</ul>
+</li>
+<li>Game，游戏服务器，包装具体的游戏，提供游戏运行框架</li>
+</ul>
+
+
+<p>我希望除了Game之外，Login和Hall都具备高可用性，例如可水平扩展，在挂掉后对玩家无影响。要做到这一点就要对服务器的状态数据做较好的管理，以实现挂掉后要么玩家被自动迁移到其他服务，要么挂掉的服务重启后可以快速恢复之前的数据。对于Login/Hall而言最主要的状态数据就是玩家的登陆数据，由于数据简单，可以选择直接持久化到redis并且不需要落盘。redis就可以作为单点，保存全服的数据。这样，Login/Hall还可以水平扩展，动态根据实例数分摊全服玩家数据。</p>
+
+<p>但是我只是实现了一个阉割版。我暂时不希望太过依赖redis，所以我让Login/Hall互相作为数据备份。Login和Hall本身就持有玩家的登陆数据，可以在对方挂掉重启后，自动恢复数据。为了恢复数据时简单可靠，我让Login作为单点存在。毕竟，Login并不与Client保持长连接，也没有除了登陆外其他更复杂的逻辑，加上skynet多线程的特性，性能上单点就足够支撑。</p>
+
+<p>Hall是支持水平扩展的。Login可以按玩家uid一致性哈希地选择一个Hall，其实按普通取模哈希也没有什么问题。1个Hall实例挂掉后，Client启动重连定时器，预期能在短时间内重新启动完成这个挂掉的Hall。</p>
+
+<p>Game (server)肯定是支持水平扩展的。我在Game中抽象了Gamelet概念，本质上就是一个具体的游戏。Gamelet可以部署到任意一个Game内，Game单实例可以跑多个Gamelet。Hall会定期查询所有Game的Gamelet实时情况。Gamelet的实时情况主要包括某具体游戏关联的所有房间信息。Hall聚合这些信息，主要确定两方面信息：</p>
+
+<ul>
+<li>哪些Game加载了哪些Gamelet，主要用于在Hall上创建房间</li>
+<li>某具体的Game有哪些房间，一般用于Client展示游戏房间信息</li>
+</ul>
+
+
+<p>各个Server角色之间通信全部依靠skynet Cluster机制，节省了不少工作。</p>
+
+<h2>账号处理</h2>
+
+<p>Login最开始是完全基于skynet <a href="https://github.com/cloudwu/skynet/wiki/loginServer">Login Server</a>实现。但是涉及到账号相关的功能还包括：</p>
+
+<ul>
+<li>游客账号及自有注册账号</li>
+<li>账号绑定</li>
+</ul>
+
+
+<p>所以扩展了LoginServer，在原有协议上增加了扩展命令，搞得类似HTTP协议的URI。</p>
+
+<h2>消息及RPC</h2>
+
+<p>除了Login使用文本协议外，Hall/Game都使用基于skynet <a href="https://github.com/cloudwu/skynet/wiki/GateServer">Gate Server</a>的长度+消息体的格式，而消息体又使用protobuf格式。为了支持消息的派发，将消息值映射到skynet service method上，类似于简单的RPC：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>消息code值 -&gt; 消息code到service.method字符串映射 -&gt; 找到对应的service，调用其method</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这里也可以使用云风提供的<a href="https://github.com/cloudwu/skynet/wiki/Sproto">sproto</a>。本质上都是解决消息格式编码及消息dispatch问题。</p>
+
+<h2>断线重连</h2>
+
+<p>断线重连主要牵涉到几个问题：</p>
+
+<ul>
+<li>玩家的状态数据不能依赖socket的状态</li>
+<li>server间对于玩家数据一般有鉴权处理，Client断线重连时可以直接携带token直连某个server，而不用走重新登陆逻辑</li>
+<li>server对client数据做重连补发</li>
+</ul>
+
+
+<p>其中，重连补发根据实现又分为两种情况：</p>
+
+<ul>
+<li>基于断线协议，在server框架层，或者整个游戏服务器组的统一接入层自动解决。例如<a href="https://github.com/ejoy/goscon">goscon</a></li>
+<li>在应用层解决，一般就是游戏内根据具体游戏重发全量游戏数据到Client</li>
+</ul>
+
+
+<p>在pigy中，我认为更简单可靠的做法是在应用层解决。当然，一些前提还是得实现的。例如玩家在线状态不基于socket、server间传递token以支持Client直连server。</p>
+
+<h2>数据持久化及缓存</h2>
+
+<p>持久化及缓存是基于三层结构：本地内存、redis缓存、mysql。mysql作为关系型数据库，其表里的每一行记录，都会映射为redis中的一个哈希表。哈希表自身由db table name 及该行关键值确定，id可以作为关键值。而为了获取该数据库表里所有行，又将所有行的index字段(配置)作为redis一个有序集合关联起来。这样，通过获取redis有序集合所有元素，就可以获取该数据库表所有行记录。</p>
+
+<p>例如，有玩家表：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>id | name | age |
+</span><span class='line'>---|------|-----|
+</span><span class='line'>1  | kev  | 18  |
+</span><span class='line'>---|------|-----|
+</span><span class='line'>2  | john | 20  |
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>映射到redis中，就会得到2个哈希表，对应2行；另外得到一个有序集合，根据配置，集合中存储了所有<code>id</code>字段值。</p>
+
+<p>然后，基于以上结构，可以配置有些数据库表，是需要在启动时全部载入内存，而有些数据，例如玩家数据，由于数据会很多，并且很多数据并不需要，所以就只载入一部分。整个游戏的数据会根据玩家uid进行分区(partition)，redis可以以独立集群的模式启动多个集群，然后玩家数据根据uid分区存储到这些redis中。</p>
+
+<h2>游戏框架</h2>
+
+<p>网络棋牌游戏中有很多子游戏，所以游戏框架是肯定需要的。游戏框架主要用来抽象/隔离各种底层细节，包括网络数据发送、同房间玩家数据获取、数据持久化等等。设计上主要就是包装，但是目前的实现还不完整。pigy将子游戏抽象为gamelet，类似于servlet。这个抽象本质上就是与框架交互协议的包装，以及框架对一些数据的接口化透出。</p>
+
+<p>例如：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>function init(source) -- 将房间service传入
+</span><span class='line'>    room = source
+</span><span class='line'>end
+</span><span class='line'>
+</span><span class='line'>function accept.enter(user) -- 某个玩家进入该房间
+</span><span class='line'>end</span></code></pre></td></tr></table></div></figure>
+
+
+<p>pigy中某个Game (server)是可以载入多个gamelet的。所以在Hall端会聚合出来某个游戏(gamelet)在哪些Game上部署，以在其上创建房间。</p>
+
+<h2>网关</h2>
+
+<p>网关服务器主要用于隔离内部服务器与外网，避免受到恶意攻击。在早期我并不想花精力去重写一个Gate (server)，同时我希望Gate的加入应该尽可能少地对其他服务造成侵入。所以这造成了一种困境，因为在Game上的通信不太方便实现为Req/Resp的模式，所以现成的类似nginx TCP的网关也用不上，自己写优先级也不高，所以直到目前我也没有花时间去实现一个出来。</p>
+
+<h2>如何运行</h2>
+
+<p>准备好skynet，然后参考doc/guide.md。</p>
+
+<h2>总结</h2>
+
+<p>网络游戏服务器毕竟是分布式系统，在框架层面，稳定性及可扩展性是比较有趣的问题。在移动网络游戏方面，断线重连又是无法逃避的问题。这些问题要做得完美还是很不容易。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2017/12/12/chess-gameserver/'>http://codemacro.com/2017/12/12/chess-gameserver/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[协程并发模型及使用感受]]></title>
@@ -3649,396 +3815,6 @@ defer_free(old_ptr)
 <p class='post-footer'>
             原文地址：
             <a href='http://codemacro.com/2015/04/19/rw_thread_gc/'>http://codemacro.com/2015/04/19/rw_thread_gc/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[记一次tcmalloc分配内存引起的coredump]]></title>
-    <link href="http://codemacro.com/2015/04/06/tcmalloc-getstacktrace/"/>
-    <updated>2015-04-06T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2015/04/06/tcmalloc-getstacktrace</id>
-    <content type="html"><![CDATA[<h2>现象</h2>
-
-<p>线上的服务出现coredump，堆栈为：</p>
-
-<pre><code>#0  0x000000000045d145 in GetStackTrace(void**, int, int) ()
-#1  0x000000000045ec22 in tcmalloc::PageHeap::GrowHeap(unsigned long) ()
-#2  0x000000000045eeb3 in tcmalloc::PageHeap::New(unsigned long) ()
-#3  0x0000000000459ee8 in tcmalloc::CentralFreeList::Populate() ()
-#4  0x000000000045a088 in tcmalloc::CentralFreeList::FetchFromSpansSafe() ()
-#5  0x000000000045a10a in tcmalloc::CentralFreeList::RemoveRange(void**, void**, int) ()
-#6  0x000000000045c282 in tcmalloc::ThreadCache::FetchFromCentralCache(unsigned long, unsigned long) ()
-#7  0x0000000000470766 in tc_malloc ()
-#8  0x00007f75532cd4c2 in __conhash_get_rbnode (node=0x22c86870, hash=30)
-        at build/release64/cm_sub/conhash/conhash_inter.c:88
-#9  0x00007f75532cd76e in __conhash_add_replicas (conhash=0x24fbc7e0, iden=&lt;value optimized out&gt;)
-        at build/release64/cm_sub/conhash/conhash_inter.c:45
-#10 0x00007f75532cd1fa in conhash_add_node (conhash=0x24fbc7e0, iden=0) at build/release64/cm_sub/conhash/conhash.c:72
-#11 0x00007f75532c651b in cm_sub::TopoCluster::initLBPolicyInfo (this=0x2593a400)
-        at build/release64/cm_sub/topo_cluster.cpp:114
-#12 0x00007f75532cad73 in cm_sub::TopoClusterManager::processClusterMapTable (this=0xa219e0, ref=0x267ea8c0)
-        at build/release64/cm_sub/topo_cluster_manager.cpp:396
-#13 0x00007f75532c5a93 in cm_sub::SubRespMsgProcess::reinitCluster (this=0x9c2f00, msg=0x4e738ed0)
-        at build/release64/cm_sub/sub_resp_msg_process.cpp:157
-...
-</code></pre>
-
-<p>查看了应用层相关数据结构，基本数据都是没有问题的。所以最初怀疑是tcmalloc内部维护了错误的内存，在分配内存时出错，这个堆栈只是问题的表象。几天后，线上的另一个服务，基于同样的库，也core了，堆栈还是一样的。</p>
-
-<p>最初定位问题都是从最近更新的东西入手，包括依赖的server环境，但都没有明显的问题，所以最后只能从core的直接原因入手。</p>
-
-<!-- more -->
-
-
-<h2>分析GetStackTrace</h2>
-
-<p>确认core的详细位置：</p>
-
-<pre><code># core在该指令
-0x000000000045d145 &lt;_Z13GetStackTracePPvii+21&gt;: mov    0x8(%rax),%r9
-
-(gdb) p/x $rip              # core 的指令位置
-$9 = 0x45d145
-(gdb) p/x $rax              
-$10 = 0x4e73aa58
-(gdb) x/1a $rax+0x8         # rax + 8 = 0x4e73aa60
-0x4e73aa60:     0x0
-</code></pre>
-
-<p>该指令尝试从[0x4e73aa60]处读取内容，然后出错，这个内存单元不可读。但是具体这个指令在代码中是什么意思，<strong>需要将这个指令对应到代码中</strong>。获取tcmalloc的源码，发现<code>GetStackTrace</code>根据编译选项有很多实现，所以这里选择最可能的实现，然后对比汇编以确认代码是否匹配。最初选择的是<code>stacktrace_x86-64-inl.h</code>，后来发现完全不匹配，又选择了<code>stacktrace_x86-inl.h</code>。这个实现版本里也有对64位平台的支持。</p>
-
-<p><code>stacktrace_x86-inl.h</code>里使用了一些宏来生成函数名和参数，精简后代码大概为：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">int</span> <span class="n">GET_STACK_TRACE_OR_FRAMES</span> <span class="p">{</span>
-      <span class="kt">void</span> <span class="o">**</span><span class="n">sp</span><span class="p">;</span>
-      <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">rbp</span><span class="p">;</span>
-      <span class="n">__asm__</span> <span class="nf">volatile</span> <span class="p">(</span><span class="s">&quot;mov %%rbp, %0&quot;</span> <span class="o">:</span> <span class="s">&quot;=r&quot;</span> <span class="p">(</span><span class="n">rbp</span><span class="p">));</span>
-      <span class="n">sp</span> <span class="o">=</span> <span class="p">(</span><span class="kt">void</span> <span class="o">**</span><span class="p">)</span> <span class="n">rbp</span><span class="p">;</span>
-
-      <span class="kt">int</span> <span class="n">n</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-      <span class="k">while</span> <span class="p">(</span><span class="n">sp</span> <span class="o">&amp;&amp;</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="n">max_depth</span><span class="p">)</span> <span class="p">{</span>
-        <span class="k">if</span> <span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">sp</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="k">reinterpret_cast</span><span class="o">&lt;</span><span class="kt">void</span> <span class="o">*&gt;</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span> <span class="p">{</span>
-          <span class="k">break</span><span class="p">;</span>
-        <span class="p">}</span>
-        <span class="kt">void</span> <span class="o">**</span><span class="n">next_sp</span> <span class="o">=</span> <span class="n">NextStackFrame</span><span class="o">&lt;!</span><span class="n">IS_STACK_FRAMES</span><span class="p">,</span> <span class="n">IS_WITH_CONTEXT</span><span class="o">&gt;</span><span class="p">(</span><span class="n">sp</span><span class="p">,</span> <span class="n">ucp</span><span class="p">);</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">skip_count</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-          <span class="n">skip_count</span><span class="o">--</span><span class="p">;</span>
-        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-          <span class="n">result</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="n">sp</span><span class="o">+</span><span class="mi">1</span><span class="p">);</span>
-          <span class="n">n</span><span class="o">++</span><span class="p">;</span>
-        <span class="p">}</span>
-        <span class="n">sp</span> <span class="o">=</span> <span class="n">next_sp</span><span class="p">;</span>
-      <span class="p">}</span>
-      <span class="k">return</span> <span class="n">n</span><span class="p">;</span>
-    <span class="p">}</span></code></pre></div>
-
-
-<p><code>NextStackFrame</code>是一个模板函数，包含一大堆代码，精简后非常简单：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">template</span><span class="o">&lt;</span><span class="kt">bool</span> <span class="n">STRICT_UNWINDING</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">WITH_CONTEXT</span><span class="o">&gt;</span>
-    <span class="k">static</span> <span class="kt">void</span> <span class="o">**</span><span class="n">NextStackFrame</span><span class="p">(</span><span class="kt">void</span> <span class="o">**</span><span class="n">old_sp</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">uc</span><span class="p">)</span> <span class="p">{</span>
-      <span class="kt">void</span> <span class="o">**</span><span class="n">new_sp</span> <span class="o">=</span> <span class="p">(</span><span class="kt">void</span> <span class="o">**</span><span class="p">)</span> <span class="o">*</span><span class="n">old_sp</span><span class="p">;</span>
-      <span class="k">if</span> <span class="p">(</span><span class="n">STRICT_UNWINDING</span><span class="p">)</span> <span class="p">{</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">new_sp</span> <span class="o">&lt;=</span> <span class="n">old_sp</span><span class="p">)</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
-        <span class="k">if</span> <span class="p">((</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">new_sp</span> <span class="o">-</span> <span class="p">(</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">old_sp</span> <span class="o">&gt;</span> <span class="mi">100000</span><span class="p">)</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
-      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">new_sp</span> <span class="o">==</span> <span class="n">old_sp</span><span class="p">)</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
-        <span class="k">if</span> <span class="p">((</span><span class="n">new_sp</span> <span class="o">&gt;</span> <span class="n">old_sp</span><span class="p">)</span>
-            <span class="o">&amp;&amp;</span> <span class="p">((</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">new_sp</span> <span class="o">-</span> <span class="p">(</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">old_sp</span> <span class="o">&gt;</span> <span class="mi">1000000</span><span class="p">))</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
-      <span class="p">}</span>
-      <span class="k">if</span> <span class="p">((</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">new_sp</span> <span class="o">&amp;</span> <span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
-
-      <span class="k">return</span> <span class="n">new_sp</span><span class="p">;</span>
-    <span class="p">}</span></code></pre></div>
-
-
-<p>上面这个代码到汇编的对比过程还是花了些时间，其中汇编中出现的一些常量可以大大缩短对比时间，例如上面出现了<code>100000</code>，汇编中就有：</p>
-
-<pre><code>0x000000000045d176 &lt;_Z13GetStackTracePPvii+70&gt;: cmp    $0x186a0,%rbx  # 100000=0x186a0
-</code></pre>
-
-<p><em>注意<code>NextStackFrame</code>中的 <code>if (STRICT_UNWINDING)</code>使用的是模板参数，这导致生成的代码中根本没有else部分，也就没有<code>1000000</code>这个常量</em></p>
-
-<p>在对比代码的过程中，可以<strong>知道关键的几个寄存器、内存位置对应到代码中的变量，从而可以还原core时的现场环境</strong>。分析过程中不一定要从第一行汇编读，可以从较明显的位置读，从而还原整个代码，<strong>函数返回指令、跳转指令、比较指令、读内存指令、参数寄存器</strong>等都是比较明显对应的地方。</p>
-
-<p>另外注意<code>GetStackTrace</code>在<code>RecordGrowth</code>中调用，传入了3个参数：</p>
-
-<pre><code>GetStackTrace(t-&gt;stack, kMaxStackDepth-1, 3); // kMaxStackDepth = 31
-</code></pre>
-
-<p>以下是我分析的简单注解：</p>
-
-<pre><code>(gdb) disassemble
-Dump of assembler code for function _Z13GetStackTracePPvii:
-0x000000000045d130 &lt;_Z13GetStackTracePPvii+0&gt;:  push   %rbp
-0x000000000045d131 &lt;_Z13GetStackTracePPvii+1&gt;:  mov    %rsp,%rbp
-0x000000000045d134 &lt;_Z13GetStackTracePPvii+4&gt;:  push   %rbx
-0x000000000045d135 &lt;_Z13GetStackTracePPvii+5&gt;:  mov    %rbp,%rax
-0x000000000045d138 &lt;_Z13GetStackTracePPvii+8&gt;:  xor    %r8d,%r8d
-0x000000000045d13b &lt;_Z13GetStackTracePPvii+11&gt;: test   %rax,%rax
-0x000000000045d13e &lt;_Z13GetStackTracePPvii+14&gt;: je     0x45d167 &lt;_Z13GetStackTracePPvii+55&gt;
-0x000000000045d140 &lt;_Z13GetStackTracePPvii+16&gt;: cmp    %esi,%r8d        # while ( .. max_depth &gt; n ?
-0x000000000045d143 &lt;_Z13GetStackTracePPvii+19&gt;: jge    0x45d167 &lt;_Z13GetStackTracePPvii+55&gt;
-0x000000000045d145 &lt;_Z13GetStackTracePPvii+21&gt;: mov    0x8(%rax),%r9    # 关键位置：*(sp+1) -&gt; r9, rax 对应 sp变量
-0x000000000045d149 &lt;_Z13GetStackTracePPvii+25&gt;: test   %r9,%r9          # *(sp+1) == 0 ?
-0x000000000045d14c &lt;_Z13GetStackTracePPvii+28&gt;: je     0x45d167 &lt;_Z13GetStackTracePPvii+55&gt;
-0x000000000045d14e &lt;_Z13GetStackTracePPvii+30&gt;: mov    (%rax),%rcx      # new_sp = *old_sp，这里已经是NextStackFrame的代码
-0x000000000045d151 &lt;_Z13GetStackTracePPvii+33&gt;: cmp    %rcx,%rax        # new_sp &lt;= old_sp ? 
-0x000000000045d154 &lt;_Z13GetStackTracePPvii+36&gt;: jb     0x45d170 &lt;_Z13GetStackTracePPvii+64&gt;  # new_sp &gt; old_sp 跳转
-0x000000000045d156 &lt;_Z13GetStackTracePPvii+38&gt;: xor    %ecx,%ecx
-0x000000000045d158 &lt;_Z13GetStackTracePPvii+40&gt;: test   %edx,%edx        # skip_count &gt; 0 ?
-0x000000000045d15a &lt;_Z13GetStackTracePPvii+42&gt;: jle    0x45d186 &lt;_Z13GetStackTracePPvii+86&gt;
-0x000000000045d15c &lt;_Z13GetStackTracePPvii+44&gt;: sub    $0x1,%edx        # skip_count--
-0x000000000045d15f &lt;_Z13GetStackTracePPvii+47&gt;: mov    %rcx,%rax        
-0x000000000045d162 &lt;_Z13GetStackTracePPvii+50&gt;: test   %rax,%rax        # while (sp ?
-0x000000000045d165 &lt;_Z13GetStackTracePPvii+53&gt;: jne    0x45d140 &lt;_Z13GetStackTracePPvii+16&gt;
-0x000000000045d167 &lt;_Z13GetStackTracePPvii+55&gt;: pop    %rbx
-0x000000000045d168 &lt;_Z13GetStackTracePPvii+56&gt;: leaveq 
-0x000000000045d169 &lt;_Z13GetStackTracePPvii+57&gt;: mov    %r8d,%eax        # r8 存储了返回值，r8=n
-0x000000000045d16c &lt;_Z13GetStackTracePPvii+60&gt;: retq                    # return n
-0x000000000045d16d &lt;_Z13GetStackTracePPvii+61&gt;: nopl   (%rax)
-0x000000000045d170 &lt;_Z13GetStackTracePPvii+64&gt;: mov    %rcx,%rbx        
-0x000000000045d173 &lt;_Z13GetStackTracePPvii+67&gt;: sub    %rax,%rbx        # offset = new_sp - old_sp
-0x000000000045d176 &lt;_Z13GetStackTracePPvii+70&gt;: cmp    $0x186a0,%rbx    # offset &gt; 100000 ?
-0x000000000045d17d &lt;_Z13GetStackTracePPvii+77&gt;: ja     0x45d156 &lt;_Z13GetStackTracePPvii+38&gt; # return NULL
-0x000000000045d17f &lt;_Z13GetStackTracePPvii+79&gt;: test   $0x7,%cl         # new_sp &amp; (sizeof(void*) - 1)
-0x000000000045d182 &lt;_Z13GetStackTracePPvii+82&gt;: je     0x45d158 &lt;_Z13GetStackTracePPvii+40&gt;
-0x000000000045d184 &lt;_Z13GetStackTracePPvii+84&gt;: jmp    0x45d156 &lt;_Z13GetStackTracePPvii+38&gt;
-0x000000000045d186 &lt;_Z13GetStackTracePPvii+86&gt;: movslq %r8d,%rax        # rax = n
-0x000000000045d189 &lt;_Z13GetStackTracePPvii+89&gt;: add    $0x1,%r8d        # n++
-0x000000000045d18d &lt;_Z13GetStackTracePPvii+93&gt;: mov    %r9,(%rdi,%rax,8)# 关键位置：result[n] = *(sp+1)
-0x000000000045d191 &lt;_Z13GetStackTracePPvii+97&gt;: jmp    0x45d15f &lt;_Z13GetStackTracePPvii+47&gt;
-</code></pre>
-
-<p>分析过程比较耗时，同时还可以分析下<code>GetStackTrace</code>函数的实现原理，其实就是利用RBP寄存器不断回溯，从而得到整个调用堆栈各个函数的地址（严格来说是返回地址）。简单示意下函数调用中RBP的情况：</p>
-
-<pre><code>   ...
-saved registers          # i.e push rbx
-local variabes           # i.e sub 0x10, rsp
-return address           # call xxx
-last func RBP            # push rbp; mov rsp, rbp
-saved registers
-local variables 
-return address
-last func RBP
-...                      # rsp
-</code></pre>
-
-<p>总之，<strong>一般情况下，任何一个函数中，RBP寄存器指向了当前函数的栈基址，该栈基址中又存储了调用者的栈基址，同时该栈基址前面还存储了调用者的返回地址</strong>。所以，<code>GetStackTrace</code>的实现，简单来说大概就是：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">sp</span> <span class="o">=</span> <span class="n">rbp</span>  <span class="c1">// 取得当前函数GetStackTrace的栈基址</span>
-    <span class="k">while</span> <span class="p">(</span><span class="n">n</span> <span class="o">&lt;</span> <span class="n">max_depth</span><span class="p">)</span> <span class="p">{</span>
-        <span class="n">new_sp</span> <span class="o">=</span> <span class="o">*</span><span class="n">sp</span>
-        <span class="n">result</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="n">new_sp</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
-        <span class="n">n</span><span class="o">++</span>
-    <span class="p">}</span></code></pre></div>
-
-
-<p>以上，最终就知道了以下关键信息：</p>
-
-<ul>
-<li>r8 对应变量 n，表示当前取到第几个栈帧了</li>
-<li>rax 对应变量 sp，代码core在 *(sp+1)</li>
-<li>rdi 对应变量 result，用于存储取得的各个地址</li>
-</ul>
-
-
-<p>然后可以看看现场是怎样的：</p>
-
-<pre><code>(gdb) x/10a $rdi
-0x1ffc9b98:     0x45a088 &lt;_ZN8tcmalloc15CentralFreeList18FetchFromSpansSafeEv+40&gt;       0x45a10a &lt;_ZN8tcmalloc15CentralFreeList11RemoveRangeEPPvS2_i+106&gt;
-0x1ffc9ba8:     0x45c282 &lt;_ZN8tcmalloc11ThreadCache21FetchFromCentralCacheEmm+114&gt;      0x470766 &lt;tc_malloc+790&gt;
-0x1ffc9bb8:     0x7f75532cd4c2 &lt;__conhash_get_rbnode+34&gt;        0x0
-0x1ffc9bc8:     0x0     0x0
-0x1ffc9bd8:     0x0     0x0
-
-(gdb) p/x $r8
-$3 = 0x5
-
-(gdb) p/x $rax
-$4 = 0x4e73aa58
-</code></pre>
-
-<p><strong>小结：</strong></p>
-
-<p><code>GetStackTrace</code>在取调用<code>__conhash_get_rbnode</code>的函数时出错，取得了5个函数地址。当前使用的RBP为<code>0x4e73aa58</code>。</p>
-
-<h2>错误的RBP</h2>
-
-<p>RBP也是从堆栈中取出来的，既然这个地址有问题，首先想到的就是有代码局部变量/数组写越界。例如<code>sprintf</code>的使用。而且，<strong>一般写越界破坏堆栈，都可能是把调用者的堆栈破坏了</strong>，例如：</p>
-
-<pre><code>char s[32];
-memcpy(s, p, 1024);
-</code></pre>
-
-<p>因为写入都是从低地址往高地址写，而调用者的堆栈在高地址。当然，也会遇到写坏调用者的调用者的堆栈，也就是跨栈帧越界写，例如以前遇到的：</p>
-
-<pre><code>len = vsnprintf(buf, sizeof(buf), fmt, wtf-long-string);
-buf[len] = 0;
-</code></pre>
-
-<p><code>__conhash_get_rbnode</code>的RBP是在tcmalloc的堆栈中取的：</p>
-
-<pre><code>(gdb) f 7
-#7  0x0000000000470766 in tc_malloc ()
-(gdb) x/10a $rsp
-0x4e738b80:     0x4e73aa58      0x22c86870
-0x4e738b90:     0x4e738bd0      0x85
-0x4e738ba0:     0x4e73aa58      0x7f75532cd4c2 &lt;__conhash_get_rbnode+34&gt;   # 0x4e73aa58
-</code></pre>
-
-<p>所以这里就会怀疑是<code>tcmalloc</code>这个函数里有把堆栈破坏，这个时候就是读代码，看看有没有疑似危险的地方，未果。这里就陷入了僵局，怀疑又遇到了跨栈帧破坏的情况，这个时候就只能<code>__conhash_get_rbnode</code>调用栈中周围的函数翻翻，例如调用<code>__conhash_get_rbnode</code>的函数<code>__conhash_add_replicas</code>中恰好有字符串操作：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">__conhash_add_replicas</span><span class="p">(</span><span class="kt">conhash_t</span> <span class="o">*</span><span class="n">conhash</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">iden</span><span class="p">)</span>
-    <span class="p">{</span>
-        <span class="kt">node_t</span><span class="o">*</span> <span class="n">node</span> <span class="o">=</span> <span class="n">__conhash_create_node</span><span class="p">(</span><span class="n">iden</span><span class="p">,</span> <span class="n">conhash</span><span class="o">-&gt;</span><span class="n">replica</span><span class="p">);</span>
-        <span class="p">...</span>
-        <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="n">buf_len</span><span class="p">];</span> <span class="c1">// buf_len = 64</span>
-        <span class="p">...</span>
-        <span class="n">snprintf</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="n">buf_len</span><span class="p">,</span> <span class="n">VIRT_NODE_HASH_FMT</span><span class="p">,</span> <span class="n">node</span><span class="o">-&gt;</span><span class="n">iden</span><span class="p">,</span> <span class="n">i</span><span class="p">);</span>
-        <span class="kt">uint32_t</span> <span class="n">hash</span> <span class="o">=</span> <span class="n">conhash</span><span class="o">-&gt;</span><span class="n">cb_hashfunc</span><span class="p">(</span><span class="n">buf</span><span class="p">);</span>
-        <span class="k">if</span><span class="p">(</span><span class="n">util_rbtree_search</span><span class="p">(</span><span class="o">&amp;</span><span class="p">(</span><span class="n">conhash</span><span class="o">-&gt;</span><span class="n">vnode_tree</span><span class="p">),</span> <span class="n">hash</span><span class="p">)</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
-        <span class="p">{</span>
-            <span class="kt">util_rbtree_node_t</span><span class="o">*</span> <span class="n">rbnode</span> <span class="o">=</span> <span class="n">__conhash_get_rbnode</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">hash</span><span class="p">);</span>
-            <span class="p">...</span></code></pre></div>
-
-
-<p>这段代码最终发现是没有问题的，这里又耗费了不少时间。后来发现若干个函数里的RBP都有点奇怪，这个调用栈比较正常的范围是：0x4e738c90</p>
-
-<pre><code>(gdb) f 8
-#8  0x00007f75532cd4c2 in __conhash_get_rbnode (node=0x22c86870, hash=30)
-(gdb) p/x $rbp
-$6 = 0x4e73aa58     # 这个还不算特别可疑
-(gdb) f 9
-#9  0x00007f75532cd76e in __conhash_add_replicas (conhash=0x24fbc7e0, iden=&lt;value optimized out&gt;)
-(gdb) p/x $rbp
-$7 = 0x4e738c60     # 这个也不算特别可疑
-(gdb) f 10
-#10 0x00007f75532cd1fa in conhash_add_node (conhash=0x24fbc7e0, iden=0) at build/release64/cm_sub/conhash/conhash.c:72
-(gdb) p/x $rbp      # 可疑
-$8 = 0x0
-(gdb) f 11
-#11 0x00007f75532c651b in cm_sub::TopoCluster::initLBPolicyInfo (this=0x2593a400)
-(gdb) p/x $rbp      # 可疑
-$9 = 0x2598fef0
-</code></pre>
-
-<p><strong>为什么很多函数中RBP都看起来不正常？</strong> 想了想真要是代码里把堆栈破坏了，这错误得发生得多巧妙？</p>
-
-<h2>错误RBP的来源</h2>
-
-<p>然后转机来了，脑海中突然闪出<code>-fomit-frame-pointer</code>。编译器生成的代码中是可以不需要栈基址指针的，也就是RBP寄存器不作为栈基址寄存器。大部分函数或者说开启了<code>frame-pointer</code>的函数，其函数头都会有以下指令：</p>
-
-<pre><code>push   %rbp
-mov    %rsp,%rbp
-...
-</code></pre>
-
-<p>表示保存调用者的栈基址到栈中，以及设置自己的栈基址。看下<code>__conhash</code>系列函数；</p>
-
-<pre><code>Dump of assembler code for function __conhash_get_rbnode:
-0x00007f75532cd4a0 &lt;__conhash_get_rbnode+0&gt;:    mov    %rbx,-0x18(%rsp)
-0x00007f75532cd4a5 &lt;__conhash_get_rbnode+5&gt;:    mov    %rbp,-0x10(%rsp)
-...
-</code></pre>
-
-<p>这个库是单独编译的，没有显示指定<code>-fno-omit-frame-pointer</code>，查阅<a href="https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html">gcc手册</a>，o2优化是开启了<code>omit-frame-pinter</code> 的。</p>
-
-<p>在没有RBP的情况下，tcmalloc的<code>GetStackTrace</code>尝试读RBP取获取调用返回地址，自然是有问题的。但是，<strong>如果整个调用栈中的函数，要么有RBP，要么没有RBP，那么<code>GetStackTrace</code>取出的结果最多就是跳过一些栈帧，不会出错。</strong> 除非，这中间的某个函数把RBP寄存器另作他用（编译器省出这个寄存器肯定是要另作他用的）。所以这里继续追查这个错误地址<code>0x4e73aa58</code>的来源。</p>
-
-<p>来源已经比较明显，肯定是<code>__conhash_get_rbnode</code>中设置的，因为这个函数的RBP是在被调用者<code>tcmalloc</code>中保存的。</p>
-
-<pre><code>Dump of assembler code for function __conhash_get_rbnode:
-0x00007f75532cd4a0 &lt;__conhash_get_rbnode+0&gt;:    mov    %rbx,-0x18(%rsp)
-0x00007f75532cd4a5 &lt;__conhash_get_rbnode+5&gt;:    mov    %rbp,-0x10(%rsp)
-0x00007f75532cd4aa &lt;__conhash_get_rbnode+10&gt;:   mov    %esi,%ebp                    # 改写了RBP
-0x00007f75532cd4ac &lt;__conhash_get_rbnode+12&gt;:   mov    %r12,-0x8(%rsp)
-0x00007f75532cd4b1 &lt;__conhash_get_rbnode+17&gt;:   sub    $0x18,%rsp
-0x00007f75532cd4b5 &lt;__conhash_get_rbnode+21&gt;:   mov    %rdi,%r12
-0x00007f75532cd4b8 &lt;__conhash_get_rbnode+24&gt;:   mov    $0x30,%edi
-0x00007f75532cd4bd &lt;__conhash_get_rbnode+29&gt;:   callq  0x7f75532b98c8 &lt;malloc@plt&gt;  # 调用tcmalloc，汇编到这里即可
-</code></pre>
-
-<p>这里打印RSI寄存器的值可能会被误导，因为任何时候打印寄存器的值可能都是错的，除非它有被显示保存。不过这里可以看出RSI的值来源于参数(RSI对应第二个参数)：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">__conhash_add_replicas</span><span class="p">(</span><span class="kt">conhash_t</span> <span class="o">*</span><span class="n">conhash</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">iden</span><span class="p">)</span>
-    <span class="p">{</span>
-        <span class="kt">node_t</span><span class="o">*</span> <span class="n">node</span> <span class="o">=</span> <span class="n">__conhash_create_node</span><span class="p">(</span><span class="n">iden</span><span class="p">,</span> <span class="n">conhash</span><span class="o">-&gt;</span><span class="n">replica</span><span class="p">);</span>
-        <span class="p">...</span>
-        <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="n">buf_len</span><span class="p">];</span> <span class="c1">// buf_len = 64</span>
-        <span class="p">...</span>
-        <span class="n">snprintf</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="n">buf_len</span><span class="p">,</span> <span class="n">VIRT_NODE_HASH_FMT</span><span class="p">,</span> <span class="n">node</span><span class="o">-&gt;</span><span class="n">iden</span><span class="p">,</span> <span class="n">i</span><span class="p">);</span>
-        <span class="kt">uint32_t</span> <span class="n">hash</span> <span class="o">=</span> <span class="n">conhash</span><span class="o">-&gt;</span><span class="n">cb_hashfunc</span><span class="p">(</span><span class="n">buf</span><span class="p">);</span> <span class="c1">// hash值由一个字符串哈希函数计算</span>
-        <span class="k">if</span><span class="p">(</span><span class="n">util_rbtree_search</span><span class="p">(</span><span class="o">&amp;</span><span class="p">(</span><span class="n">conhash</span><span class="o">-&gt;</span><span class="n">vnode_tree</span><span class="p">),</span> <span class="n">hash</span><span class="p">)</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
-        <span class="p">{</span>
-            <span class="kt">util_rbtree_node_t</span><span class="o">*</span> <span class="n">rbnode</span> <span class="o">=</span> <span class="n">__conhash_get_rbnode</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">hash</span><span class="p">);</span>  <span class="c1">// hash值</span>
-            <span class="p">...</span></code></pre></div>
-
-
-<p>追到<code>__conhash_add_replicas</code>：</p>
-
-<pre><code>0x00007f75532cd764 &lt;__conhash_add_replicas+164&gt;:        mov    %ebx,%esi    # 来源于rbx
-0x00007f75532cd766 &lt;__conhash_add_replicas+166&gt;:        mov    %r15,%rdi
-0x00007f75532cd769 &lt;__conhash_add_replicas+169&gt;:        callq  0x7f75532b9e48 &lt;__conhash_get_rbnode@plt&gt;
-
-(gdb) p/x $rbx
-$11 = 0x4e73aa58
-(gdb) p/x hash
-$12 = 0x4e73aa58      # 0x4e73aa58
-</code></pre>
-
-<p>找到了<code>0x4e73aa58</code>的来源。这个地址值竟然是一个字符串哈希算法算出来的！这里还可以看看这个字符串的内容：</p>
-
-<pre><code>(gdb) x/1s $rsp
-0x4e738bd0:      "conhash-00000-00133"
-</code></pre>
-
-<p>这个碉堡的哈希函数是<code>conhash_hash_def</code>。</p>
-
-<h2>coredump的条件</h2>
-
-<p>以上，既然只要某个库<code>omit-frame-pointer</code>，那tcmalloc就可能出错，为什么发生的频率并不高呢？这个可以回到<code>GetStackTrace</code>尤其是<code>NextStackFrame</code>的实现，其中包含了几个合法RBP的判定：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">if</span> <span class="p">(</span><span class="n">new_sp</span> <span class="o">&lt;=</span> <span class="n">old_sp</span><span class="p">)</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>  <span class="c1">// 上一个栈帧的RBP肯定比当前的大</span>
-        <span class="k">if</span> <span class="p">((</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">new_sp</span> <span class="o">-</span> <span class="p">(</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">old_sp</span> <span class="o">&gt;</span> <span class="mi">100000</span><span class="p">)</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span> <span class="c1">// 指针值范围还必须在100000内</span>
-        <span class="p">...</span>
-    <span class="k">if</span> <span class="p">((</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">new_sp</span> <span class="o">&amp;</span> <span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span> <span class="c1">// 由于本身保存的是指针，所以还必须是sizeof(void*)的整数倍，对齐</span></code></pre></div>
-
-
-<p>有了以上条件，才使得这个core几率变得很低。</p>
-
-<h2>总结</h2>
-
-<p>最后，如果你很熟悉tcmalloc，整个问题估计就被秒解了：<a href="http://gperftools.googlecode.com/svn/trunk/INSTALL">tcmalloc INSTALL</a></p>
-
-<h2>附</h2>
-
-<p>另外附上另一个有意思的东西。</p>
-
-<p>在分析<code>__conhash_add_replicas</code>时，其内定义了一个64字节的字符数组，查看其堆栈：</p>
-
-<pre><code>(gdb) x/20a $rsp
-0x4e738bd0:     0x2d687361686e6f63      0x30302d3030303030          # 这些是字符串conhash-00000-00133
-0x4e738be0:     0x333331        0x0
-0x4e738bf0:     0x0     0x7f75532cd69e &lt;__conhash_create_node+78&gt;
-0x4e738c00:     0x24fbc7e0      0x4e738c60
-0x4e738c10:     0x24fbc7e0      0x7f75532cd6e3 &lt;__conhash_add_replicas+35&gt;
-0x4e738c20:     0x0     0x24fbc7e8
-0x4e738c30:     0x4e738c20      0x24fbc7e0
-0x4e738c40:     0x22324360      0x246632c0
-0x4e738c50:     0x0     0x0
-0x4e738c60:     0x0     0x7f75532cd1fa &lt;conhash_add_node+74&gt;
-</code></pre>
-
-<p>最开始我觉得<code>buf</code>占64字节，也就是整个[0x4e738bd0, 0x4e738c10)内存，但是这块内存里居然有函数地址，这一度使我怀疑这里有问题。后来醒悟这些地址是定义<code>buf</code>前调用<code>__conhash_create_node</code>产生的，调用过程中写到堆栈里，调用完后栈指针改变，但并不需要清空栈中的内容。</p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2015/04/06/tcmalloc-getstacktrace/'>http://codemacro.com/2015/04/06/tcmalloc-getstacktrace/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>

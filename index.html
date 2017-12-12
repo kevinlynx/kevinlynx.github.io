@@ -9,10 +9,9 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="协程可以简单理解为更轻量的线程，但有很多显著的不同： 不是OS级别的调度单元，通常是编程语言或库实现
-可能需要应用层自己切换
-由于切换点是可控制的，所以对于CPU资源是非抢占式的
-通常用于有大量阻塞操作的应用，例如大量IO 协程与actor模式的实现有一定关系。由于协程本身是应用级的并发调度单元， &hellip;">
+  <meta name="description" content="最近业余时间写了一个棋牌游戏服务端框架：pigy。对于棋牌游戏服务端框架，我的定义是： 分布式的
+包含网络棋牌游戏中包括登陆、大厅、游戏框架、数据持久化等基础组件
+提供具体游戏框架，游戏逻辑程序员可以基于这个框架focus在游戏的开发上 写得差不多的时候，我在网上搜索了下， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -67,6 +66,51 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2017/12/12/chess-gameserver/">写了一个棋牌游戏服务器框架</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2017-12-12T00:00:00+08:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>12</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>最近业余时间写了一个棋牌游戏服务端框架：<a href="https://github.com/kevinlynx/pigy">pigy</a>。对于棋牌游戏服务端框架，我的定义是：</p>
+
+<ul>
+<li>分布式的</li>
+<li>包含网络棋牌游戏中包括登陆、大厅、游戏框架、数据持久化等基础组件</li>
+<li>提供具体游戏框架，游戏逻辑程序员可以基于这个框架focus在游戏的开发上</li>
+</ul>
+
+
+<p>写得差不多的时候，我在网上搜索了下，发现棋牌游戏源码已经烂大街，自己精力有限，也没有心思和动力去研究现有实现的优缺点而做出一个更好的替代。所以我这份实现仅作为一个demo放出来让大家开心下好了。</p>
+
+<p><a href="https://github.com/kevinlynx/pigy">pigy</a>基于<a href="https://github.com/cloudwu/skynet">skynet</a>实现。之所以选择skynet是看中其中已经有不少网络游戏基础组件可以使用，结合开发下来稍微花点业余时间就可以完成雏形。除此之外，部分源码也参考/复制了<a href="https://github.com/fztcjjl/metoo">metoo</a>项目。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2017/12/12/chess-gameserver/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -541,63 +585,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2016/05/08/tls_so_coredump/">记一次线程局部存储与动态库引起的core</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2016-05-08T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>8</span><span class='date-suffix'>th</span>, <span class='date-year'>2016</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>线上的服务退出时coredump，显示堆栈为：</p>
-
-<p><img src="/assets/res/tls_so_core/core.JPG" alt="" /></p>
-
-<p>google一下发现<a href="http://www.tuicool.com/articles/YJ3A7f">有人遇到过</a>，产生这个core的条件为：</p>
-
-<ul>
-<li>使用TLS时注册了destructor (<code>pthread_key_create</code>)，这个回调函数会在线程退出时被调用</li>
-<li>这个destructor符号位于.so中</li>
-<li>在线程退出时，这个.so已经被dlclose</li>
-</ul>
-
-
-<p>我们的程序模型中，类似于一个Web App server，有一个线程池包装了IO处理，将请求派发给应用插件，处理完后回应给客户端。应用插件是一个.so，被动态载入(dlopen)，该.so由于实现需要引入了较多的第三方.so(隐式载入)。初步排查时，整个实现是没有问题的，线程池是在.so close前关闭的。</p>
-
-<p>没有线索，于是尝试找到该TLS是哪个模块引入的。通过gdb断<code>pthread_key_create</code>，以及不为空的destructor回调可以确定几个模块，但范围不够小，这些模块基本还是些基础模块，如zookeeper/mxml以及网络模块。</p>
-
-<p>多看了几个core，发现这个回调的偏移地址都是固定的960，如上图中的<code>0x7f0f26c9f960</code>。.so被载入时，基址是会变的，但偏移是不会变的，例如通过nm查看.so中的符号时：</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$nm lib/libsp_kit.so | grep loadConfig
-</span><span class='line'>00000000002de170 T _ZN8sp_basic14SortRailConfig10loadConfigEPKc</span></code></pre></td></tr></table></div></figure>
-
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2016/05/08/tls_so_coredump/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/2">&larr; Older</a>
@@ -610,11 +597,15 @@
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (4)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (9)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (5)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (9)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2017/12/12/chess-gameserver/">写了一个棋牌游戏服务器框架</a>
+      </li>
     
       <li class="post">
         <a href="/2017/12/03/coroutine/">协程并发模型及使用感受</a>
@@ -632,10 +623,6 @@
         <a href="/2017/04/09/xnio-source/">XNIO源码阅读</a>
       </li>
     
-      <li class="post">
-        <a href="/2017/03/09/toy-jit/">实现JVM中的JIT</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -645,7 +632,7 @@
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 109.23076923076923%'>game develop(4)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 120.76923076923077%'>other(9)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.53846153846153%'>game develop(5)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 120.76923076923077%'>other(9)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
 </section>
 
   
