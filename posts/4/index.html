@@ -9,8 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="git不同于类似SVN这种版本管理系统，虽然熟悉常用的操作就可以满足大部分需求，但为了在遇到麻烦时不至于靠蛮力去尝试，了解git的原理还是很有必要。 文件 通过git管理的文件版本信息全部存放在根目录.git下，稍微看下： $ ls .git
-COMMIT_EDITMSG HEAD &hellip;">
+  <meta name="description" content="静态库的链接基本上同链接目标文件.obj/.o相同，但也有些不同的地方。本文简要描述linux下静态库在链接过程中的一些细节。 静态库文件格式 静态库远远不同于动态库，不涉及到符号重定位之类的问题。静态库本质上只是将一堆目标文件进行打包而已。静态库没有标准，不同的linux下都会有些细微的差别。 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -65,6 +64,70 @@ COMMIT_EDITMSG HEAD &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2014/09/15/inside-static-library/">浅析静态库链接原理</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-09-15T00:00:00+08:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>15</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>静态库的链接基本上同链接目标文件<code>.obj/.o</code>相同，但也有些不同的地方。本文简要描述linux下静态库在链接过程中的一些细节。</p>
+
+<h2>静态库文件格式</h2>
+
+<p>静态库远远不同于动态库，不涉及到符号重定位之类的问题。静态库本质上只是将一堆目标文件进行打包而已。静态库没有标准，不同的linux下都会有些细微的差别。大致的格式<a href="http://en.wikipedia.org/wiki/Ar_%28Unix%29#File_format_details">wiki</a>上描述的较清楚：</p>
+
+<pre><code>Global header
+-----------------        +-------------------------------
+File header 1       ---&gt; | File name
+File content 1  |        | File modification timestamp 
+-----------------        | Owner ID
+File header 2            | Group ID
+File content 2           | File mode
+-----------------        | File size in bytes
+...                      | File magic
+                         +-------------------------------
+</code></pre>
+
+<p><code>File header</code>很多字段都是以ASCII码表示，所以可以用文本编辑器打开。</p>
+
+<p>静态库本质上就是使用<code>ar</code>命令打包一堆<code>.o</code>文件。我们甚至可以用<code>ar</code>随意打包一些文件：</p>
+
+<pre><code>$ echo 'hello' &gt; a.txt &amp;&amp; echo 'world' &gt; b.txt
+$ ar -r test.a a.txt b.txt
+$ cat test.a
+!&lt;arch&gt;
+a.txt/          1410628755  60833 100   100644  6         `
+hello
+b.txt/          1410628755  60833 100   100644  6         `
+world
+</code></pre>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2014/09/15/inside-static-library/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -535,90 +598,6 @@ nfds [in] Ignored. The nfds parameter is included only for compatibility with Be
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2013/09/23/scala-feature-overview/">scala主要特性一览</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2013-09-23T00:00:00+08:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>23</span><span class='date-suffix'>rd</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>概述</h2>
-
-<p>scala语言包含了函数式语言和面向对象语言的语法特性，从我目前的感受来看，这不是一门简单的语言。同Ruby/Erlang相比，其语法集大多了。scala基于JVM或.NET平台，其可以几乎无缝地使用Java库（不但使用上没有负担，其运行效率上也不会增加负担），配合其强大的语言表达能力，还是很有吸引力。</p>
-
-<h2>类型</h2>
-
-<h3>类/对象</h3>
-
-<p>scala中一切都是对象，虽然Java也是这样说的（其实ruby也是这样说的）。在Java中一个数字仅仅是个值，但在scala中却真的是对象：</p>
-
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="n">println</span><span class="o">(</span><span class="s">&quot;2 type: &quot;</span> <span class="o">+</span> <span class="mf">2.</span><span class="n">getClass</span><span class="o">())</span></code></pre></div>
-
-
-<p>scala同Java一样将所有类型都设定了一个基类：<code>Any</code>。不同的是，<code>Any</code>下还区分了<code>AnyVal</code>和<code>AnyRef</code>。</p>
-
-<h3>类型推断</h3>
-
-<p>scala是一门静态类型语言，但是其强大的类型推断可以避免很多冗余信息的代码。例如：</p>
-
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">map</span><span class="k">:</span><span class="kt">Map</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">HashMap</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]</span>
-<span class="c1">// 可简写为</span>
-<span class="k">val</span> <span class="n">map</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">HashMap</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]</span>
-
-<span class="k">def</span> <span class="n">func</span><span class="o">()</span><span class="k">:</span><span class="kt">String</span> <span class="o">=</span> <span class="o">{</span>
-    <span class="s">&quot;hello&quot;</span>
-<span class="o">}</span>
-<span class="c1">// 可简写为</span>
-<span class="k">def</span> <span class="n">func</span><span class="o">()</span> <span class="k">=</span> <span class="o">{</span>
-    <span class="s">&quot;hello&quot;</span>
-<span class="o">}</span></code></pre></div>
-
-
-<p>类型推断可以根据表达式的类型决定这个变量/函数的类型，这就如同C++11中的<code>auto</code>关键字。</p>
-
-<h3>函数</h3>
-
-<p>scala既然包含了函数式语言的特性，那么函数作为first citizen就是自然而言的事情。而function literal的语法形式也就必须更自然（想想common lisp里lambda那蛋疼的关键字）：</p>
-
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">factor</span> <span class="k">=</span> <span class="mi">3</span>
-<span class="k">val</span> <span class="n">multiplier</span> <span class="k">=</span> <span class="o">(</span><span class="n">i</span><span class="k">:</span><span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">i</span> <span class="o">*</span> <span class="n">factor</span> <span class="c1">// function literal, lexical bind to factor</span>
-<span class="k">val</span> <span class="n">l1</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">,</span> <span class="mi">5</span><span class="o">)</span> <span class="n">map</span> <span class="n">multiplier</span> <span class="c1">// map `multiplier` to every element in List l1</span>
-
-<span class="k">def</span> <span class="n">add</span><span class="o">(</span><span class="n">a</span><span class="k">:</span><span class="kt">Int</span><span class="o">,</span> <span class="n">b</span><span class="k">:</span><span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
-  <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
-<span class="o">}</span>
-
-<span class="k">val</span> <span class="n">f</span><span class="k">:</span><span class="o">(</span><span class="kt">Int</span><span class="o">,</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">Int</span> <span class="k">=</span> <span class="n">add</span> <span class="c1">// f is a function type: (Int, Int) =&gt; Int</span>
-<span class="n">println</span><span class="o">(</span><span class="s">&quot;f:&quot;</span> <span class="o">+</span> <span class="n">f</span><span class="o">(</span><span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">))</span></code></pre></div>
-
-
-
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2013/09/23/scala-feature-overview/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/5">&larr; Older</a>
@@ -633,11 +612,15 @@ nfds [in] Ignored. The nfds parameter is included only for compatibility with Be
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (5)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (9)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (5)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (9)</a></li><li><a href='/categories/python/'>python (1)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2018/01/17/greenlet/">Python协程greenlet实现原理</a>
+      </li>
     
       <li class="post">
         <a href="/2017/12/12/chess-gameserver/">写了一个棋牌游戏服务器框架</a>
@@ -655,10 +638,6 @@ nfds [in] Ignored. The nfds parameter is included only for compatibility with Be
         <a href="/2017/04/23/xmemcached/">Xmemcached源码阅读</a>
       </li>
     
-      <li class="post">
-        <a href="/2017/04/09/xnio-source/">XNIO源码阅读</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -668,7 +647,7 @@ nfds [in] Ignored. The nfds parameter is included only for compatibility with Be
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.53846153846153%'>game develop(5)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 120.76923076923077%'>other(9)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.53846153846153%'>game develop(5)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 120.76923076923077%'>other(9)</a> <a href='/categories/python' style='font-size: 102.3076923076923%'>python(1)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
 </section>
 
   
@@ -677,7 +656,7 @@ nfds [in] Ignored. The nfds parameter is included only for compatibility with Be
     </div>
   </div>
   <footer role="contentinfo"><p>
-  Copyright &copy; 2017 - Kevin Lynx -
+  Copyright &copy; 2018 - Kevin Lynx -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 <script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
 <noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>

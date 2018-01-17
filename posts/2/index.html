@@ -9,9 +9,8 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="线上的服务退出时coredump，显示堆栈为： google一下发现有人遇到过，产生这个core的条件为： 使用TLS时注册了destructor (pthread_key_create)，这个回调函数会在线程退出时被调用
-这个destructor符号位于.so中
-在线程退出时，这个. &hellip;">
+  <meta name="description" content="最近写一个爬虫要从这个网页爬取内容。以往爬取网页内容复杂点的，一般就是处理下页面内容动态载入，动态载入的内容可能会要求复杂奇怪的参数，或者找到这个动态载入的HTTP接口在哪里麻烦点。但是这个网页不同。类似： 1
+&lt;td&gt;&lt;span name="record_yijiaof: &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -66,6 +65,50 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2016/08/16/reverse_html/">一次逆向网页内容加密</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-08-16T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>16</span><span class='date-suffix'>th</span>, <span class='date-year'>2016</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>最近写一个爬虫要从这个<a href="http://cpquery.sipo.gov.cn/txnQueryFeeData.do?select-key:shenqingh=2007200071873&amp;select-key:zhuanlilx=2&amp;select-key:gonggaobj=&amp;select-key:backPage=http%3A%2F%2Fcpquery.sipo.gov.cn%2FtxnQueryOrdinaryPatents.do%3Fselect-key%3Ashenqingh%3D2015204531832%26select-key%3Azhuanlimc%3D%26select-key%3Ashenqingrxm%3D%26select-key%3Azhuanlilx%3D%26select-key%3Ashenqingr_from%3D%26select-key%3Ashenqingr_to%3D%26inner-flag%3Aopen-type%3Dwindow%26inner-flag%3Aflowno%3D1470846836440&amp;inner-flag:open-type=window&amp;inner-flag:flowno=1471142917509">网页</a>爬取内容。以往爬取网页内容复杂点的，一般就是处理下页面内容动态载入，动态载入的内容可能会要求复杂奇怪的参数，或者找到这个动态载入的HTTP接口在哪里麻烦点。但是这个网页不同。类似：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;td&gt;&lt;span name="record_yijiaof:feiyongzldm" title="pos||"&gt;&lt;span id="5d299905633d4aa288b65f5bf74e414c" class="nlkfqirnlfjerldfgzxcyiuro"&gt;专&lt;/span&gt;&lt;span id="546c73d012f74931aa5d45707121eb50" class="nlkfqirnlfjerldfgzxcyiuro"&gt;实&lt;/span&gt;&lt;span id="e0285e05974b4577b23b2ced8e453005" class="nlkfqirnlfjerldfgzxcyiuro"&gt;新&lt;/span&gt;&lt;span id="82b9e003de4e4577aa7617681a0d3777" class="nlkfqirnlfjerldfgzxcyiuro"&gt;用&lt;/span&gt;&lt;span id="417aaf4c6ad14b7781db02a688a4f885" class="nlkfqirnlfjerldfgzxcyiuro"&gt;用&lt;/span&gt;&lt;span id="a3f326efa35e4fe898d2f751e77d6777" class="nlkfqirnlfjerldfgzxcyiuro"&gt;新&lt;/span&gt;&lt;span id="c6c5135b931c48c09c6529735f4c6434" class="nlkfqirnlfjerldfgzxcyiuro"&gt;型&lt;/span&gt;&lt;span id="8c55b119929147ddbe178776903554e5" class="nlkfqirnlfjerldfgzxcyiuro"&gt;专&lt;/span&gt;&lt;span id="f8e47702c9f5420198a6f9b9aa132c9c" class="nlkfqirnlfjerldfgzxcyiuro"&gt;利&lt;/span&gt;&lt;span id="60cc2e23682e4ca2b850a92f55029458" class="nlkfqirnlfjerldfgzxcyiuro"&gt;第9年年费&lt;/span&gt;&lt;/span&gt;&lt;/td&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>最终希望得到的内容其实是<code>实用新型专利第9年年费</code>，但是得到的网页确实乱序后的字符串，并且每次刷新得到的乱序还不一样，试过几次也看不出规律。</p>
+
+<p>按照以往的思路，猜测肯定是某个js文件中包含了还原算法，我的目的，就是找出这个算法，在爬虫程序中实现这个算法，以还原出可读的字符串。</p>
+
+<p>js中要完成这样的事，首先得找到网页元素，包括：根据外层span <code>name=record_yijiaof:feiyongzldm</code>；根据再外层的table；根据内层span <code>class='nlkfqirnlfjerldfgzxcyiuro'</code>。以前我一直想要个工具，可以在某网页载入的所有js文件中搜索特定字符串，从而帮助逆向，但是一直没有这个工具。所以这次也只有人肉看每个js。根据js的名字猜测这个逻辑会放在哪里。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2016/08/16/reverse_html/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -681,57 +724,6 @@ AbstractGroupScan
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2015/04/19/rw_thread_gc/">使用RCU技术实现读写线程无锁</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2015-04-19T00:00:00+08:00'><span class='date'><span class='date-month'>Apr</span> <span class='date-day'>19</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>在一个系统中有一个写线程和若干个读线程，读写线程通过一个指针共用了一个数据结构，写线程改写这个结构，读线程读取该结构。在写线程改写这个数据结构的过程中，加锁情况下读线程由于等待锁耗时会增加。</p>
-
-<p>可以利用RCU (Read Copy Update <a href="http://www.rdrop.com/~paulmck/RCU/whatisRCU.html">What is rcu</a>)的思想来去除这个锁。本文提到的主要实现代码：<a href="https://gist.github.com/kevinlynx/ba728f2f1b33c763a6c3">gist</a></p>
-
-<h2>RCU</h2>
-
-<p>RCU可以说是一种替代读写锁的方法。其基于一个事实：当写线程在改变一个指针时，读线程获取这个指针，要么获取到老的值，要么获取到新的值。RCU的基本思想其实很简单，参考<a href="http://www.rdrop.com/~paulmck/RCU/whatisRCU.html">What is RCU</a>中Toy implementation可以很容易理解。一种简单的RCU流程可以描述为：</p>
-
-<p>写线程：</p>
-
-<pre><code>old_ptr = _ptr
-tmp_ptr = copy(_ptr)     // copy
-change(tmp_ptr)          // change 
-_ptr = tmp_ptr           // update
-synchroize(tmp_ptr)
-</code></pre>
-
-<p>写线程要更新<code>_ptr</code>指向的内容时，先复制一份新的，基于新的进行改变，更新<code>_ptr</code>指针，最后同步释放老的内存。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2015/04/19/rw_thread_gc/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/3">&larr; Older</a>
@@ -746,11 +738,15 @@ synchroize(tmp_ptr)
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (5)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (9)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (5)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (9)</a></li><li><a href='/categories/python/'>python (1)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2018/01/17/greenlet/">Python协程greenlet实现原理</a>
+      </li>
     
       <li class="post">
         <a href="/2017/12/12/chess-gameserver/">写了一个棋牌游戏服务器框架</a>
@@ -768,10 +764,6 @@ synchroize(tmp_ptr)
         <a href="/2017/04/23/xmemcached/">Xmemcached源码阅读</a>
       </li>
     
-      <li class="post">
-        <a href="/2017/04/09/xnio-source/">XNIO源码阅读</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -781,7 +773,7 @@ synchroize(tmp_ptr)
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.53846153846153%'>game develop(5)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 120.76923076923077%'>other(9)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.53846153846153%'>game develop(5)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 120.76923076923077%'>other(9)</a> <a href='/categories/python' style='font-size: 102.3076923076923%'>python(1)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> </span>
 </section>
 
   
@@ -790,7 +782,7 @@ synchroize(tmp_ptr)
     </div>
   </div>
   <footer role="contentinfo"><p>
-  Copyright &copy; 2017 - Kevin Lynx -
+  Copyright &copy; 2018 - Kevin Lynx -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 <script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
 <noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>

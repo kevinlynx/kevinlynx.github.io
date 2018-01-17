@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2017-12-12T22:10:04+08:00</updated>
+  <updated>2018-01-17T19:35:40+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,307 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Python协程greenlet实现原理]]></title>
+    <link href="http://codemacro.com/2018/01/17/greenlet/"/>
+    <updated>2018-01-17T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2018/01/17/greenlet</id>
+    <content type="html"><![CDATA[<p><a href="https://github.com/python-greenlet/greenlet">greenlet</a>是<a href="https://wiki.python.org/moin/StacklessPython">stackless
+Python</a>中剥离出来的一个项目，可以作为官方CPython的一个扩展来使用，从而支持Python协程。<a href="http://www.gevent.org/">gevent</a>正是基于greenlet实现。</p>
+
+<h2>协程实现原理</h2>
+
+<p>实现协程主要是在协程切换时，将协程当前的执行上下文保存到协程关联的context中。在c/c++这种native程序中实现协程，需要将栈内容和CPU各个寄存器的内容保存起来。在Python这种VM中则有些不同。例如，在以下基于greenlet协程的python程序中：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>def foo():
+</span><span class='line'>    bar()
+</span><span class='line'>
+</span><span class='line'>def bar():
+</span><span class='line'>    a = 3 + 1
+</span><span class='line'>    gr2.switch()
+</span><span class='line'>
+</span><span class='line'>def func():
+</span><span class='line'>    pass
+</span><span class='line'>
+</span><span class='line'>gr1 = greenlet(foo)
+</span><span class='line'>gr2 = greenlet(func)
+</span><span class='line'>gr1.switch()</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在<code>bar</code>中<code>gr2.switch</code>切换到gr2时，协程库需要保存gr1协程的执行上下文。这个上下文包括:</p>
+
+<ul>
+<li>Python VM的stack</li>
+<li>Python VM中解释执行的上下文</li>
+</ul>
+
+
+<!-- more -->
+
+
+<p>理解以上两点非常重要，至于为什么呢？想象一下如何去实现一个Python
+VM，去解释执行一段Python代码。其实这在任何基于VM的语言中，原理都是一样的（native程序可以把x86物理CPU也视作特殊的VM)。可以参考<a href="http://python.jobbole.com/81660/">Python解释器简介-深入主循环</a>。主要包含两方面内容：</p>
+
+<ul>
+<li>VM在执行代码时，其自身调用栈通常都是递归的</li>
+<li>VM在执行代码时，通常会创建相应的数据结构来表示代码执行块，例如通常会有个<code>struct Frame</code>来表示一个函数</li>
+</ul>
+
+
+<p>在VM的实现中通常会有类似以下的代码:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>struct Frame {
+</span><span class='line'>    unsigned char *codes; // 存放代码指令
+</span><span class='line'>    size_t pc; // 当前执行的指令位置
+</span><span class='line'>    int *stack; // stack-based的VM会有一个栈用于存放指令操作数
+</span><span class='line'>};
+</span><span class='line'>
+</span><span class='line'>void op_call(frame) {
+</span><span class='line'>    switch (OP_CODE()) {
+</span><span class='line'>        case OP_CALL:
+</span><span class='line'>            child_frame = new_frame()
+</span><span class='line'>            op_call(child_frame)
+</span><span class='line'>                ...
+</span><span class='line'>        case OP_ADD:
+</span><span class='line'>            op_add(...)
+</span><span class='line'>    }
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>对应到前面的Python例子代码，在某一时刻VM的call stack可能是这样的：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>op_add
+</span><span class='line'>op_call
+</span><span class='line'>op_call</span></code></pre></td></tr></table></div></figure>
+
+
+<p>理解了以上内容后，就可以推测出greenlet本质上也是做了以上两件事。</p>
+
+<h2>greenlet实现原理</h2>
+
+<p>greenlet库中每一个协程称为一个greenlet。greenlet都有一个栈空间，如下图：</p>
+
+<p><img src="http://codemacro.com/assets/res/greenlet.png" alt="" /></p>
+
+<p>图中未表达出来的，greenlet的栈空间地址可能是重叠的。对于活跃的（当前正在运行）的greenlet，其栈内容必然在c程序栈顶。而不活跃的被切走的greenlet，其栈内容会被copy到新分配的堆内存中。greenlet的栈空间是动态的，其起始地址是固定的，但栈顶地址不固定。以下代码展示一个greenlet的栈空间如何确定：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>579         if (!PyGreenlet_STARTED(target)) { // greenlet未启动，是一个需要新创建的greenlet
+</span><span class='line'>580             void* dummymarker; // 该局部变量的地址成为新的greenlet的栈底
+</span><span class='line'>581             ts_target = target;
+</span><span class='line'>582             err = g_initialstub(&dummymarker); // 创建该greenlet并运行</span></code></pre></td></tr></table></div></figure>
+
+
+<p>以上<code>greenlet-&gt;stack_stop</code>确定了栈底，而栈顶则是动态的，在切换到其他greenlet前，对当前greenlet进行上下文的保存时，获取当前的RSP（程序实际运行的栈顶地址）：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>410 static int GREENLET_NOINLINE(slp_save_state)(char* stackref)
+</span><span class='line'>411 {
+</span><span class='line'>412     /* must free all the C stack up to target_stop */
+</span><span class='line'>413     char* target_stop = ts_target-&gt;stack_stop;
+</span><span class='line'>414     PyGreenlet* owner = ts_current;
+</span><span class='line'>415     assert(owner-&gt;stack_saved == 0);
+</span><span class='line'>416     if (owner-&gt;stack_start == NULL)
+</span><span class='line'>417         owner = owner-&gt;stack_prev;  /* not saved if dying */
+</span><span class='line'>418     else
+</span><span class='line'>419         owner-&gt;stack_start = stackref; // stack_start指向栈顶</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>stackref</code>是通过汇编获取当前RSP寄存器的值：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> __asm__ ("movl %%esp, %0" : "=g" (stackref));</span></code></pre></td></tr></table></div></figure>
+
+
+<p>保存栈内容到堆内存参看<code>g_save</code>的实现，没什么特别的。除了保存栈内容外，如上一节讲的，还需要保存VM执行函数所对应的<code>Frame</code>对象，这个在<code>g_switchstack</code>中体现：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>460         PyThreadState* tstate = PyThreadState_GET(); // 获取当前线程的VM执行上下文
+</span><span class='line'>461         current-&gt;recursion_depth = tstate-&gt;recursion_depth;
+</span><span class='line'>462         current-&gt;top_frame = tstate-&gt;frame; // 保存当前正在执行的frame到当前正在执行的greenlet
+</span><span class='line'>    ...
+</span><span class='line'>473         slp_switch(); // 做栈切换
+</span><span class='line'>    ...
+</span><span class='line'>487         PyThreadState* tstate = PyThreadState_GET();
+</span><span class='line'>488         tstate-&gt;recursion_depth = target-&gt;recursion_depth;
+</span><span class='line'>489         tstate-&gt;frame = target-&gt;top_frame; // 切换回来
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面的代码展示VM frame的切换。接下来看下最复杂的部分，当切换到目标greenlet时，如何恢复目标greenlet的执行上下文，这里主要就是恢复目标greenlet的栈空间。假设有如下greenlet应用代码：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>def test1():
+</span><span class='line'>    gr2.switch()
+</span><span class='line'>
+</span><span class='line'>def test2():
+</span><span class='line'>    print('test2')
+</span><span class='line'>
+</span><span class='line'>gr1 = greenlet(test1)
+</span><span class='line'>gr2 = greenlet(test2)
+</span><span class='line'>gr1.switch()
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在gr1中切换到gr2时，也就是<code>gr2.switch</code>，会发生什么事情。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// g_switch 实现
+</span><span class='line'>574         if (PyGreenlet_ACTIVE(target)) {
+</span><span class='line'>575             ts_target = target; // 找到目标greenlet，也就是gr2
+</span><span class='line'>576             err = g_switchstack(); // 开始切换
+</span><span class='line'>
+</span><span class='line'>// g_switchstack 实现
+</span><span class='line'>462         current-&gt;top_frame = tstate-&gt;frame;
+</span><span class='line'>    ...
+</span><span class='line'>473     err = slp_switch();
+</span><span class='line'>
+</span><span class='line'>// slp_switch 实现，根据不同平台实现方式不同，原理相同
+</span><span class='line'>69         SLP_SAVE_STATE(stackref, stsizediff);
+</span><span class='line'>// 这个很重要，强行将当前的栈指针ESP/EBP (32位OS)通过加上一个与目标greenlet栈地址的偏移，而回到了
+</span><span class='line'>// 目标greenlet的栈空间。可以在下文看到stsizediff的获取实现
+</span><span class='line'>70         __asm__ volatile (
+</span><span class='line'>71             "addl %0, %%esp\n"
+</span><span class='line'>72             "addl %0, %%ebp\n"
+</span><span class='line'>73             :
+</span><span class='line'>74             : "r" (stsizediff)
+</span><span class='line'>75             );
+</span><span class='line'>76         SLP_RESTORE_STATE();
+</span><span class='line'>
+</span><span class='line'>// SLP_SAVE_STATE 实现
+</span><span class='line'>316 #define SLP_SAVE_STATE(stackref, stsizediff)            \
+</span><span class='line'>317     stackref += STACK_MAGIC;                        \
+</span><span class='line'>318     if (slp_save_state((char*)stackref)) return -1; \
+</span><span class='line'>319     if (!PyGreenlet_ACTIVE(ts_target)) return 1;    \
+</span><span class='line'>// 获取目标greenlet的栈空间与当前栈地址的偏移，用于稍后设置当前栈地址回目标greenlet的栈地址
+</span><span class='line'>320     stsizediff = ts_target-&gt;stack_start - (char*)stackref 
+</span><span class='line'>
+</span><span class='line'>// slp_save_state 没啥看的，前面也提过了，主要就是复制当前greenlet栈内容到堆内存
+</span><span class='line'>
+</span><span class='line'>// SLP_RESTORE_STATE 也没什么看的，主要就是把greenlet堆内存复制回栈空间</span></code></pre></td></tr></table></div></figure>
+
+
+<p>以上，首先将ESP/EBP的值改回目标greenlet当初切换走时的ESP/EBP值，然后再把greenlet的栈空间内存（存放于堆内存中）全部复制回来，就实现了greenlet栈的回切。尤其注意的是，这个栈中是保存了各种函数的return地址的，所以当<code>slp_switch</code>返回时，就完全恢复到了目标greenlet当初被切走时栈上的内容，包括各种函数调用栈。而当前greenlet的栈，则停留在了类似以下的函数调用栈：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>g_switchstack
+</span><span class='line'>g_switch
+</span><span class='line'>...</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>参考</h2>
+
+<ul>
+<li><a href="https://www.shymonk.com/posts/2016/06/stackless-python-tan-mi/">Stackless Python 探秘</a></li>
+<li><a href="http://blog.csdn.net/permike/article/details/54846675">python协程的实现（greenlet源码分析)</a></li>
+<li><a href="http://blog.csdn.net/yueguanghaidao/article/details/24281751">深度分析gevent运行流程</a></li>
+</ul>
+
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2018/01/17/greenlet/'>http://codemacro.com/2018/01/17/greenlet/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[写了一个棋牌游戏服务器框架]]></title>
@@ -3577,244 +3878,6 @@ select name, length from http.`/e/api:search?q=avi&amp;p=2` where length &gt; 0 
 <p class='post-footer'>
             原文地址：
             <a href='http://codemacro.com/2015/05/03/hazard-pointer/'>http://codemacro.com/2015/05/03/hazard-pointer/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[使用RCU技术实现读写线程无锁]]></title>
-    <link href="http://codemacro.com/2015/04/19/rw_thread_gc/"/>
-    <updated>2015-04-19T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2015/04/19/rw_thread_gc</id>
-    <content type="html"><![CDATA[<p>在一个系统中有一个写线程和若干个读线程，读写线程通过一个指针共用了一个数据结构，写线程改写这个结构，读线程读取该结构。在写线程改写这个数据结构的过程中，加锁情况下读线程由于等待锁耗时会增加。</p>
-
-<p>可以利用RCU (Read Copy Update <a href="http://www.rdrop.com/~paulmck/RCU/whatisRCU.html">What is rcu</a>)的思想来去除这个锁。本文提到的主要实现代码：<a href="https://gist.github.com/kevinlynx/ba728f2f1b33c763a6c3">gist</a></p>
-
-<h2>RCU</h2>
-
-<p>RCU可以说是一种替代读写锁的方法。其基于一个事实：当写线程在改变一个指针时，读线程获取这个指针，要么获取到老的值，要么获取到新的值。RCU的基本思想其实很简单，参考<a href="http://www.rdrop.com/~paulmck/RCU/whatisRCU.html">What is RCU</a>中Toy implementation可以很容易理解。一种简单的RCU流程可以描述为：</p>
-
-<p>写线程：</p>
-
-<pre><code>old_ptr = _ptr
-tmp_ptr = copy(_ptr)     // copy
-change(tmp_ptr)          // change 
-_ptr = tmp_ptr           // update
-synchroize(tmp_ptr)
-</code></pre>
-
-<p>写线程要更新<code>_ptr</code>指向的内容时，先复制一份新的，基于新的进行改变，更新<code>_ptr</code>指针，最后同步释放老的内存。</p>
-
-<!-- more -->
-
-
-<p>读线程：</p>
-
-<pre><code>tmp_ptr = _ptr
-use(tmp_ptr)
-dereference(tmp_ptr)
-</code></pre>
-
-<p>读线程直接使用<code>_ptr</code>，使用完后需要告诉写线程自己不再使用<code>_ptr</code>。读线程获取<code>_ptr</code>时，可能会获取到老的也可能获取到新的，无论哪种RCU都需要保证这块内存是有效的。重点在<code>synchroize</code>和<code>dereference</code>。<code>synchroize</code>会等待所有使用老的<code>_ptr</code>的线程<code>dereference</code>，对于新的<code>_ptr</code>使用者其不需要等待。这个问题说白了就是写线程如何知道<code>old_ptr</code>没有任何读线程在使用，可以安全地释放。</p>
-
-<p>这个问题实际上在<code>wait-free</code>的各种实现中有好些解法，<a href="http://stackoverflow.com/questions/22263874/how-when-to-release-memory-in-wait-free-algorithms">how-when-to-release-memory-in-wait-free-algorithms</a>这里有人总结了几种方法，例如<code>Hazard pointers</code>、<code>Quiescence period based reclamation</code>。</p>
-
-<p>简单地使用引用计数智能指针是无法解决这个问题的，因为智能指针自己不是线程安全的，例如：</p>
-
-<pre><code>tmp_ptr = _ptr      // 1
-tmp_ptr-&gt;addRef()   // 2
-use
-tmp_ptr-&gt;release()
-</code></pre>
-
-<p>代码1/2行不是原子的，所以当取得<code>tmp_ptr</code>准备<code>addRef</code>时，<code>tmp_ptr</code>可能刚好被释放了。</p>
-
-<p><code>Quiescence period based reclamation</code>方法指的是读线程需要声明自己处于<code>Quiescence period</code>，也就是不使用<code>_ptr</code>的时候，当其使用<code>_ptr</code>的时候实际是进入了一个逻辑上的临界区，当所有读线程都不再使用<code>_ptr</code>的时候，写线程就可以对内存进行安全地释放。</p>
-
-<p>本文正是描述了一种<code>Quiescence period based reclamation</code>实现。这个实现可以用于有一个写线程和多个读线程共用若干个数据的场景。</p>
-
-<h2>实现</h2>
-
-<p>该方法本质上把数据同步分解为基本的内存单元读写。使用方式上可描述为：</p>
-
-<p>读线程：</p>
-
-<pre><code>tmp_ptr = _ptr
-use
-update() // 标识自己不再使用任何共享数据
-</code></pre>
-
-<p>写线程：</p>
-
-<pre><code>old_ptr = _ptr
-tmp_ptr = copy(_ptr)
-change(tmp_ptr)
-_ptr = tmp_ptr
-gc()
-defer_free(old_ptr)
-</code></pre>
-
-<p>以下具体描述读写线程的实现。</p>
-
-<h3>写线程</h3>
-
-<p>写线程负责标识内存需要被释放，以及检查何时可以真正释放内存。其维护了一个释放内存队列：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="o">*</span><span class="n">_pending</span><span class="p">[</span><span class="mi">8</span><span class="p">]</span>
-    <span class="kt">uint64_t</span> <span class="n">_head</span><span class="p">,</span> <span class="n">_tail</span>
-
-    <span class="kt">void</span> <span class="n">defer_free</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">p</span><span class="p">)</span> <span class="p">{</span>
-        <span class="n">_head</span> <span class="o">++</span>
-        <span class="n">_pending</span><span class="p">[</span><span class="n">PENDING_POS</span><span class="p">(</span><span class="n">_head</span><span class="p">)]</span> <span class="o">=</span> <span class="n">p</span>
-    <span class="p">}</span>
-
-    <span class="n">gc</span><span class="p">()</span> <span class="p">{</span>
-        <span class="k">for</span> <span class="p">(</span><span class="n">_tail</span> <span class="o">-&gt;</span> <span class="n">find_free_pos</span><span class="p">())</span>
-            <span class="n">free</span><span class="p">(</span><span class="n">_pending</span><span class="p">[</span><span class="n">_tail</span><span class="p">])</span>
-    <span class="p">}</span></code></pre></div>
-
-
-<p><code>find_free_pos</code>找到一个可释放内存位置，在<code>[_tail, find_free_pos())</code>这个区间内所有内存是可以安全被释放的。</p>
-
-<p>队列位置<code>_head/_tail</code>一直增大，<code>PENDING_POS</code>就是对这个位置取模，限定在队列大小范围内也是可行的，无论哪种方式，<code>_head</code>从逻辑上说一直<code>&gt;=_tail</code>，但在实际中可能小于<code>_tail</code>，所以实现时不使用大小判定，而是：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">gc</span><span class="p">()</span> <span class="p">{</span>
-        <span class="n">pos</span> <span class="o">=</span> <span class="n">find_free_pos</span><span class="p">()</span>
-        <span class="k">while</span> <span class="p">(</span><span class="n">_tail</span> <span class="o">!=</span> <span class="n">pos</span><span class="p">)</span> <span class="p">{</span>
-            <span class="n">free</span><span class="p">(</span><span class="n">_pending</span><span class="p">[</span><span class="n">PENDING_POS</span><span class="p">(</span><span class="n">_tail</span><span class="p">)])</span>
-            <span class="n">_tail</span> <span class="o">++</span>
-        <span class="p">}</span>
-    <span class="p">}</span></code></pre></div>
-
-
-<h3>读线程</h3>
-
-<p>读线程不再使用共享内存时，就标识自己：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">update</span><span class="p">()</span> <span class="p">{</span>
-        <span class="k">static</span> <span class="n">__thread</span> <span class="kt">int</span> <span class="n">tid</span>
-        <span class="n">_tmark</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">_head</span>
-    <span class="p">}</span></code></pre></div>
-
-
-<p>读线程的状态会影响写线程的回收逻辑，其状态分为：</p>
-
-<ul>
-<li>初始</li>
-<li>活跃，会调用到<code>update</code></li>
-<li>暂停，其他地方同步，或被挂起</li>
-<li>退出</li>
-</ul>
-
-
-<p>读线程处于活跃状态时，它会不断地更新自己可释放内存位置(<code>_tmark[tid]</code>)。写线程检查所有读线程的<code>_tmark[tid]</code>，<code>[_tail, min(_tmark[]))</code>是所有读线程都不再使用的内存区间，可以被安全释放。</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">find_free_pos</span><span class="p">()</span> <span class="p">{</span>
-        <span class="n">min</span> <span class="o">=</span> <span class="n">MAX_INTEGER</span>
-        <span class="n">pos</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="k">for</span> <span class="p">(</span><span class="n">tid</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">tid</span> <span class="o">&lt;</span> <span class="n">max_threads</span><span class="p">;</span> <span class="o">++</span><span class="n">tid</span><span class="p">)</span> <span class="p">{</span>
-            <span class="n">tpos</span> <span class="o">=</span> <span class="n">_tmark</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
-            <span class="n">offset</span> <span class="o">=</span> <span class="n">tpos</span> <span class="o">-</span> <span class="n">tail</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">offset</span> <span class="o">&lt;</span> <span class="n">min</span><span class="p">)</span> <span class="p">{</span>
-                <span class="n">min</span> <span class="o">=</span> <span class="n">offset</span>
-                <span class="n">pos</span> <span class="o">=</span> <span class="n">tpos</span>
-            <span class="p">}</span>
-        <span class="p">}</span>
-        <span class="k">return</span> <span class="n">pos</span>
-    <span class="p">}</span></code></pre></div>
-
-
-<p>当读线程暂停时，其<code>_tmark[tid]</code>可能会在很长一段时间里得不到更新，此时会阻碍写线程释放内存。所以需要方法来标识读线程是否进入暂停状态。通过设置一个上次释放内存位置<code>_tfreeds[tid]</code>，标识每个线程当前内存释放到的位置。如果一个线程处于暂停状态了，那么在一定时间后，<code>_tfreeds[tid] == _tmark[tid]</code>。在查找可释放位置时，就需要忽略暂停状态的读线程：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">find_free_pos</span><span class="p">()</span> <span class="p">{</span>
-        <span class="n">min</span> <span class="o">=</span> <span class="n">MAX_INTEGER</span>
-        <span class="n">pos</span> <span class="o">=</span> <span class="n">_head</span>
-        <span class="k">for</span> <span class="p">(</span><span class="n">tid</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">tid</span> <span class="o">&lt;</span> <span class="n">max_threads</span><span class="p">;</span> <span class="o">++</span><span class="n">tid</span><span class="p">)</span> <span class="p">{</span>
-            <span class="n">tpos</span> <span class="o">=</span> <span class="n">_tmark</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">tpos</span> <span class="o">==</span> <span class="n">_tfreeds</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span> <span class="k">continue</span>
-            <span class="n">offset</span> <span class="o">=</span> <span class="n">tpos</span> <span class="o">-</span> <span class="n">tail</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">offset</span> <span class="o">&lt;</span> <span class="n">min</span><span class="p">)</span> <span class="p">{</span>
-                <span class="n">min</span> <span class="o">=</span> <span class="n">offset</span>
-                <span class="n">pos</span> <span class="o">=</span> <span class="n">tpos</span>
-            <span class="p">}</span>
-        <span class="p">}</span>
-        <span class="k">for</span> <span class="p">(</span><span class="n">tid</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">tid</span> <span class="o">&lt;</span> <span class="n">max_threads</span><span class="p">;</span> <span class="o">++</span><span class="n">tid</span><span class="p">)</span> <span class="p">{</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">_tfreeds</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">!=</span> <span class="n">_tmark</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span> 
-                <span class="n">_tfreeds</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">pos</span>
-        <span class="p">}</span>
-        <span class="k">return</span> <span class="n">pos</span>
-    <span class="p">}</span></code></pre></div>
-
-
-<p>但是当所有线程都处于暂停状态时，写线程可能还在工作，上面的实现就会返回<code>_head</code>，此时写线程依然可以正常释放内存。</p>
-
-<p><strong>小结</strong>，该方法原理可用下图表示：</p>
-
-<p><img src="http://codemacro.com/assets/res/rw_thread.png" alt="" /></p>
-
-<h3>线程动态增加/减少</h3>
-
-<p>如果读线程可能中途退出，中途动态增加，那么<code>_tmark[]</code>就需要被复用，此时线程<code>tid</code>的分配调整为动态的即可：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">class</span> <span class="nc">ThreadIdPool</span> <span class="p">{</span>
-    <span class="k">public</span><span class="o">:</span>
-        <span class="c1">// 动态获取一个线程tid，某线程每次调用该接口返回相同的值</span>
-        <span class="kt">int</span> <span class="n">get</span><span class="p">()</span>
-        <span class="c1">// 线程退出时回收该tid</span>
-        <span class="kt">void</span> <span class="n">put</span><span class="p">(</span><span class="kt">int</span> <span class="n">id</span><span class="p">)</span>
-    <span class="p">}</span></code></pre></div>
-
-
-<p><code>ThreadIdPool</code>的实现无非就是利用TLS，以及在线程退出时得到通知以回收tid。那么对于读线程的<code>update</code>实现变为：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">update</span><span class="p">()</span> <span class="p">{</span>
-        <span class="n">tid</span> <span class="o">=</span> <span class="n">_idPool</span><span class="o">-&gt;</span><span class="n">get</span><span class="p">()</span>
-        <span class="n">_tmark</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">_head</span>
-    <span class="p">}</span></code></pre></div>
-
-
-<p>当某个线程退出时，<code>_tmark[tid]</code>和<code>_tfreeds[tid]</code>不需要做任何处理，当新创建的线程复用了该<code>tid</code>时，可以立即复用<code>_tmark[tid]</code>和<code>_tfreeds[tid]</code>，此时这2个值必然是相等的。</p>
-
-<p>以上，就是整个方法的实现。</p>
-
-<h2>线程可读可写</h2>
-
-<p>以上方法适用场景还是不够通用。在<a href="https://code.google.com/p/nbds/">nbds</a>项目（实现了一些无锁数据结构的toy project）中有一份虽然简单但也有启发的实现(rcu.c)。该实现支持任意线程<code>defer_free</code>，所有线程<code>update</code>。<code>update</code>除了声明不再使用任何共享内存外，还可能回收内存。任意线程都可能维护一些待释放的内存，任意一块内存可能被任意其他线程使用。那么它是如何内存回收的？</p>
-
-<p>本文描述的方法是所有读线程自己声明自己，然后由写线程主动来检查。不同于此方法， nbds的实现，基于一种<strong>通知扩散</strong>的方式。该方式以这样一种方式工作：</p>
-
-<p>当某个线程尝试内存回收时，它需要知道所有其他线程的空闲位置（相当于<code>_tmark[tid]</code>），它通知下一个线程我需要释放的范围。当下一个线程<code>update</code>时（离开临界区），它会将上个线程的通知继续告诉下一个线程，直到最后这个通知回到发起线程。那么对于发起线程而言，这个释放请求在所有线程中走了一遍，得到了大家的认可，可以安全释放。每个线程都以这样的方式工作。</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">rcu_defer_free</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">x</span><span class="p">)</span> <span class="p">{</span>
-        <span class="p">...</span>
-        <span class="n">rcu_</span><span class="p">[</span><span class="n">next_thread_id</span><span class="p">][</span><span class="n">tid_</span><span class="p">]</span> <span class="o">=</span> <span class="n">rcu_last_posted_</span><span class="p">[</span><span class="n">tid_</span><span class="p">][</span><span class="n">tid_</span><span class="p">]</span> <span class="o">=</span> <span class="n">pending_</span><span class="p">[</span><span class="n">tid_</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">head</span><span class="p">;</span>
-        <span class="p">...</span>
-    <span class="p">}</span>
-
-    <span class="kt">void</span> <span class="nf">rcu_update</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="p">{</span>
-        <span class="p">...</span>
-        <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">num_threads_</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
-            <span class="p">...</span>     
-            <span class="kt">uint64_t</span> <span class="n">x</span> <span class="o">=</span> <span class="n">rcu_</span><span class="p">[</span><span class="n">tid_</span><span class="p">][</span><span class="n">i</span><span class="p">];</span> <span class="c1">// 其它线程发给自己的通知</span>
-            <span class="n">rcu_</span><span class="p">[</span><span class="n">next_thread_id</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">rcu_last_posted_</span><span class="p">[</span><span class="n">tid_</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span> <span class="c1">// 扩散出去</span>
-            <span class="p">...</span>
-        <span class="p">}</span>
-        <span class="p">...</span>
-        <span class="k">while</span> <span class="p">(</span><span class="n">q</span><span class="o">-&gt;</span><span class="n">tail</span> <span class="o">!=</span> <span class="n">rcu_</span><span class="p">[</span><span class="n">tid_</span><span class="p">][</span><span class="n">tid_</span><span class="p">])</span> <span class="p">{</span>
-            <span class="n">free</span>
-        <span class="p">}</span>     
-        <span class="p">...</span>
-    <span class="p">}</span></code></pre></div>
-
-
-<p>这个实现相对简单，不支持线程暂停，以及线程动态增加和减少。</p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2015/04/19/rw_thread_gc/'>http://codemacro.com/2015/04/19/rw_thread_gc/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
