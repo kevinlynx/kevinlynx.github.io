@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2018-01-17T19:35:40+08:00</updated>
+  <updated>2018-01-24T19:11:23+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,267 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[基于Yarn的分布式应用调度器Slider]]></title>
+    <link href="http://codemacro.com/2018/01/24/apache-slider/"/>
+    <updated>2018-01-24T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2018/01/24/apache-slider</id>
+    <content type="html"><![CDATA[<p>Apache Hadoop Map-Reduce
+框架为了解决规模增长问题，发展出了yarn。而yarn不仅解决Map-Reduce调度问题，还成为了一个通用的分布式应用调度服务。yarn中的一个创新是把各种不同应用的调度逻辑拆分到了一个称为Application
+Manager(以下简称AM)的角色中，从而让yarn自己变得更通用，同时解决调度性能问题。Apache
+Slider就是这其中的一个AM具体实现。但Slider进一步做了通用化，可以用于调度长运行(long-running)的分布式应用。</p>
+
+<p>为了更好地理解Slider/Yarn，需要思考这样一个问题：在不用Slider/Yarn这种自动部署并管理应用的软件时，我们如何在一个网络环境中部署一个分布式应用？</p>
+
+<ul>
+<li>可能需要在目标物理机上创建虚拟容器，指定容器所用的CPU核数、内存数</li>
+<li>到容器中下载或复制应用运行所需的所有软件包</li>
+<li>可能需要改写应用所需的各种配置</li>
+<li>运行应用，输入可能很长的命令行参数</li>
+</ul>
+
+
+<p>注意这些操作需要在所有需要运行的容器中执行，当然现在也有很多自动部署的工具可以解决这些问题。但是，当应用首次部署运行起来后，继续思考以下问题：</p>
+
+<ul>
+<li>某台机器物理原因关机，对应的应用实例不可服务，如何自动发现故障并迁移该实例</li>
+<li>应用有突发流量，需要基于当前运行中的版本做扩容</li>
+<li>应用需要更新</li>
+</ul>
+
+
+<h2>架构</h2>
+
+<p>看一下yarn的总体架构：</p>
+
+<p><img src="http://codemacro.com/assets/res/yarn.png" alt="" /></p>
+
+<!-- more -->
+
+
+<p>yarn管理的每台机器上都会部署Node Manager (简称NM)，NM主要用于创建容器，用户的应用运行在这个容器中。一台机器可能会跑多个应用的实例(Instance)。Resource Manager
+(简称RM)用于管理整个集群的资源，例如CPU、内存。App Master(Manager) (简称AM) 用于管理容器中用户的应用。AM本身也运行在容器中。</p>
+
+<p>通过Client提交AM的请求到RM中，RM找到一个可用的NM并启动该AM。随后，AM与RM交互，为应用请求各种资源，并发出应用的部署请求。在运行期间，AM会监视应用每个实例的正确性，以在假设有机器挂掉后，申请新的资源来自动恢复该实例。</p>
+
+<p>为了更具体地了解这个过程，可以先参考<a href="https://hadoop.apache.org/docs/stable/hadoop-yarn/hadoop-yarn-site/WritingYarnApplications.html">Writing YARN Applications</a>。</p>
+
+<p>Slider是AM的一种实现，接下来从以下几个方面来了解Slider：</p>
+
+<ul>
+<li>Slider架构</li>
+<li>如何描述一个应用</li>
+<li>使用流程及主要接口</li>
+<li>如何定制</li>
+<li>其他细节</li>
+</ul>
+
+
+<h2>Slider架构</h2>
+
+<p>借图(<a href="http://www.weixinnu.com/tag/article/2086961513">Slider设计理念与基本架构</a>)：</p>
+
+<p><img src="http://codemacro.com/assets/res/slider.jpeg" alt="" /></p>
+
+<p>作为一个Yarn AM其结构与之前描述的相差无几。Slider Client是一个命令行程序，它直接与RM交互，提交一个Slider AM包给RM。RM分配资源并配合NM启动Slider AM这个服务程序。Slider AM在启动目标应用时，通常会在目标容器中部署一个Slider
+Agent。这个Agent实现了一套与不同应用之间的交互协议，例如：INSTALL/CONFIGURE/START/STOP/STATUS，应用一般通过Python脚本实现这些协议命令，就可以被Slider部署起来。</p>
+
+<h2>如何描述一个应用</h2>
+
+<p>完整地描述一个应用，就可以让第三方调度器，例如Slider，自动地部署应用、迁移应用。在Slider中描述一个应用，主要分为3部分内容：</p>
+
+<ul>
+<li>资源描述，resources.json，例如单实例所需要的CPU核数、内存数，总共需要多少实例</li>
+<li>应用特定的配置描述，appConfig.json，例如Java应用JVM的内存配置</li>
+<li>应用适配协议，这个不是配置文件，一般是Python脚本，实现一个应用实例如何安装、如何启动</li>
+</ul>
+
+
+<p>除了以上内容外，Slider认为一个完整的分布式应用可能包含多个组件(Component)，例如HBase包含Master、Worker。应用描述还应该包含各个组件的描述，例如每个组件可以有自己的资源需求。Component也被称为Role(可能不准确，但意思接近)。当有多个Component时，可以配置每个Component的优先级，高优先级的Component优先得到资源分配。</p>
+
+<p>例如，一个<code>resource.json</code>例子，主要就是指定各个Component的资源：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>{
+</span><span class='line'>  "schema": "http://example.org/specification/v2.0.0",
+</span><span class='line'>
+</span><span class='line'>  "metadata": {
+</span><span class='line'>    "description": "example of a resources file"
+</span><span class='line'>  },
+</span><span class='line'>
+</span><span class='line'>  "global": {
+</span><span class='line'>    "yarn.vcores": "1",
+</span><span class='line'>    "yarn.memory": "512"
+</span><span class='line'>  },
+</span><span class='line'>
+</span><span class='line'>  "components": {
+</span><span class='line'>    "master": {
+</span><span class='line'>      "instances": "1",
+</span><span class='line'>      "yarn.vcores": "1",
+</span><span class='line'>      "yarn.memory": "1024"
+</span><span class='line'>    },
+</span><span class='line'>    "worker": {
+</span><span class='line'>      "instances":"5",
+</span><span class='line'>      "yarn.vcores": "1",
+</span><span class='line'>      "yarn.memory": "512"
+</span><span class='line'>    }
+</span><span class='line'>  }
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>appConfig.json</code>主要就是应用相关的配置参数：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>{
+</span><span class='line'>  "schema": "http://example.org/specification/v2.0.0",
+</span><span class='line'>
+</span><span class='line'>  "global": {
+</span><span class='line'>
+</span><span class='line'>    "zookeeper.port": "2181",
+</span><span class='line'>    "zookeeper.path": "/yarnapps_small_cluster",
+</span><span class='line'>    "zookeeper.hosts": "zoo1,zoo2,zoo3",
+</span><span class='line'>  },
+</span><span class='line'>  "components": {
+</span><span class='line'>    "worker": {
+</span><span class='line'>      "jvm.heapsize": "512M"
+</span><span class='line'>    },
+</span><span class='line'>    "master": {
+</span><span class='line'>      "jvm.heapsize": "512M"
+</span><span class='line'>    }
+</span><span class='line'>  }
+</span><span class='line'>  "credentials" {
+</span><span class='line'>  }
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在Slider中，应用需要将这些配置信息以及应用自己部署所需要的各种软件包，按照规范打成一个压缩包。然后使用slider工具提交，slider工具会将包上传至HDFS上。</p>
+
+<p>可以通过<a href="http://slider.incubator.apache.org/docs/slider_specs/hello_world_slider_app.html">Hello World Slider App</a>获得直观的印象。</p>
+
+<h2>使用流程及主要接口</h2>
+
+<p>使用Slider主要就是使用其客户端工具<code>slider</code>。要通过Slider启动一个应用，主要步骤如下：</p>
+
+<ul>
+<li>准备好应用包，配置资源描述resources.json、应用配置appConfig.json、开发适配协议脚本。</li>
+<li>打包并上传，通过<code>slider install-package</code>完成</li>
+<li>提交并部署，通过<code>slider create</code>完成</li>
+</ul>
+
+
+<p>其中，应用的部署和AM自身的部署是一起提交的。在应用部署好后，后续的运维操作都可以通过<code>slider</code>工具完成，例如：</p>
+
+<ul>
+<li>对应用做扩缩容: <code>./slider flex cl1 --component worker 5</code></li>
+<li>对应用做更新：<code>slider upgrade MyHBase_Facebook_Finance --components HBASE_MASTER HBASE_REGIONSERVER</code></li>
+</ul>
+
+
+<p>对应用做更新时，Slider文档中指出不可以同时做扩缩容。另外，如果更新过程中有部分容器坏掉自动替换，可能会自动更新为新版本。在更新过程中，Slider并不做更新过程的维护，即用户需要自己指定当前希望哪些容器得到更新（或全部更新），用户通过slider工具检查这些容器的版本是否达到预期，并继续更新下一批容器。过程大体如下：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># 上传更新包
+</span><span class='line'>slider package --install --name MyHBase_Facebook --version 2.0 --package ~/slider-hbase-app-package_v2.0.zip
+</span><span class='line'># upgrades the internal state 
+</span><span class='line'>slider upgrade MyHBase_Facebook_Finance --template ~/myHBase_appConfig_v2.0.json --resources ~/myHBase_resources_v2.0.json
+</span><span class='line'># 重复以下步骤，根据应用的需求更新各个容器
+</span><span class='line'>slider upgrade MyHBase_Facebook_Finance --containers id1 id2 .. idn</span></code></pre></td></tr></table></div></figure>
+
+
+<p>如果应用有多个Component，Component之间的更新一般是有顺序的，这里Slider交给用户自己去控制。用户也可以控制容器之间的更新间隔。</p>
+
+<p>更新过程的细节参考<a href="http://slider.incubator.apache.org/docs/slider_specs/application_pkg_upgrade.html">Rolling Upgrade</a>。</p>
+
+<h2>如何定制</h2>
+
+<p>Slider中有一个概念叫<code>Provider</code>。provider可以理解为为了支持特定应用类型而开发的插件，以让Slider部署这些特殊的应用。默认的provider就是前面提到的slider agent。这个agent是一堆Python脚本，定义了与应用交互的各种协议。实现自己的provider，需要实现client端和server端。client端会被slider client (前面提到的<code>slider</code>工具)调用，可以用于添加应用所需要的特殊包，以提交为Slider AM。而server端主要指的是Slider AM端，可以定制具体部署应用时的行为，例如部署自己定制的agent。</p>
+
+<p>具体provider例子可以参考源码中slider-providers子项目。</p>
+
+<h2>其他细节</h2>
+
+<p>以下细节仅供记录，未深入了解。</p>
+
+<h3>服务发现</h3>
+
+<p>服务发现用于解决分布式系统中上游服务如何发现下游服务实例，以发出RPC调用。Slider中依靠Yarn的服务发现机制，目前主要是通过zookeeper来自动对服务做注册。参考<a href="http://hadoop.apache.org/docs/current/hadoop-yarn/hadoop-yarn-site/registry/yarn-registry.html">The Yarn Service Registry</a>。</p>
+
+<h3>资源分配策略</h3>
+
+<p>Slider在请求yarn分配容器时，可以配置不同的策略，这个称为<code>Placement Policy</code>。例如是否优先跑在打有特殊标签的机器上，或者跑在特定的机架(rack)上。这里的资源标签就是一些普通的文本，例如给一个机器打上<code>gpu</code>标签，而分配容器时，也只是简单的匹配，并没有看到互斥、多标签组合等功能。分配策略可以解决带数据应用的机器亲近性，当应用实例发生迁移时，优先在有历史数据的机器上部署，可以获得更快的启动速度。</p>
+
+<p>具体参考<a href="https://slider.incubator.apache.org/docs/placement.html">Apache Slider Placement</a>。</p>
+
+<h2>总结</h2>
+
+<p>翻看了Slider的文档及部分源码，主要功能了解得七七八八。Slider虽然可以自动调度起一个应用，但是一个用于生产环境的调度器还要在很多细节上做得出色，例如：</p>
+
+<ul>
+<li>需要与服务发现深度结合。应用实例在服务发现中的状态能够参与到调度器的调度中，例如是否能做到对上游应用透明地更新</li>
+<li>应用实例与agent交互时，STATUS需要表达应用确实可提供服务，并且在运行期间持续透出可服务状态</li>
+<li>调度整个集群时，是否能对失败节点做容错，是否会自动recover这些失败节点，也就是我们说的基于目标式的调度实现(level-triggered)</li>
+<li>应用的更新是日常运维的常态，更新语义应该基于百分比，而不是基于容器；更新既然是常态，调度器就该处理好在这期间集群里可能发生的任何事情，例如有容器被自动替换</li>
+</ul>
+
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2018/01/24/apache-slider/'>http://codemacro.com/2018/01/24/apache-slider/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Python协程greenlet实现原理]]></title>
@@ -3746,138 +4007,6 @@ select name, length from http.`/e/api:search?q=avi&amp;p=2` where length &gt; 0 
 <p class='post-footer'>
             原文地址：
             <a href='http://codemacro.com/2015/05/05/lock_free_list/'>http://codemacro.com/2015/05/05/lock_free_list/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[并行编程中的内存回收Hazard Pointer]]></title>
-    <link href="http://codemacro.com/2015/05/03/hazard-pointer/"/>
-    <updated>2015-05-03T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2015/05/03/hazard-pointer</id>
-    <content type="html"><![CDATA[<p>接上篇<a href="http://codemacro.com/2015/04/19/rw_thread_gc/">使用RCU技术实现读写线程无锁</a>，在没有GC机制的语言中，要实现Lock free的算法，就免不了要自己处理内存回收的问题。</p>
-
-<p>Hazard Pointer是另一种处理这个问题的算法，而且相比起来不但简单，功能也很强大。<a href="http://blog.csdn.net/pongba/article/details/589864">锁无关的数据结构与Hazard指针</a>中讲得很好，<a href="http://en.wikipedia.org/wiki/Hazard_pointer">Wikipedia Hazard pointer</a>也描述得比较清楚，所以我这里就不讲那么细了。</p>
-
-<p>一个简单的实现可以参考<a href="https://github.com/kevinlynx/lockfree-list/blob/master/haz_ptr.c">我的github haz_ptr.c</a></p>
-
-<h2>原理</h2>
-
-<p>基本原理无非也是读线程对指针进行标识，指针(指向的内存)要释放时都会缓存起来延迟到确认没有读线程了才对其真正释放。</p>
-
-<p><code>&lt;Lock-Free Data Structures with Hazard Pointers&gt;</code>中的描述：</p>
-
-<blockquote><p>Each reader thread owns a single-writer/multi-reader shared pointer called &ldquo;hazard pointer.&rdquo; When a reader thread assigns the address of a map to its hazard pointer, it is basically announcing to other threads (writers), &ldquo;I am reading this map. You can replace it if you want, but don&rsquo;t change its contents and certainly keep your deleteing hands off it.&rdquo;</p></blockquote>
-
-<p>关键的结构包括：<code>Hazard pointer</code>、<code>Thread Free list</code></p>
-
-<p><code>Hazard pointer</code>：一个读线程要使用一个指针时，就会创建一个Hazard pointer包装这个指针。一个Hazard pointer会被一个线程写，多个线程读。</p>
-
-<!-- more -->
-
-
-
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">struct</span> <span class="n">HazardPointer</span> <span class="p">{</span>
-        <span class="kt">void</span> <span class="o">*</span><span class="n">real_ptr</span><span class="p">;</span> <span class="c1">// 包装的指针</span>
-        <span class="p">...</span> <span class="c1">// 不同的实现有不同的成员</span>
-    <span class="p">};</span>
-
-    <span class="kt">void</span> <span class="nf">func</span><span class="p">()</span> <span class="p">{</span>
-        <span class="n">HazardPointer</span> <span class="o">*</span><span class="n">hp</span> <span class="o">=</span> <span class="n">accquire</span><span class="p">(</span><span class="n">_real_ptr</span><span class="p">);</span>
-        <span class="p">...</span> <span class="c1">// use _real_ptr</span>
-        <span class="n">release</span><span class="p">(</span><span class="n">hp</span><span class="p">);</span>
-    <span class="p">}</span></code></pre></div>
-
-
-<p><code>Thread Free List</code>：每个线程都有一个这样的列表，保存着将要释放的指针列表，这个列表仅对应的线程读写</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">defer_free</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">)</span> <span class="p">{</span>
-        <span class="n">_free_list</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">ptr</span><span class="p">);</span>
-    <span class="p">}</span></code></pre></div>
-
-
-<p>当某个线程要尝试释放Free List中的指针时，例如指针<code>ptr</code>，就检查所有其他线程使用的Hazard pointer，检查是否存在包装了<code>ptr</code>的Hazard pointer，如果没有则说明没有读线程正在使用<code>ptr</code>，可以安全释放<code>ptr</code>。</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">void</span> <span class="nf">gc</span><span class="p">()</span> <span class="p">{</span>
-        <span class="k">for</span><span class="p">(</span><span class="n">ptr</span> <span class="n">in</span> <span class="n">_free_list</span><span class="p">)</span> <span class="p">{</span>
-            <span class="n">conflict</span> <span class="o">=</span> <span class="nb">false</span>
-            <span class="k">for</span> <span class="p">(</span><span class="n">hp</span> <span class="n">in</span> <span class="n">_all_hazard_pointers</span><span class="p">)</span> <span class="p">{</span>
-                <span class="k">if</span> <span class="p">(</span><span class="n">hp</span><span class="o">-&gt;</span><span class="n">_real_ptr</span> <span class="o">==</span> <span class="n">ptr</span><span class="p">)</span> <span class="p">{</span>
-                    <span class="n">confilict</span> <span class="o">=</span> <span class="nb">true</span>
-                    <span class="k">break</span>
-                <span class="p">}</span>
-            <span class="p">}</span>
-            <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">conflict</span><span class="p">)</span>
-                <span class="k">delete</span> <span class="n">ptr</span>
-        <span class="p">}</span>
-    <span class="p">}</span></code></pre></div>
-
-
-<p>以上，其实就是<code>Hazard Pointer</code>的主要内容。</p>
-
-<h2>Hazard Pointer的管理</h2>
-
-<p>上面的代码中没有提到<code>_all_hazard_pointers</code>及<code>accquire</code>的具体实现，这就是Hazard Pointer的管理问题。</p>
-
-<p>《锁无关的数据结构与Hazard指针》文中创建了一个Lock free的链表来表示这个全局的Hazard Pointer List。每个Hazard Pointer有一个成员标识其是否可用。这个List中也就保存了已经被使用的Hazard Pointer集合和未被使用的Hazard Pointer集合，当所有Hazard Pointer都被使用时，就会新分配一个加进这个List。当读线程不使用指针时，需要归还Hazard Pointer，直接设置可用成员标识即可。要<code>gc()</code>时，就直接遍历这个List。</p>
-
-<p>要实现一个Lock free的链表，并且仅需要实现头插入，还是非常简单的。本身Hazard Pointer标识某个指针时，都是用了后立即标识，所以这个实现直接支持了动态线程，支持线程的挂起等。</p>
-
-<p>在<a href="https://code.google.com/p/nbds/">nbds</a>项目中也有一个Hazard Pointer的实现，相对要弱一点。它为每个线程都设置了自己的Hazard Pointer池，写线程要释放指针时，就访问所有其他线程的Hazard Pointer池。</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">typedef</span> <span class="k">struct</span> <span class="n">haz_local</span> <span class="p">{</span>
-        <span class="c1">// Free List</span>
-        <span class="kt">pending_t</span> <span class="o">*</span><span class="n">pending</span><span class="p">;</span> <span class="c1">// to be freed</span>
-        <span class="kt">int</span> <span class="n">pending_size</span><span class="p">;</span>
-        <span class="kt">int</span> <span class="n">pending_count</span><span class="p">;</span>
-
-        <span class="c1">// Hazard Pointer 池，动态和静态两种</span>
-        <span class="kt">haz_t</span> <span class="n">static_haz</span><span class="p">[</span><span class="n">STATIC_HAZ_PER_THREAD</span><span class="p">];</span>
-
-        <span class="kt">haz_t</span> <span class="o">**</span><span class="n">dynamic</span><span class="p">;</span>
-        <span class="kt">int</span> <span class="n">dynamic_size</span><span class="p">;</span>
-        <span class="kt">int</span> <span class="n">dynamic_count</span><span class="p">;</span>
-
-    <span class="p">}</span> <span class="n">__attribute__</span> <span class="p">((</span><span class="n">aligned</span><span class="p">(</span><span class="n">CACHE_LINE_SIZE</span><span class="p">)))</span> <span class="kt">haz_local_t</span><span class="p">;</span>
-
-    <span class="k">static</span> <span class="kt">haz_local_t</span> <span class="n">haz_local_</span><span class="p">[</span><span class="n">MAX_NUM_THREADS</span><span class="p">]</span> <span class="o">=</span> <span class="p">{};</span></code></pre></div>
-
-
-<p>每个线程当然就涉及到<code>haz_local_</code>索引(ID)的分配，就像<a href="http://codemacro.com/2015/04/19/rw_thread_gc/">使用RCU技术实现读写线程无锁</a>中的一样。这个实现为了支持线程动态创建，就需要一套线程ID的重用机制，相对复杂多了。</p>
-
-<h2>附录</h2>
-
-<p>最后，附上一些并行编程中的一些概念。</p>
-
-<h3>Lock Free &amp; Wait Free</h3>
-
-<p>常常看到<code>Lock Free</code>和<code>Wait Free</code>的概念，这些概念用于衡量一个系统或者说一段代码的并行级别，并行级别可参考<a href="http://www.cnblogs.com/jiayy/p/3246167.html">并行编程——并发级别</a>。总之Wait Free是一个比Lock Free更牛逼的级别。</p>
-
-<p>我自己的理解，例如《锁无关的数据结构与Hazard指针》中实现的Hazard Pointer链表就可以说是Lock Free的，注意它在插入新元素到链表头时，因为使用<code>CAS</code>，总免不了一个busy loop，有这个特征的情况下就算是<code>Lock Free</code>，虽然没锁，但某个线程的执行情况也受其他线程的影响。</p>
-
-<p>相对而言，<code>Wait Free</code>则是每个线程的执行都是独立的，例如《锁无关的数据结构与Hazard指针》中的<code>Scan</code>函数。<code>“每个线程的执行时间都不依赖于其它任何线程的行为”</code></p>
-
-<blockquote><p>锁无关(Lock-Free)意味着系统中总存在某个线程能够得以继续执行；而等待无关(Wait-Free)则是一个更强的条件，它意味着所有线程都能往下进行。</p></blockquote>
-
-<h3>ABA问题</h3>
-
-<p>在实现<code>Lock Free</code>算法的过程中，总是要使用<code>CAS</code>原语的，而<code>CAS</code>就会带来<code>ABA</code>问题。</p>
-
-<blockquote><p>在进行CAS操作的时候，因为在更改V之前，CAS主要询问“V的值是否仍然为A”，所以在第一次读取V之后以及对V执行CAS操作之前，如果将值从A改为B，然后再改回A，会使基于CAS的算法混乱。在这种情况下，CAS操作会成功。这类问题称为ABA问题。</p></blockquote>
-
-<p><a href="http://en.wikipedia.org/wiki/Hazard_pointer">Wiki Hazard Pointer</a>提到了一个ABA问题的好例子：在一个Lock free的栈实现中，现在要出栈，栈里的元素是<code>[A, B, C]</code>，<code>head</code>指向栈顶，那么就有<code>compare_and_swap(target=&amp;head, newvalue=B, expected=A)</code>。但是在这个操作中，其他线程把<code>A</code> <code>B</code>都出栈，且删除了<code>B</code>，又把<code>A</code>压入栈中，即<code>[A, C]</code>。那么前一个线程的<code>compare_and_swap</code>能够成功，此时<code>head</code>指向了一个已经被删除的<code>B</code>。stackoverflow上也有个例子 <a href="http://stackoverflow.com/questions/14535948/real-world-examples-for-aba-in-multithreading">Real-world examples for ABA in multithreading</a></p>
-
-<blockquote><p>对于CAS产生的这个ABA问题，通常的解决方案是采用CAS的一个变种DCAS。DCAS，是对于每一个V增加一个引用的表示修改次数的标记符。对于每个V，如果引用修改了一次，这个计数器就加1。然后再这个变量需要update的时候，就同时检查变量的值和计数器的值。</p></blockquote>
-
-<p>但也早有人提出<code>DCAS</code>也不是<a href="http://people.csail.mit.edu/shanir/publications/DCAS.pdf">ABA problem 的银弹</a>。</p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2015/05/03/hazard-pointer/'>http://codemacro.com/2015/05/03/hazard-pointer/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
