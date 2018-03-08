@@ -9,9 +9,9 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="Apache Hadoop Map-Reduce
-框架为了解决规模增长问题，发展出了yarn。而yarn不仅解决Map-Reduce调度问题，还成为了一个通用的分布式应用调度服务。yarn中的一个创新是把各种不同应用的调度逻辑拆分到了一个称为Application
-Manager(以下简称AM) &hellip;">
+  <meta name="description" content="主要参考： 官方文档
+如何在国内愉快的安装 Kubernetes
+kubernetes 1.8.7 国内安装(kubeadm) 建议都大致浏览下。这里我也是简单地记录，估计每个人遇到的细节问题不一样。 环境准备 我拿到手的环境docker已经ready： docker (alidocker-1. &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -67,6 +67,82 @@ Manager(以下简称AM) &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2018/03/08/deploy-kubernetes/">使用Kubeadm在CentOS部署Kubernets 1.8.7</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2018-03-08T00:00:00+08:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>8</span><span class='date-suffix'>th</span>, <span class='date-year'>2018</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>主要参考：</p>
+
+<ul>
+<li><a href="https://v1-8.docs.kubernetes.io/docs/setup/independent/create-cluster-kubeadm/">官方文档</a></li>
+<li><a href="https://my.oschina.net/xdatk/blog/895645">如何在国内愉快的安装 Kubernetes</a></li>
+<li><a href="https://my.oschina.net/andylo25/blog/1618342">kubernetes 1.8.7 国内安装(kubeadm)</a></li>
+</ul>
+
+
+<p>建议都大致浏览下。这里我也是简单地记录，估计每个人遇到的细节问题不一样。</p>
+
+<h2>环境准备</h2>
+
+<p>我拿到手的环境docker已经ready：</p>
+
+<ul>
+<li>docker (alidocker-1.12.6.22)</li>
+<li>CentOS 7</li>
+</ul>
+
+
+<p>上面博客提到的一些系统设置可以先做掉：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat &lt;&lt;EOF &gt;  /etc/sysctl.d/k8s.conf
+</span><span class='line'>net.bridge.bridge-nf-call-ip6tables = 1
+</span><span class='line'>net.bridge.bridge-nf-call-iptables = 1
+</span><span class='line'>EOF
+</span><span class='line'>sysctl -p /etc/sysctl.d/k8s.conf</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其他一些设置：</p>
+
+<ul>
+<li>防火墙最好关闭</li>
+<li>swap最好关闭</li>
+<li><code>setenforce 0</code></li>
+</ul>
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2018/03/08/deploy-kubernetes/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -560,55 +636,6 @@ Python</a>中剥离出来的一个项目，可以作为官方CPython的一个扩
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2017/02/05/mini-requirejs/">RequireJS最简实现</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2017-02-05T00:00:00+08:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>5</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>网上有不少解析RequireJS源码的文章，我觉得意义不大。阅读源代码的目的不是为了熟悉代码，而是为了学习核心实现原理。相对RequireJS的源码，<a href="https://github.com/zengjialuo/kittyjs">kitty.js</a>的实现更简单，更容易理解。本文正是抄了kitty.js的实现，是一个更精简的RequireJS，用于理解RequireJS的实现原理。</p>
-
-<p><a href="https://github.com/kevinlynx/dummy-requirejs">github dummy-requirejs</a>。这个实现仅支持核心feature：</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>require(deps, callback) // deps 是依赖数组
-</span><span class='line'>define(id, deps, factory) // factory是一个函数
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>例子参考git中rect.js/main.js。</p>
-
-<p>从实现来看，require/define是基本一致的，require的callback等同于define的factory：都会要求deps被加载且被执行，获得deps的exports作为整个module传入callback/factory。不同的是，factory的返回值会被作为define出来的模块的export，可被视为模块本身；而callback返回值被忽略。</p>
-
-<p>从用法来看，define仅是定义了模块，这个模块可能被作为deps被其他模块依赖，但define传入的factory此时是不执行的；而require则会触发各个模块的factory执行。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2017/02/05/mini-requirejs/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/2">&larr; Older</a>
@@ -621,11 +648,15 @@ Python</a>中剥离出来的一个项目，可以作为官方CPython的一个扩
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (5)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (9)</a></li><li><a href='/categories/python/'>python (1)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li><li><a href='/categories/dan-xing-diao-du/'>弹性调度 (1)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (5)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (9)</a></li><li><a href='/categories/python/'>python (1)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li><li><a href='/categories/dan-xing-diao-du/'>弹性调度 (2)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2018/03/08/deploy-kubernetes/">使用Kubeadm在CentOS部署Kubernets 1.8.7</a>
+      </li>
     
       <li class="post">
         <a href="/2018/01/24/apache-slider/">基于Yarn的分布式应用调度器Slider</a>
@@ -643,10 +674,6 @@ Python</a>中剥离出来的一个项目，可以作为官方CPython的一个扩
         <a href="/2017/12/03/coroutine/">协程并发模型及使用感受</a>
       </li>
     
-      <li class="post">
-        <a href="/2017/05/18/memcache-proxy/">实现一个memcache proxy</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -656,7 +683,7 @@ Python</a>中剥离出来的一个项目，可以作为官方CPython的一个扩
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.53846153846153%'>game develop(5)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 120.76923076923077%'>other(9)</a> <a href='/categories/python' style='font-size: 102.3076923076923%'>python(1)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> <a href='/categories/dan-xing-diao-du' style='font-size: 102.3076923076923%'>弹性调度(1)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.53846153846153%'>game develop(5)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 120.76923076923077%'>other(9)</a> <a href='/categories/python' style='font-size: 102.3076923076923%'>python(1)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> <a href='/categories/dan-xing-diao-du' style='font-size: 104.61538461538461%'>弹性调度(2)</a> </span>
 </section>
 
   

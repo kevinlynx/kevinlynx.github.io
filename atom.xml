@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2018-01-24T19:52:49+08:00</updated>
+  <updated>2018-03-08T21:57:53+08:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,424 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[使用Kubeadm在CentOS部署Kubernets 1.8.7]]></title>
+    <link href="http://codemacro.com/2018/03/08/deploy-kubernetes/"/>
+    <updated>2018-03-08T00:00:00+08:00</updated>
+    <id>http://codemacro.com/2018/03/08/deploy-kubernetes</id>
+    <content type="html"><![CDATA[<p>主要参考：</p>
+
+<ul>
+<li><a href="https://v1-8.docs.kubernetes.io/docs/setup/independent/create-cluster-kubeadm/">官方文档</a></li>
+<li><a href="https://my.oschina.net/xdatk/blog/895645">如何在国内愉快的安装 Kubernetes</a></li>
+<li><a href="https://my.oschina.net/andylo25/blog/1618342">kubernetes 1.8.7 国内安装(kubeadm)</a></li>
+</ul>
+
+
+<p>建议都大致浏览下。这里我也是简单地记录，估计每个人遇到的细节问题不一样。</p>
+
+<h2>环境准备</h2>
+
+<p>我拿到手的环境docker已经ready：</p>
+
+<ul>
+<li>docker (alidocker-1.12.6.22)</li>
+<li>CentOS 7</li>
+</ul>
+
+
+<p>上面博客提到的一些系统设置可以先做掉：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat &lt;&lt;EOF &gt;  /etc/sysctl.d/k8s.conf
+</span><span class='line'>net.bridge.bridge-nf-call-ip6tables = 1
+</span><span class='line'>net.bridge.bridge-nf-call-iptables = 1
+</span><span class='line'>EOF
+</span><span class='line'>sysctl -p /etc/sysctl.d/k8s.conf</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其他一些设置：</p>
+
+<ul>
+<li>防火墙最好关闭</li>
+<li>swap最好关闭</li>
+<li><code>setenforce 0</code></li>
+</ul>
+
+
+<!-- more -->
+
+
+<h2>软件包及镜像</h2>
+
+<p>众所周知的局域网问题，官方的很多软件包和镜像无法获取。解决这个问题主要靠阿里云：</p>
+
+<ul>
+<li>配置yum源，由于阿里云yum源相对官方有滞后，并且各个软件包版本匹配我没有找到，所以就按照上面博客提到的，安装1.8.7，避免版本问题：</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat &lt;&lt;EOF &gt; /etc/yum.repos.d/kubernetes.repo
+</span><span class='line'>[kubernetes]
+</span><span class='line'>name=Kubernetes
+</span><span class='line'>baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+</span><span class='line'>enabled=1
+</span><span class='line'>gpgcheck=1
+</span><span class='line'>repo_gpgcheck=1
+</span><span class='line'>gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg
+</span><span class='line'>        https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+</span><span class='line'>EOF</span></code></pre></td></tr></table></div></figure>
+
+
+<p>可以把包下到本地以备不时之需：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>yum install -y --downloadonly --downloaddir=./ kubelet-1.8.7 kubeadm-1.8.7 kubectl-1.8.7 kubernetes-cni-0.5.1
+</span><span class='line'>yum install -y *.rpm</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>docker镜像问题后来我发现可以从阿里云直接拉，拉下来后通过打tag避免后续部署从google官方拉</li>
+</ul>
+
+
+<p>以下脚本内容未验证，主要注意镜像得提前拉全(上面链接的博客有写漏了)</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>#!/bin/sh
+</span><span class='line'>
+</span><span class='line'>images=(kube-scheduler-amd64:v1.8.7 \
+</span><span class='line'>kube-proxy-amd64:v1.8.7 \
+</span><span class='line'>kube-apiserver-amd64:v1.8.7 \
+</span><span class='line'>etcd-amd64:3.0.17 \
+</span><span class='line'>pause-amd64:3.0 \
+</span><span class='line'>k8s-dns-sidecar-amd64:1.14.5 \
+</span><span class='line'>k8s-dns-kube-dns-amd64:1.14.5 \
+</span><span class='line'>k8s-dns-dnsmasq-nanny-amd64:1.14.5 \
+</span><span class='line'>kubernetes-dashboard-amd64:v1.8.1)
+</span><span class='line'>
+</span><span class='line'>for imageName in ${images[@]} ; do
+</span><span class='line'>  docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName
+</span><span class='line'>  docker tag registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName gcr.io/google_containers/$imageName
+</span><span class='line'>  docker rmi registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName
+</span><span class='line'>done
+</span><span class='line'>
+</span><span class='line'># 注意这个镜像最好提前拉，看flannel的yaml描述里会用到
+</span><span class='line'>docker pull quay.io/coreos/flannel:v0.9.1-amd64</span></code></pre></td></tr></table></div></figure>
+
+
+<p>贴个我部署好后的镜像列表(自行忽略多余的)，方便对比：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$sudo docker images
+</span><span class='line'>REPOSITORY                                                                          TAG                 IMAGE ID            CREATED             SIZE
+</span><span class='line'>registry.cn-hangzhou.aliyuncs.com/google_containers/kubernetes-dashboard-amd64      v1.8.3              0c60bcf89900        3 weeks ago         102.3 MB
+</span><span class='line'>gcr.io/google_containers/kubernetes-dashboard-amd64                                 v1.8.1              63c78846e37b        4 weeks ago         120.7 MB
+</span><span class='line'>gcr.io/google_containers/k8s-dns-dnsmasq-nanny-amd64                                1.14.5              6d7cc6e484b3        4 weeks ago         41.42 MB
+</span><span class='line'>gcr.io/google_containers/k8s-dns-kube-dns-amd64                                     1.14.5              33072cb8c892        4 weeks ago         49.38 MB
+</span><span class='line'>gcr.io/google_containers/k8s-dns-sidecar-amd64                                      1.14.5              e1414b167ca6        4 weeks ago         41.81 MB
+</span><span class='line'>gcr.io/google_containers/pause-amd64                                                3.0                 8ca66ae4813a        4 weeks ago         746.9 kB
+</span><span class='line'>gcr.io/google_containers/etcd-amd64                                                 3.0.17              10010bfa0a74        4 weeks ago         168.9 MB
+</span><span class='line'>gcr.io/google_containers/kube-scheduler-amd64                                       v1.8.7              906029e1500b        4 weeks ago         55.13 MB
+</span><span class='line'>gcr.io/google_containers/kube-apiserver-amd64                                       v1.8.7              c3bb648343de        4 weeks ago         194.7 MB
+</span><span class='line'>gcr.io/google_containers/kube-proxy-amd64                                           v1.8.7              125dec6bd8f2        7 weeks ago         93.36 MB
+</span><span class='line'>registry.cn-hangzhou.aliyuncs.com/google_containers/kube-proxy-amd64                v1.8.7              125dec6bd8f2        7 weeks ago         93.36 MB
+</span><span class='line'>gcr.io/google_containers/kube-controller-manager-amd64                              v1.8.7              d8df883aabf9        7 weeks ago         129.6 MB
+</span><span class='line'>registry.cn-hangzhou.aliyuncs.com/google_containers/kube-controller-manager-amd64   v1.8.7              d8df883aabf9        7 weeks ago         129.6 MB
+</span><span class='line'>quay.io/coreos/flannel                                                              v0.9.1-amd64        2b736d06ca4c        3 months ago        51.31 MB
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>启动master</h2>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>systemctl enable kubelet
+</span><span class='line'>systemctl start kubelet</span></code></pre></td></tr></table></div></figure>
+
+
+<p>注意，这里官方文档也提到了，需要确认docker的cgroup配置与kubelet的一致：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>docker info | grep -i cgroup
+</span><span class='line'>cat /etc/systemd/system/kubelet.service.d/10-kubeadm.conf</span></code></pre></td></tr></table></div></figure>
+
+
+<p>不一致改成一致。例如：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sed -i "s/cgroup-driver=systemd/cgroup-driver=cgroupfs/g" /etc/systemd/system/kubelet.service.d/10-kubeadm.conf</span></code></pre></td></tr></table></div></figure>
+
+
+<p>配置有变更需要重启kubelet：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>systemctl daemon-reload
+</span><span class='line'>systemctl restart kubelet</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>systemctl status kubelet</code>查看日志会发现里面有warning/error级别的日志，所以出问题时很容易被误解。</p>
+
+<p>按照官方文档，在这一步时，kubelet会不断重启，所以这个时候可以继续，准备初始化master：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>#!/bin/bash
+</span><span class='line'>kubeadm init --kubernetes-version=v1.8.7 --pod-network-cidr 10.244.0.0/16
+</span><span class='line'>
+</span><span class='line'>mkdir -p $HOME/.kube
+</span><span class='line'>cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+</span><span class='line'>chown $(id -u):$(id -g) $HOME/.kube/config
+</span><span class='line'>
+</span><span class='line'>kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.9.1/Documentation/kube-flannel.yml</span></code></pre></td></tr></table></div></figure>
+
+
+<p>注意上面flannel的版本与前面的链接不同，v0.9.1测试可用。当flannel启动后，kubelet就会发现这个CNI实现，从而趋于成功运行状态。</p>
+
+<p>可以通过以下命令来确认master是否真的初始化成功：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$sudo kubectl get node
+</span><span class='line'>NAME                 STATUS    ROLES     AGE       VERSION
+</span><span class='line'>v101083237zsqazzmf   Ready     master    12m       v1.8.7
+</span><span class='line'>
+</span><span class='line'>$sudo kubectl get pod --all-namespaces
+</span><span class='line'>NAMESPACE     NAME                                         READY     STATUS    RESTARTS   AGE
+</span><span class='line'>kube-system   etcd-v101083237zsqazzmf                      1/1       Running   0          11m
+</span><span class='line'>kube-system   kube-apiserver-v101083237zsqazzmf            1/1       Running   0          11m
+</span><span class='line'>kube-system   kube-controller-manager-v101083237zsqazzmf   1/1       Running   0          11m
+</span><span class='line'>kube-system   kube-dns-545bc4bfd4-f7hsx                    3/3       Running   0          11m
+</span><span class='line'>kube-system   kube-flannel-ds-d6z78                        1/1       Running   5          6m
+</span><span class='line'>kube-system   kube-proxy-z88cd                             1/1       Running   0          11m
+</span><span class='line'>kube-system   kube-scheduler-v101083237zsqazzmf            1/1       Running   0          11m
+</span><span class='line'>
+</span><span class='line'>$sudo kubectl get cs
+</span><span class='line'>NAME                 STATUS    MESSAGE              ERROR
+</span><span class='line'>controller-manager   Healthy   ok                   
+</span><span class='line'>scheduler            Healthy   ok                   
+</span><span class='line'>etcd-0               Healthy   {"health": "true"}  
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>master初始成功会返回加入node的token，例如：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>kubeadm join --token 795c0c.c5a1b252c2d23a0c 10.101.83.237:6443 --discovery-token-ca-cert-hash sha256:1c7760c9f02e2f058de3f6bc759e85316b65376cfcc83d975ea6c64ac2175ecc</span></code></pre></td></tr></table></div></figure>
+
+
+<p>注意token默认24小时过期。如果在这个过程中始终有问题，可以做reset回到干净状态：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>kubeadm reset</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>部署node及加入</h2>
+
+<ul>
+<li>系统设置同上</li>
+<li>前面提到的软件需要安装</li>
+<li>镜像只需要部分</li>
+<li>运行kubelet的cgroup设置参考前面</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>images=(kube-proxy-amd64:v1.8.7 \
+</span><span class='line'>pause-amd64:3.0 \
+</span><span class='line'>kubernetes-dashboard-amd64:1.8.1)
+</span><span class='line'>images=(kube-proxy-amd64:v1.8.7)
+</span><span class='line'>for imageName in ${images[@]} ; do
+</span><span class='line'>  docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName
+</span><span class='line'>  docker tag registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName gcr.io/google_containers/$imageName
+</span><span class='line'>  docker rmi registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName
+</span><span class='line'>done</span></code></pre></td></tr></table></div></figure>
+
+
+<p>贴下镜像列表：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$sudo docker images
+</span><span class='line'>REPOSITORY                                                                       TAG                 IMAGE ID            CREATED             SIZE
+</span><span class='line'>registry.cn-hangzhou.aliyuncs.com/google_containers/kubernetes-dashboard-amd64   v1.8.3              0c60bcf89900        3 weeks ago         102.3 MB
+</span><span class='line'>gcr.io/google_containers/kube-proxy-amd64                                        v1.8.7              263b722c47c1        4 weeks ago         93.36 MB
+</span><span class='line'>gcr.io/google_containers/pause-amd64                                             3.0                 8ca66ae4813a        4 weeks ago         746.9 kB
+</span><span class='line'>gcr.io/google_containers/kubernetes-dashboard-amd64                              1.8.1               758ae6af38ca        5 weeks ago         120.7 MB
+</span><span class='line'>quay.io/coreos/flannel                                                           v0.9.1-amd64        2b736d06ca4c        3 months ago        51.31 MB</span></code></pre></td></tr></table></div></figure>
+
+
+<p>最后使用<code>kubeadm join xxxx</code> (部署master时会返回)加入网络。加入后在master端可以确认：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$sudo kubectl get nodes
+</span><span class='line'>NAME                 STATUS    ROLES     AGE       VERSION
+</span><span class='line'>v101083225zsqazzmf   Ready     &lt;none&gt;    2h        v1.8.7
+</span><span class='line'>v101083237zsqazzmf   Ready     master    3h        v1.8.7</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>部署dashboard</h2>
+
+<p>高版本的dashboard出于安全考虑，访问方式发生了变更，需要处理鉴权相关的问题。验证token的方式测试不成功，使用HTTP协议的方式也不成功。最后成功的方式如下：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># commit 9159b005f65b21bd6b7156ccabd92f9e50c11333
+</span><span class='line'>kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/master/src/deploy/recommended/kubernetes-dashboard.yaml</span></code></pre></td></tr></table></div></figure>
+
+
+<p><strong>注意</strong> 替换里面的镜像地址，可以直接在阿里云找对应镜像。</p>
+
+<p>参考<a href="https://stackoverflow.com/questions/46664104/how-to-sign-in-kubernetes-dashboard">stackoverflow</a> 最后一种方法：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ cat &lt;&lt;EOF | kubectl create -f -
+</span><span class='line'>apiVersion: rbac.authorization.k8s.io/v1beta1
+</span><span class='line'>kind: ClusterRoleBinding
+</span><span class='line'>metadata:
+</span><span class='line'>  name: kubernetes-dashboard
+</span><span class='line'>  labels:
+</span><span class='line'>    k8s-app: kubernetes-dashboard
+</span><span class='line'>roleRef:
+</span><span class='line'>  apiGroup: rbac.authorization.k8s.io
+</span><span class='line'>  kind: ClusterRole
+</span><span class='line'>  name: cluster-admin
+</span><span class='line'>subjects:
+</span><span class='line'>- kind: ServiceAccount
+</span><span class='line'>  name: kubernetes-dashboard
+</span><span class='line'>  namespace: kube-system
+</span><span class='line'>EOF</span></code></pre></td></tr></table></div></figure>
+
+
+<p>最后启动proxy，默认端口8001：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># 不加disable-filter浏览器端无法访问
+</span><span class='line'>kubectl proxy --address `hostname -i` --disable-filter=true</span></code></pre></td></tr></table></div></figure>
+
+
+<p>浏览器端即可访问：<code>http://10.101.83.237:8001/ui</code> 会重定向到新的URI。</p>
+
+<h2>测试</h2>
+
+<p>可以参考官方的例子<a href="https://v1-8.docs.kubernetes.io/docs/tasks/run-application/run-stateless-application-deployment/">stateless application sample</a> 进行测试。这一步很顺利没有什么问题。同样，注意配置中镜像地址的修改。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2018/03/08/deploy-kubernetes/'>http://codemacro.com/2018/03/08/deploy-kubernetes/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[基于Yarn的分布式应用调度器Slider]]></title>
@@ -3783,230 +4201,6 @@ select name, length from http.`/e/api:search?q=avi&amp;p=2` where length &gt; 0 
 <p class='post-footer'>
             原文地址：
             <a href='http://codemacro.com/2015/05/30/drill-http-plugin/'>http://codemacro.com/2015/05/30/drill-http-plugin/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[无锁有序链表的实现]]></title>
-    <link href="http://codemacro.com/2015/05/05/lock_free_list/"/>
-    <updated>2015-05-05T00:00:00+08:00</updated>
-    <id>http://codemacro.com/2015/05/05/lock_free_list</id>
-    <content type="html"><![CDATA[<p>无锁有序链表可以保证元素的唯一性，使其可用于哈希表的桶，甚至直接作为一个效率不那么高的map。普通链表的无锁实现相对简单点，因为插入元素可以在表头插，而有序链表的插入则是任意位置。</p>
-
-<p>本文主要基于论文<a href="http://www.research.ibm.com/people/m/michael/spaa-2002.pdf">High Performance Dynamic Lock-Free Hash Tables</a>实现。</p>
-
-<h2>主要问题</h2>
-
-<p>链表的主要操作包含<code>insert</code>和<code>remove</code>，先简单实现一个版本，就会看到问题所在，以下代码只用作示例：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">struct</span> <span class="kt">node_t</span> <span class="p">{</span>
-        <span class="kt">key_t</span> <span class="n">key</span><span class="p">;</span>
-        <span class="kt">value_t</span> <span class="n">val</span><span class="p">;</span>
-        <span class="kt">node_t</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span>
-    <span class="p">};</span>
-
-    <span class="kt">int</span> <span class="nf">l_find</span><span class="p">(</span><span class="kt">node_t</span> <span class="o">**</span><span class="n">pred_ptr</span><span class="p">,</span> <span class="kt">node_t</span> <span class="o">**</span><span class="n">item_ptr</span><span class="p">,</span> <span class="kt">node_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">key_t</span> <span class="n">key</span><span class="p">)</span> <span class="p">{</span>
-        <span class="kt">node_t</span> <span class="o">*</span><span class="n">pred</span> <span class="o">=</span> <span class="n">head</span><span class="p">;</span>
-        <span class="kt">node_t</span> <span class="o">*</span><span class="n">item</span> <span class="o">=</span> <span class="n">head</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
-        <span class="k">while</span> <span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="p">{</span>
-            <span class="kt">int</span> <span class="n">d</span> <span class="o">=</span> <span class="n">KEY_CMP</span><span class="p">(</span><span class="n">item</span><span class="o">-&gt;</span><span class="n">key</span><span class="p">,</span> <span class="n">key</span><span class="p">);</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">d</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-                <span class="o">*</span><span class="n">pred_ptr</span> <span class="o">=</span> <span class="n">pred</span><span class="p">;</span>
-                <span class="o">*</span><span class="n">item_ptr</span> <span class="o">=</span> <span class="n">item</span><span class="p">;</span>
-                <span class="k">return</span> <span class="n">d</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">?</span> <span class="nl">TRUE</span> <span class="p">:</span> <span class="n">FALSE</span><span class="p">;</span>
-            <span class="p">}</span>
-            <span class="n">pred</span> <span class="o">=</span> <span class="n">item</span><span class="p">;</span>
-            <span class="n">item</span> <span class="o">=</span> <span class="n">item</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
-        <span class="p">}</span> 
-        <span class="o">*</span><span class="n">pred_ptr</span> <span class="o">=</span> <span class="n">pred</span><span class="p">;</span>
-        <span class="o">*</span><span class="n">item_ptr</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-        <span class="k">return</span> <span class="n">FALSE</span><span class="p">;</span>
-    <span class="p">}</span>
-
-    <span class="kt">int</span> <span class="nf">l_insert</span><span class="p">(</span><span class="kt">node_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">key_t</span> <span class="n">key</span><span class="p">,</span> <span class="kt">value_t</span> <span class="n">val</span><span class="p">)</span> <span class="p">{</span>
-        <span class="kt">node_t</span> <span class="o">*</span><span class="n">pred</span><span class="p">,</span> <span class="o">*</span><span class="n">item</span><span class="p">,</span> <span class="o">*</span><span class="n">new_item</span><span class="p">;</span>
-        <span class="k">while</span> <span class="p">(</span><span class="n">TRUE</span><span class="p">)</span> <span class="p">{</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">l_find</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">item</span><span class="p">,</span> <span class="n">head</span><span class="p">,</span> <span class="n">key</span><span class="p">))</span> <span class="p">{</span>
-                <span class="k">return</span> <span class="n">FALSE</span><span class="p">;</span>
-            <span class="p">}</span>
-            <span class="n">new_item</span> <span class="o">=</span> <span class="p">(</span><span class="kt">node_t</span><span class="o">*</span><span class="p">)</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">node_t</span><span class="p">));</span>
-            <span class="n">new_item</span><span class="o">-&gt;</span><span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="p">;</span>
-            <span class="n">new_item</span><span class="o">-&gt;</span><span class="n">val</span> <span class="o">=</span> <span class="n">val</span><span class="p">;</span>
-            <span class="n">new_item</span><span class="o">-&gt;</span><span class="n">next</span> <span class="o">=</span> <span class="n">item</span><span class="p">;</span>
-            <span class="c1">// A. 如果pred本身被移除了</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">new_item</span><span class="p">))</span> <span class="p">{</span>
-                <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
-            <span class="p">}</span>
-            <span class="n">free</span><span class="p">(</span><span class="n">new_item</span><span class="p">);</span>
-        <span class="p">}</span>
-    <span class="p">}</span>
-
-    <span class="kt">int</span> <span class="nf">l_remove</span><span class="p">(</span><span class="kt">node_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">key_t</span> <span class="n">key</span><span class="p">)</span> <span class="p">{</span>
-        <span class="kt">node_t</span> <span class="o">*</span><span class="n">pred</span><span class="p">,</span> <span class="o">*</span><span class="n">item</span><span class="p">;</span>
-        <span class="k">while</span> <span class="p">(</span><span class="n">TRUE</span><span class="p">)</span> <span class="p">{</span>
-            <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">l_find</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">item</span><span class="p">,</span> <span class="n">head</span><span class="p">,</span> <span class="n">key</span><span class="p">))</span> <span class="p">{</span>
-                <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
-            <span class="p">}</span>
-            <span class="c1">// B. 如果pred被移除；如果item也被移除</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">item</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">))</span> <span class="p">{</span>
-                <span class="n">haz_free</span><span class="p">(</span><span class="n">item</span><span class="p">);</span>
-                <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
-            <span class="p">}</span>
-        <span class="p">}</span>
-    <span class="p">}</span></code></pre></div>
-
-
-
-
-<!-- more -->
-
-
-<p><code>l_find</code>函数返回查找到的前序元素和元素本身，代码A和B虽然拿到了<code>pred</code>和<code>item</code>，但在<code>CAS</code>的时候，其可能被其他线程移除。甚至，在<code>l_find</code>过程中，其每一个元素都可能被移除。问题在于，<strong>任何时候拿到一个元素时，都不确定其是否还有效</strong>。元素的有效性包括其是否还在链表中，其指向的内存是否还有效。</p>
-
-<h2>解决方案</h2>
-
-<p><strong>通过为元素指针增加一个有效性标志位，配合CAS操作的互斥性</strong>，就可以解决元素有效性判定问题。</p>
-
-<p>因为<code>node_t</code>放在内存中是会对齐的，所以指向<code>node_t</code>的指针值低几位是不会用到的，从而可以在低几位里设置标志，这样在做CAS的时候，就实现了DCAS的效果，相当于将两个逻辑上的操作变成了一个原子操作。想象下引用计数对象的线程安全性，其内包装的指针是线程安全的，但对象本身不是。</p>
-
-<p>CAS的互斥性，在若干个线程CAS相同的对象时，只有一个线程会成功，失败的线程就可以以此判定目标对象发生了变更。改进后的代码（代码仅做示例用，不保证正确）：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">typedef</span> <span class="kt">size_t</span> <span class="kt">markable_t</span><span class="p">;</span>
-    <span class="c1">// 最低位置1，表示元素被删除</span>
-    <span class="cp">#define HAS_MARK(p) ((markable_t)p &amp; 0x01)</span>
-    <span class="cp">#define MARK(p) ((markable_t)p | 0x01)</span>
-    <span class="cp">#define STRIP_MARK(p) ((markable_t)p &amp; ~0x01)</span>
-
-    <span class="kt">int</span> <span class="nf">l_insert</span><span class="p">(</span><span class="kt">node_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">key_t</span> <span class="n">key</span><span class="p">,</span> <span class="kt">value_t</span> <span class="n">val</span><span class="p">)</span> <span class="p">{</span>
-        <span class="kt">node_t</span> <span class="o">*</span><span class="n">pred</span><span class="p">,</span> <span class="o">*</span><span class="n">item</span><span class="p">,</span> <span class="o">*</span><span class="n">new_item</span><span class="p">;</span>
-        <span class="k">while</span> <span class="p">(</span><span class="n">TRUE</span><span class="p">)</span> <span class="p">{</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">l_find</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">item</span><span class="p">,</span> <span class="n">head</span><span class="p">,</span> <span class="n">key</span><span class="p">))</span> <span class="p">{</span> 
-                <span class="k">return</span> <span class="n">FALSE</span><span class="p">;</span>
-            <span class="p">}</span>
-            <span class="n">new_item</span> <span class="o">=</span> <span class="p">(</span><span class="kt">node_t</span><span class="o">*</span><span class="p">)</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">node_t</span><span class="p">));</span>
-            <span class="n">new_item</span><span class="o">-&gt;</span><span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="p">;</span>
-            <span class="n">new_item</span><span class="o">-&gt;</span><span class="n">val</span> <span class="o">=</span> <span class="n">val</span><span class="p">;</span>
-            <span class="n">new_item</span><span class="o">-&gt;</span><span class="n">next</span> <span class="o">=</span> <span class="n">item</span><span class="p">;</span>
-            <span class="c1">// A. 虽然find拿到了合法的pred，但是在以下代码之前pred可能被删除，此时pred-&gt;next被标记</span>
-            <span class="c1">//    pred-&gt;next != item，该CAS会失败，失败后重试</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">new_item</span><span class="p">))</span> <span class="p">{</span>
-                <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
-            <span class="p">}</span>
-            <span class="n">free</span><span class="p">(</span><span class="n">new_item</span><span class="p">);</span>
-        <span class="p">}</span>
-        <span class="k">return</span> <span class="n">FALSE</span><span class="p">;</span>
-    <span class="p">}</span>
-
-    <span class="kt">int</span> <span class="nf">l_remove</span><span class="p">(</span><span class="kt">node_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">key_t</span> <span class="n">key</span><span class="p">)</span> <span class="p">{</span>
-        <span class="kt">node_t</span> <span class="o">*</span><span class="n">pred</span><span class="p">,</span> <span class="o">*</span><span class="n">item</span><span class="p">;</span>
-        <span class="k">while</span> <span class="p">(</span><span class="n">TRUE</span><span class="p">)</span> <span class="p">{</span>
-            <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">l_find</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">item</span><span class="p">,</span> <span class="n">head</span><span class="p">,</span> <span class="n">key</span><span class="p">))</span> <span class="p">{</span>
-                <span class="k">return</span> <span class="n">FALSE</span><span class="p">;</span>
-            <span class="p">}</span>
-            <span class="kt">node_t</span> <span class="o">*</span><span class="n">inext</span> <span class="o">=</span> <span class="n">item</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
-            <span class="c1">// B. 删除item前先标记item-&gt;next，如果CAS失败，那么情况同insert一样，有其他线程在find之后</span>
-            <span class="c1">//    删除了item，失败后重试</span>
-            <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">item</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">,</span> <span class="n">inext</span><span class="p">,</span> <span class="n">MARK</span><span class="p">(</span><span class="n">inext</span><span class="p">)))</span> <span class="p">{</span>
-                <span class="k">continue</span><span class="p">;</span>
-            <span class="p">}</span>
-            <span class="c1">// C. 对同一个元素item删除时，只会有一个线程成功走到这里</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">STRIP_MARK</span><span class="p">(</span><span class="n">item</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">)))</span> <span class="p">{</span>
-                <span class="n">haz_defer_free</span><span class="p">(</span><span class="n">item</span><span class="p">);</span>
-                <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
-            <span class="p">}</span>
-        <span class="p">}</span>
-        <span class="k">return</span> <span class="n">FALSE</span><span class="p">;</span>
-    <span class="p">}</span>
-
-    <span class="kt">int</span> <span class="nf">l_find</span><span class="p">(</span><span class="kt">node_t</span> <span class="o">**</span><span class="n">pred_ptr</span><span class="p">,</span> <span class="kt">node_t</span> <span class="o">**</span><span class="n">item_ptr</span><span class="p">,</span> <span class="kt">node_t</span> <span class="o">*</span><span class="n">head</span><span class="p">,</span> <span class="kt">key_t</span> <span class="n">key</span><span class="p">)</span> <span class="p">{</span>
-        <span class="kt">node_t</span> <span class="o">*</span><span class="n">pred</span> <span class="o">=</span> <span class="n">head</span><span class="p">;</span>
-        <span class="kt">node_t</span> <span class="o">*</span><span class="n">item</span> <span class="o">=</span> <span class="n">head</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
-        <span class="kt">hazard_t</span> <span class="o">*</span><span class="n">hp1</span> <span class="o">=</span> <span class="n">haz_get</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
-        <span class="kt">hazard_t</span> <span class="o">*</span><span class="n">hp2</span> <span class="o">=</span> <span class="n">haz_get</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
-        <span class="k">while</span> <span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="p">{</span>
-            <span class="n">haz_set_ptr</span><span class="p">(</span><span class="n">hp1</span><span class="p">,</span> <span class="n">pred</span><span class="p">);</span>
-            <span class="n">haz_set_ptr</span><span class="p">(</span><span class="n">hp2</span><span class="p">,</span> <span class="n">item</span><span class="p">);</span>
-            <span class="cm">/* </span>
-<span class="cm">             如果已被标记，那么紧接着item可能被移除链表甚至释放，所以需要重头查找</span>
-<span class="cm">            */</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">HAS_MARK</span><span class="p">(</span><span class="n">item</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">))</span> <span class="p">{</span> 
-                <span class="k">return</span> <span class="n">l_find</span><span class="p">(</span><span class="n">pred_ptr</span><span class="p">,</span> <span class="n">item_ptr</span><span class="p">,</span> <span class="n">head</span><span class="p">,</span> <span class="n">key</span><span class="p">);</span>
-            <span class="p">}</span>
-            <span class="kt">int</span> <span class="n">d</span> <span class="o">=</span> <span class="n">KEY_CMP</span><span class="p">(</span><span class="n">item</span><span class="o">-&gt;</span><span class="n">key</span><span class="p">,</span> <span class="n">key</span><span class="p">);</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">d</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-                <span class="o">*</span><span class="n">pred_ptr</span> <span class="o">=</span> <span class="n">pred</span><span class="p">;</span>
-                <span class="o">*</span><span class="n">item_ptr</span> <span class="o">=</span> <span class="n">item</span><span class="p">;</span>
-                <span class="k">return</span> <span class="n">d</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">?</span> <span class="nl">TRUE</span> <span class="p">:</span> <span class="n">FALSE</span><span class="p">;</span>
-            <span class="p">}</span>
-            <span class="n">pred</span> <span class="o">=</span> <span class="n">item</span><span class="p">;</span>
-            <span class="n">item</span> <span class="o">=</span> <span class="n">item</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
-        <span class="p">}</span> 
-        <span class="o">*</span><span class="n">pred_ptr</span> <span class="o">=</span> <span class="n">pred</span><span class="p">;</span>
-        <span class="o">*</span><span class="n">item_ptr</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-        <span class="k">return</span> <span class="n">FALSE</span><span class="p">;</span>
-    <span class="p">}</span></code></pre></div>
-
-
-<p><code>haz_get</code>、<code>haz_set_ptr</code>之类的函数是一个hazard pointer实现，用于支持多线程下内存的GC。上面的代码中，要删除一个元素<code>item</code>时，会标记<code>item-&gt;next</code>，从而使得<code>insert</code>时中那个<code>CAS</code>不需要做任何调整。总结下这里的线程竞争情况：</p>
-
-<ul>
-<li><code>insert</code>中<code>find</code>到正常的<code>pred</code>及<code>item</code>，<code>pred-&gt;next == item</code>，然后在<code>CAS</code>前有线程删除了<code>pred</code>，此时<code>pred-&gt;next == MARK(item)</code>，<code>CAS</code>失败，重试；删除分为2种情况：a) 从链表移除，得到标记，<code>pred</code>可继续访问；b) <code>pred</code>可能被释放内存，此时再使用<code>pred</code>会错误。为了处理情况b，所以引入了类似hazard pointer的机制，可以有效保障任意一个指针<code>p</code>只要还有线程在使用它，它的内存就不会被真正释放</li>
-<li><code>insert</code>中有多个线程在<code>pred</code>后插入元素，此时同样由<code>insert</code>中的<code>CAS</code>保证，这个不多说</li>
-<li><code>remove</code>中情况同<code>insert</code>，<code>find</code>拿到了有效的<code>pred</code>和<code>next</code>，但在<code>CAS</code>的时候<code>pred</code>被其他线程删除，此时情况同<code>insert</code>，<code>CAS</code>失败，重试</li>
-<li>任何时候改变链表结构时，无论是<code>remove</code>还是<code>insert</code>，都需要重试该操作</li>
-<li><code>find</code>中遍历时，可能会遇到被标记删除的<code>item</code>，此时<code>item</code>根据<code>remove</code>的实现很可能被删除，所以需要重头开始遍历</li>
-</ul>
-
-
-<h2>ABA问题</h2>
-
-<p>ABA问题还是存在的，<code>insert</code>中：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">if</span> <span class="p">(</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">new_item</span><span class="p">))</span> <span class="p">{</span>
-        <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
-    <span class="p">}</span></code></pre></div>
-
-
-<p>如果<code>CAS</code>之前，<code>pred</code>后的<code>item</code>被移除，又以相同的地址值加进来，但其value变了，此时<code>CAS</code>会成功，但链表可能就不是有序的了。<code>pred-&gt;val &lt; new_item-&gt;val &gt; item-&gt;val</code></p>
-
-<p>为了解决这个问题，可以利用指针值地址对齐的其他位来存储一个计数，用于表示<code>pred-&gt;next</code>的改变次数。当<code>insert</code>拿到<code>pred</code>时，<code>pred-&gt;next</code>中存储的计数假设是0，<code>CAS</code>之前其他线程移除了<code>pred-&gt;next</code>又新增回了<code>item</code>，此时<code>pred-&gt;next</code>中的计数增加，从而导致<code>insert</code>中<code>CAS</code>失败。</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// 最低位留作删除标志</span>
-    <span class="cp">#define MASK ((sizeof(node_t) - 1) &amp; ~0x01)</span>
-
-    <span class="cp">#define GET_TAG(p) ((markable_t)p &amp; MASK)</span>
-    <span class="cp">#define TAG(p, tag) ((markable_t)p | (tag))</span>
-    <span class="cp">#define MARK(p) ((markable_t)p | 0x01)</span>
-    <span class="cp">#define HAS_MARK(p) ((markable_t)p &amp; 0x01)</span>
-    <span class="cp">#define STRIP_MARK(p) ((node_t*)((markable_t)p &amp; ~(MASK | 0x01)))</span></code></pre></div>
-
-
-<p><code>remove</code>的实现：</p>
-
-<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="cm">/* 先标记再删除 */</span>
-    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">sitem</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">,</span> <span class="n">inext</span><span class="p">,</span> <span class="n">MARK</span><span class="p">(</span><span class="n">inext</span><span class="p">)))</span> <span class="p">{</span>
-        <span class="k">continue</span><span class="p">;</span>
-    <span class="p">}</span>
-    <span class="kt">int</span> <span class="n">tag</span> <span class="o">=</span> <span class="n">GET_TAG</span><span class="p">(</span><span class="n">pred</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">CAS</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pred</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">TAG</span><span class="p">(</span><span class="n">STRIP_MARK</span><span class="p">(</span><span class="n">sitem</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">),</span> <span class="n">tag</span><span class="p">)))</span> <span class="p">{</span>
-        <span class="n">haz_defer_free</span><span class="p">(</span><span class="n">sitem</span><span class="p">);</span>
-        <span class="k">return</span> <span class="n">TRUE</span><span class="p">;</span>
-    <span class="p">}</span></code></pre></div>
-
-
-<p><code>insert</code>中也可以更新<code>pred-&gt;next</code>的计数。</p>
-
-<h2>总结</h2>
-
-<p>无锁的实现，本质上都会依赖于<code>CAS</code>的互斥性。从头实现一个lock free的数据结构，可以深刻感受到lock free实现的tricky。最终代码可以从<a href="https://github.com/kevinlynx/lockfree-list">这里github</a>获取。代码中为了简单，实现了一个不是很强大的hazard pointer，可以<a href="http://codemacro.com/2015/05/03/hazard-pointer/">参考之前的博文</a>。</p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2015/05/05/lock_free_list/'>http://codemacro.com/2015/05/05/lock_free_list/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>

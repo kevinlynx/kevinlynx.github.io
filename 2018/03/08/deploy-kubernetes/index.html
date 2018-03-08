@@ -1,0 +1,634 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>使用Kubeadm在CentOS部署Kubernets 1.8.7 - loop in codes</title>
+  <meta name="author" content="Kevin Lynx">
+
+  
+  <meta name="description" content="主要参考： 官方文档
+如何在国内愉快的安装 Kubernetes
+kubernetes 1.8.7 国内安装(kubeadm) 建议都大致浏览下。这里我也是简单地记录，估计每个人遇到的细节问题不一样。 环境准备 我拿到手的环境docker已经ready： docker (alidocker-1. &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://codemacro.com/2018/03/08/deploy-kubernetes">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <!--script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script-->
+<script src="https://cdn.bootcss.com/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<!--link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css"-->
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">loop in codes</a></h1>
+  
+    <h2>Kevin Lynx BLOG</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:codemacro.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about.html">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">使用Kubeadm在CentOS部署Kubernets 1.8.7</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2018-03-08T00:00:00+08:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>8</span><span class='date-suffix'>th</span>, <span class='date-year'>2018</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>主要参考：</p>
+
+<ul>
+<li><a href="https://v1-8.docs.kubernetes.io/docs/setup/independent/create-cluster-kubeadm/">官方文档</a></li>
+<li><a href="https://my.oschina.net/xdatk/blog/895645">如何在国内愉快的安装 Kubernetes</a></li>
+<li><a href="https://my.oschina.net/andylo25/blog/1618342">kubernetes 1.8.7 国内安装(kubeadm)</a></li>
+</ul>
+
+
+<p>建议都大致浏览下。这里我也是简单地记录，估计每个人遇到的细节问题不一样。</p>
+
+<h2>环境准备</h2>
+
+<p>我拿到手的环境docker已经ready：</p>
+
+<ul>
+<li>docker (alidocker-1.12.6.22)</li>
+<li>CentOS 7</li>
+</ul>
+
+
+<p>上面博客提到的一些系统设置可以先做掉：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat &lt;&lt;EOF &gt;  /etc/sysctl.d/k8s.conf
+</span><span class='line'>net.bridge.bridge-nf-call-ip6tables = 1
+</span><span class='line'>net.bridge.bridge-nf-call-iptables = 1
+</span><span class='line'>EOF
+</span><span class='line'>sysctl -p /etc/sysctl.d/k8s.conf</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>其他一些设置：</p>
+
+<ul>
+<li>防火墙最好关闭</li>
+<li>swap最好关闭</li>
+<li><code>setenforce 0</code></li>
+</ul>
+
+
+<!-- more -->
+
+
+<h2>软件包及镜像</h2>
+
+<p>众所周知的局域网问题，官方的很多软件包和镜像无法获取。解决这个问题主要靠阿里云：</p>
+
+<ul>
+<li>配置yum源，由于阿里云yum源相对官方有滞后，并且各个软件包版本匹配我没有找到，所以就按照上面博客提到的，安装1.8.7，避免版本问题：</li>
+</ul>
+
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat &lt;&lt;EOF &gt; /etc/yum.repos.d/kubernetes.repo
+</span><span class='line'>[kubernetes]
+</span><span class='line'>name=Kubernetes
+</span><span class='line'>baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+</span><span class='line'>enabled=1
+</span><span class='line'>gpgcheck=1
+</span><span class='line'>repo_gpgcheck=1
+</span><span class='line'>gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg
+</span><span class='line'>        https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+</span><span class='line'>EOF</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>可以把包下到本地以备不时之需：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>yum install -y --downloadonly --downloaddir=./ kubelet-1.8.7 kubeadm-1.8.7 kubectl-1.8.7 kubernetes-cni-0.5.1
+</span><span class='line'>yum install -y *.rpm</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<ul>
+<li>docker镜像问题后来我发现可以从阿里云直接拉，拉下来后通过打tag避免后续部署从google官方拉</li>
+</ul>
+
+
+<p>以下脚本内容未验证，主要注意镜像得提前拉全(上面链接的博客有写漏了)</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>#!/bin/sh
+</span><span class='line'>
+</span><span class='line'>images=(kube-scheduler-amd64:v1.8.7 \
+</span><span class='line'>kube-proxy-amd64:v1.8.7 \
+</span><span class='line'>kube-apiserver-amd64:v1.8.7 \
+</span><span class='line'>etcd-amd64:3.0.17 \
+</span><span class='line'>pause-amd64:3.0 \
+</span><span class='line'>k8s-dns-sidecar-amd64:1.14.5 \
+</span><span class='line'>k8s-dns-kube-dns-amd64:1.14.5 \
+</span><span class='line'>k8s-dns-dnsmasq-nanny-amd64:1.14.5 \
+</span><span class='line'>kubernetes-dashboard-amd64:v1.8.1)
+</span><span class='line'>
+</span><span class='line'>for imageName in ${images[@]} ; do
+</span><span class='line'>  docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName
+</span><span class='line'>  docker tag registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName gcr.io/google_containers/$imageName
+</span><span class='line'>  docker rmi registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName
+</span><span class='line'>done
+</span><span class='line'>
+</span><span class='line'># 注意这个镜像最好提前拉，看flannel的yaml描述里会用到
+</span><span class='line'>docker pull quay.io/coreos/flannel:v0.9.1-amd64</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>贴个我部署好后的镜像列表(自行忽略多余的)，方便对比：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$sudo docker images
+</span><span class='line'>REPOSITORY                                                                          TAG                 IMAGE ID            CREATED             SIZE
+</span><span class='line'>registry.cn-hangzhou.aliyuncs.com/google_containers/kubernetes-dashboard-amd64      v1.8.3              0c60bcf89900        3 weeks ago         102.3 MB
+</span><span class='line'>gcr.io/google_containers/kubernetes-dashboard-amd64                                 v1.8.1              63c78846e37b        4 weeks ago         120.7 MB
+</span><span class='line'>gcr.io/google_containers/k8s-dns-dnsmasq-nanny-amd64                                1.14.5              6d7cc6e484b3        4 weeks ago         41.42 MB
+</span><span class='line'>gcr.io/google_containers/k8s-dns-kube-dns-amd64                                     1.14.5              33072cb8c892        4 weeks ago         49.38 MB
+</span><span class='line'>gcr.io/google_containers/k8s-dns-sidecar-amd64                                      1.14.5              e1414b167ca6        4 weeks ago         41.81 MB
+</span><span class='line'>gcr.io/google_containers/pause-amd64                                                3.0                 8ca66ae4813a        4 weeks ago         746.9 kB
+</span><span class='line'>gcr.io/google_containers/etcd-amd64                                                 3.0.17              10010bfa0a74        4 weeks ago         168.9 MB
+</span><span class='line'>gcr.io/google_containers/kube-scheduler-amd64                                       v1.8.7              906029e1500b        4 weeks ago         55.13 MB
+</span><span class='line'>gcr.io/google_containers/kube-apiserver-amd64                                       v1.8.7              c3bb648343de        4 weeks ago         194.7 MB
+</span><span class='line'>gcr.io/google_containers/kube-proxy-amd64                                           v1.8.7              125dec6bd8f2        7 weeks ago         93.36 MB
+</span><span class='line'>registry.cn-hangzhou.aliyuncs.com/google_containers/kube-proxy-amd64                v1.8.7              125dec6bd8f2        7 weeks ago         93.36 MB
+</span><span class='line'>gcr.io/google_containers/kube-controller-manager-amd64                              v1.8.7              d8df883aabf9        7 weeks ago         129.6 MB
+</span><span class='line'>registry.cn-hangzhou.aliyuncs.com/google_containers/kube-controller-manager-amd64   v1.8.7              d8df883aabf9        7 weeks ago         129.6 MB
+</span><span class='line'>quay.io/coreos/flannel                                                              v0.9.1-amd64        2b736d06ca4c        3 months ago        51.31 MB
+</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<h2>启动master</h2>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>systemctl enable kubelet
+</span><span class='line'>systemctl start kubelet</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>注意，这里官方文档也提到了，需要确认docker的cgroup配置与kubelet的一致：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>docker info | grep -i cgroup
+</span><span class='line'>cat /etc/systemd/system/kubelet.service.d/10-kubeadm.conf</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>不一致改成一致。例如：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sed -i "s/cgroup-driver=systemd/cgroup-driver=cgroupfs/g" /etc/systemd/system/kubelet.service.d/10-kubeadm.conf</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>配置有变更需要重启kubelet：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>systemctl daemon-reload
+</span><span class='line'>systemctl restart kubelet</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p><code>systemctl status kubelet</code>查看日志会发现里面有warning/error级别的日志，所以出问题时很容易被误解。</p>
+
+<p>按照官方文档，在这一步时，kubelet会不断重启，所以这个时候可以继续，准备初始化master：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>#!/bin/bash
+</span><span class='line'>kubeadm init --kubernetes-version=v1.8.7 --pod-network-cidr 10.244.0.0/16
+</span><span class='line'>
+</span><span class='line'>mkdir -p $HOME/.kube
+</span><span class='line'>cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+</span><span class='line'>chown $(id -u):$(id -g) $HOME/.kube/config
+</span><span class='line'>
+</span><span class='line'>kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.9.1/Documentation/kube-flannel.yml</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>注意上面flannel的版本与前面的链接不同，v0.9.1测试可用。当flannel启动后，kubelet就会发现这个CNI实现，从而趋于成功运行状态。</p>
+
+<p>可以通过以下命令来确认master是否真的初始化成功：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$sudo kubectl get node
+</span><span class='line'>NAME                 STATUS    ROLES     AGE       VERSION
+</span><span class='line'>v101083237zsqazzmf   Ready     master    12m       v1.8.7
+</span><span class='line'>
+</span><span class='line'>$sudo kubectl get pod --all-namespaces
+</span><span class='line'>NAMESPACE     NAME                                         READY     STATUS    RESTARTS   AGE
+</span><span class='line'>kube-system   etcd-v101083237zsqazzmf                      1/1       Running   0          11m
+</span><span class='line'>kube-system   kube-apiserver-v101083237zsqazzmf            1/1       Running   0          11m
+</span><span class='line'>kube-system   kube-controller-manager-v101083237zsqazzmf   1/1       Running   0          11m
+</span><span class='line'>kube-system   kube-dns-545bc4bfd4-f7hsx                    3/3       Running   0          11m
+</span><span class='line'>kube-system   kube-flannel-ds-d6z78                        1/1       Running   5          6m
+</span><span class='line'>kube-system   kube-proxy-z88cd                             1/1       Running   0          11m
+</span><span class='line'>kube-system   kube-scheduler-v101083237zsqazzmf            1/1       Running   0          11m
+</span><span class='line'>
+</span><span class='line'>$sudo kubectl get cs
+</span><span class='line'>NAME                 STATUS    MESSAGE              ERROR
+</span><span class='line'>controller-manager   Healthy   ok                   
+</span><span class='line'>scheduler            Healthy   ok                   
+</span><span class='line'>etcd-0               Healthy   {"health": "true"}  
+</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>master初始成功会返回加入node的token，例如：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>kubeadm join --token 795c0c.c5a1b252c2d23a0c 10.101.83.237:6443 --discovery-token-ca-cert-hash sha256:1c7760c9f02e2f058de3f6bc759e85316b65376cfcc83d975ea6c64ac2175ecc</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>注意token默认24小时过期。如果在这个过程中始终有问题，可以做reset回到干净状态：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>kubeadm reset</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<h2>部署node及加入</h2>
+
+<ul>
+<li>系统设置同上</li>
+<li>前面提到的软件需要安装</li>
+<li>镜像只需要部分</li>
+<li>运行kubelet的cgroup设置参考前面</li>
+</ul>
+
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>images=(kube-proxy-amd64:v1.8.7 \
+</span><span class='line'>pause-amd64:3.0 \
+</span><span class='line'>kubernetes-dashboard-amd64:1.8.1)
+</span><span class='line'>images=(kube-proxy-amd64:v1.8.7)
+</span><span class='line'>for imageName in ${images[@]} ; do
+</span><span class='line'>  docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName
+</span><span class='line'>  docker tag registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName gcr.io/google_containers/$imageName
+</span><span class='line'>  docker rmi registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName
+</span><span class='line'>done</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>贴下镜像列表：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$sudo docker images
+</span><span class='line'>REPOSITORY                                                                       TAG                 IMAGE ID            CREATED             SIZE
+</span><span class='line'>registry.cn-hangzhou.aliyuncs.com/google_containers/kubernetes-dashboard-amd64   v1.8.3              0c60bcf89900        3 weeks ago         102.3 MB
+</span><span class='line'>gcr.io/google_containers/kube-proxy-amd64                                        v1.8.7              263b722c47c1        4 weeks ago         93.36 MB
+</span><span class='line'>gcr.io/google_containers/pause-amd64                                             3.0                 8ca66ae4813a        4 weeks ago         746.9 kB
+</span><span class='line'>gcr.io/google_containers/kubernetes-dashboard-amd64                              1.8.1               758ae6af38ca        5 weeks ago         120.7 MB
+</span><span class='line'>quay.io/coreos/flannel                                                           v0.9.1-amd64        2b736d06ca4c        3 months ago        51.31 MB</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>最后使用<code>kubeadm join xxxx</code> (部署master时会返回)加入网络。加入后在master端可以确认：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$sudo kubectl get nodes
+</span><span class='line'>NAME                 STATUS    ROLES     AGE       VERSION
+</span><span class='line'>v101083225zsqazzmf   Ready     &lt;none&gt;    2h        v1.8.7
+</span><span class='line'>v101083237zsqazzmf   Ready     master    3h        v1.8.7</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<h2>部署dashboard</h2>
+
+<p>高版本的dashboard出于安全考虑，访问方式发生了变更，需要处理鉴权相关的问题。验证token的方式测试不成功，使用HTTP协议的方式也不成功。最后成功的方式如下：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># commit 9159b005f65b21bd6b7156ccabd92f9e50c11333
+</span><span class='line'>kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/master/src/deploy/recommended/kubernetes-dashboard.yaml</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p><strong>注意</strong> 替换里面的镜像地址，可以直接在阿里云找对应镜像。</p>
+
+<p>参考<a href="https://stackoverflow.com/questions/46664104/how-to-sign-in-kubernetes-dashboard">stackoverflow</a> 最后一种方法：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ cat &lt;&lt;EOF | kubectl create -f -
+</span><span class='line'>apiVersion: rbac.authorization.k8s.io/v1beta1
+</span><span class='line'>kind: ClusterRoleBinding
+</span><span class='line'>metadata:
+</span><span class='line'>  name: kubernetes-dashboard
+</span><span class='line'>  labels:
+</span><span class='line'>    k8s-app: kubernetes-dashboard
+</span><span class='line'>roleRef:
+</span><span class='line'>  apiGroup: rbac.authorization.k8s.io
+</span><span class='line'>  kind: ClusterRole
+</span><span class='line'>  name: cluster-admin
+</span><span class='line'>subjects:
+</span><span class='line'>- kind: ServiceAccount
+</span><span class='line'>  name: kubernetes-dashboard
+</span><span class='line'>  namespace: kube-system
+</span><span class='line'>EOF</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>最后启动proxy，默认端口8001：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># 不加disable-filter浏览器端无法访问
+</span><span class='line'>kubectl proxy --address `hostname -i` --disable-filter=true</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>浏览器端即可访问：<code>http://10.101.83.237:8001/ui</code> 会重定向到新的URI。</p>
+
+<h2>测试</h2>
+
+<p>可以参考官方的例子<a href="https://v1-8.docs.kubernetes.io/docs/tasks/run-application/run-stateless-application-deployment/">stateless application sample</a> 进行测试。这一步很顺利没有什么问题。同样，注意配置中镜像地址的修改。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2018/03/08/deploy-kubernetes/'>http://codemacro.com/2018/03/08/deploy-kubernetes/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2018-03-08T00:00:00+08:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>8</span><span class='date-suffix'>th</span>, <span class='date-year'>2018</span></span> <span class='time'>12:00 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/categories/dan-xing-diao-du/'>弹性调度</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/2018/01/24/apache-slider/" title="Previous Post: 基于Yarn的分布式应用调度器Slider">&laquo; 基于Yarn的分布式应用调度器Slider</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><div id="container"></div>
+<link rel="stylesheet" href="https://imsun.github.io/gitment/style/default.css">
+<script src="https://imsun.github.io/gitment/dist/gitment.browser.js"></script>
+<script>
+var gitment = new Gitment({
+  owner: 'kevinlynx',
+  repo: 'codemacro-source',
+  oauth: {
+    client_id: '887f210a1e0f6558ad3a',
+    client_secret: '964b45eb7ab29973e1ec3a3371e14b338033a1ce',
+  },
+})
+gitment.render('container')
+</script>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (5)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (9)</a></li><li><a href='/categories/python/'>python (1)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li><li><a href='/categories/dan-xing-diao-du/'>弹性调度 (2)</a></li></ul>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2018/03/08/deploy-kubernetes/">使用Kubeadm在CentOS部署Kubernets 1.8.7</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2018/01/24/apache-slider/">基于Yarn的分布式应用调度器Slider</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2018/01/17/greenlet/">Python协程greenlet实现原理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/12/12/chess-gameserver/">写了一个棋牌游戏服务器框架</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/12/03/coroutine/">协程并发模型及使用感受</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+<div id="recentcomments" class="dsq-widget">
+<h1 class="dsq-widget-title">Recent Comments</h1>
+</div>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.53846153846153%'>game develop(5)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 120.76923076923077%'>other(9)</a> <a href='/categories/python' style='font-size: 102.3076923076923%'>python(1)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> <a href='/categories/dan-xing-diao-du' style='font-size: 104.61538461538461%'>弹性调度(2)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2018 - Kevin Lynx -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
+<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
+
+</p>
+
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

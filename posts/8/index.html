@@ -9,7 +9,10 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="我使用的wxLua版本信息为wxLua 2.8.7.0 built with wxWidgets 2.8.8，也就是LuaForWindows_v5.1.4-40.exe这个安装包里自带的wxLua。我不知道其他wxWidgets版本里wxListCtrl怎样， &hellip;">
+  <meta name="description" content="Ruby肯定不仅仅用于编写Rails程序。要使用Ruby编写独立的脚本/程序，就像shell一样，其方式也很简单： #!/usr/bin/env ruby
+if ARGV.size == 0 puts &#39;usage: program arg1 arg2&#39; exit
+end
+ARGV &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -65,6 +68,53 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2012/08/07/write-standalone-ruby-script/">编写独立的Ruby脚本</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2012-08-07T14:33:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>7</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>2:33 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>Ruby肯定不仅仅用于编写Rails程序。要使用Ruby编写独立的脚本/程序，就像shell一样，其方式也很简单：</p>
+
+<div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="c1">#!/usr/bin/env ruby</span>
+<span class="k">if</span> <span class="no">ARGV</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span> 
+  <span class="nb">puts</span> <span class="s1">&#39;usage: program arg1 arg2&#39;</span>
+  <span class="nb">exit</span>
+<span class="k">end</span>
+<span class="no">ARGV</span><span class="o">.</span><span class="n">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">arg</span><span class="o">|</span> <span class="nb">print</span> <span class="n">arg</span> <span class="k">end</span></code></pre></div>
+
+
+<p>脚本内容没有什么限制，函数、类、模块的组织方式也随意。ARGV是一个特殊的变量，是一个数组，其内保存了传入脚本的参数，不包含程序名。当然，不要忘记给脚本加上可执行权限。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2012/08/07/write-standalone-ruby-script/'>http://codemacro.com/2012/08/07/write-standalone-ruby-script/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -426,46 +476,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/07/18/start-to-write-tips/">开始记录编程方面的技巧</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2012-07-18T17:01:00+08:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>18</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>5:01 pm</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>回首上篇博客的发表时间，又2个月时间过去了。在我博客生涯的过去两三年里，总会有好几个月的时间没有编写任何文章。我觉得这真是一个不好的习惯。这个情况的产生，有很多原因。例如自己太懒、工作偶尔忙、自己偶尔处于混沌时期、自己偶尔怀疑人生，如是种种。但最大的原因还是，不敢写。</p>
-
-<p>在刚出来工作那会，作为一个懵懂的青年，接触个什么新技术都内心激动骄傲，然后就特别有动力将所学记录下来，注意下言辞还能折腾个像那么回事的教程出来。后来慢慢地，我就觉得，这些东西太肤浅。先别说教人用个什么IDE，配置个什么数据库，就算你是学个新语言，好好研究下TCP，甚至还能折腾个IOCP框架，这些都还是他妈的特肤浅。你说任何一个有那么点经验和学习能力的程序员，谁花点时间整不出来这些？谁他妈要你在这里装逼卖萌，甚至贻笑大方。除此之外，我个人也觉得无聊了。</p>
-
-<p>另一方面我觉得写博客还有个好处就是帮助自己记录技术，以便将来万一又需要曾经学习过的技术了，回头温习一下就好。但是后来慢慢地我又觉得，这也是没必要的事情。因为反正需要这个技术的时候，也花不了多少时间。</p>
-
-<p>基于这些乱七八糟的原因，我虽然经常打开自己的博客，看看有没人评论啊，留言啊，但发表博客的频率始终上不去。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/07/18/start-to-write-tips/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/9">&larr; Older</a>
@@ -480,11 +490,15 @@
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (5)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (9)</a></li><li><a href='/categories/python/'>python (1)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li><li><a href='/categories/dan-xing-diao-du/'>弹性调度 (1)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (5)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (9)</a></li><li><a href='/categories/python/'>python (1)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li><li><a href='/categories/dan-xing-diao-du/'>弹性调度 (2)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2018/03/08/deploy-kubernetes/">使用Kubeadm在CentOS部署Kubernets 1.8.7</a>
+      </li>
     
       <li class="post">
         <a href="/2018/01/24/apache-slider/">基于Yarn的分布式应用调度器Slider</a>
@@ -502,10 +516,6 @@
         <a href="/2017/12/03/coroutine/">协程并发模型及使用感受</a>
       </li>
     
-      <li class="post">
-        <a href="/2017/05/18/memcache-proxy/">实现一个memcache proxy</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -515,7 +525,7 @@
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.53846153846153%'>game develop(5)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 120.76923076923077%'>other(9)</a> <a href='/categories/python' style='font-size: 102.3076923076923%'>python(1)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> <a href='/categories/dan-xing-diao-du' style='font-size: 102.3076923076923%'>弹性调度(1)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.53846153846153%'>game develop(5)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 120.76923076923077%'>other(9)</a> <a href='/categories/python' style='font-size: 102.3076923076923%'>python(1)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> <a href='/categories/dan-xing-diao-du' style='font-size: 104.61538461538461%'>弹性调度(2)</a> </span>
 </section>
 
   
