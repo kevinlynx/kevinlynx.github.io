@@ -9,7 +9,9 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="网上有不少解析RequireJS源码的文章，我觉得意义不大。阅读源代码的目的不是为了熟悉代码，而是为了学习核心实现原理。相对RequireJS的源码，kitty.js的实现更简单，更容易理解。本文正是抄了kitty.js的实现，是一个更精简的RequireJS，用于理解RequireJS的实现原理 &hellip;">
+  <meta name="description" content="本文描述了一个用Java实现的玩具JVM，用Java实现的好处是可以不用处理JVM中的垃圾回收。 Java虚拟机是基于栈的虚拟机。栈虚拟机的特点是所有临时操作数都存放在栈中。编译器生成的指令都会围绕着这个栈展开，相对而言，解释执行这些指令会比较容易。基于栈的虚拟机可能会生成如下指令： 1
+2
+3 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -71,6 +73,58 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2017-02-25T00:00:00+00:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>25</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>本文描述了一个用Java实现的玩具JVM，用Java实现的好处是可以不用处理JVM中的垃圾回收。</p>
+
+<p>Java虚拟机是基于栈的虚拟机。栈虚拟机的特点是所有临时操作数都存放在栈中。编译器生成的指令都会围绕着这个栈展开，相对而言，解释执行这些指令会比较容易。基于栈的虚拟机可能会生成如下指令：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>push 3   # 把立即数3压栈
+</span><span class='line'>push 4   # 把立即数4压栈
+</span><span class='line'>add      # 从栈中弹出两个操作数进行相加，结果压回栈中</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Java .class文件存储的主要就是编译后的指令，一个玩具JVM，简单来说就是解释执行这里面的指令。接下来就说说为了让这个JVM跑起来需要实现哪些功能。</p>
+
+<h2>class 文件解析</h2>
+
+<p>推荐一下 <a href="https://www.codeproject.com/articles/35915/java-class-viewer">Java class viewer</a>，里面有个工具可以可视化class文件内容。另外我直接复用了他解析class文件的代码。</p>
+
+<p>class文件描述的信息是以class为单位的，一个类如果有嵌套类，这个嵌套类也会生成为单独的class文件。从c/c++程序员的视角来看，class文件的生成有点类似编译，编译器在编译期间只做依赖符号存在与否的检查。所有引用其他class的地方，不同于c/c++，java class的引用都是在运行期定位的。这里看看一个简单的类class文件结构是怎样的：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2017/02/25/toy-jvm/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/2017/02/05/mini-requirejs/">RequireJS最简实现</a></h1>
     
     
@@ -80,7 +134,7 @@
 
 
 
-<time class='entry-date' datetime='2017-02-05T00:00:00+08:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>5</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
+<time class='entry-date' datetime='2017-02-05T00:00:00+00:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>5</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
         
       </p>
     
@@ -129,7 +183,7 @@
 
 
 
-<time class='entry-date' datetime='2017-01-08T00:00:00+08:00'><span class='date'><span class='date-month'>Jan</span> <span class='date-day'>8</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
+<time class='entry-date' datetime='2017-01-08T00:00:00+00:00'><span class='date'><span class='date-month'>Jan</span> <span class='date-day'>8</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
         
       </p>
     
@@ -199,7 +253,7 @@
 
 
 
-<time class='entry-date' datetime='2016-08-16T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>16</span><span class='date-suffix'>th</span>, <span class='date-year'>2016</span></span> <span class='time'>12:00 am</span></time>
+<time class='entry-date' datetime='2016-08-16T00:00:00+00:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>16</span><span class='date-suffix'>th</span>, <span class='date-year'>2016</span></span> <span class='time'>12:00 am</span></time>
         
       </p>
     
@@ -243,7 +297,7 @@
 
 
 
-<time class='entry-date' datetime='2016-05-08T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>8</span><span class='date-suffix'>th</span>, <span class='date-year'>2016</span></span> <span class='time'>12:00 am</span></time>
+<time class='entry-date' datetime='2016-05-08T00:00:00+00:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>8</span><span class='date-suffix'>th</span>, <span class='date-year'>2016</span></span> <span class='time'>12:00 am</span></time>
         
       </p>
     
@@ -300,7 +354,7 @@
 
 
 
-<time class='entry-date' datetime='2015-09-05T00:00:00+08:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>5</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+<time class='entry-date' datetime='2015-09-05T00:00:00+00:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>5</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
         
       </p>
     
@@ -386,7 +440,7 @@
 
 
 
-<time class='entry-date' datetime='2015-08-10T00:00:00+08:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>10</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+<time class='entry-date' datetime='2015-08-10T00:00:00+00:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>10</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
         
       </p>
     
@@ -450,7 +504,7 @@
 
 
 
-<time class='entry-date' datetime='2015-07-04T00:00:00+08:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>4</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+<time class='entry-date' datetime='2015-07-04T00:00:00+00:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>4</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
         
       </p>
     
@@ -522,7 +576,7 @@
 
 
 
-<time class='entry-date' datetime='2015-06-07T00:00:00+08:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>7</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+<time class='entry-date' datetime='2015-06-07T00:00:00+00:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>7</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
         
       </p>
     
@@ -593,7 +647,7 @@ POST    /hello      com.codemacro.webdemo.test.TestController.sayHello
 
 
 
-<time class='entry-date' datetime='2015-05-31T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>31</span><span class='date-suffix'>st</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
+<time class='entry-date' datetime='2015-05-31T00:00:00+00:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>31</span><span class='date-suffix'>st</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
         
       </p>
     
@@ -634,66 +688,6 @@ POST    /hello      com.codemacro.webdemo.test.TestController.sayHello
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2015/05/30/drill-http-plugin/">Drill中实现HTTP storage plugin</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2015-05-30T00:00:00+08:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>30</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>Apache Drill可用于大数据的实时分析，引用一段介绍：</p>
-
-<blockquote><p>受到Google Dremel启发，Apache的Drill项目是对大数据集进行交互式分析的分布式系统。Drill并不会试图取代已有的大数据批处理框架（Big Data batch processing framework），如Hadoop MapReduce或流处理框架（stream processing framework），如S4和Storm。相反，它是要填充现有空白的——对大数据集的实时交互式处理</p></blockquote>
-
-<p>简单来说，Drill可接收SQL查询语句，然后后端从多个数据源例如HDFS、MongoDB等获取数据并分析产出分析结果。在一次分析中，它可以汇集多个数据源的数据。而且基于分布式的架构，可以支持秒级查询。</p>
-
-<p>Drill在架构上是比较灵活的，它的前端可以不一定是SQL查询语言，后端数据源也可以接入Storage plugin来支持其他数据来源。这里我就实现了一个从HTTP服务获取数据的Storage plugin demo。这个demo可以接入基于GET请求，返回JSON格式的HTTP服务。源码可从我的Github获取：<a href="https://github.com/kevinlynx/drill-storage-http">drill-storage-http</a></p>
-
-<p>例子包括：</p>
-
-<pre><code>select name, length from http.`/e/api:search` where $p=2 and $q='avi'
-select name, length from http.`/e/api:search?q=avi&amp;p=2` where length &gt; 0 
-</code></pre>
-
-<h2>实现</h2>
-
-<p>要实现一个自己的storage plugin，目前Drill这方面文档几乎没有，只能从已有的其他storage plugin源码入手，例如mongodb的，参考Drill子项目<code>drill-mongo-storage</code>。实现的storage plugin打包为jar放到<code>jars</code>目录，Drill启动时会自动载入，然后web上配置指定类型即可。</p>
-
-<p>主要需要实现的类包括：</p>
-
-<pre><code>AbstractStoragePlugin
-StoragePluginConfig
-SchemaFactory
-BatchCreator
-AbstractRecordReader
-AbstractGroupScan
-</code></pre>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2015/05/30/drill-http-plugin/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/3">&larr; Older</a>
@@ -708,11 +702,15 @@ AbstractGroupScan
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (5)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (9)</a></li><li><a href='/categories/python/'>python (1)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li><li><a href='/categories/dan-xing-diao-du/'>弹性调度 (2)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (5)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (9)</a></li><li><a href='/categories/python/'>python (1)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li><li><a href='/categories/dan-xing-diao-du/'>弹性调度 (3)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2018/04/01/kube-network/">kubernetes网络相关总结</a>
+      </li>
     
       <li class="post">
         <a href="/2018/03/08/deploy-kubernetes/">使用Kubeadm在CentOS部署Kubernets 1.8.7</a>
@@ -730,10 +728,6 @@ AbstractGroupScan
         <a href="/2017/12/12/chess-gameserver/">写了一个棋牌游戏服务器框架</a>
       </li>
     
-      <li class="post">
-        <a href="/2017/12/03/coroutine/">协程并发模型及使用感受</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -743,7 +737,7 @@ AbstractGroupScan
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.53846153846153%'>game develop(5)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 120.76923076923077%'>other(9)</a> <a href='/categories/python' style='font-size: 102.3076923076923%'>python(1)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> <a href='/categories/dan-xing-diao-du' style='font-size: 104.61538461538461%'>弹性调度(2)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.53846153846153%'>game develop(5)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 120.76923076923077%'>other(9)</a> <a href='/categories/python' style='font-size: 102.3076923076923%'>python(1)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> <a href='/categories/dan-xing-diao-du' style='font-size: 106.92307692307692%'>弹性调度(3)</a> </span>
 </section>
 
   

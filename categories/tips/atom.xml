@@ -4,7 +4,7 @@
   <title><![CDATA[Category: tips | loop in codes]]></title>
   <link href="http://codemacro.com/categories/tips/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2018-03-08T21:57:53+08:00</updated>
+  <updated>2018-04-01T10:27:40+00:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[erlang编程技巧若干]]></title>
     <link href="http://codemacro.com/2013/06/03/erlang-code-snippets/"/>
-    <updated>2013-06-03T21:53:00+08:00</updated>
+    <updated>2013-06-03T21:53:00+00:00</updated>
     <id>http://codemacro.com/2013/06/03/erlang-code-snippets</id>
     <content type="html"><![CDATA[<h2>guard</h2>
 
@@ -108,7 +108,7 @@
   <entry>
     <title type="html"><![CDATA[Octopress中的SEO]]></title>
     <link href="http://codemacro.com/2012/09/06/octopress-seo/"/>
-    <updated>2012-09-06T19:02:00+08:00</updated>
+    <updated>2012-09-06T19:02:00+00:00</updated>
     <id>http://codemacro.com/2012/09/06/octopress-seo</id>
     <content type="html"><![CDATA[<p>来自<a href="http://www.yatishmehta.in/seo-for-octopress">SEO for Octopress</a></p>
 
@@ -162,7 +162,7 @@
   <entry>
     <title type="html"><![CDATA[c/c++中几种操作位的方法]]></title>
     <link href="http://codemacro.com/2012/09/04/bit-operation-in-c-slash-c-plus-plus/"/>
-    <updated>2012-09-04T19:49:00+08:00</updated>
+    <updated>2012-09-04T19:49:00+00:00</updated>
     <id>http://codemacro.com/2012/09/04/bit-operation-in-c-slash-c-plus-plus</id>
     <content type="html"><![CDATA[<p>参考<a href="http://stackoverflow.com/questions/47981/how-do-you-set-clear-and-toggle-a-single-bit-in-c">How do you set, clear and toggle a single bit in C?</a></p>
 
@@ -255,7 +255,7 @@
   <entry>
     <title type="html"><![CDATA[c/c++中的-->运算符]]></title>
     <link href="http://codemacro.com/2012/09/03/goes-to-operator/"/>
-    <updated>2012-09-03T15:14:00+08:00</updated>
+    <updated>2012-09-03T15:14:00+00:00</updated>
     <id>http://codemacro.com/2012/09/03/goes-to-operator</id>
     <content type="html"><![CDATA[<p>参考<a href="http://stackoverflow.com/questions/1642028/what-is-the-name-of-this-operator">What is the name of this operator: &ldquo;&ndash;>&rdquo;?</a></p>
 
@@ -298,7 +298,7 @@
   <entry>
     <title type="html"><![CDATA[Null Object模式]]></title>
     <link href="http://codemacro.com/2012/08/29/null-object-pattern/"/>
-    <updated>2012-08-29T15:57:00+08:00</updated>
+    <updated>2012-08-29T15:57:00+00:00</updated>
     <id>http://codemacro.com/2012/08/29/null-object-pattern</id>
     <content type="html"><![CDATA[<p>Null Object模式用于代替空指针（C++中），以避免上层模块对返回值做空值判定。Null Object模式返回的不是一个空指针，而是一个空对象，上层模块对返回值做操作时，不需要做空判定，而是按正常逻辑调用这个对象的某个接口，只不过对于空对象而言，这个接口什么事也没做，例如：</p>
 

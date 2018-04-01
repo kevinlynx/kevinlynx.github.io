@@ -4,7 +4,7 @@
   <title><![CDATA[Category: game develop | loop in codes]]></title>
   <link href="http://codemacro.com/categories/game-develop/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2018-03-08T21:57:53+08:00</updated>
+  <updated>2018-04-01T10:27:40+00:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[写了一个棋牌游戏服务器框架]]></title>
     <link href="http://codemacro.com/2017/12/12/chess-gameserver/"/>
-    <updated>2017-12-12T00:00:00+08:00</updated>
+    <updated>2017-12-12T00:00:00+00:00</updated>
     <id>http://codemacro.com/2017/12/12/chess-gameserver</id>
     <content type="html"><![CDATA[<p>最近业余时间写了一个棋牌游戏服务端框架：<a href="https://github.com/kevinlynx/pigy">pigy</a>。对于棋牌游戏服务端框架，我的定义是：</p>
 
@@ -161,7 +161,7 @@ end
   <entry>
     <title type="html"><![CDATA[MMO聊天服务器设计]]></title>
     <link href="http://codemacro.com/2012/08/29/mmo-chat-server/"/>
-    <updated>2012-08-29T09:54:00+08:00</updated>
+    <updated>2012-08-29T09:54:00+00:00</updated>
     <id>http://codemacro.com/2012/08/29/mmo-chat-server</id>
     <content type="html"><![CDATA[<p>MMO中的聊天服务主要功能就是做客户端之间的聊天内容转发。但是聊天的形式有很多，例如私聊、同场景聊、队伍内聊、工会内聊、全服务器聊、甚至临时组建房间聊。这些逻辑功能其实都是可以做在逻辑服务器上的，最多改改世界服务器，但是这样完成功能的话，不免将聊天本身的逻辑与游戏逻辑关联起来。我们希望做得更上一层，将聊天服务本身脱离开来。但是独立聊天服务还不够，因为就算独立出来了，也有可能在实现上与具体的游戏逻辑相关联。所以，我们做了进一步的抽象，想实现一个更为通用的聊天服务器。</p>
 
@@ -263,7 +263,7 @@ end
   <entry>
     <title type="html"><![CDATA[谈谈我们的游戏逻辑服务器实现（二）]]></title>
     <link href="http://codemacro.com/2012/04/25/game-server-info-2/"/>
-    <updated>2012-04-25T00:00:00+08:00</updated>
+    <updated>2012-04-25T00:00:00+00:00</updated>
     <id>http://codemacro.com/2012/04/25/game-server-info-2</id>
     <content type="html"><![CDATA[<p>上一篇谈了一些关键技术的实现方案。本篇描述一些遇到的问题。</p>
 
@@ -313,7 +313,7 @@ end
   <entry>
     <title type="html"><![CDATA[谈谈我们的游戏逻辑服务器实现（一）]]></title>
     <link href="http://codemacro.com/2012/04/23/game-server-info-1/"/>
-    <updated>2012-04-23T00:00:00+08:00</updated>
+    <updated>2012-04-23T00:00:00+00:00</updated>
     <id>http://codemacro.com/2012/04/23/game-server-info-1</id>
     <content type="html"><![CDATA[<p>我们的逻辑服务器(Game Server，以下简称GS)主要逻辑大概是从去年夏天开始写的。因为很多基础模块，包括整体结构沿用了上个项目的代码，所以算不上从头开始做。转眼又快一年，我觉得回头总结下对于经验的积累太有必要。</p>
 
@@ -386,7 +386,7 @@ end
   <entry>
     <title type="html"><![CDATA[MMO游戏对象属性设计]]></title>
     <link href="http://codemacro.com/2011/05/02/entity-property/"/>
-    <updated>2011-05-02T00:00:00+08:00</updated>
+    <updated>2011-05-02T00:00:00+00:00</updated>
     <id>http://codemacro.com/2011/05/02/entity-property</id>
     <content type="html"><![CDATA[<p>一般的MMORPG中，游戏对象主要包括怪物和玩家。这两类对象在经过游戏性方面的不断“进化”后，其属性数量及与之相关的逻辑往往会变得很巨大。如何将这一块做得既不损失效率，又能保证结构的灵活、清晰、可维护？本文将提供一种简单的结构。</p>
 

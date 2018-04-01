@@ -4,7 +4,7 @@
   <title><![CDATA[Category: web | loop in codes]]></title>
   <link href="http://codemacro.com/categories/web/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2018-03-08T21:57:53+08:00</updated>
+  <updated>2018-04-01T10:27:40+00:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[使用ActionScript开发Ice Web客户端]]></title>
     <link href="http://codemacro.com/2013/06/09/ice-web-client/"/>
-    <updated>2013-06-09T00:00:00+08:00</updated>
+    <updated>2013-06-09T00:00:00+00:00</updated>
     <id>http://codemacro.com/2013/06/09/ice-web-client</id>
     <content type="html"><![CDATA[<p>我们目前的项目服务器端使用了<a href="http://codemacro.com/2013/02/15/ice-overview/">Ice</a>来构建。Ice有一套自己的网络协议，客户端和服务器端可以基于此协议来交互。由于Ice使用Slice这种中间语言来描述服务器和客户端的交互接口，所以它可以做到极大限度地屏蔽网络协议这个细节。也就是说，我们只要借助Ice和Slice，我们可以轻松地编写网络程序。</p>
 
@@ -196,7 +196,7 @@
   <entry>
     <title type="html"><![CDATA[HTML中table的高亮以及tooltip]]></title>
     <link href="http://codemacro.com/2012/07/24/html-table-hover/"/>
-    <updated>2012-07-24T16:08:00+08:00</updated>
+    <updated>2012-07-24T16:08:00+00:00</updated>
     <id>http://codemacro.com/2012/07/24/html-table-hover</id>
     <content type="html"><![CDATA[<p>在一个需要显示很多数据的表格(table)中，为了更友好地查看一行数据，常常需要在鼠标指针移到某一行时，高亮此行。要实现这个效果有很多方法，这里列举一个方法：</p>
 
@@ -273,7 +273,7 @@
   <entry>
     <title type="html"><![CDATA[Rails中获取客户端时区]]></title>
     <link href="http://codemacro.com/2012/07/20/get-client-timezone-in-rails/"/>
-    <updated>2012-07-20T16:42:00+08:00</updated>
+    <updated>2012-07-20T16:42:00+00:00</updated>
     <id>http://codemacro.com/2012/07/20/get-client-timezone-in-rails</id>
     <content type="html"><![CDATA[<p>开发网站功能时，有时候需要获取客户端（浏览器）所在的时区，然后根据不同的时区做一些不同的逻辑功能。这里提供一种方法，其思路为客户端通过js获取时区，然后发送给服务器，服务器存储时区到session中。</p>
 
@@ -314,7 +314,7 @@
   <entry>
     <title type="html"><![CDATA[HTML中实现弹出窗口]]></title>
     <link href="http://codemacro.com/2012/07/19/popup-window-in-html/"/>
-    <updated>2012-07-19T14:56:00+08:00</updated>
+    <updated>2012-07-19T14:56:00+00:00</updated>
     <id>http://codemacro.com/2012/07/19/popup-window-in-html</id>
     <content type="html"><![CDATA[<p><img class="right" src="/assets/res/popup-window-tip.png"></p>
 

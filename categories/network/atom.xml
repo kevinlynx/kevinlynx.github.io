@@ -4,7 +4,7 @@
   <title><![CDATA[Category: network | loop in codes]]></title>
   <link href="http://codemacro.com/categories/network/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2018-03-08T21:57:53+08:00</updated>
+  <updated>2018-04-01T10:27:40+00:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[XNIO源码阅读]]></title>
     <link href="http://codemacro.com/2017/04/09/xnio-source/"/>
-    <updated>2017-04-09T00:00:00+08:00</updated>
+    <updated>2017-04-09T00:00:00+00:00</updated>
     <id>http://codemacro.com/2017/04/09/xnio-source</id>
     <content type="html"><![CDATA[<p><a href="http://xnio.jboss.org/">XNIO</a>是JBoss的一个IO框架。最开始我想找个lightweight servlet container库，于是看到了<a href="http://undertow.io/">undertow</a>，发现其网络部分使用的就是XNIO。所以干脆就先把XNIO的源码读下。</p>
 
@@ -144,7 +144,7 @@
   <entry>
     <title type="html"><![CDATA[图解zookeeper FastLeader选举算法]]></title>
     <link href="http://codemacro.com/2014/10/19/zk-fastleaderelection/"/>
-    <updated>2014-10-19T00:00:00+08:00</updated>
+    <updated>2014-10-19T00:00:00+00:00</updated>
     <id>http://codemacro.com/2014/10/19/zk-fastleaderelection</id>
     <content type="html"><![CDATA[<p>zookeeper配置为集群模式时，在启动或异常情况时会选举出一个实例作为Leader。其默认选举算法为<code>FastLeaderElection</code>。</p>
 
@@ -224,7 +224,7 @@
   <entry>
     <title type="html"><![CDATA[图解分布式一致性协议Paxos]]></title>
     <link href="http://codemacro.com/2014/10/15/explain-poxos/"/>
-    <updated>2014-10-15T00:00:00+08:00</updated>
+    <updated>2014-10-15T00:00:00+00:00</updated>
     <id>http://codemacro.com/2014/10/15/explain-poxos</id>
     <content type="html"><![CDATA[<p>Paxos协议/算法是分布式系统中比较重要的协议，它有多重要呢？</p>
 
@@ -351,7 +351,7 @@
   <entry>
     <title type="html"><![CDATA[淘宝分布式配置管理服务Diamond]]></title>
     <link href="http://codemacro.com/2014/10/12/diamond/"/>
-    <updated>2014-10-12T00:00:00+08:00</updated>
+    <updated>2014-10-12T00:00:00+00:00</updated>
     <id>http://codemacro.com/2014/10/12/diamond</id>
     <content type="html"><![CDATA[<p>在一个分布式环境中，同类型的服务往往会部署很多实例。这些实例使用了一些配置，为了更好地维护这些配置就产生了配置管理服务。通过这个服务可以轻松地管理这些应用服务的配置问题。应用场景可概括为：</p>
 
@@ -459,7 +459,7 @@ NotifyTaskProcessor::process
   <entry>
     <title type="html"><![CDATA[zookeeper节点数与watch的性能测试]]></title>
     <link href="http://codemacro.com/2014/09/21/zk-watch-benchmark/"/>
-    <updated>2014-09-21T00:00:00+08:00</updated>
+    <updated>2014-09-21T00:00:00+00:00</updated>
     <id>http://codemacro.com/2014/09/21/zk-watch-benchmark</id>
     <content type="html"><![CDATA[<p>zookeeper中节点数量理论上仅受限于内存，但一个节点下的子节点数量<a href="http://zookeeper-user.578899.n2.nabble.com/ZooKeeper-Limitation-td6675643.html">受限于request/response 1M数据</a> (<a href="http://web.archiveorange.com/archive/v/AQXskdBodZB7kWpjpjHw">size of data / number of znodes</a>)</p>
 

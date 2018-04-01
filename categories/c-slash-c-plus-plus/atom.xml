@@ -4,7 +4,7 @@
   <title><![CDATA[Category: c/c++ | loop in codes]]></title>
   <link href="http://codemacro.com/categories/c-slash-c-plus-plus/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2018-03-08T21:57:53+08:00</updated>
+  <updated>2018-04-01T10:27:40+00:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[记一次线程局部存储与动态库引起的core]]></title>
     <link href="http://codemacro.com/2016/05/08/tls_so_coredump/"/>
-    <updated>2016-05-08T00:00:00+08:00</updated>
+    <updated>2016-05-08T00:00:00+00:00</updated>
     <id>http://codemacro.com/2016/05/08/tls_so_coredump</id>
     <content type="html"><![CDATA[<p>线上的服务退出时coredump，显示堆栈为：</p>
 
@@ -69,7 +69,7 @@
   <entry>
     <title type="html"><![CDATA[无锁有序链表的实现]]></title>
     <link href="http://codemacro.com/2015/05/05/lock_free_list/"/>
-    <updated>2015-05-05T00:00:00+08:00</updated>
+    <updated>2015-05-05T00:00:00+00:00</updated>
     <id>http://codemacro.com/2015/05/05/lock_free_list</id>
     <content type="html"><![CDATA[<p>无锁有序链表可以保证元素的唯一性，使其可用于哈希表的桶，甚至直接作为一个效率不那么高的map。普通链表的无锁实现相对简单点，因为插入元素可以在表头插，而有序链表的插入则是任意位置。</p>
 
@@ -287,7 +287,7 @@
   <entry>
     <title type="html"><![CDATA[并行编程中的内存回收Hazard Pointer]]></title>
     <link href="http://codemacro.com/2015/05/03/hazard-pointer/"/>
-    <updated>2015-05-03T00:00:00+08:00</updated>
+    <updated>2015-05-03T00:00:00+00:00</updated>
     <id>http://codemacro.com/2015/05/03/hazard-pointer</id>
     <content type="html"><![CDATA[<p>接上篇<a href="http://codemacro.com/2015/04/19/rw_thread_gc/">使用RCU技术实现读写线程无锁</a>，在没有GC机制的语言中，要实现Lock free的算法，就免不了要自己处理内存回收的问题。</p>
 
@@ -411,7 +411,7 @@
   <entry>
     <title type="html"><![CDATA[使用RCU技术实现读写线程无锁]]></title>
     <link href="http://codemacro.com/2015/04/19/rw_thread_gc/"/>
-    <updated>2015-04-19T00:00:00+08:00</updated>
+    <updated>2015-04-19T00:00:00+00:00</updated>
     <id>http://codemacro.com/2015/04/19/rw_thread_gc</id>
     <content type="html"><![CDATA[<p>在一个系统中有一个写线程和若干个读线程，读写线程通过一个指针共用了一个数据结构，写线程改写这个结构，读线程读取该结构。在写线程改写这个数据结构的过程中，加锁情况下读线程由于等待锁耗时会增加。</p>
 
@@ -639,7 +639,7 @@ defer_free(old_ptr)
   <entry>
     <title type="html"><![CDATA[记一次tcmalloc分配内存引起的coredump]]></title>
     <link href="http://codemacro.com/2015/04/06/tcmalloc-getstacktrace/"/>
-    <updated>2015-04-06T00:00:00+08:00</updated>
+    <updated>2015-04-06T00:00:00+00:00</updated>
     <id>http://codemacro.com/2015/04/06/tcmalloc-getstacktrace</id>
     <content type="html"><![CDATA[<h2>现象</h2>
 

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: lisp | loop in codes]]></title>
   <link href="http://codemacro.com/categories/lisp/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2018-03-08T21:57:53+08:00</updated>
+  <updated>2018-04-01T10:27:40+00:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[Lisp中定义变量*var*和var有什么不同？]]></title>
     <link href="http://codemacro.com/2012/08/14/dynamic-scope-in-lisp/"/>
-    <updated>2012-08-14T15:53:00+08:00</updated>
+    <updated>2012-08-14T15:53:00+00:00</updated>
     <id>http://codemacro.com/2012/08/14/dynamic-scope-in-lisp</id>
     <content type="html"><![CDATA[<p>参考<a href="http://stackoverflow.com/questions/11932876/whats-difference-between-var-and-var-when-using-defvar">What&rsquo;s difference between <em>var</em> and var when using defvar?</a></p>
 
@@ -77,7 +77,7 @@
   <entry>
     <title type="html"><![CDATA[使用Lisp搭建独立博客]]></title>
     <link href="http://codemacro.com/2011/09/29/build-blog-by-lisp/"/>
-    <updated>2011-09-29T00:00:00+08:00</updated>
+    <updated>2011-09-29T00:00:00+00:00</updated>
     <id>http://codemacro.com/2011/09/29/build-blog-by-lisp</id>
     <content type="html"><![CDATA[<p>本文描述如何使用Lisp工具集搭建一个完整的个人博客站点。一个搭建好的例子站点可以参看我的个人博客：<a href="http://codemacro.com%E3%80%82">http://codemacro.com%E3%80%82</a></p>
 
@@ -244,7 +244,7 @@ API，因此可以使用一些博客客户端来发表文章（仅测过我自�
   <entry>
     <title type="html"><![CDATA[Lisp实践：开发RSS阅读器]]></title>
     <link href="http://codemacro.com/2011/03/30/lisp-rss/"/>
-    <updated>2011-03-30T00:00:00+08:00</updated>
+    <updated>2011-03-30T00:00:00+00:00</updated>
     <id>http://codemacro.com/2011/03/30/lisp-rss</id>
     <content type="html"><![CDATA[<h1>一、RSS阅读器的实现</h1>
 
@@ -435,7 +435,7 @@ Reader里订阅的一些RSS。最大的问题，就是关于HTTP重定向的问�
   <entry>
     <title type="html"><![CDATA[Lisp一瞥：增强型变量Symbol]]></title>
     <link href="http://codemacro.com/2011/03/21/lisp-symbol/"/>
-    <updated>2011-03-21T00:00:00+08:00</updated>
+    <updated>2011-03-21T00:00:00+00:00</updated>
     <id>http://codemacro.com/2011/03/21/lisp-symbol</id>
     <content type="html"><![CDATA[<p>变量，是所有编程语言里都有的语法概念。在C/C++中，变量用于标示一个内存地址，而变
 量名则在语法层面上代表这个地址。当链接器最终链接我们的程序时，就将这些名字替换
@@ -687,7 +687,7 @@ Function来使用。如何解决这个问题？想想，symbol-function可以取
   <entry>
     <title type="html"><![CDATA[用lisp开发博客客户端]]></title>
     <link href="http://codemacro.com/2011/03/13/lisp-writer/"/>
-    <updated>2011-03-13T00:00:00+08:00</updated>
+    <updated>2011-03-13T00:00:00+00:00</updated>
     <id>http://codemacro.com/2011/03/13/lisp-writer</id>
     <content type="html"><![CDATA[<p>最近一直在学习Lisp这门语言。回头一看，基本上接近1个月了。刚开始接触Lisp是因为看
 了&lt;Lisp本质&gt;，然后我发现有很多人宗教般地忠诚这门语言，于是就来了兴趣。</p>

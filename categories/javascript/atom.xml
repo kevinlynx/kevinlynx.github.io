@@ -4,7 +4,7 @@
   <title><![CDATA[Category: javascript | loop in codes]]></title>
   <link href="http://codemacro.com/categories/javascript/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2018-03-08T21:57:53+08:00</updated>
+  <updated>2018-04-01T10:27:40+00:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[RequireJS最简实现]]></title>
     <link href="http://codemacro.com/2017/02/05/mini-requirejs/"/>
-    <updated>2017-02-05T00:00:00+08:00</updated>
+    <updated>2017-02-05T00:00:00+00:00</updated>
     <id>http://codemacro.com/2017/02/05/mini-requirejs</id>
     <content type="html"><![CDATA[<p>网上有不少解析RequireJS源码的文章，我觉得意义不大。阅读源代码的目的不是为了熟悉代码，而是为了学习核心实现原理。相对RequireJS的源码，<a href="https://github.com/zengjialuo/kittyjs">kitty.js</a>的实现更简单，更容易理解。本文正是抄了kitty.js的实现，是一个更精简的RequireJS，用于理解RequireJS的实现原理。</p>
 
@@ -194,7 +194,7 @@ define('my-module', ['d1', 'd2'], function (d1, d2) {
   <entry>
     <title type="html"><![CDATA[ReactJS项目中基于webpack实现页面插件]]></title>
     <link href="http://codemacro.com/2017/01/08/react-plugin/"/>
-    <updated>2017-01-08T00:00:00+08:00</updated>
+    <updated>2017-01-08T00:00:00+00:00</updated>
     <id>http://codemacro.com/2017/01/08/react-plugin</id>
     <content type="html"><![CDATA[<p>整个Web页面是基于ReactJS的，js打包用的webpack，现在想在Web页面端实现一种插件机制，可以动态载入第三方写的js插件。这个插件有一个约定的入口，插件被载入后调用该入口函数，插件内部实现渲染逻辑。插件的实现也使用了ReactJS，当然理论上也可以不使用。预期的交互关系是这样的：</p>
 
@@ -342,7 +342,7 @@ npm install ../xxx/xxx.tgz
   <entry>
     <title type="html"><![CDATA[Javascript Overview]]></title>
     <link href="http://codemacro.com/2013/08/21/javascript-overview/"/>
-    <updated>2013-08-21T00:00:00+08:00</updated>
+    <updated>2013-08-21T00:00:00+00:00</updated>
     <id>http://codemacro.com/2013/08/21/javascript-overview</id>
     <content type="html"><![CDATA[<h2>Lexical Structure</h2>
 

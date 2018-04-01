@@ -4,7 +4,7 @@
   <title><![CDATA[Category: java | loop in codes]]></title>
   <link href="http://codemacro.com/categories/java/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2018-03-08T21:57:53+08:00</updated>
+  <updated>2018-04-01T10:27:40+00:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[实现一个memcache proxy]]></title>
     <link href="http://codemacro.com/2017/05/18/memcache-proxy/"/>
-    <updated>2017-05-18T00:00:00+08:00</updated>
+    <updated>2017-05-18T00:00:00+00:00</updated>
     <id>http://codemacro.com/2017/05/18/memcache-proxy</id>
     <content type="html"><![CDATA[<p>通常我们会使用多台memcached构成一个集群，通过客户端库来实现缓存数据的分片(replica)。这会带来2个主要问题：</p>
 
@@ -111,7 +111,7 @@ Totals     32537.88        33.90     29544.57      6.24600     12837.37
   <entry>
     <title type="html"><![CDATA[Xmemcached源码阅读]]></title>
     <link href="http://codemacro.com/2017/04/23/xmemcached/"/>
-    <updated>2017-04-23T00:00:00+08:00</updated>
+    <updated>2017-04-23T00:00:00+00:00</updated>
     <id>http://codemacro.com/2017/04/23/xmemcached</id>
     <content type="html"><![CDATA[<p><a href="https://github.com/killme2008/xmemcached">Xmemcached</a> 是一个memcached客户端库。由于它提供的是同步API，而我想看下如何增加异步接口。所以就大致浏览了下它的源码。</p>
 
@@ -169,7 +169,7 @@ Totals     32537.88        33.90     29544.57      6.24600     12837.37
   <entry>
     <title type="html"><![CDATA[XNIO源码阅读]]></title>
     <link href="http://codemacro.com/2017/04/09/xnio-source/"/>
-    <updated>2017-04-09T00:00:00+08:00</updated>
+    <updated>2017-04-09T00:00:00+00:00</updated>
     <id>http://codemacro.com/2017/04/09/xnio-source</id>
     <content type="html"><![CDATA[<p><a href="http://xnio.jboss.org/">XNIO</a>是JBoss的一个IO框架。最开始我想找个lightweight servlet container库，于是看到了<a href="http://undertow.io/">undertow</a>，发现其网络部分使用的就是XNIO。所以干脆就先把XNIO的源码读下。</p>
 
@@ -297,7 +297,7 @@ Totals     32537.88        33.90     29544.57      6.24600     12837.37
   <entry>
     <title type="html"><![CDATA[实现JVM中的JIT]]></title>
     <link href="http://codemacro.com/2017/03/09/toy-jit/"/>
-    <updated>2017-03-09T00:00:00+08:00</updated>
+    <updated>2017-03-09T00:00:00+00:00</updated>
     <id>http://codemacro.com/2017/03/09/toy-jit</id>
     <content type="html"><![CDATA[<p>在JVM中，JIT (Just-in-Time) 即时编译指的是在Java程序运行过程中JVM优化部分指令为本地指令，从而大幅提升性能。在上一篇文章<a href="http://codemacro.com/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>中实现了一个基本可以运行Java字节码的JVM。本篇文章描述我是如何在这个玩具JVM中实现JIT的。</p>
 
@@ -551,7 +551,7 @@ static void build_jmp_gt(BuildContext* context, const Instruction* inst) {
   <entry>
     <title type="html"><![CDATA[写一个玩具Java虚拟机]]></title>
     <link href="http://codemacro.com/2017/02/25/toy-jvm/"/>
-    <updated>2017-02-25T00:00:00+08:00</updated>
+    <updated>2017-02-25T00:00:00+00:00</updated>
     <id>http://codemacro.com/2017/02/25/toy-jvm</id>
     <content type="html"><![CDATA[<p>本文描述了一个用Java实现的玩具JVM，用Java实现的好处是可以不用处理JVM中的垃圾回收。</p>
 

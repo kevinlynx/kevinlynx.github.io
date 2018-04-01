@@ -4,7 +4,7 @@
   <title><![CDATA[Category: python | loop in codes]]></title>
   <link href="http://codemacro.com/categories/python/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2018-03-08T21:57:53+08:00</updated>
+  <updated>2018-04-01T10:27:40+00:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[Python协程greenlet实现原理]]></title>
     <link href="http://codemacro.com/2018/01/17/greenlet/"/>
-    <updated>2018-01-17T00:00:00+08:00</updated>
+    <updated>2018-01-17T00:00:00+00:00</updated>
     <id>http://codemacro.com/2018/01/17/greenlet</id>
     <content type="html"><![CDATA[<p><a href="https://github.com/python-greenlet/greenlet">greenlet</a>是<a href="https://wiki.python.org/moin/StacklessPython">stackless
 Python</a>中剥离出来的一个项目，可以作为官方CPython的一个扩展来使用，从而支持Python协程。<a href="http://www.gevent.org/">gevent</a>正是基于greenlet实现。</p>

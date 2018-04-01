@@ -4,7 +4,7 @@
   <title><![CDATA[Category: module | loop in codes]]></title>
   <link href="http://codemacro.com/categories/module/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2018-03-08T21:57:53+08:00</updated>
+  <updated>2018-04-01T10:27:40+00:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[dhtcrawler的进程模型经验]]></title>
     <link href="http://codemacro.com/2014/02/21/dhtcrawler-process/"/>
-    <updated>2014-02-21T00:00:00+08:00</updated>
+    <updated>2014-02-21T00:00:00+00:00</updated>
     <id>http://codemacro.com/2014/02/21/dhtcrawler-process</id>
     <content type="html"><![CDATA[<p>距离写<a href="http://codemacro.com/2013/07/02/dhtcrawler2/">dhtcrawler</a>已经有半年时间。半年前就想总结点心得经验，但最后写出来的并没有表达出我特别有感慨的地方。最近又被人问到这方面的经验问题，才静下心来思考整理了下。</p>
 
@@ -93,7 +93,7 @@ Pool -&gt; ReqProcessor -&gt; O
   <entry>
     <title type="html"><![CDATA[浅析软件工程开发方法学RUP]]></title>
     <link href="http://codemacro.com/2013/03/21/rup/"/>
-    <updated>2013-03-21T00:00:00+08:00</updated>
+    <updated>2013-03-21T00:00:00+00:00</updated>
     <id>http://codemacro.com/2013/03/21/rup</id>
     <content type="html"><![CDATA[<h2>前言</h2>
 
@@ -293,7 +293,7 @@ Pool -&gt; ReqProcessor -&gt; O
   <entry>
     <title type="html"><![CDATA[浅谈代码分层：构建模块化程序]]></title>
     <link href="http://codemacro.com/2011/04/04/module-level/"/>
-    <updated>2011-04-04T00:00:00+08:00</updated>
+    <updated>2011-04-04T00:00:00+00:00</updated>
     <id>http://codemacro.com/2011/04/04/module-level</id>
     <content type="html"><![CDATA[<p>模块化的程序是怎样的程序？我们可以说一个具有明显物理结构的软件是模块化的，例如带
 插件的软件，一个完整的软件由若干运行时库共同构建；也可以说一个高度面向对象的库是

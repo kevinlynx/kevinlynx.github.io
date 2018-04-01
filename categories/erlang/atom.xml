@@ -4,7 +4,7 @@
   <title><![CDATA[Category: erlang | loop in codes]]></title>
   <link href="http://codemacro.com/categories/erlang/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2018-03-08T21:57:53+08:00</updated>
+  <updated>2018-04-01T10:27:40+00:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[dhtcrawler的进程模型经验]]></title>
     <link href="http://codemacro.com/2014/02/21/dhtcrawler-process/"/>
-    <updated>2014-02-21T00:00:00+08:00</updated>
+    <updated>2014-02-21T00:00:00+00:00</updated>
     <id>http://codemacro.com/2014/02/21/dhtcrawler-process</id>
     <content type="html"><![CDATA[<p>距离写<a href="http://codemacro.com/2013/07/02/dhtcrawler2/">dhtcrawler</a>已经有半年时间。半年前就想总结点心得经验，但最后写出来的并没有表达出我特别有感慨的地方。最近又被人问到这方面的经验问题，才静下心来思考整理了下。</p>
 
@@ -93,7 +93,7 @@ Pool -&gt; ReqProcessor -&gt; O
   <entry>
     <title type="html"><![CDATA[dhtcrawler2换用sphinx搜索]]></title>
     <link href="http://codemacro.com/2013/08/08/sphinx-dhtcrawler/"/>
-    <updated>2013-08-08T00:00:00+08:00</updated>
+    <updated>2013-08-08T00:00:00+00:00</updated>
     <id>http://codemacro.com/2013/08/08/sphinx-dhtcrawler</id>
     <content type="html"><![CDATA[<p>dhtcrawler2最开始使用mongodb自带的全文搜索引擎搜索资源。搜索一些短关键字时很容易导致erlang进程call timeout，也就是查询时间太长。对于像<code>avi</code>这种关键字，搜索时间长达十几秒。搜索的资源数量200万左右。这其中大部分资源只是对root文件名进行了索引，即对于多文件资源而言没有索引单个文件名。索引方式有部分资源是按照字符串子串的形式，没有拆词，非常占用存储空间；有部分是使用了rmmseg（我编译了rmmseg-cpp作为erlang nif库调用 <a href="https://github.com/kevinlynx/erl-rmmseg">erl-rmmseg</a>）进行了拆词，占用空间小了很多，但由于词库问题很多片里的词汇没拆出来。</p>
 
@@ -184,7 +184,7 @@ Pool -&gt; ReqProcessor -&gt; O
   <entry>
     <title type="html"><![CDATA[磁力搜索第二版-dhtcrawler2]]></title>
     <link href="http://codemacro.com/2013/07/02/dhtcrawler2/"/>
-    <updated>2013-07-02T00:00:00+08:00</updated>
+    <updated>2013-07-02T00:00:00+00:00</updated>
     <id>http://codemacro.com/2013/07/02/dhtcrawler2</id>
     <content type="html"><![CDATA[<p>接<a href="http://codemacro.com/2013/06/21/magnet-search-impl/">上篇</a>。</p>
 
@@ -347,7 +347,7 @@ Pool -&gt; ReqProcessor -&gt; O
   <entry>
     <title type="html"><![CDATA[使用erlang实现P2P磁力搜索-实现]]></title>
     <link href="http://codemacro.com/2013/06/21/magnet-search-impl/"/>
-    <updated>2013-06-21T00:00:00+08:00</updated>
+    <updated>2013-06-21T00:00:00+00:00</updated>
     <id>http://codemacro.com/2013/06/21/magnet-search-impl</id>
     <content type="html"><![CDATA[<p>接<a href="http://codemacro.com/2013/06/20/magnet-search/">上篇</a>，本篇谈谈一些实现细节。</p>
 
@@ -531,7 +531,7 @@ a中文
   <entry>
     <title type="html"><![CDATA[使用erlang实现P2P磁力搜索(开源)]]></title>
     <link href="http://codemacro.com/2013/06/20/magnet-search/"/>
-    <updated>2013-06-20T00:00:00+08:00</updated>
+    <updated>2013-06-20T00:00:00+00:00</updated>
     <id>http://codemacro.com/2013/06/20/magnet-search</id>
     <content type="html"><![CDATA[<p>接上回对<a href="http://codemacro.com/2013/05/19/crawl-dht/">DHT网络的研究</a>，我用erlang克隆了一个<a href="http://bt.shousibaocai.com/">磁力搜索引擎</a>。我这个实现包含了完整的功能，DHT网络的加入、infohash的接收、种子的获取、资源信息的索引、搜索。</p>
 

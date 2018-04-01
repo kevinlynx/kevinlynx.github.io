@@ -1,0 +1,524 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>kubernetes网络相关总结 - loop in codes</title>
+  <meta name="author" content="Kevin Lynx">
+
+  
+  <meta name="description" content="要理解kubernetes的网络模型涉及到的技术点比较多，网络上各个知识点讲得细的有很多，这里我就大概梳理下整个架构，方便顺着这个脉络深入。本文主要假设kubernetes使用docker+flannel实现。 整体上，了解kubernetes的网络模型，涉及到以下知识： linux网络及网络基础 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://codemacro.com/2018/04/01/kube-network">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="loop in codes" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <!--script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script-->
+<script src="https://cdn.bootcss.com/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<!--link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css"-->
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">loop in codes</a></h1>
+  
+    <h2>Kevin Lynx BLOG</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:codemacro.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about.html">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">kubernetes网络相关总结</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2018-04-01T00:00:00+00:00'><span class='date'><span class='date-month'>Apr</span> <span class='date-day'>1</span><span class='date-suffix'>st</span>, <span class='date-year'>2018</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>要理解kubernetes的网络模型涉及到的技术点比较多，网络上各个知识点讲得细的有很多，这里我就大概梳理下整个架构，方便顺着这个脉络深入。本文主要假设kubernetes使用docker+flannel实现。</p>
+
+<p>整体上，了解kubernetes的网络模型，涉及到以下知识：</p>
+
+<ul>
+<li>linux网络及网络基础</li>
+<li>docker网络模型</li>
+<li>kubernetes网络需求，及flannel网络实现</li>
+</ul>
+
+
+<p>最后大家就可以结合实例对照着学习。</p>
+
+<h2>Linux网络</h2>
+
+<p>先看几个概念，引用自<a href="https://www.kubernetes.org.cn/2059.html">Kubernetes网络原理及方案</a>:</p>
+
+<ul>
+<li>网络命名空间</li>
+</ul>
+
+
+<blockquote><p>Linux在网络栈中引入网络命名空间，将独立的网络协议栈隔离到不同的命令空间中，彼此间无法通信；docker利用这一特性，实现不同容器间的网络隔离</p></blockquote>
+
+<ul>
+<li>网桥</li>
+</ul>
+
+
+<blockquote><p>网桥是一个二层网络设备,通过网桥可以将linux支持的不同的端口连接起来,并实现类似交换机那样的多对多的通信</p></blockquote>
+
+<ul>
+<li>Veth设备对</li>
+</ul>
+
+
+<blockquote><p>Veth设备对的引入是为了实现在不同网络命名空间的通信</p></blockquote>
+
+<ul>
+<li>路由</li>
+</ul>
+
+
+<blockquote><p>Linux系统包含一个完整的路由功能，当IP层在处理数据发送或转发的时候，会使用路由表来决定发往哪里</p></blockquote>
+
+<p>借图以关联上面的概念：</p>
+
+<p><img src="/assets/res/kubenet/dnet.png" alt="dnet.png" /></p>
+
+<!-- more -->
+
+
+<p>安装docker后，系统中就会有一个docker0网桥。通过<code>ifconfig</code> 或<code>ip link</code>可以查看(准确的说是查看网络设备？)：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ip link
+</span><span class='line'>1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT
+</span><span class='line'>    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+</span><span class='line'>2: eth0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc pfifo_fast state UP mode DEFAULT qlen 1000
+</span><span class='line'>    link/ether 00:16:3e:00:03:9a brd ff:ff:ff:ff:ff:ff
+</span><span class='line'>3: docker0: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc noqueue state DOWN mode DEFAULT
+</span><span class='line'>    link/ether 02:42:c0:a8:05:01 brd ff:ff:ff:ff:ff:ff</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>一个docker POD中，多个容器间是共享网络的。在POD中，有一个默认的网络设备，就像物理机上一样，名为<code>eth0</code>。POD中的<code>eth0</code>通过<code>Veth设备对</code>，借由docker0网桥与外部网络通信。veth设备对同样可以用<code>ip link</code>查看，系统中有多少POD就会有多少veth对：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ip link
+</span><span class='line'>...
+</span><span class='line'>219: veth367a306c@if3: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1450 qdisc noqueue master cni0 state UP mode DEFAULT 
+</span><span class='line'>    link/ether 62:de:88:30:86:fa brd ff:ff:ff:ff:ff:ff link-netnsid 19
+</span><span class='line'>220: veth684956fd@if3: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1450 qdisc noqueue master cni0 state UP mode DEFAULT 
+</span><span class='line'>    link/ether fe:b8:33:8c:25:b0 brd ff:ff:ff:ff:ff:ff link-netnsid 20
+</span><span class='line'>222: veth9e23eff7@if3: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1450 qdisc noqueue master cni0 state UP mode DEFAULT 
+</span><span class='line'>    link/ether 7e:e9:2d:f2:28:e5 brd ff:ff:ff:ff:ff:ff link-netnsid 22</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>veth对只是不同网络命名空间通信的一种解决方案，还有其他方案，借图：</p>
+
+<p><img src="/assets/res/kubenet/veth.png" alt="veth.png" /></p>
+
+<p>最后，“路由”表可以通过<code>ip route</code>查看，这块内容我理解就是根据网络地址交给不同的设备做处理：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ip route
+</span><span class='line'>default via 10.101.95.247 dev eth0 
+</span><span class='line'>...
+</span><span class='line'># 匹配前24bits的地址交由flannel.1设备处理
+</span><span class='line'>10.244.0.0/24 via 10.244.0.0 dev flannel.1 onlink </span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<h2>docker网络模型</h2>
+
+<p>docker网络模型用于解决容器间及容器与宿主机间的网络通信，主要分为以下模型：</p>
+
+<ul>
+<li>Bridge，默认模式，也就是上面通过<code>docker0</code>做通信的模式</li>
+<li>Host，容器内的网络配置同宿主机，没有网络隔离</li>
+<li>None，容器内仅有loopback</li>
+</ul>
+
+
+<p>不同的模式通常在启动容器时，可以通过<code>--net=xx</code>参数指定。可以通过<code>docker network inspect [host|bridge]</code>查看本机某种网络模型下启动的容器列表，例如：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$sudo docker network inspect host
+</span><span class='line'>[
+</span><span class='line'>    {
+</span><span class='line'>        "Name": "host",
+</span><span class='line'>        "Id": "19958f2d93e0bf428c685c12b084fc5e6a7bd499627d90ae9ae1ca4b11a8f437",
+</span><span class='line'>        "Scope": "local",
+</span><span class='line'>        "Driver": "host",
+</span><span class='line'>        "EnableIPv6": false,
+</span><span class='line'>        "IPAM": {
+</span><span class='line'>            "Driver": "default",
+</span><span class='line'>            "Options": null,
+</span><span class='line'>            "Config": []
+</span><span class='line'>        },
+</span><span class='line'>        "Internal": false,
+</span><span class='line'>        "Containers": {
+</span><span class='line'>            "03d2b6e1faa3763fefd5528cce29ca454a13220dab693f242ff808051d7fd34b": {
+</span><span class='line'>                "Name": "k8s_POD_kube-proxy-69rl4_kube-system_b793f549-22a0-11e8-9ce1-00163e00039a_0",
+</span><span class='line'>                "EndpointID": "4380fab27d237e21f7fa6f84cf23b8a6d605f4e612968a3377f853abf987f6a4",
+</span><span class='line'>                "MacAddress": "",
+</span><span class='line'>                "IPv4Address": "",
+</span><span class='line'>                "IPv6Address": ""
+</span><span class='line'>            },
+</span><span class='line'>            "9140fdf7a3ea0b19fec3a922e998ba3c544d328c1bd372525dfef816c620a431": {
+</span><span class='line'>                "Name": "k8s_POD_kube-flannel-ds-m88p6_kube-system_b793f466-22a0-11e8-9ce1-00163e00039a_0",
+</span><span class='line'>                "EndpointID": "01024d8050167cd88c11220375f89217116b5c929575a45695fe5d759038f320",
+</span><span class='line'>                "MacAddress": "",
+</span><span class='line'>                "IPv4Address": "",
+</span><span class='line'>                "IPv6Address": ""
+</span><span class='line'>            }
+</span><span class='line'>        },
+</span><span class='line'>        "Options": {},
+</span><span class='line'>        "Labels": {}
+</span><span class='line'>    }
+</span><span class='line'>]
+</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>docker解决了单机容器网络隔离与网络通信，但没有解决多机间的通信。</p>
+
+<h2>Kubernetes网络模型及Flannel实现</h2>
+
+<p>kubernetes为了简单，它要求的网络模型里，整个集群中所有的POD都有独立唯一的IP。POD间互相看到的IP是稳定的，是直接可达的，是一个平铺网络。如何实现kubernetes的这个网络需求，CNI插件是一种解决方案，而Flannel项目则是CNI插件的一种实现。</p>
+
+<p>Flannel的实现，本质上主要是两方面内容：</p>
+
+<ul>
+<li>一个proxy做流量转发，也就是flanneld进程，可以自行ps查看</li>
+<li>通过中心化存储etcd来对整个集群做POD的IP分配</li>
+</ul>
+
+
+<p>借图，了解flannel网络原理：</p>
+
+<p>flannel网络上已经有很多资料，例如<a href="http://dockone.io/article/618">一篇文章带你了解Flannel</a>。flannel的网络通信可以配置不同的backend，例如，配置UDP为backend时，那么交由flanneld进程转发网络包时，就会以UDP包的形式包装起来做转发，到达对端的flanneld进程时再解包。当然，实际使用时是不会使用这种方式的，通常会使用由内核支持的vxLan。参考<a href="https://github.com/coreos/flannel/blob/master/Documentation/backends.md">flannel backend配置</a>。</p>
+
+<p>在安装kubernetes时，基于kube-flannel.yml文件配置flannel就使用的vxLan：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>net-conf.json: |
+</span><span class='line'>{
+</span><span class='line'>  "Network": "10.244.0.0/16",
+</span><span class='line'>  "Backend": {
+</span><span class='line'>  "Type": "vxlan"
+</span><span class='line'>  }
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>docker在创建容器时，会给容器分配IP，flannel的安装里会hack docker daemon的启动方式，增加<code>--bip</code>参数，用于限定docker分配的IP范围，这也是网络上很多文章提到的。在我的环境里，docker容器全部以host方式设置网络，所以有没有设置bip也无所谓。</p>
+
+<p>安装了flannel后，在kubernetes网络中就可以直接ping一个POD容器。到这里，可以小结一下，基于以上的技术，在一个集群中，每一个POD都可以有一个独立唯一的IP，其他宿主机的POD可以直接访问这个POD。但是，一个分布式服务通常处于性能和稳定性考虑会有多个实例，所以kubernetes还要解决负载均衡问题。</p>
+
+<h2>Kubernetes中的负载均衡</h2>
+
+<p>kubernetes中通过service概念来对应用做多POD间的负载均衡。service是一个虚拟概念，service都会被分配一个<code>clusterIP</code>，其实就是service对外暴露的地址。你可以为一个redis服务暴露一个service，然后将这个service的clusterIP传给一个PHP应用，以让PHP应用访问redis。那么，这个PHP应用具体是如何通过这个service clusterIP负载均衡到redis的多个容器呢？在kubernetees中，目前主要是通过iptable来实现。借图：</p>
+
+<p><img src="/assets/res/kubenet/service.png" alt="service.png" /></p>
+
+<p>要理解上图，首先大概要有一个iptable的知识，大概就是在整个包收发处理过程中可以配置很多链，当一个链的条件被满足时，就可以执行一个动作。这里，我们主要关注上图中的左边分支部分。本质上，拿到一个service的clusterIP，到发送到目的POD，整个过程主要涉及到内容：</p>
+
+<ul>
+<li>service clusterIP是虚拟的，是一个iptable规则，这个规则最终会映射到一个POD的IP</li>
+<li>一个应用有多少POD，那么在集群中的每台机器上，就会有多少iptable链</li>
+</ul>
+
+
+<p>在kubernetes集群中，可以实际追踪看看。例如上面提到的redis service clusterIP为<code>10.99.136.250</code>：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$sudo iptables-save | grep 10.99.136.250
+</span><span class='line'># -d 10.99.136.250/32 地址完全匹配，然后执行 -j KUBE-SVC-AGR3D4D4FQNH4O33 规则
+</span><span class='line'>-A KUBE-SERVICES -d 10.99.136.250/32 -p tcp -m comment --comment "default/redis-slave: cluster IP" -m tcp --dport 6379 -j KUBE-SVC-AGR3D4D4FQNH4O33
+</span><span class='line'># 这条规则对应到上图中`source!=podIP`，主要用于配合SNAT处理，简单理解为改写封包源IP
+</span><span class='line'>-A KUBE-SERVICES ! -s 10.244.0.0/16 -d 10.99.136.250/32 -p tcp -m comment --comment "default/redis-slave: cluster IP" -m tcp --dport 6379 -j KUBE-MARK-MASQ
+</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>追<code>KUBE-SVC-AGR3D4D4FQNH4O33</code>规则：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$sudo iptables-save | grep KUBE-SVC-AGR3D4D4FQNH4O33
+</span><span class='line'>:KUBE-SVC-AGR3D4D4FQNH4O33 - [0:0]
+</span><span class='line'>-A KUBE-SVC-AGR3D4D4FQNH4O33 -m comment --comment "default/redis-slave:" -m statistic --mode random --probability 0.50000000000 -j KUBE-SEP-GDIX2RIKQIYS7RMI
+</span><span class='line'>-A KUBE-SVC-AGR3D4D4FQNH4O33 -m comment --comment "default/redis-slave:" -j KUBE-SEP-J5QZN63T7ON4OKV7
+</span><span class='line'>...</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>因为<code>redis-slave</code>有2个POD，所以上面通过<code>--probability 0.50</code>实现了50%的流量负载均衡。<code>KUBE-SEP-XX</code>就是各个POD的地址，可以继续追，例如：</p>
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$sudo iptables-save | grep KUBE-SEP-GDIX2RIKQIYS7RMI
+</span><span class='line'>:KUBE-SEP-GDIX2RIKQIYS7RMI - [0:0]
+</span><span class='line'>-A KUBE-SEP-GDIX2RIKQIYS7RMI -s 10.244.1.56/32 -m comment --comment "default/redis-slave:" -j KUBE-MARK-MASQ
+</span><span class='line'>-A KUBE-SEP-GDIX2RIKQIYS7RMI -p tcp -m comment --comment "default/redis-slave:" -m tcp -j DNAT --to-destination 10.244.1.56:6379</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+
+<p>最终，封包发送到POD之一<code>10.244.1.56</code>。上面的过程，对着前面图的左半部分很容易理解。</p>
+
+<p>kubernetes中还提供了kube-dns，主要是为service clusterIP提供一个域名。每个service都可以按固定格式拼出一个域名，而kube-dns则负责解析这个域名，解析为service的clusterIP，实际网络数据传输流程还是同上。</p>
+
+<h2>总结</h2>
+
+<p>熟悉kubernetes，几大组件的工作原理其实不难理解。而kubernetes网络模型显得更难，尤其是要结合各种工具、命令去实践时，很容易与理论脱节。一旦梳理通彻整个链路，回头看时就会发现也就那么回事。当然，上面提到的各个技术点，深入下去了解还是有很多内容的。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2018/04/01/kube-network/'>http://codemacro.com/2018/04/01/kube-network/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Kevin Lynx</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2018-04-01T00:00:00+00:00'><span class='date'><span class='date-month'>Apr</span> <span class='date-day'>1</span><span class='date-suffix'>st</span>, <span class='date-year'>2018</span></span> <span class='time'>12:00 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/categories/dan-xing-diao-du/'>弹性调度</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/2018/03/08/deploy-kubernetes/" title="Previous Post: 使用Kubeadm在CentOS部署Kubernets 1.8.7">&laquo; 使用Kubeadm在CentOS部署Kubernets 1.8.7</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><div id="container"></div>
+<link rel="stylesheet" href="https://imsun.github.io/gitment/style/default.css">
+<script src="https://imsun.github.io/gitment/dist/gitment.browser.js"></script>
+<script>
+var gitment = new Gitment({
+  owner: 'kevinlynx',
+  repo: 'codemacro-source',
+  oauth: {
+    client_id: '887f210a1e0f6558ad3a',
+    client_secret: '964b45eb7ab29973e1ec3a3371e14b338033a1ce',
+  },
+})
+gitment.render('container')
+</script>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Categories</h1>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (5)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (9)</a></li><li><a href='/categories/python/'>python (1)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li><li><a href='/categories/dan-xing-diao-du/'>弹性调度 (3)</a></li></ul>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2018/04/01/kube-network/">kubernetes网络相关总结</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2018/03/08/deploy-kubernetes/">使用Kubeadm在CentOS部署Kubernets 1.8.7</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2018/01/24/apache-slider/">基于Yarn的分布式应用调度器Slider</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2018/01/17/greenlet/">Python协程greenlet实现原理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/2017/12/12/chess-gameserver/">写了一个棋牌游戏服务器框架</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+<div id="recentcomments" class="dsq-widget">
+<h1 class="dsq-widget-title">Recent Comments</h1>
+</div>
+</section>
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.53846153846153%'>game develop(5)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 120.76923076923077%'>other(9)</a> <a href='/categories/python' style='font-size: 102.3076923076923%'>python(1)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> <a href='/categories/dan-xing-diao-du' style='font-size: 106.92307692307692%'>弹性调度(3)</a> </span>
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2018 - Kevin Lynx -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+<script language="javascript" type="text/javascript" src="http://js.users.51.la/4670235.js"></script>
+<noscript><a href="http://www.51.la/?4670235" target="_blank"><img alt="&#x6211;&#x8981;&#x5566;&#x514D;&#x8D39;&#x7EDF;&#x8BA1;" src="http://img.users.51.la/4670235.asp" style="border:none" /></a></noscript>
+
+</p>
+
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

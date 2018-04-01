@@ -4,7 +4,7 @@
   <title><![CDATA[Category: other | loop in codes]]></title>
   <link href="http://codemacro.com/categories/other/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2018-03-08T21:57:53+08:00</updated>
+  <updated>2018-04-01T10:27:40+00:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[协程并发模型及使用感受]]></title>
     <link href="http://codemacro.com/2017/12/03/coroutine/"/>
-    <updated>2017-12-03T00:00:00+08:00</updated>
+    <updated>2017-12-03T00:00:00+00:00</updated>
     <id>http://codemacro.com/2017/12/03/coroutine</id>
     <content type="html"><![CDATA[<p>协程可以简单理解为更轻量的线程，但有很多显著的不同：</p>
 
@@ -86,7 +86,7 @@
   <entry>
     <title type="html"><![CDATA[一次逆向网页内容加密]]></title>
     <link href="http://codemacro.com/2016/08/16/reverse_html/"/>
-    <updated>2016-08-16T00:00:00+08:00</updated>
+    <updated>2016-08-16T00:00:00+00:00</updated>
     <id>http://codemacro.com/2016/08/16/reverse_html</id>
     <content type="html"><![CDATA[<p>最近写一个爬虫要从这个<a href="http://cpquery.sipo.gov.cn/txnQueryFeeData.do?select-key:shenqingh=2007200071873&amp;select-key:zhuanlilx=2&amp;select-key:gonggaobj=&amp;select-key:backPage=http%3A%2F%2Fcpquery.sipo.gov.cn%2FtxnQueryOrdinaryPatents.do%3Fselect-key%3Ashenqingh%3D2015204531832%26select-key%3Azhuanlimc%3D%26select-key%3Ashenqingrxm%3D%26select-key%3Azhuanlilx%3D%26select-key%3Ashenqingr_from%3D%26select-key%3Ashenqingr_to%3D%26inner-flag%3Aopen-type%3Dwindow%26inner-flag%3Aflowno%3D1470846836440&amp;inner-flag:open-type=window&amp;inner-flag:flowno=1471142917509">网页</a>爬取内容。以往爬取网页内容复杂点的，一般就是处理下页面内容动态载入，动态载入的内容可能会要求复杂奇怪的参数，或者找到这个动态载入的HTTP接口在哪里麻烦点。但是这个网页不同。类似：</p>
 
@@ -183,7 +183,7 @@
   <entry>
     <title type="html"><![CDATA[理解git常用命令原理]]></title>
     <link href="http://codemacro.com/2014/09/09/understand-git/"/>
-    <updated>2014-09-09T00:00:00+08:00</updated>
+    <updated>2014-09-09T00:00:00+00:00</updated>
     <id>http://codemacro.com/2014/09/09/understand-git</id>
     <content type="html"><![CDATA[<p>git不同于类似SVN这种版本管理系统，虽然熟悉常用的操作就可以满足大部分需求，但为了在遇到麻烦时不至于靠蛮力去尝试，了解git的原理还是很有必要。</p>
 
@@ -379,7 +379,7 @@ $ git cat-file -p 45cf0bd049d7eea4558b14f33a894db27c7c1130
   <entry>
     <title type="html"><![CDATA[my 2013]]></title>
     <link href="http://codemacro.com/2014/02/02/2013/"/>
-    <updated>2014-02-02T00:00:00+08:00</updated>
+    <updated>2014-02-02T00:00:00+00:00</updated>
     <id>http://codemacro.com/2014/02/02/2013</id>
     <content type="html"><![CDATA[<h2>技术</h2>
 
@@ -511,7 +511,7 @@ $ git cat-file -p 45cf0bd049d7eea4558b14f33a894db27c7c1130
   <entry>
     <title type="html"><![CDATA[为什么处理排序的数组要比非排序的快？]]></title>
     <link href="http://codemacro.com/2012/08/29/branch-predictor/"/>
-    <updated>2012-08-29T19:55:00+08:00</updated>
+    <updated>2012-08-29T19:55:00+00:00</updated>
     <id>http://codemacro.com/2012/08/29/branch-predictor</id>
     <content type="html"><![CDATA[<p>参考<a href="http://stackoverflow.com/questions/11227809/why-is-processing-a-sorted-array-faster-than-an-unsorted-array">Why is processing a sorted array faster than an unsorted array?</a></p>
 

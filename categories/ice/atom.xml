@@ -4,7 +4,7 @@
   <title><![CDATA[Category: ice | loop in codes]]></title>
   <link href="http://codemacro.com/categories/ice/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2018-03-08T21:57:53+08:00</updated>
+  <updated>2018-04-01T10:27:40+00:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[使用ActionScript开发Ice Web客户端]]></title>
     <link href="http://codemacro.com/2013/06/09/ice-web-client/"/>
-    <updated>2013-06-09T00:00:00+08:00</updated>
+    <updated>2013-06-09T00:00:00+00:00</updated>
     <id>http://codemacro.com/2013/06/09/ice-web-client</id>
     <content type="html"><![CDATA[<p>我们目前的项目服务器端使用了<a href="http://codemacro.com/2013/02/15/ice-overview/">Ice</a>来构建。Ice有一套自己的网络协议，客户端和服务器端可以基于此协议来交互。由于Ice使用Slice这种中间语言来描述服务器和客户端的交互接口，所以它可以做到极大限度地屏蔽网络协议这个细节。也就是说，我们只要借助Ice和Slice，我们可以轻松地编写网络程序。</p>
 
@@ -196,7 +196,7 @@
   <entry>
     <title type="html"><![CDATA[分布式程序开发平台ICE概览]]></title>
     <link href="http://codemacro.com/2013/02/15/ice-overview/"/>
-    <updated>2013-02-15T00:00:00+08:00</updated>
+    <updated>2013-02-15T00:00:00+00:00</updated>
     <id>http://codemacro.com/2013/02/15/ice-overview</id>
     <content type="html"><![CDATA[<p>本文基于ICE Manual及相关文档就ICE的一些主要特性做一个概览，它不是一个tutorial，不是一个guid，更不是manual。</p>
 

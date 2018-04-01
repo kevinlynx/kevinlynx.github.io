@@ -4,7 +4,7 @@
   <title><![CDATA[Category: clang | loop in codes]]></title>
   <link href="http://codemacro.com/categories/clang/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2018-03-08T21:57:53+08:00</updated>
+  <updated>2018-04-01T10:27:40+00:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[使用Clang实现C语言编程规范检查]]></title>
     <link href="http://codemacro.com/2013/02/12/using-clang/"/>
-    <updated>2013-02-12T00:00:00+08:00</updated>
+    <updated>2013-02-12T00:00:00+00:00</updated>
     <id>http://codemacro.com/2013/02/12/using-clang</id>
     <content type="html"><![CDATA[<h2>概述</h2>
 
