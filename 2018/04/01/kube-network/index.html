@@ -292,6 +292,8 @@
 
 <p>借图，了解flannel网络原理：</p>
 
+<p><img src="/assets/res/kubenet/flannel.png" alt="service.png" /></p>
+
 <p>flannel网络上已经有很多资料，例如<a href="http://dockone.io/article/618">一篇文章带你了解Flannel</a>。flannel的网络通信可以配置不同的backend，例如，配置UDP为backend时，那么交由flanneld进程转发网络包时，就会以UDP包的形式包装起来做转发，到达对端的flanneld进程时再解包。当然，实际使用时是不会使用这种方式的，通常会使用由内核支持的vxLan。参考<a href="https://github.com/coreos/flannel/blob/master/Documentation/backends.md">flannel backend配置</a>。</p>
 
 <p>在安装kubernetes时，基于kube-flannel.yml文件配置flannel就使用的vxLan：</p>
