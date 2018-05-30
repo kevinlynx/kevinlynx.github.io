@@ -9,7 +9,8 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="Ruby解析HTML Ruby解析HTML（或XML）可以使用nokogiri。我的应用里需要查找HTML页面里的某个元素，结果发现实现方式非常简单，就像使用jquery一样。例如我要获取到octopress博客文章里的文章内容、文章标题、文章分类，就像这篇博客： # get post title &hellip;">
+  <meta name="description" content="可以结合Lua里实现简单的类-对象看。在我的应用中，存在类似以下代码： function Item.new() local o = { property = {} } return newObject(o, Item)
+end property是一个key-value的表，里面的内容不是固定的。 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -65,6 +66,50 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2012/08/13/dynamic-method-in-lua/">Lua中动态产生函数</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2012-08-13T15:56:00+00:00'><span class='date'><span class='date-month'>Aug</span> <span class='date-day'>13</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>3:56 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>可以结合<a href="http://codemacro.com/2012/08/02/simple-oo-in-lua/">Lua里实现简单的类-对象</a>看。在我的应用中，存在类似以下代码：</p>
+
+<div class="highlight"><pre><code class="language-lua" data-lang="lua"><span class="k">function</span> <span class="nc">Item</span><span class="p">.</span><span class="nf">new</span><span class="p">()</span>
+    <span class="kd">local</span> <span class="n">o</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">property</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">newObject</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">Item</span><span class="p">)</span>
+<span class="k">end</span></code></pre></div>
+
+
+<p><code>property</code>是一个key-value的表，里面的内容不是固定的。最开始我为Item类写了get/set函数，用于存取property表里的值。但这样写起来还是有点麻烦。Ruby里可以动态产生类成员函数，其实Lua里也可以。其思路就是通过metatable来做：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2012/08/13/dynamic-method-in-lua/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -438,51 +483,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2012/07/20/get-client-timezone-in-rails/">Rails中获取客户端时区</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2012-07-20T16:42:00+00:00'><span class='date'><span class='date-month'>Jul</span> <span class='date-day'>20</span><span class='date-suffix'>th</span>, <span class='date-year'>2012</span></span> <span class='time'>4:42 pm</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>开发网站功能时，有时候需要获取客户端（浏览器）所在的时区，然后根据不同的时区做一些不同的逻辑功能。这里提供一种方法，其思路为客户端通过js获取时区，然后发送给服务器，服务器存储时区到session中。</p>
-
-<div class="highlight"><pre><code class="language-javascript" data-lang="javascript"><span class="kd">function</span> <span class="nx">submit_timezone</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span> <span class="p">{</span>
-  <span class="nx">$</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="nx">url</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;offset_min&#39;</span> <span class="o">:</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="p">(</span><span class="k">new</span> <span class="nb">Date</span><span class="p">()).</span><span class="nx">getTimezoneOffset</span><span class="p">())});</span>
-<span class="p">}</span>
-
-<span class="nx">$</span><span class="p">(</span><span class="nb">document</span><span class="p">).</span><span class="nx">ready</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
-    <span class="nx">submit_timezone</span><span class="p">(</span><span class="s1">&#39;&lt;%= sys_timezone_path %&gt;&#39;</span><span class="p">);</span>
-<span class="p">});</span></code></pre></div>
-
-
-
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2012/07/20/get-client-timezone-in-rails/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/9">&larr; Older</a>
@@ -497,11 +497,15 @@
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (5)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (9)</a></li><li><a href='/categories/python/'>python (1)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li><li><a href='/categories/dan-xing-diao-du/'>弹性调度 (3)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (5)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (9)</a></li><li><a href='/categories/python/'>python (1)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li><li><a href='/categories/dan-xing-diao-du/'>弹性调度 (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2018/05/30/kube_apiserver_sample/">Kubernete APIServer Sample</a>
+      </li>
     
       <li class="post">
         <a href="/2018/04/01/kube-network/">kubernetes网络相关总结</a>
@@ -519,10 +523,6 @@
         <a href="/2018/01/17/greenlet/">Python协程greenlet实现原理</a>
       </li>
     
-      <li class="post">
-        <a href="/2017/12/12/chess-gameserver/">写了一个棋牌游戏服务器框架</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -532,7 +532,7 @@
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.53846153846153%'>game develop(5)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 120.76923076923077%'>other(9)</a> <a href='/categories/python' style='font-size: 102.3076923076923%'>python(1)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> <a href='/categories/dan-xing-diao-du' style='font-size: 106.92307692307692%'>弹性调度(3)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.53846153846153%'>game develop(5)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 120.76923076923077%'>other(9)</a> <a href='/categories/python' style='font-size: 102.3076923076923%'>python(1)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> <a href='/categories/dan-xing-diao-du' style='font-size: 109.23076923076923%'>弹性调度(4)</a> </span>
 </section>
 
   

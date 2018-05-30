@@ -9,8 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="问题 在Lua中，因为函数也是第一类值，所以会出现将函数作为另一个函数的参数，或者函数作
-为函数的返回值。这种机制在很多地方都能代码更灵活更简洁，例如: table.sort(table [,comp]) 这里的comp就要求传入一个函数，我们在调用时，大概会有如下形式: table.sort(t &hellip;">
+  <meta name="description" content="本文描述如何使用Lisp工具集搭建一个完整的个人博客站点。一个搭建好的例子站点可以参看我的个人博客：http://codemacro.com%E3%80%82 要搭建一个独立博客，需要两方面的支持。一是博客软件，二是根据选择的博客软件取得必须的“硬件“。例如我这里使用的是Lisp工具集， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -66,6 +65,42 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2011/09/29/build-blog-by-lisp/">使用Lisp搭建独立博客</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2011-09-29T00:00:00+00:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>29</span><span class='date-suffix'>th</span>, <span class='date-year'>2011</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>本文描述如何使用Lisp工具集搭建一个完整的个人博客站点。一个搭建好的例子站点可以参看我的个人博客：<a href="http://codemacro.com%E3%80%82">http://codemacro.com%E3%80%82</a></p>
+
+<p>要搭建一个独立博客，需要两方面的支持。一是博客软件，二是根据选择的博客软件取得必须的“硬件“。例如我这里使用的是Lisp工具集，就需要一个可以完全控制的服务器，所以这里我需要一个VPS。当然，购买一个合适的域名也是必须的。以下将针对这些内容做描述。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2011/09/29/build-blog-by-lisp/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -356,11 +391,15 @@ Stroustrup在&lt;D&amp;E>一书里也常为此表现出无奈。另一方面，�
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (5)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (9)</a></li><li><a href='/categories/python/'>python (1)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li><li><a href='/categories/dan-xing-diao-du/'>弹性调度 (3)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (5)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (9)</a></li><li><a href='/categories/python/'>python (1)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li><li><a href='/categories/dan-xing-diao-du/'>弹性调度 (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2018/05/30/kube_apiserver_sample/">Kubernete APIServer Sample</a>
+      </li>
     
       <li class="post">
         <a href="/2018/04/01/kube-network/">kubernetes网络相关总结</a>
@@ -378,10 +417,6 @@ Stroustrup在&lt;D&amp;E>一书里也常为此表现出无奈。另一方面，�
         <a href="/2018/01/17/greenlet/">Python协程greenlet实现原理</a>
       </li>
     
-      <li class="post">
-        <a href="/2017/12/12/chess-gameserver/">写了一个棋牌游戏服务器框架</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -391,7 +426,7 @@ Stroustrup在&lt;D&amp;E>一书里也常为此表现出无奈。另一方面，�
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.53846153846153%'>game develop(5)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 120.76923076923077%'>other(9)</a> <a href='/categories/python' style='font-size: 102.3076923076923%'>python(1)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> <a href='/categories/dan-xing-diao-du' style='font-size: 106.92307692307692%'>弹性调度(3)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.53846153846153%'>game develop(5)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 120.76923076923077%'>other(9)</a> <a href='/categories/python' style='font-size: 102.3076923076923%'>python(1)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> <a href='/categories/dan-xing-diao-du' style='font-size: 109.23076923076923%'>弹性调度(4)</a> </span>
 </section>
 
   

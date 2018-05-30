@@ -9,7 +9,7 @@
   <meta name="author" content="Kevin Lynx">
 
   
-  <meta name="description" content="要理解kubernetes的网络模型涉及到的技术点比较多，网络上各个知识点讲得细的有很多，这里我就大概梳理下整个架构，方便顺着这个脉络深入。本文主要假设kubernetes使用docker+flannel实现。 整体上，了解kubernetes的网络模型，涉及到以下知识： linux网络及网络基础 &hellip;">
+  <meta name="description" content="kubernetes从apiserver中独立出来了一个项目：apiserver，可以基于这个库快速实现一个类似kubernetes apiserver的服务。 Generic library for building a Kubernetes aggregated API server. &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -65,6 +65,60 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/2018/05/30/kube_apiserver_sample/">Kubernete APIServer Sample</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2018-05-30T00:00:00+00:00'><span class='date'><span class='date-month'>May</span> <span class='date-day'>30</span><span class='date-suffix'>th</span>, <span class='date-year'>2018</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>kubernetes从apiserver中独立出来了一个项目：<a href="https://github.com/kubernetes/apiserver">apiserver</a>，可以基于这个库快速实现一个类似kubernetes apiserver的服务。</p>
+
+<blockquote><blockquote><p>Generic library for building a Kubernetes aggregated API server.</p></blockquote></blockquote>
+
+<p>如果直接阅读kubenetes的apiserver源码，会发现很多实现都位于这个项目中。kubenetes源码目录下还有个<a href="https://github.com/kubernetes/sample-apiserver">sample-apiserver</a>，是用于示例如何使用这个库的。从这个sample可以更快速地了解kubernetes apiserver的实现，以及如何使用。</p>
+
+<p>简单来说，这个apiserver库做了很多抽象，基本上，用户只需要描述自己的资源结构是怎样的，就可以构建出一个类似kubernetes的apiserver，具备资源多版本兼容能力，对外提供json/yaml的http restful接口，并持久化到etcd中。接下来主要讲下大概的用法以及apiserver中的主要概念。</p>
+
+<h2>apiserver简介</h2>
+
+<p>apiserver简单来说，可以理解为一个基于etcd，并提供HTTP接口的对象(资源)系统。其提供了针对多种资源的操作，例如CRUD、列表读取、状态读取。kubernetes中POD、Deployment、Service，都是资源，可以说kubernetes所有组件都是围绕着资源运作的。apiserver库本身是不提供任何资源的，它做了很多抽象，使得应用层可以根据自己需要添加各种资源。同时，apiserver支持相同资源多个版本的存在。</p>
+
+<p>为了更容易地理解apiserver的设计，可以先自己思考如何实现出这样一个通用的资源服务框架，例如，可能需要解决以下问题：</p>
+
+<ul>
+<li>HTTP接口层，根据资源名映射出不同的URI，如何统一地从HTTP请求中创建出不同类型的资源</li>
+<li>不同的资源支持的操作不同，如何区分</li>
+<li>资源的多版本如何实现</li>
+<li>资源如何统一地序列化存储到etcd中</li>
+</ul>
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/2018/05/30/kube_apiserver_sample/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -595,74 +649,6 @@ Python</a>中剥离出来的一个项目，可以作为官方CPython的一个扩
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/2017/03/09/toy-jit/">实现JVM中的JIT</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2017-03-09T00:00:00+00:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>9</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>12:00 am</span></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>在JVM中，JIT (Just-in-Time) 即时编译指的是在Java程序运行过程中JVM优化部分指令为本地指令，从而大幅提升性能。在上一篇文章<a href="http://codemacro.com/2017/02/25/toy-jvm/">写一个玩具Java虚拟机</a>中实现了一个基本可以运行Java字节码的JVM。本篇文章描述我是如何在这个玩具JVM中实现JIT的。</p>
-
-<p>推荐文章<a href="http://eli.thegreenplace.net/2013/11/05/how-to-jit-an-introduction/">&ldquo;How to JIT - an introduction&rdquo;</a>，介绍了JIT的基本实现原理。作者把JIT分为两个阶段：</p>
-
-<ul>
-<li>运行期生成机器代码(本地指令)</li>
-<li>执行机器代码</li>
-</ul>
-
-
-<p>生成机器代码很好理解，就是一个JVM指令到机器指令的翻译；而执行机器代码，原理上是利用了OS提供了API可以分配可以执行的内存，然后往这块内存中写入机器码，从而实现运行期可以执行动态生成的机器码功能。</p>
-
-<p>我们可以利用这个原理来实现JIT，但是未免太底层了点，需要做很多工作来完成这件事情。我们可以利用<a href="https://www.gnu.org/software/libjit/">libjit</a>来简化实现。这个作者博客里还有些libjit的教程，其中<a href="http://eli.thegreenplace.net/2013/10/17/getting-started-with-libjit-part-1">part 1</a>值得阅读。 简单来说，libjit对机器指令做了抽象，利用它的API来描述一个函数包含了哪些指令，实现了什么功能。然后具体的指令生成以及指令执行则交给libjit完成。</p>
-
-<p>例如以下使用libjit的代码：</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>// t = u
-</span><span class='line'>jit_insn_store(F, t, u); // 类似 mov 指令
-</span><span class='line'>// u = v
-</span><span class='line'>jit_insn_store(F, u, v);
-</span><span class='line'>
-</span><span class='line'>// v = t % v
-</span><span class='line'>jit_value_t rem = jit_insn_rem(F, t, v); // 求余指令
-</span><span class='line'>jit_insn_store(F, v, rem);</span></code></pre></td></tr></table></div></figure>
-
-
-<p>所以，我们需要做的，就是将JVM的字节码，翻译成一堆libjit的API调用。但是我希望能够稍微做点抽象，我们写个翻译器，能够将JVM这种基于栈的指令，翻译成基于寄存器的指令，才方便后面无论是使用libjit还是直接翻译成机器码。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/2017/03/09/toy-jit/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/posts/2">&larr; Older</a>
@@ -675,11 +661,15 @@ Python</a>中剥离出来的一个项目，可以作为官方CPython的一个扩
   
     <section>
   <h1>Categories</h1>
-    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (5)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (9)</a></li><li><a href='/categories/python/'>python (1)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li><li><a href='/categories/dan-xing-diao-du/'>弹性调度 (3)</a></li></ul>
+    <ul id="category-list"><li><a href='/categories/c-slash-c-plus-plus/'>c/c++ (26)</a></li><li><a href='/categories/clang/'>clang (1)</a></li><li><a href='/categories/erlang/'>erlang (8)</a></li><li><a href='/categories/game-develop/'>game develop (5)</a></li><li><a href='/categories/ice/'>ice (2)</a></li><li><a href='/categories/java/'>java (12)</a></li><li><a href='/categories/javascript/'>javascript (3)</a></li><li><a href='/categories/lisp/'>lisp (5)</a></li><li><a href='/categories/lua/'>lua (5)</a></li><li><a href='/categories/module/'>module (3)</a></li><li><a href='/categories/network/'>network (13)</a></li><li><a href='/categories/other/'>other (9)</a></li><li><a href='/categories/python/'>python (1)</a></li><li><a href='/categories/ruby/'>ruby (4)</a></li><li><a href='/categories/scala/'>scala (1)</a></li><li><a href='/categories/tips/'>tips (21)</a></li><li><a href='/categories/web/'>web (4)</a></li><li><a href='/categories/dan-xing-diao-du/'>弹性调度 (4)</a></li></ul>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/2018/05/30/kube_apiserver_sample/">Kubernete APIServer Sample</a>
+      </li>
     
       <li class="post">
         <a href="/2018/04/01/kube-network/">kubernetes网络相关总结</a>
@@ -697,10 +687,6 @@ Python</a>中剥离出来的一个项目，可以作为官方CPython的一个扩
         <a href="/2018/01/17/greenlet/">Python协程greenlet实现原理</a>
       </li>
     
-      <li class="post">
-        <a href="/2017/12/12/chess-gameserver/">写了一个棋牌游戏服务器框架</a>
-      </li>
-    
   </ul>
 </section>
 <section>
@@ -710,7 +696,7 @@ Python</a>中剥离出来的一个项目，可以作为官方CPython的一个扩
 </section>
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.53846153846153%'>game develop(5)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 120.76923076923077%'>other(9)</a> <a href='/categories/python' style='font-size: 102.3076923076923%'>python(1)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> <a href='/categories/dan-xing-diao-du' style='font-size: 106.92307692307692%'>弹性调度(3)</a> </span>
+    <span id="tag-cloud"><a href='/categories/c-slash-c-plus-plus' style='font-size: 160.0%'>c/c++(26)</a> <a href='/categories/clang' style='font-size: 102.3076923076923%'>clang(1)</a> <a href='/categories/erlang' style='font-size: 118.46153846153845%'>erlang(8)</a> <a href='/categories/game-develop' style='font-size: 111.53846153846153%'>game develop(5)</a> <a href='/categories/ice' style='font-size: 104.61538461538461%'>ice(2)</a> <a href='/categories/java' style='font-size: 127.6923076923077%'>java(12)</a> <a href='/categories/javascript' style='font-size: 106.92307692307692%'>javascript(3)</a> <a href='/categories/lisp' style='font-size: 111.53846153846153%'>lisp(5)</a> <a href='/categories/lua' style='font-size: 111.53846153846153%'>lua(5)</a> <a href='/categories/module' style='font-size: 106.92307692307692%'>module(3)</a> <a href='/categories/network' style='font-size: 130.0%'>network(13)</a> <a href='/categories/other' style='font-size: 120.76923076923077%'>other(9)</a> <a href='/categories/python' style='font-size: 102.3076923076923%'>python(1)</a> <a href='/categories/ruby' style='font-size: 109.23076923076923%'>ruby(4)</a> <a href='/categories/scala' style='font-size: 102.3076923076923%'>scala(1)</a> <a href='/categories/tips' style='font-size: 148.46153846153845%'>tips(21)</a> <a href='/categories/web' style='font-size: 109.23076923076923%'>web(4)</a> <a href='/categories/dan-xing-diao-du' style='font-size: 109.23076923076923%'>弹性调度(4)</a> </span>
 </section>
 
   

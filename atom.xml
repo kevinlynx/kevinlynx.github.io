@@ -4,7 +4,7 @@
   <title><![CDATA[loop in codes]]></title>
   <link href="http://codemacro.com/atom.xml" rel="self"/>
   <link href="http://codemacro.com/"/>
-  <updated>2018-05-08T12:22:02+00:00</updated>
+  <updated>2018-05-30T04:22:05+00:00</updated>
   <id>http://codemacro.com/</id>
   <author>
     <name><![CDATA[Kevin Lynx]]></name>
@@ -12,6 +12,461 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Kubernete APIServer Sample]]></title>
+    <link href="http://codemacro.com/2018/05/30/kube_apiserver_sample/"/>
+    <updated>2018-05-30T00:00:00+00:00</updated>
+    <id>http://codemacro.com/2018/05/30/kube_apiserver_sample</id>
+    <content type="html"><![CDATA[<p>kubernetes从apiserver中独立出来了一个项目：<a href="https://github.com/kubernetes/apiserver">apiserver</a>，可以基于这个库快速实现一个类似kubernetes apiserver的服务。</p>
+
+<blockquote><blockquote><p>Generic library for building a Kubernetes aggregated API server.</p></blockquote></blockquote>
+
+<p>如果直接阅读kubenetes的apiserver源码，会发现很多实现都位于这个项目中。kubenetes源码目录下还有个<a href="https://github.com/kubernetes/sample-apiserver">sample-apiserver</a>，是用于示例如何使用这个库的。从这个sample可以更快速地了解kubernetes apiserver的实现，以及如何使用。</p>
+
+<p>简单来说，这个apiserver库做了很多抽象，基本上，用户只需要描述自己的资源结构是怎样的，就可以构建出一个类似kubernetes的apiserver，具备资源多版本兼容能力，对外提供json/yaml的http restful接口，并持久化到etcd中。接下来主要讲下大概的用法以及apiserver中的主要概念。</p>
+
+<h2>apiserver简介</h2>
+
+<p>apiserver简单来说，可以理解为一个基于etcd，并提供HTTP接口的对象(资源)系统。其提供了针对多种资源的操作，例如CRUD、列表读取、状态读取。kubernetes中POD、Deployment、Service，都是资源，可以说kubernetes所有组件都是围绕着资源运作的。apiserver库本身是不提供任何资源的，它做了很多抽象，使得应用层可以根据自己需要添加各种资源。同时，apiserver支持相同资源多个版本的存在。</p>
+
+<p>为了更容易地理解apiserver的设计，可以先自己思考如何实现出这样一个通用的资源服务框架，例如，可能需要解决以下问题：</p>
+
+<ul>
+<li>HTTP接口层，根据资源名映射出不同的URI，如何统一地从HTTP请求中创建出不同类型的资源</li>
+<li>不同的资源支持的操作不同，如何区分</li>
+<li>资源的多版本如何实现</li>
+<li>资源如何统一地序列化存储到etcd中</li>
+</ul>
+
+
+<!-- more -->
+
+
+<h2>核心概念</h2>
+
+<p>在看例子代码之前，有必要提一下apiserver中的一些关键概念。</p>
+
+<ul>
+<li>Storage</li>
+</ul>
+
+
+<p>Storage连接底层存储etcd与HTTP route。apiserver库中会自动注册各种资源对应的HTTP route。在route的处理中则会调用storage的接口。storage是分类型的，其通过检查是否实现了某个golang接口来确定其类型，例如在apiserver的代码中：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>//(a *APIInstaller) registerResourceHandlers
+</span><span class='line'>
+</span><span class='line'>creater, isCreater := storage.(rest.Creater)
+</span><span class='line'>namedCreater, isNamedCreater := storage.(rest.NamedCreater)
+</span><span class='line'>lister, isLister := storage.(rest.Lister)
+</span><span class='line'>getter, isGetter := storage.(rest.Getter)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>通过确定某个资源的storage类型，以确定该资源支持哪些动作，apiserver中叫HTTP verb。</p>
+
+<ul>
+<li>Scheme</li>
+</ul>
+
+
+<p>Scheme用于描述一种资源的结构，就像可以用一段JSON描述一个对象的结构一样。Scheme可以描述一种资源如何被创建；资源不同版本间如何转换；某个版本的资源如何向internal资源转换。通常会看到类似的注册：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// 注册资源类型
+</span><span class='line'>scheme.AddKnownTypes(SchemeGroupVersion,
+</span><span class='line'>  &Flunder{},
+</span><span class='line'>  &FlunderList{},
+</span><span class='line'>  &Fischer{},
+</span><span class='line'>  &FischerList{},
+</span><span class='line'>)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Scheme 会在很多地方被用到，可以理解为其实它就是一种隔离具体数据类型的机制。作为一个库，要支持应用层注册不同类型的资源，就需要与应用层建立资源的契约：应用层如何让框架层知道某个具体的资源长什么样，在诸如存储、编解码、版本转换等问题上如何提供给框架特有的信息。</p>
+
+<ul>
+<li>Codec</li>
+</ul>
+
+
+<p>Codec和上面的Scheme密不可分。Codec利用Scheme在HTTP请求及回应中对一个资源做编解码。这其中又会涉及到Serializer之类的概念，主要也是利用Scheme来支持类似yaml/json这些不同的请求格式。Codec基本对应用层透明。</p>
+
+<p>这里把上面3个概念串通：HTTP请求来时，利用Codec基于Scheme将具体的资源反序列化出来，最后交给Storage持久化到etcd中；反之，当读取资源时，通过Storage从etcd中基于Scheme/Codec读取资源，最后Codec到HTTP Response中。</p>
+
+<ul>
+<li>版本及Group</li>
+</ul>
+
+
+<p>apiserver中对不同的资源做了分组，这里暂时不关心。相同资源可以有不同的版本并存。值得注意的是，apiserver内部有一个internal版本的概念。internal版本负责与Storage交互，从而隔离Storage与不同版本资源的依赖。不同版本的资源都可以与internal版本转换，不同版本之间的转换则通过internal版本间接转换。</p>
+
+<h2>样例</h2>
+
+<p>通过<a href="https://github.com/kubernetes/sample-apiserver">sample-apiserver</a>，可以理解apiserver的接口。看下sample-apiserver的源码结构：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// kubernetes/staging/src/k8s.io/sample-apiserver
+</span><span class='line'>pkg/
+</span><span class='line'>├── admission
+</span><span class='line'>├── apis
+</span><span class='line'>│   └── wardle
+</span><span class='line'>│       ├── install
+</span><span class='line'>│       └── v1alpha1
+</span><span class='line'>├── apiserver
+</span><span class='line'>├── client
+</span><span class='line'>├── cmd
+</span><span class='line'>│   └── server
+</span><span class='line'>└── registry
+</span><span class='line'>    └── wardle
+</span><span class='line'>        ├── fischer
+</span><span class='line'>        └── flunder</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中，核心的目录主要包括：</p>
+
+<ul>
+<li>cmd/apiserver，基本上相当于程序入口，其中会初始化整个框架</li>
+<li>register，Storage相关部分</li>
+<li>apis，定义具体的资源类型，初始化Scheme</li>
+</ul>
+
+
+<p>要通过apiserver构建出一个类似kubernetes的apiserver，大概要完成以下步骤：</p>
+
+<ul>
+<li>初始化框架，可以理解为如何把apiserver跑起来</li>
+<li>Storage，为不同group不同版本定义好Storage，有很多工具类可以直接使用</li>
+<li>Scheme，定义资源的Scheme，告知框架资源长什么样</li>
+</ul>
+
+
+<p>基于以上过程，接下来看下sample-apiserver如何完成的。</p>
+
+<h3>启动过程</h3>
+
+<p>程序入口从<code>cmd</code>包中看，然后会到<code>apiserver</code>包。核心的代码主要在apiserver.go中<code>func (c completedConfig) New()</code>。其中核心的对象是<code>genericapiserver.GenericAPIServer</code>。拿到该对象时，就可以run起来：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// cmd/server/start.go
+</span><span class='line'>
+</span><span class='line'>return server.GenericAPIServer.PrepareRun().Run(stopCh)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中，拿到<code>GenericAPIServer</code>后最重要的就是安装资源的Storage：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// apiserver/apiserver.go
+</span><span class='line'>
+</span><span class='line'>apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(wardle.GroupName, registry, Scheme, metav1.ParameterCodec, Codecs)
+</span><span class='line'>apiGroupInfo.GroupMeta.GroupVersion = v1alpha1.SchemeGroupVersion
+</span><span class='line'>v1alpha1storage := map[string]rest.Storage{}
+</span><span class='line'>v1alpha1storage["flunders"] = wardleregistry.RESTInPeace(flunderstorage.NewREST(Scheme, c.GenericConfig.RESTOptionsGetter))
+</span><span class='line'>v1alpha1storage["fischers"] = wardleregistry.RESTInPeace(fischerstorage.NewREST(Scheme, c.GenericConfig.RESTOptionsGetter))
+</span><span class='line'>apiGroupInfo.VersionedResourcesStorageMap["v1alpha1"] = v1alpha1storage
+</span><span class='line'>
+</span><span class='line'>if err := s.GenericAPIServer.InstallAPIGroup(&apiGroupInfo); err != nil {
+</span><span class='line'>  return nil, err
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面的代码中，<code>apiGroupInfo</code>保存了单个Group下多个Version的资源Storage，关键数据成员是<code>VersionedResourcesStorageMap</code>，这个例子代码表示：</p>
+
+<ul>
+<li>有1个Version: v1alpha1</li>
+<li>该Version下有2个资源：flunders，fischers</li>
+<li>为每个资源配置对应的Storage</li>
+</ul>
+
+
+<h3>Storage</h3>
+
+<p>Storage如何构建，就可以继续跟下<code>wardleregistry.RESTInPeace</code>。这部分代码主要在<code>registry</code>下。核心的实现在<code>NewRest</code>中，如：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// pkg/registry/wardle/fischer/etcd.go 
+</span><span class='line'>
+</span><span class='line'>store := &genericregistry.Store{
+</span><span class='line'>  NewFunc:                  func() runtime.Object { return &wardle.Fischer{} },
+</span><span class='line'>  NewListFunc:              func() runtime.Object { return &wardle.FischerList{} },
+</span><span class='line'>  PredicateFunc:            MatchFischer,
+</span><span class='line'>  DefaultQualifiedResource: wardle.Resource("fischers"),
+</span><span class='line'>
+</span><span class='line'>  CreateStrategy: strategy,
+</span><span class='line'>  UpdateStrategy: strategy,
+</span><span class='line'>  DeleteStrategy: strategy,
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>要构建storage，其实只要使用<code>genericregistry.Store</code>即可。这里可以针对一些主要数据成员做下说明。<code>NewFunc</code>返回的对象，会被用于响应REST接口，例如通过API获取一个资源时，就会先<code>NewFunc</code>获取到一个空的资源对象，然后由具体的存储实现(如etcd)来填充这个资源。举个例子，<code>genericregistry.Store.Get</code>会直接被HTTP route调用，其实现大概为：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// kubernetes/vendor/k8s.io/apiserver/pkg/registry/generic/registry/store.go
+</span><span class='line'>
+</span><span class='line'>func (e *Store) Get(ctx genericapirequest.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
+</span><span class='line'>  obj := e.NewFunc()
+</span><span class='line'>  key, err := e.KeyFunc(ctx, name)
+</span><span class='line'>  ...
+</span><span class='line'>  if err := e.Storage.Get(ctx, key, options.ResourceVersion, obj, false); err != nil {
+</span><span class='line'>      return nil, storeerr.InterpretGetError(err, e.qualifiedResourceFromContext(ctx), name)
+</span><span class='line'>  }
+</span><span class='line'>...
+</span><span class='line'>}
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>以上，<code>e.Storage</code>就是具体的存储实现，例如etcd2，而<code>obj</code>传入进去是作为输出参数。在创建资源时，<code>NewFunc</code>出来的对象，也是用于<code>e.Storage</code>从etcd存储中读取的对象，作为输出用。</p>
+
+<h3>Scheme</h3>
+
+<p>前面看到<code>apiserver.go</code>中时，除了创建<code>GenericAPIServer</code>外，还存在包的<code>init</code>实现，即该包被import时执行的动作。这个动作，主要就是用来处理Scheme相关事宜。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// pkg/apiserver/apiserver.go
+</span><span class='line'>func init() {
+</span><span class='line'>  install.Install(groupFactoryRegistry, registry, Scheme)
+</span><span class='line'>  ...
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>同时注意<code>apiserver.go</code> 中定义的全局变量：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>var (
+</span><span class='line'>...
+</span><span class='line'>  Scheme               = runtime.NewScheme()
+</span><span class='line'>  Codecs               = serializer.NewCodecFactory(Scheme)
+</span><span class='line'>)</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>install.Install</code>的实现比较典型，kubernetes自身的apiserver中也有很多类似的注册代码。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// pkg/apis/wardle/install/install.go
+</span><span class='line'>
+</span><span class='line'>  if err := announced.NewGroupMetaFactory(
+</span><span class='line'>      &announced.GroupMetaFactoryArgs{
+</span><span class='line'>          GroupName:                  wardle.GroupName,
+</span><span class='line'>          RootScopedKinds:            sets.NewString("Fischer", "FischerList"),
+</span><span class='line'>          VersionPreferenceOrder:     []string{v1alpha1.SchemeGroupVersion.Version},
+</span><span class='line'>          AddInternalObjectsToScheme: wardle.AddToScheme,
+</span><span class='line'>      },
+</span><span class='line'>      announced.VersionToSchemeFunc{
+</span><span class='line'>          v1alpha1.SchemeGroupVersion.Version: v1alpha1.AddToScheme,
+</span><span class='line'>      },
+</span><span class='line'>  ).Announce(groupFactoryRegistry).RegisterAndEnable(registry, scheme); err != nil {
+</span><span class='line'>      panic(err)
+</span><span class='line'>  }</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>RegisterAndEnable</code>最终完成各种资源类型注册到Scheme中。在<code>install.go</code>中import里还要注意<code>register.go</code>中的init初始化：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// pkg/apis/wardle/v1alpha1/register.go
+</span><span class='line'>
+</span><span class='line'>var (
+</span><span class='line'>  localSchemeBuilder = &SchemeBuilder
+</span><span class='line'>  AddToScheme        = localSchemeBuilder.AddToScheme
+</span><span class='line'>)
+</span><span class='line'>
+</span><span class='line'>func init() {
+</span><span class='line'>  localSchemeBuilder.Register(addKnownTypes)
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>func addKnownTypes(scheme *runtime.Scheme) error {
+</span><span class='line'>  scheme.AddKnownTypes(SchemeGroupVersion,
+</span><span class='line'>      &Flunder{},
+</span><span class='line'>      &FlunderList{},
+</span><span class='line'>      &Fischer{},
+</span><span class='line'>      &FischerList{},
+</span><span class='line'>  )
+</span><span class='line'>  metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
+</span><span class='line'>  return nil
+</span><span class='line'>}
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>SchemeBuilder</code> 其实就是个function列表，在前面的<code>RegisterAndEnable</code>中最终会传递Scheme对象到这个函数列表中的每个函数，也就会执行到上面的<code>addKnownTypes</code>。除了注册资源类型外，在类似 <code>zz_generated.conversion.go</code>文件中还通过init自动注册了各种转换函数。</p>
+
+<p>Scheme的工作原理比较复杂，这个改天有机会讲。回过头来看Scheme的用法，其实主要就是告诉框架层这个对象长什么样，实现上就是传了个空对象指针进去。</p>
+
+<h3>Codec与Scheme</h3>
+
+<p>前面的全局变量中就涉及到Codec，可以看出是依赖了Scheme的。可以稍微进去看看底层实现，例如：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// k8s.io/apimachinery/pkg/runtime/serializer/codec_factory.go
+</span><span class='line'>func NewCodecFactory(scheme *runtime.Scheme) CodecFactory {
+</span><span class='line'>  serializers := newSerializersForScheme(scheme, json.DefaultMetaFactory)
+</span><span class='line'>  return newCodecFactory(scheme, serializers)
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中，<code>newSerializersForScheme</code> 就根据scheme创建了json/yaml的Serializer，可以理解为用于解析HTTP请求，创建对应的资源。从这里可以看看Serializer是如何工作的，如何与Scheme关联的，例如Serializer必然会被用于解析HTTP请求：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// k8s.io/apimachinery/pkg/runtime/serializer/json/json.go
+</span><span class='line'>
+</span><span class='line'>// 可以推测originalData就是HTTP请求内容
+</span><span class='line'>func (s *Serializer) Decode(originalData []byte, gvk *schema.GroupVersionKind, into runtime.Object) (runtime.Object, *schema.GroupVersionKind, error) {
+</span><span class='line'>  ...
+</span><span class='line'>  obj, err := runtime.UseOrCreateObject(s.typer, s.creater, *actual, into)
+</span><span class='line'>  ...
+</span><span class='line'>  // 拿到一个空的资源对象后，直接用json解析
+</span><span class='line'>  if err := jsoniter.ConfigCompatibleWithStandardLibrary.Unmarshal(data, obj); err != nil {
+</span><span class='line'>  ...
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>// 这里的ObjectTyper/ObjectCreater都是Scheme
+</span><span class='line'>func UseOrCreateObject(t ObjectTyper, c ObjectCreater, gvk schema.GroupVersionKind, obj Object) (Object, error) {
+</span><span class='line'>  ...
+</span><span class='line'>  // 最终根据gvk (group version kind) 创建具体的资源
+</span><span class='line'>  return c.New(gvk)
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>以上可以看出Scheme其实并没有什么神秘的地方，有点像一种factory的模式，用于避免框架层对应用层具体类型的依赖：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>objPtr := factory.New()
+</span><span class='line'>json.Unmarshal(data, objPtr)</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>总结</h2>
+
+<p>kubernetes apiserver 库虽然是个独立的library，但是使用起来却不容易，也没有什么文档。所以这里仅仅是通过分析其源码，了解apiserver内部的一些概念，方便阅读kubernetes自己的apiserver实现，以及深入apiserver库的实现。</p>
+
+<p class='post-footer'>
+            原文地址：
+            <a href='http://codemacro.com/2018/05/30/kube_apiserver_sample/'>http://codemacro.com/2018/05/30/kube_apiserver_sample/</a><br/>
+            written by <a href='http://codemacro.com'>Kevin Lynx</a>
+            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
+            </p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[kubernetes网络相关总结]]></title>
@@ -4166,190 +4621,6 @@ GET /index.jsp com.codemacro.webdemo.test.TestController.template
 <p class='post-footer'>
             原文地址：
             <a href='http://codemacro.com/2015/06/07/servlet-web-framework/'>http://codemacro.com/2015/06/07/servlet-web-framework/</a><br/>
-            written by <a href='http://codemacro.com'>Kevin Lynx</a>
-            &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
-            </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Java中的反射及Bean容器的实现]]></title>
-    <link href="http://codemacro.com/2015/05/31/java-refect-ioc/"/>
-    <updated>2015-05-31T00:00:00+00:00</updated>
-    <id>http://codemacro.com/2015/05/31/java-refect-ioc</id>
-    <content type="html"><![CDATA[<p>编程语言中的反射(Refection)指的是可以在程序运行期动态加载一个类。与之相关的是自省(Introspection)，这个指的是程序自己可以获取一个类型的描述信息，例如获取一个类的所有接口定义、一个接口的所有形参。当编程语言有了这些语言特性之后，可以在很大程度上解决代码耦合问题，所以在Java的世界里，可以看到很多库/框架使用了反射技术。</p>
-
-<p>类似Spring的Bean容器实现就是大量运用了反射机制。Bean容器维护了一些Bean对象，简单来说就是一些普通对象。Bean容器可以根据配置创建这些对象，创建时如果这些对象依赖了其他对象，Bean容器还会负责将依赖的对象注入到目标对象中，也就是所谓的依赖注入(dependence injection)。放在模块设计中，又衍生出控制反转(IoC, Inverse of Control)概念，用于描述应用程序在使用一个框架时，不是框架来控制/限制应用程序的架构模式，而是由应用程序来控制框架。</p>
-
-<p>本文就简单描述下Bean容器是如何使用反射来实现的，最终代码参考<a href="https://github.com/kevinlynx/ioc-sample">github ioc-sample</a></p>
-
-<h2>类的动态加载</h2>
-
-<p>可以简单地使用<code>Class.forName</code>，传入某个class的完整名：</p>
-
-<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">loadClass</span><span class="o">(</span><span class="n">String</span> <span class="n">fullName</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">ClassNotFoundException</span> <span class="o">{</span>
-  <span class="k">return</span> <span class="n">Class</span><span class="o">.</span><span class="na">forName</span><span class="o">(</span><span class="n">fullName</span><span class="o">);</span>
-<span class="o">}</span></code></pre></div>
-
-
-<p>类的加载涉及到class loader，这块内容是可以进一步深化的。加载了类之后就可以创建出类的实例，但还没有完成依赖注入的功能：</p>
-
-<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">c</span> <span class="o">=</span> <span class="n">loadClass</span><span class="o">(</span><span class="s">&quot;com.codemacro.bean.test.Test1&quot;</span><span class="o">);</span>
-<span class="n">Object</span> <span class="n">o</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">newInstance</span><span class="o">();</span></code></pre></div>
-
-
-
-
-<!-- more -->
-
-
-<h2>通过set接口注入</h2>
-
-<p>我们的类可以包含<code>set</code>接口，用于设置某个成员：</p>
-
-<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Test2</span> <span class="o">{</span>
-  <span class="kd">public</span> <span class="n">Test1</span> <span class="n">test1</span><span class="o">;</span>
-  
-  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setTest1</span><span class="o">(</span><span class="n">Test1</span> <span class="n">t</span><span class="o">)</span> <span class="o">{</span>
-    <span class="n">test1</span> <span class="o">=</span> <span class="n">t</span><span class="o">;</span>
-  <span class="o">}</span>
-<span class="o">}</span></code></pre></div>
-
-
-<p>那么可以通过<code>setXXX</code>接口将<code>Test1</code>注入到<code>Test2</code>中：</p>
-
-<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="c1">// props指定哪些成员需要注入，例如{&quot;Test1&quot;, &quot;test1&quot;}，Test1指的是setTest1，test1指的是bean名字</span>
-<span class="kd">public</span> <span class="n">Object</span> <span class="nf">buildWithSetters</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">c</span><span class="o">,</span> <span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="o">,</span> <span class="n">String</span><span class="o">&gt;</span> <span class="n">props</span><span class="o">)</span> <span class="o">{</span>
-  <span class="k">try</span> <span class="o">{</span>
-    <span class="c1">// ClassSetMethods 类获取Class&lt;?&gt;中所有setXX这种接口</span>
-    <span class="n">ClassSetMethods</span> <span class="n">setMethods</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">ClassSetMethods</span><span class="o">(</span><span class="n">c</span><span class="o">);</span>
-    <span class="n">Object</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">newInstance</span><span class="o">();</span>
-    <span class="k">for</span> <span class="o">(</span><span class="n">Map</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">String</span><span class="o">,</span> <span class="n">String</span><span class="o">&gt;</span> <span class="n">entrys</span> <span class="o">:</span> <span class="n">props</span><span class="o">.</span><span class="na">entrySet</span><span class="o">())</span> <span class="o">{</span>
-      <span class="n">String</span> <span class="n">pname</span> <span class="o">=</span> <span class="n">entrys</span><span class="o">.</span><span class="na">getKey</span><span class="o">();</span>
-      <span class="n">String</span> <span class="n">beanName</span> <span class="o">=</span> <span class="n">entrys</span><span class="o">.</span><span class="na">getValue</span><span class="o">();</span>
-      <span class="c1">// 取得setXXX这个Method</span>
-      <span class="n">Method</span> <span class="n">m</span> <span class="o">=</span> <span class="n">setMethods</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">pname</span><span class="o">);</span>
-      <span class="n">Object</span> <span class="n">val</span> <span class="o">=</span> <span class="n">getBean</span><span class="o">(</span><span class="n">beanName</span><span class="o">);</span>
-      <span class="c1">// 调用</span>
-      <span class="n">m</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">obj</span><span class="o">,</span> <span class="n">val</span><span class="o">);</span>
-    <span class="o">}</span>
-    <span class="n">beans</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">obj</span><span class="o">);</span>
-    <span class="k">return</span> <span class="n">obj</span><span class="o">;</span>
-  <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-    <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">&quot;build bean failed&quot;</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
-  <span class="o">}</span>
-<span class="o">}</span></code></pre></div>
-
-
-<p><code>ClassSetMethod</code>自省出一个Class中所有的<code>setXXX(xx)</code>接口：</p>
-
-<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="nf">ClassSetMethods</span><span class="o">(</span><span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">c</span><span class="o">)</span> <span class="o">{</span>
-  <span class="n">Method</span><span class="o">[]</span> <span class="n">methods</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">getMethods</span><span class="o">();</span>
-  <span class="k">for</span> <span class="o">(</span><span class="n">Method</span> <span class="n">m</span> <span class="o">:</span> <span class="n">methods</span><span class="o">)</span> <span class="o">{</span>
-    <span class="n">String</span> <span class="n">mname</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="na">getName</span><span class="o">();</span>
-    <span class="n">Class</span><span class="o">&lt;?&gt;[]</span> <span class="n">ptypes</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="na">getParameterTypes</span><span class="o">();</span>
-    <span class="k">if</span> <span class="o">(</span><span class="n">mname</span><span class="o">.</span><span class="na">startsWith</span><span class="o">(</span><span class="s">&quot;set&quot;</span><span class="o">)</span> <span class="o">&amp;&amp;</span> <span class="n">ptypes</span><span class="o">.</span><span class="na">length</span> <span class="o">==</span> <span class="mi">1</span> <span class="o">&amp;&amp;</span> <span class="n">m</span><span class="o">.</span><span class="na">getReturnType</span><span class="o">()</span> <span class="o">==</span> <span class="n">Void</span><span class="o">.</span><span class="na">TYPE</span><span class="o">)</span> <span class="o">{</span>
-      <span class="n">String</span> <span class="n">name</span> <span class="o">=</span> <span class="n">mname</span><span class="o">.</span><span class="na">substring</span><span class="o">(</span><span class="s">&quot;set&quot;</span><span class="o">.</span><span class="na">length</span><span class="o">());</span>
-      <span class="k">this</span><span class="o">.</span><span class="na">methods</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">m</span><span class="o">);</span>
-    <span class="o">}</span>
-  <span class="o">}</span>
-<span class="o">}</span></code></pre></div>
-
-
-<p>以上就可以看出Java中的自省能力，例如<code>Class&lt;?&gt;.getMethods</code>、<code>Method.getReturnType</code>、<code>Method.getParameterTypes</code>。</p>
-
-<h2>通过构造函数注入</h2>
-
-<p>类似于Spring中的：</p>
-
-<pre><code>&lt;bean id="exampleBean" class="examples.ExampleBean"&gt;
-  &lt;constructor-arg type="int" value="2001"/&gt;
-  &lt;constructor-arg type="java.lang.String" value="Zara"/&gt;
-</code></pre>
-
-<p>   </bean></p>
-
-<p>可以将依赖的Bean通过构造函数参数注入到目标对象中：</p>
-
-<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">params</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;();</span>
-<span class="n">params</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;test1&quot;</span><span class="o">);</span>
-<span class="n">bf</span><span class="o">.</span><span class="na">buildWithConstructor</span><span class="o">(</span><span class="s">&quot;test2&quot;</span><span class="o">,</span> <span class="n">Test2</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="n">params</span><span class="o">);</span></code></pre></div>
-
-
-<p>其实现：</p>
-
-<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="n">Object</span> <span class="nf">buildWithConstructor</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">c</span><span class="o">,</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">beanNames</span><span class="o">)</span> <span class="o">{</span>
-  <span class="k">try</span> <span class="o">{</span>
-    <span class="n">Constructor</span><span class="o">&lt;?&gt;[]</span> <span class="n">ctors</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">getConstructors</span><span class="o">();</span> <span class="c1">// 取得Class构造函数列表</span>
-    <span class="k">assert</span> <span class="n">ctors</span><span class="o">.</span><span class="na">length</span> <span class="o">==</span> <span class="mi">1</span><span class="o">;</span>
-    <span class="n">Constructor</span><span class="o">&lt;?&gt;</span> <span class="n">cc</span> <span class="o">=</span> <span class="n">ctors</span><span class="o">[</span><span class="mi">0</span><span class="o">];</span> 
-    <span class="n">Class</span><span class="o">&lt;?&gt;[]</span> <span class="n">ptypes</span> <span class="o">=</span> <span class="n">cc</span><span class="o">.</span><span class="na">getParameterTypes</span><span class="o">();</span> <span class="c1">// 取得构造函数参数类型列表</span>
-    <span class="k">assert</span> <span class="n">ptypes</span><span class="o">.</span><span class="na">length</span> <span class="o">==</span> <span class="n">beans</span><span class="o">.</span><span class="na">size</span><span class="o">();</span>
-    <span class="n">Object</span><span class="o">[]</span> <span class="n">args</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Object</span><span class="o">[</span><span class="n">ptypes</span><span class="o">.</span><span class="na">length</span><span class="o">];</span>
-    <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">beanNames</span><span class="o">.</span><span class="na">size</span><span class="o">();</span> <span class="o">++</span><span class="n">i</span><span class="o">)</span> <span class="o">{</span> 
-      <span class="n">args</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="n">getBean</span><span class="o">(</span><span class="n">beanNames</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">));</span> <span class="c1">// 构造调用构造函数的实参列表</span>
-    <span class="o">}</span>
-    <span class="n">Object</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">cc</span><span class="o">.</span><span class="na">newInstance</span><span class="o">(</span><span class="n">args</span><span class="o">);</span> <span class="c1">// 通过构造函数创建对象</span>
-    <span class="n">beans</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">obj</span><span class="o">);</span>
-    <span class="k">return</span> <span class="n">obj</span><span class="o">;</span>
-  <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-    <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">&quot;build bean failed&quot;</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
-  <span class="o">}</span>
-<span class="o">}</span></code></pre></div>
-
-
-<p>这个接口的使用约定<code>beanNames</code>保存的是bean名称，并与构造函数参数一一对应。</p>
-
-<h2>通过注解注入</h2>
-
-<p>我们可以通过注解标注某个数据成员是需要被自动注入的。我这里简单地获取注解标注的成员类型，找到该类型对应的Bean作为注入对象。当然复杂点还可以指定要注入Bean的名字，或自动查找类型的派生类实现。</p>
-
-<p>一个空的注解即可：</p>
-
-<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="nd">@Retention</span><span class="o">(</span><span class="n">RetentionPolicy</span><span class="o">.</span><span class="na">RUNTIME</span><span class="o">)</span>
-<span class="nd">@Target</span><span class="o">(</span><span class="n">ElementType</span><span class="o">.</span><span class="na">FIELD</span><span class="o">)</span>
-<span class="kd">public</span> <span class="nd">@interface</span> <span class="n">Inject</span> <span class="o">{</span>
-<span class="o">}</span></code></pre></div>
-
-
-<p>实现：</p>
-
-<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="n">Object</span> <span class="nf">buildWithInject</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">c</span><span class="o">)</span> <span class="o">{</span>
-  <span class="k">try</span> <span class="o">{</span>
-    <span class="n">Object</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">newInstance</span><span class="o">();</span>
-    <span class="n">Field</span><span class="o">[]</span> <span class="n">fields</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">getDeclaredFields</span><span class="o">();</span> <span class="c1">// 获取该类所有定义的成员</span>
-    <span class="k">for</span> <span class="o">(</span><span class="n">Field</span> <span class="n">f</span> <span class="o">:</span><span class="n">fields</span><span class="o">)</span> <span class="o">{</span>
-      <span class="n">Inject</span> <span class="n">inject</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="na">getAnnotation</span><span class="o">(</span><span class="n">Inject</span><span class="o">.</span><span class="na">class</span><span class="o">);</span> <span class="c1">// 获取数据成员的注解</span>
-      <span class="k">if</span> <span class="o">(</span><span class="n">inject</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span> <span class="c1">// 如果被Inject注解标注</span>
-        <span class="n">Object</span> <span class="n">bean</span> <span class="o">=</span> <span class="n">getBeanByType</span><span class="o">(</span><span class="n">f</span><span class="o">.</span><span class="na">getType</span><span class="o">());</span> <span class="c1">// 根据成员的类型找到对应的Bean</span>
-        <span class="n">f</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="n">obj</span><span class="o">,</span> <span class="n">bean</span><span class="o">);</span> <span class="c1">// 注入</span>
-      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
-        <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">&quot;not found bean &quot;</span> <span class="o">+</span> <span class="n">f</span><span class="o">.</span><span class="na">getName</span><span class="o">());</span>
-      <span class="o">}</span>
-    <span class="o">}</span>
-    <span class="n">beans</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">obj</span><span class="o">);</span>
-    <span class="k">return</span> <span class="n">obj</span><span class="o">;</span>
-  <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-    <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">&quot;build bean failed&quot;</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
-  <span class="o">}</span>
-<span class="o">}</span></code></pre></div>
-
-
-<p><code>getBeanByType</code>就是根据<code>Class</code>匹配所有的Bean。使用时：</p>
-
-<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Test2</span> <span class="o">{</span>
-  <span class="nd">@Inject</span>
-  <span class="kd">public</span> <span class="n">Test1</span> <span class="n">test1</span><span class="o">;</span>
-  <span class="o">...</span>
-<span class="o">}</span></code></pre></div>
-
-
-<p>完。</p>
-
-<p class='post-footer'>
-            原文地址：
-            <a href='http://codemacro.com/2015/05/31/java-refect-ioc/'>http://codemacro.com/2015/05/31/java-refect-ioc/</a><br/>
             written by <a href='http://codemacro.com'>Kevin Lynx</a>
             &nbsp;posted at <a href='http://codemacro.com'>http://codemacro.com</a>
             </p>
