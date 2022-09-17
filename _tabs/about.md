@@ -43,6 +43,7 @@ order: 4
 
 喜欢有闭包有高阶函数的语言。
 
+* Golang
 * C/C++(2004-今)
 * Java
 * Python
@@ -56,6 +57,8 @@ order: 4
 * 汇编(破解；C++编译器实现)
 
 ### 业余项目
+
+*大部分已经servive unavailable*
 
 * [千搜资源网](http://www.1000soso.com)，自动从网页提取BT\电驴\迅雷\磁力等下载资源，下载资源整合站点，基于爬虫及搜索引擎技术
 * [快搜美剧](http://www.ksmeiju.com)，美剧下载资源整合站点，基于爬虫及搜索引擎技术
@@ -79,7 +82,7 @@ order: 4
 
 ### 坐标
 
-杭州/成都
+成都/杭州
 
 ### 链接
 
@@ -87,7 +90,7 @@ order: 4
 
 我的cppblog：[loop_in_codes](http://www.cppblog.com/kevinlynx)
 
-我的独立blog：[loop in codes](http://codemacro.com/)
+~~我的独立blog：[loop in codes](http://codemacro.com/)~~ (由于各种原因用了10+年的codemacro.com域名不可用，2022年替换为[kevinlynx.cc](https://kevinlynx.cc))
 
 我的Github：[http://github.com/kevinlynx](http://github.com/kevinlynx)
 
