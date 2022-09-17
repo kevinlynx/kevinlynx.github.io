@@ -1,0 +1,263 @@
+<!DOCTYPE html><html lang="zh-CN" ><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><meta name="generator" content="Jekyll v4.2.2" /><meta property="og:title" content="使用Kubeadm在CentOS部署Kubernets 1.8.7" /><meta property="og:locale" content="zh_CN" /><meta name="description" content="主要参考：" /><meta property="og:description" content="主要参考：" /><link rel="canonical" href="https://kevinlynx.cc/posts/deploy-kubernetes/" /><meta property="og:url" content="https://kevinlynx.cc/posts/deploy-kubernetes/" /><meta property="og:site_name" content="Loop in Codes" /><meta property="og:type" content="article" /><meta property="article:published_time" content="2018-03-08T00:00:00+08:00" /><meta name="twitter:card" content="summary" /><meta property="twitter:title" content="使用Kubeadm在CentOS部署Kubernets 1.8.7" /><meta name="twitter:site" content="@kevinlynx" /> <script type="application/ld+json"> {"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2018-03-08T00:00:00+08:00","datePublished":"2018-03-08T00:00:00+08:00","description":"主要参考：","headline":"使用Kubeadm在CentOS部署Kubernets 1.8.7","mainEntityOfPage":{"@type":"WebPage","@id":"https://kevinlynx.cc/posts/deploy-kubernetes/"},"url":"https://kevinlynx.cc/posts/deploy-kubernetes/"}</script><title>使用Kubeadm在CentOS部署Kubernets 1.8.7 | Loop in Codes</title><link rel="apple-touch-icon" sizes="180x180" href="/assets/img/favicons/apple-touch-icon.png"><link rel="icon" type="image/png" sizes="32x32" href="/assets/img/favicons/favicon-32x32.png"><link rel="icon" type="image/png" sizes="16x16" href="/assets/img/favicons/favicon-16x16.png"><link rel="manifest" href="/assets/img/favicons/site.webmanifest"><link rel="shortcut icon" href="/assets/img/favicons/favicon.ico"><meta name="apple-mobile-web-app-title" content="Loop in Codes"><meta name="application-name" content="Loop in Codes"><meta name="msapplication-TileColor" content="#da532c"><meta name="msapplication-config" content="/assets/img/favicons/browserconfig.xml"><meta name="theme-color" content="#ffffff"><link rel="preconnect" href="https://fonts.googleapis.com" ><link rel="dns-prefetch" href="https://fonts.googleapis.com" ><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="dns-prefetch" href="https://fonts.gstatic.com" crossorigin><link rel="preconnect" href="https://fonts.googleapis.com" ><link rel="dns-prefetch" href="https://fonts.googleapis.com" ><link rel="preconnect" href="https://cdn.jsdelivr.net" ><link rel="dns-prefetch" href="https://cdn.jsdelivr.net" ><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato&family=Source+Sans+Pro:wght@400;600;700;900&display=swap"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4/dist/css/bootstrap.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.11.2/css/all.min.css"><link rel="stylesheet" href="/assets/css/style.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@1.0.1/dist/bootstrap-toc.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/magnific-popup@1/dist/magnific-popup.min.css"> <script src="https://cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js"></script> <script type="text/javascript"> class ModeToggle { static get MODE_KEY() { return "mode"; } static get MODE_ATTR() { return "data-mode"; } static get DARK_MODE() { return "dark"; } static get LIGHT_MODE() { return "light"; } static get ID() { return "mode-toggle"; } constructor() { if (this.hasMode) { if (this.isDarkMode) { if (!this.isSysDarkPrefer) { this.setDark(); } } else { if (this.isSysDarkPrefer) { this.setLight(); } } } let self = this; /* always follow the system prefers */ this.sysDarkPrefers.addEventListener("change", () => { if (self.hasMode) { if (self.isDarkMode) { if (!self.isSysDarkPrefer) { self.setDark(); } } else { if (self.isSysDarkPrefer) { self.setLight(); } } self.clearMode(); } self.notify(); }); } /* constructor() */ get sysDarkPrefers() { return window.matchMedia("(prefers-color-scheme: dark)"); } get isSysDarkPrefer() { return this.sysDarkPrefers.matches; } get isDarkMode() { return this.mode === ModeToggle.DARK_MODE; } get isLightMode() { return this.mode === ModeToggle.LIGHT_MODE; } get hasMode() { return this.mode != null; } get mode() { return sessionStorage.getItem(ModeToggle.MODE_KEY); } /* get the current mode on screen */ get modeStatus() { if (this.isDarkMode || (!this.hasMode && this.isSysDarkPrefer)) { return ModeToggle.DARK_MODE; } else { return ModeToggle.LIGHT_MODE; } } setDark() { $('html').attr(ModeToggle.MODE_ATTR, ModeToggle.DARK_MODE); sessionStorage.setItem(ModeToggle.MODE_KEY, ModeToggle.DARK_MODE); } setLight() { $('html').attr(ModeToggle.MODE_ATTR, ModeToggle.LIGHT_MODE); sessionStorage.setItem(ModeToggle.MODE_KEY, ModeToggle.LIGHT_MODE); } clearMode() { $('html').removeAttr(ModeToggle.MODE_ATTR); sessionStorage.removeItem(ModeToggle.MODE_KEY); } /* Notify another plugins that the theme mode has changed */ notify() { window.postMessage({ direction: ModeToggle.ID, message: this.modeStatus }, "*"); } } /* ModeToggle */ const toggle = new ModeToggle(); function flipMode() { if (toggle.hasMode) { if (toggle.isSysDarkPrefer) { if (toggle.isLightMode) { toggle.clearMode(); } else { toggle.setLight(); } } else { if (toggle.isDarkMode) { toggle.clearMode(); } else { toggle.setDark(); } } } else { if (toggle.isSysDarkPrefer) { toggle.setLight(); } else { toggle.setDark(); } } toggle.notify(); } /* flipMode() */ </script><body data-spy="scroll" data-target="#toc" data-topbar-visible="true"><div id="sidebar" class="d-flex flex-column align-items-end"><div class="profile-wrapper text-center"><div id="avatar"> <a href="/" class="mx-auto"> <img src="https://avatars.githubusercontent.com/u/789143?s=400&v=4" alt="avatar" onerror="this.style.display='none'"> </a></div><div class="site-title mt-3"> <a href="/">Loop in Codes</a></div><div class="site-subtitle font-italic">Kevin Lynx's BLOG</div></div><ul class="w-100"><li class="nav-item"> <a href="/" class="nav-link"> <i class="fa-fw fas fa-home ml-xl-3 mr-xl-3 unloaded"></i> <span>首页</span> </a><li class="nav-item"> <a href="/categories/" class="nav-link"> <i class="fa-fw fas fa-stream ml-xl-3 mr-xl-3 unloaded"></i> <span>分类</span> </a><li class="nav-item"> <a href="/tags/" class="nav-link"> <i class="fa-fw fas fa-tag ml-xl-3 mr-xl-3 unloaded"></i> <span>标签</span> </a><li class="nav-item"> <a href="/archives/" class="nav-link"> <i class="fa-fw fas fa-archive ml-xl-3 mr-xl-3 unloaded"></i> <span>归档</span> </a><li class="nav-item"> <a href="/about/" class="nav-link"> <i class="fa-fw ml-xl-3 mr-xl-3 unloaded"></i> <span>关于</span> </a></ul><div class="sidebar-bottom mt-auto d-flex flex-wrap justify-content-center align-items-center"> <button class="mode-toggle btn" aria-label="Switch Mode"> <i class="fas fa-adjust"></i> </button> <span class="icon-border"></span> <a href="https://github.com/kevinlynx" aria-label="github" target="_blank" rel="noopener"> <i class="fab fa-github"></i> </a> <a href="https://twitter.com/kevinlynx" aria-label="twitter" target="_blank" rel="noopener"> <i class="fab fa-twitter"></i> </a> <a href=" javascript:location.href = 'mailto:' + ['kevinlynx','gmail.com'].join('@')" aria-label="email" > <i class="fas fa-envelope"></i> </a> <a href="/feed.xml" aria-label="rss" > <i class="fas fa-rss"></i> </a></div></div><div id="topbar-wrapper"><div id="topbar" class="container d-flex align-items-center justify-content-between h-100 pl-3 pr-3 pl-md-4 pr-md-4"> <span id="breadcrumb"> <span> <a href="/"> 首页 </a> </span> <span>使用Kubeadm在CentOS部署Kubernets 1.8.7</span> </span> <i id="sidebar-trigger" class="fas fa-bars fa-fw"></i><div id="topbar-title"> 文章</div><i id="search-trigger" class="fas fa-search fa-fw"></i> <span id="search-wrapper" class="align-items-center"> <i class="fas fa-search fa-fw"></i> <input class="form-control" id="search-input" type="search" aria-label="search" autocomplete="off" placeholder="搜索..."> </span> <span id="search-cancel" >取消</span></div></div><div id="main-wrapper" class="d-flex justify-content-center"><div id="main" class="container pl-xl-4 pr-xl-4"><div class="row"><div id="core-wrapper" class="col-12 col-lg-11 col-xl-9 pr-xl-4"><div class="post pl-1 pr-1 pl-md-2 pr-md-2"><h1 data-toc-skip>使用Kubeadm在CentOS部署Kubernets 1.8.7</h1><div class="post-meta text-muted"> <span> 发表于 <em class="" data-ts="1520438400" data-df="YYYY-MM-DD" data-toggle="tooltip" data-placement="bottom"> 2018-03-08 </em> </span><div class="d-flex justify-content-between"> <span> 作者 <em> <a href="https://github.com/kevinlynx">Kevin Lynx</a> </em> </span><div> <span class="readtime" data-toggle="tooltip" data-placement="bottom" title="1492 字"> <em>8 分钟</em>阅读</span></div></div></div><div class="post-content"><p>主要参考：</p><ul><li><a href="https://v1-8.docs.kubernetes.io/docs/setup/independent/create-cluster-kubeadm/">官方文档</a><li><a href="https://my.oschina.net/xdatk/blog/895645">如何在国内愉快的安装 Kubernetes</a><li><a href="https://my.oschina.net/andylo25/blog/1618342">kubernetes 1.8.7 国内安装(kubeadm)</a></ul><p>建议都大致浏览下。这里我也是简单地记录，估计每个人遇到的细节问题不一样。</p><h2 id="环境准备"><span class="mr-2">环境准备</span><a href="#环境准备" class="anchor text-muted"><i class="fas fa-hashtag"></i></a></h2><p>我拿到手的环境docker已经ready：</p><ul><li>docker (alidocker-1.12.6.22)<li>CentOS 7</ul><p>上面博客提到的一些系统设置可以先做掉：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+</pre><td class="rouge-code"><pre>cat &lt;&lt;EOF &gt;  /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+EOF
+sysctl -p /etc/sysctl.d/k8s.conf
+</pre></table></code></div></div><p>其他一些设置：</p><ul><li>防火墙最好关闭<li>swap最好关闭<li><code class="language-plaintext highlighter-rouge">setenforce 0</code><h2 id="软件包及镜像"><span class="mr-2">软件包及镜像</span><a href="#软件包及镜像" class="anchor text-muted"><i class="fas fa-hashtag"></i></a></h2></ul><p>众所周知的局域网问题，官方的很多软件包和镜像无法获取。解决这个问题主要靠阿里云：</p><ul><li>配置yum源，由于阿里云yum源相对官方有滞后，并且各个软件包版本匹配我没有找到，所以就按照上面博客提到的，安装1.8.7，避免版本问题：</ul><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre><td class="rouge-code"><pre>cat &lt;&lt;EOF &gt; /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg
+        https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+EOF
+</pre></table></code></div></div><p>可以把包下到本地以备不时之需：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre><td class="rouge-code"><pre>yum install -y --downloadonly --downloaddir=./ kubelet-1.8.7 kubeadm-1.8.7 kubectl-1.8.7 kubernetes-cni-0.5.1
+yum install -y *.rpm
+</pre></table></code></div></div><ul><li>docker镜像问题后来我发现可以从阿里云直接拉，拉下来后通过打tag避免后续部署从google官方拉</ul><p>以下脚本内容未验证，主要注意镜像得提前拉全(上面链接的博客有写漏了)</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+</pre><td class="rouge-code"><pre>#!/bin/sh
+
+images=(kube-scheduler-amd64:v1.8.7 \
+kube-proxy-amd64:v1.8.7 \
+kube-apiserver-amd64:v1.8.7 \
+etcd-amd64:3.0.17 \
+pause-amd64:3.0 \
+k8s-dns-sidecar-amd64:1.14.5 \
+k8s-dns-kube-dns-amd64:1.14.5 \
+k8s-dns-dnsmasq-nanny-amd64:1.14.5 \
+kubernetes-dashboard-amd64:v1.8.1)
+
+for imageName in ${images[@]} ; do
+  docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName
+  docker tag registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName gcr.io/google_containers/$imageName
+  docker rmi registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName
+done
+
+# 注意这个镜像最好提前拉，看flannel的yaml描述里会用到
+docker pull quay.io/coreos/flannel:v0.9.1-amd64
+</pre></table></code></div></div><p>贴个我部署好后的镜像列表(自行忽略多余的)，方便对比：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+</pre><td class="rouge-code"><pre>$sudo docker images
+REPOSITORY                                                                          TAG                 IMAGE ID            CREATED             SIZE
+registry.cn-hangzhou.aliyuncs.com/google_containers/kubernetes-dashboard-amd64      v1.8.3              0c60bcf89900        3 weeks ago         102.3 MB
+gcr.io/google_containers/kubernetes-dashboard-amd64                                 v1.8.1              63c78846e37b        4 weeks ago         120.7 MB
+gcr.io/google_containers/k8s-dns-dnsmasq-nanny-amd64                                1.14.5              6d7cc6e484b3        4 weeks ago         41.42 MB
+gcr.io/google_containers/k8s-dns-kube-dns-amd64                                     1.14.5              33072cb8c892        4 weeks ago         49.38 MB
+gcr.io/google_containers/k8s-dns-sidecar-amd64                                      1.14.5              e1414b167ca6        4 weeks ago         41.81 MB
+gcr.io/google_containers/pause-amd64                                                3.0                 8ca66ae4813a        4 weeks ago         746.9 kB
+gcr.io/google_containers/etcd-amd64                                                 3.0.17              10010bfa0a74        4 weeks ago         168.9 MB
+gcr.io/google_containers/kube-scheduler-amd64                                       v1.8.7              906029e1500b        4 weeks ago         55.13 MB
+gcr.io/google_containers/kube-apiserver-amd64                                       v1.8.7              c3bb648343de        4 weeks ago         194.7 MB
+gcr.io/google_containers/kube-proxy-amd64                                           v1.8.7              125dec6bd8f2        7 weeks ago         93.36 MB
+registry.cn-hangzhou.aliyuncs.com/google_containers/kube-proxy-amd64                v1.8.7              125dec6bd8f2        7 weeks ago         93.36 MB
+gcr.io/google_containers/kube-controller-manager-amd64                              v1.8.7              d8df883aabf9        7 weeks ago         129.6 MB
+registry.cn-hangzhou.aliyuncs.com/google_containers/kube-controller-manager-amd64   v1.8.7              d8df883aabf9        7 weeks ago         129.6 MB
+quay.io/coreos/flannel                                                              v0.9.1-amd64        2b736d06ca4c        3 months ago        51.31 MB
+
+</pre></table></code></div></div><h2 id="启动master"><span class="mr-2">启动master</span><a href="#启动master" class="anchor text-muted"><i class="fas fa-hashtag"></i></a></h2><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre><td class="rouge-code"><pre>systemctl enable kubelet
+systemctl start kubelet
+</pre></table></code></div></div><p>注意，这里官方文档也提到了，需要确认docker的cgroup配置与kubelet的一致：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre><td class="rouge-code"><pre>docker info | grep -i cgroup
+cat /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+</pre></table></code></div></div><p>不一致改成一致。例如：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre><td class="rouge-code"><pre>sed -i "s/cgroup-driver=systemd/cgroup-driver=cgroupfs/g" /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+</pre></table></code></div></div><p>配置有变更需要重启kubelet：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre><td class="rouge-code"><pre>systemctl daemon-reload
+systemctl restart kubelet
+</pre></table></code></div></div><p><code class="language-plaintext highlighter-rouge">systemctl status kubelet</code>查看日志会发现里面有warning/error级别的日志，所以出问题时很容易被误解。</p><p>按照官方文档，在这一步时，kubelet会不断重启，所以这个时候可以继续，准备初始化master：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+</pre><td class="rouge-code"><pre>#!/bin/bash
+kubeadm init --kubernetes-version=v1.8.7 --pod-network-cidr 10.244.0.0/16
+
+mkdir -p $HOME/.kube
+cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+chown $(id -u):$(id -g) $HOME/.kube/config
+
+kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.9.1/Documentation/kube-flannel.yml
+</pre></table></code></div></div><p>注意上面flannel的版本与前面的链接不同，v0.9.1测试可用。当flannel启动后，kubelet就会发现这个CNI实现，从而趋于成功运行状态。</p><p>可以通过以下命令来确认master是否真的初始化成功：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+</pre><td class="rouge-code"><pre>$sudo kubectl get node
+NAME                 STATUS    ROLES     AGE       VERSION
+v101083237zsqazzmf   Ready     master    12m       v1.8.7
+
+$sudo kubectl get pod --all-namespaces
+NAMESPACE     NAME                                         READY     STATUS    RESTARTS   AGE
+kube-system   etcd-v101083237zsqazzmf                      1/1       Running   0          11m
+kube-system   kube-apiserver-v101083237zsqazzmf            1/1       Running   0          11m
+kube-system   kube-controller-manager-v101083237zsqazzmf   1/1       Running   0          11m
+kube-system   kube-dns-545bc4bfd4-f7hsx                    3/3       Running   0          11m
+kube-system   kube-flannel-ds-d6z78                        1/1       Running   5          6m
+kube-system   kube-proxy-z88cd                             1/1       Running   0          11m
+kube-system   kube-scheduler-v101083237zsqazzmf            1/1       Running   0          11m
+
+$sudo kubectl get cs
+NAME                 STATUS    MESSAGE              ERROR
+controller-manager   Healthy   ok                   
+scheduler            Healthy   ok                   
+etcd-0               Healthy   {"health": "true"}  
+
+</pre></table></code></div></div><p>master初始成功会返回加入node的token，例如：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre><td class="rouge-code"><pre>kubeadm join --token 795c0c.c5a1b252c2d23a0c 10.101.83.237:6443 --discovery-token-ca-cert-hash sha256:1c7760c9f02e2f058de3f6bc759e85316b65376cfcc83d975ea6c64ac2175ecc
+</pre></table></code></div></div><p>注意token默认24小时过期。如果在这个过程中始终有问题，可以做reset回到干净状态：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre><td class="rouge-code"><pre>kubeadm reset
+</pre></table></code></div></div><h2 id="部署node及加入"><span class="mr-2">部署node及加入</span><a href="#部署node及加入" class="anchor text-muted"><i class="fas fa-hashtag"></i></a></h2><ul><li>系统设置同上<li>前面提到的软件需要安装<li>镜像只需要部分<li>运行kubelet的cgroup设置参考前面</ul><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+</pre><td class="rouge-code"><pre>images=(kube-proxy-amd64:v1.8.7 \
+pause-amd64:3.0 \
+kubernetes-dashboard-amd64:1.8.1)
+images=(kube-proxy-amd64:v1.8.7)
+for imageName in ${images[@]} ; do
+  docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName
+  docker tag registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName gcr.io/google_containers/$imageName
+  docker rmi registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName
+done
+</pre></table></code></div></div><p>贴下镜像列表：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+</pre><td class="rouge-code"><pre>$sudo docker images
+REPOSITORY                                                                       TAG                 IMAGE ID            CREATED             SIZE
+registry.cn-hangzhou.aliyuncs.com/google_containers/kubernetes-dashboard-amd64   v1.8.3              0c60bcf89900        3 weeks ago         102.3 MB
+gcr.io/google_containers/kube-proxy-amd64                                        v1.8.7              263b722c47c1        4 weeks ago         93.36 MB
+gcr.io/google_containers/pause-amd64                                             3.0                 8ca66ae4813a        4 weeks ago         746.9 kB
+gcr.io/google_containers/kubernetes-dashboard-amd64                              1.8.1               758ae6af38ca        5 weeks ago         120.7 MB
+quay.io/coreos/flannel                                                           v0.9.1-amd64        2b736d06ca4c        3 months ago        51.31 MB
+</pre></table></code></div></div><p>最后使用<code class="language-plaintext highlighter-rouge">kubeadm join xxxx</code> (部署master时会返回)加入网络。加入后在master端可以确认：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre><td class="rouge-code"><pre>$sudo kubectl get nodes
+NAME                 STATUS    ROLES     AGE       VERSION
+v101083225zsqazzmf   Ready     &lt;none&gt;    2h        v1.8.7
+v101083237zsqazzmf   Ready     master    3h        v1.8.7
+</pre></table></code></div></div><h2 id="部署dashboard"><span class="mr-2">部署dashboard</span><a href="#部署dashboard" class="anchor text-muted"><i class="fas fa-hashtag"></i></a></h2><p>高版本的dashboard出于安全考虑，访问方式发生了变更，需要处理鉴权相关的问题。验证token的方式测试不成功，使用HTTP协议的方式也不成功。最后成功的方式如下：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre><td class="rouge-code"><pre># commit 9159b005f65b21bd6b7156ccabd92f9e50c11333
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/master/src/deploy/recommended/kubernetes-dashboard.yaml
+</pre></table></code></div></div><p><strong>注意</strong> 替换里面的镜像地址，可以直接在阿里云找对应镜像。</p><p>参考<a href="https://stackoverflow.com/questions/46664104/how-to-sign-in-kubernetes-dashboard">stackoverflow</a> 最后一种方法：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+</pre><td class="rouge-code"><pre>$ cat &lt;&lt;EOF | kubectl create -f -
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: kubernetes-dashboard
+  labels:
+    k8s-app: kubernetes-dashboard
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: kubernetes-dashboard
+  namespace: kube-system
+EOF
+</pre></table></code></div></div><p>最后启动proxy，默认端口8001：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre><td class="rouge-code"><pre># 不加disable-filter浏览器端无法访问
+kubectl proxy --address `hostname -i` --disable-filter=true
+</pre></table></code></div></div><p>浏览器端即可访问：<code class="language-plaintext highlighter-rouge">http://10.101.83.237:8001/ui</code> 会重定向到新的URI。</p><h2 id="测试"><span class="mr-2">测试</span><a href="#测试" class="anchor text-muted"><i class="fas fa-hashtag"></i></a></h2><p>可以参考官方的例子<a href="https://v1-8.docs.kubernetes.io/docs/tasks/run-application/run-stateless-application-deployment/">stateless application sample</a> 进行测试。这一步很顺利没有什么问题。同样，注意配置中镜像地址的修改。</p></div><div class="post-tail-wrapper text-muted"><div class="post-meta mb-3"> <i class="far fa-folder-open fa-fw mr-1"></i> <a href='/categories/%E5%BC%B9%E6%80%A7%E8%B0%83%E5%BA%A6/'>弹性调度</a></div><div class="post-tags"> <i class="fa fa-tags fa-fw mr-1"></i> <a href="/tags/kubernetes/" class="post-tag no-text-decoration" >kubernetes</a></div><div class="post-tail-bottom d-flex justify-content-between align-items-center mt-3 pt-5 pb-2"><div class="license-wrapper"> 本文由作者按照 <a href="https://creativecommons.org/licenses/by/4.0/"> CC BY 4.0 </a> 进行授权</div><div class="share-wrapper"> <span class="share-label text-muted mr-1">分享</span> <span class="share-icons"> <a href="https://twitter.com/intent/tweet?text=%E4%BD%BF%E7%94%A8Kubeadm%E5%9C%A8CentOS%E9%83%A8%E7%BD%B2Kubernets+1.8.7+-+Loop+in+Codes&url=https%3A%2F%2Fkevinlynx.cc%2Fposts%2Fdeploy-kubernetes%2F" data-toggle="tooltip" data-placement="top" title="Twitter" target="_blank" rel="noopener" aria-label="Twitter"> <i class="fa-fw fab fa-twitter"></i> </a> <a href="https://www.facebook.com/sharer/sharer.php?title=%E4%BD%BF%E7%94%A8Kubeadm%E5%9C%A8CentOS%E9%83%A8%E7%BD%B2Kubernets+1.8.7+-+Loop+in+Codes&u=https%3A%2F%2Fkevinlynx.cc%2Fposts%2Fdeploy-kubernetes%2F" data-toggle="tooltip" data-placement="top" title="Facebook" target="_blank" rel="noopener" aria-label="Facebook"> <i class="fa-fw fab fa-facebook-square"></i> </a> <a href="https://t.me/share/url?url=https%3A%2F%2Fkevinlynx.cc%2Fposts%2Fdeploy-kubernetes%2F&text=%E4%BD%BF%E7%94%A8Kubeadm%E5%9C%A8CentOS%E9%83%A8%E7%BD%B2Kubernets+1.8.7+-+Loop+in+Codes" data-toggle="tooltip" data-placement="top" title="Telegram" target="_blank" rel="noopener" aria-label="Telegram"> <i class="fa-fw fab fa-telegram"></i> </a> <i id="copy-link" class="fa-fw fas fa-link small" data-toggle="tooltip" data-placement="top" title="分享链接" data-title-succeed="链接已复制！"> </i> </span></div></div></div></div></div><div id="panel-wrapper" class="col-xl-3 pl-2 text-muted"><div class="access"><div id="access-tags"><div class="panel-heading">热门标签</div><div class="d-flex flex-wrap mt-3 mb-1 mr-3"> <a class="post-tag" href="/tags/tips/">tips</a> <a class="post-tag" href="/tags/c-c/">c/c++</a> <a class="post-tag" href="/tags/erlang/">erlang</a> <a class="post-tag" href="/tags/dht/">dht</a> <a class="post-tag" href="/tags/lisp/">lisp</a> <a class="post-tag" href="/tags/lua/">lua</a> <a class="post-tag" href="/tags/p2p/">p2p</a> <a class="post-tag" href="/tags/magnet/">magnet</a> <a class="post-tag" href="/tags/octopress/">octopress</a> <a class="post-tag" href="/tags/ruby/">ruby</a></div></div></div><script src="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@1.0.1/dist/bootstrap-toc.min.js"></script><div id="toc-wrapper" class="pl-0 pr-4 mb-5"><div class="panel-heading pl-3 pt-2 mb-2">文章内容</div><nav id="toc" data-toggle="toc"></nav></div></div></div><div class="row"><div id="tail-wrapper" class="col-12 col-lg-11 col-xl-9 pl-3 pr-3 pr-xl-4"><div id="related-posts" class="mt-5 mb-2 mb-sm-4"><h3 class="pt-2 mt-1 mb-4 ml-1" data-toc-skip>相关文章</h3><div class="card-deck mb-4"><div class="card"> <a href="/posts/kube-network/"><div class="card-body"> <em class="small" data-ts="1522512000" data-df="YYYY-MM-DD" > 2018-04-01 </em><h3 class="pt-0 mt-1 mb-3" data-toc-skip>kubernetes网络相关总结</h3><div class="text-muted small"><p> 要理解kubernetes的网络模型涉及到的技术点比较多，网络上各个知识点讲得细的有很多，这里我就大概梳理下整个架构，方便顺着这个脉络深入。本文主要假设kubernetes使用docker+flannel实现。 整体上，了解kubernetes的网络模型，涉及到以下知识： linux网络及网络基础 docker网络模型 kubernetes网络需求，及flannel网络实现...</p></div></div></a></div><div class="card"> <a href="/posts/kube_apiserver_sample/"><div class="card-body"> <em class="small" data-ts="1527609600" data-df="YYYY-MM-DD" > 2018-05-30 </em><h3 class="pt-0 mt-1 mb-3" data-toc-skip>Kubernete APIServer Sample</h3><div class="text-muted small"><p> kubernetes从apiserver中独立出来了一个项目：apiserver，可以基于这个库快速实现一个类似kubernetes apiserver的服务。 Generic library for building a Kubernetes aggregated API server. 如果直接阅读kubenetes的apiserver源码，会发现很多实现都位...</p></div></div></a></div><div class="card"> <a href="/posts/apache-slider/"><div class="card-body"> <em class="small" data-ts="1516723200" data-df="YYYY-MM-DD" > 2018-01-24 </em><h3 class="pt-0 mt-1 mb-3" data-toc-skip>基于Yarn的分布式应用调度器Slider</h3><div class="text-muted small"><p> Apache Hadoop Map-Reduce 框架为了解决规模增长问题，发展出了yarn。而yarn不仅解决Map-Reduce调度问题，还成为了一个通用的分布式应用调度服务。yarn中的一个创新是把各种不同应用的调度逻辑拆分到了一个称为Application Manager(以下简称AM)的角色中，从而让yarn自己变得更通用，同时解决调度性能问题。Apache Slider就是这其中...</p></div></div></a></div></div></div><div class="post-navigation d-flex justify-content-between"> <a href="/posts/apache-slider/" class="btn btn-outline-primary" prompt="上一篇"><p>基于Yarn的分布式应用调度器Slider</p></a> <a href="/posts/kube-network/" class="btn btn-outline-primary" prompt="下一篇"><p>kubernetes网络相关总结</p></a></div><script type="text/javascript"> $(function () { const origin = "https://giscus.app"; const iframe = "iframe.giscus-frame"; const lightTheme = "light"; const darkTheme = "dark_dimmed"; let initTheme = lightTheme; if ($("html[data-mode=dark]").length > 0 || ($("html[data-mode]").length == 0 && window.matchMedia("(prefers-color-scheme: dark)").matches)) { initTheme = darkTheme; } let giscusAttributes = { "src": "https://giscus.app/client.js", "data-repo": "kevinlynx/kevinlynx.github.io", "data-repo-id": "R_kgDOIAJnIQ", "data-category": "General", "data-category-id": "DIC_kwDOIAJnIc4CReqT", "data-mapping": "pathname", "data-reactions-enabled": "1", "data-emit-metadata": "0", "data-theme": initTheme, "data-input-position": "top", "data-lang": "zh-CN", "crossorigin": "anonymous", "async": "" }; let giscusScript = document.createElement("script"); Object.entries(giscusAttributes).forEach(([key, value]) => giscusScript.setAttribute(key, value)); document.getElementById("tail-wrapper").appendChild(giscusScript); addEventListener("message", (event) => { if (event.source === window && event.data && event.data.direction === ModeToggle.ID) { /* global theme mode changed */ const mode = event.data.message; const theme = (mode === ModeToggle.DARK_MODE ? darkTheme : lightTheme); const message = { setConfig: { theme: theme } }; const giscus = document.querySelector(iframe).contentWindow; giscus.postMessage({ giscus: message }, origin); } }); }); </script></div></div><footer class="row pl-3 pr-3"><div class="col-12 d-flex justify-content-between align-items-center text-muted pl-0 pr-0"><div class="footer-left"><p class="mb-0"> © 2022 <a href="https://github.com/kevinlynx">Kevin Lynx</a>. <span data-toggle="tooltip" data-placement="top" title="除非另有说明，本网站上的博客文章均由作者按照知识共享署名 4.0 国际 (CC BY 4.0) 许可协议进行授权。">保留部分权利。</span></p></div><div class="footer-right"><p class="mb-0"> 本站由 <a href="https://jekyllrb.com" target="_blank" rel="noopener">Jekyll</a> 生成，采用 <a href="https://github.com/cotes2020/jekyll-theme-chirpy" target="_blank" rel="noopener">Chirpy</a> 主题。</p></div></div></footer></div><div id="search-result-wrapper" class="d-flex justify-content-center unloaded"><div class="col-12 col-sm-11 post-content"><div id="search-hints"><div id="access-tags"><div class="panel-heading">热门标签</div><div class="d-flex flex-wrap mt-3 mb-1 mr-3"> <a class="post-tag" href="/tags/tips/">tips</a> <a class="post-tag" href="/tags/c-c/">c/c++</a> <a class="post-tag" href="/tags/erlang/">erlang</a> <a class="post-tag" href="/tags/dht/">dht</a> <a class="post-tag" href="/tags/lisp/">lisp</a> <a class="post-tag" href="/tags/lua/">lua</a> <a class="post-tag" href="/tags/p2p/">p2p</a> <a class="post-tag" href="/tags/magnet/">magnet</a> <a class="post-tag" href="/tags/octopress/">octopress</a> <a class="post-tag" href="/tags/ruby/">ruby</a></div></div></div><div id="search-results" class="d-flex flex-wrap justify-content-center text-muted mt-3"></div></div></div></div><div id="mask"></div><a id="back-to-top" href="#" aria-label="back-to-top" class="btn btn-lg btn-box-shadow" role="button"> <i class="fas fa-angle-up"></i> </a><div id="notification" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-animation="true" data-autohide="false"><div class="toast-header"> <button type="button" class="ml-2 ml-auto close" data-dismiss="toast" aria-label="Close"> <span aria-hidden="true">&times;</span> </button></div><div class="toast-body text-center pt-0"><p class="pl-2 pr-2 mb-3">发现新版本的内容。</p><button type="button" class="btn btn-primary" aria-label="Update"> 更新 </button></div></div><script src="https://cdn.jsdelivr.net/npm/simple-jekyll-search@1.10.0/dest/simple-jekyll-search.min.js"></script> <script> SimpleJekyllSearch({ searchInput: document.getElementById('search-input'), resultsContainer: document.getElementById('search-results'), json: '/assets/js/data/search.json', searchResultTemplate: '<div class="pl-1 pr-1 pl-sm-2 pr-sm-2 pl-lg-4 pr-lg-4 pl-xl-0 pr-xl-0"> <a href="{url}">{title}</a><div class="post-meta d-flex flex-column flex-sm-row text-muted mt-1 mb-1"> {categories} {tags}</div><p>{snippet}</p></div>', noResultsText: '<p class="mt-5">搜索结果为空</p>', templateMiddleware: function(prop, value, template) { if (prop === 'categories') { if (value === '') { return `${value}`; } else { return `<div class="mr-sm-4"><i class="far fa-folder fa-fw"></i>${value}</div>`; } } if (prop === 'tags') { if (value === '') { return `${value}`; } else { return `<div><i class="fa fa-tag fa-fw"></i>${value}</div>`; } } } }); </script> <script src="https://cdn.jsdelivr.net/combine/npm/magnific-popup@1/dist/jquery.magnific-popup.min.js,npm/lozad/dist/lozad.min.js,npm/clipboard@2/dist/clipboard.min.js"></script> <script src="https://cdn.jsdelivr.net/combine/npm/dayjs@1/dayjs.min.js,npm/dayjs@1/locale/zh.min.js,npm/dayjs@1/plugin/relativeTime.min.js,npm/dayjs@1/plugin/localizedFormat.min.js"></script> <script defer src="/assets/js/dist/post.min.js"></script> <script src="https://cdn.jsdelivr.net/npm/bootstrap@4/dist/js/bootstrap.bundle.min.js"></script> <script defer src="/app.js"></script>

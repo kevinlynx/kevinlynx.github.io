@@ -1,0 +1,215 @@
+<!DOCTYPE html><html lang="zh-CN" ><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><meta name="generator" content="Jekyll v4.2.2" /><meta property="og:title" content="linux动态库的种种要点" /><meta property="og:locale" content="zh_CN" /><meta name="description" content="linux下使用动态库，基本用起来还是很容易。但如果我们的程序中大量使用动态库来实现各种框架/插件，那么就会遇到一些坑，掌握这些坑才有利于程序更稳健地运行。" /><meta property="og:description" content="linux下使用动态库，基本用起来还是很容易。但如果我们的程序中大量使用动态库来实现各种框架/插件，那么就会遇到一些坑，掌握这些坑才有利于程序更稳健地运行。" /><link rel="canonical" href="https://kevinlynx.cc/posts/linux-dynamic-library/" /><meta property="og:url" content="https://kevinlynx.cc/posts/linux-dynamic-library/" /><meta property="og:site_name" content="Loop in Codes" /><meta property="og:type" content="article" /><meta property="article:published_time" content="2014-11-04T00:00:00+08:00" /><meta name="twitter:card" content="summary" /><meta property="twitter:title" content="linux动态库的种种要点" /><meta name="twitter:site" content="@kevinlynx" /> <script type="application/ld+json"> {"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2014-11-04T00:00:00+08:00","datePublished":"2014-11-04T00:00:00+08:00","description":"linux下使用动态库，基本用起来还是很容易。但如果我们的程序中大量使用动态库来实现各种框架/插件，那么就会遇到一些坑，掌握这些坑才有利于程序更稳健地运行。","headline":"linux动态库的种种要点","mainEntityOfPage":{"@type":"WebPage","@id":"https://kevinlynx.cc/posts/linux-dynamic-library/"},"url":"https://kevinlynx.cc/posts/linux-dynamic-library/"}</script><title>linux动态库的种种要点 | Loop in Codes</title><link rel="apple-touch-icon" sizes="180x180" href="/assets/img/favicons/apple-touch-icon.png"><link rel="icon" type="image/png" sizes="32x32" href="/assets/img/favicons/favicon-32x32.png"><link rel="icon" type="image/png" sizes="16x16" href="/assets/img/favicons/favicon-16x16.png"><link rel="manifest" href="/assets/img/favicons/site.webmanifest"><link rel="shortcut icon" href="/assets/img/favicons/favicon.ico"><meta name="apple-mobile-web-app-title" content="Loop in Codes"><meta name="application-name" content="Loop in Codes"><meta name="msapplication-TileColor" content="#da532c"><meta name="msapplication-config" content="/assets/img/favicons/browserconfig.xml"><meta name="theme-color" content="#ffffff"><link rel="preconnect" href="https://fonts.googleapis.com" ><link rel="dns-prefetch" href="https://fonts.googleapis.com" ><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="dns-prefetch" href="https://fonts.gstatic.com" crossorigin><link rel="preconnect" href="https://fonts.googleapis.com" ><link rel="dns-prefetch" href="https://fonts.googleapis.com" ><link rel="preconnect" href="https://cdn.jsdelivr.net" ><link rel="dns-prefetch" href="https://cdn.jsdelivr.net" ><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato&family=Source+Sans+Pro:wght@400;600;700;900&display=swap"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4/dist/css/bootstrap.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.11.2/css/all.min.css"><link rel="stylesheet" href="/assets/css/style.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@1.0.1/dist/bootstrap-toc.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/magnific-popup@1/dist/magnific-popup.min.css"> <script src="https://cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js"></script> <script type="text/javascript"> class ModeToggle { static get MODE_KEY() { return "mode"; } static get MODE_ATTR() { return "data-mode"; } static get DARK_MODE() { return "dark"; } static get LIGHT_MODE() { return "light"; } static get ID() { return "mode-toggle"; } constructor() { if (this.hasMode) { if (this.isDarkMode) { if (!this.isSysDarkPrefer) { this.setDark(); } } else { if (this.isSysDarkPrefer) { this.setLight(); } } } let self = this; /* always follow the system prefers */ this.sysDarkPrefers.addEventListener("change", () => { if (self.hasMode) { if (self.isDarkMode) { if (!self.isSysDarkPrefer) { self.setDark(); } } else { if (self.isSysDarkPrefer) { self.setLight(); } } self.clearMode(); } self.notify(); }); } /* constructor() */ get sysDarkPrefers() { return window.matchMedia("(prefers-color-scheme: dark)"); } get isSysDarkPrefer() { return this.sysDarkPrefers.matches; } get isDarkMode() { return this.mode === ModeToggle.DARK_MODE; } get isLightMode() { return this.mode === ModeToggle.LIGHT_MODE; } get hasMode() { return this.mode != null; } get mode() { return sessionStorage.getItem(ModeToggle.MODE_KEY); } /* get the current mode on screen */ get modeStatus() { if (this.isDarkMode || (!this.hasMode && this.isSysDarkPrefer)) { return ModeToggle.DARK_MODE; } else { return ModeToggle.LIGHT_MODE; } } setDark() { $('html').attr(ModeToggle.MODE_ATTR, ModeToggle.DARK_MODE); sessionStorage.setItem(ModeToggle.MODE_KEY, ModeToggle.DARK_MODE); } setLight() { $('html').attr(ModeToggle.MODE_ATTR, ModeToggle.LIGHT_MODE); sessionStorage.setItem(ModeToggle.MODE_KEY, ModeToggle.LIGHT_MODE); } clearMode() { $('html').removeAttr(ModeToggle.MODE_ATTR); sessionStorage.removeItem(ModeToggle.MODE_KEY); } /* Notify another plugins that the theme mode has changed */ notify() { window.postMessage({ direction: ModeToggle.ID, message: this.modeStatus }, "*"); } } /* ModeToggle */ const toggle = new ModeToggle(); function flipMode() { if (toggle.hasMode) { if (toggle.isSysDarkPrefer) { if (toggle.isLightMode) { toggle.clearMode(); } else { toggle.setLight(); } } else { if (toggle.isDarkMode) { toggle.clearMode(); } else { toggle.setDark(); } } } else { if (toggle.isSysDarkPrefer) { toggle.setLight(); } else { toggle.setDark(); } } toggle.notify(); } /* flipMode() */ </script><body data-spy="scroll" data-target="#toc" data-topbar-visible="true"><div id="sidebar" class="d-flex flex-column align-items-end"><div class="profile-wrapper text-center"><div id="avatar"> <a href="/" class="mx-auto"> <img src="https://avatars.githubusercontent.com/u/789143?s=400&v=4" alt="avatar" onerror="this.style.display='none'"> </a></div><div class="site-title mt-3"> <a href="/">Loop in Codes</a></div><div class="site-subtitle font-italic">Kevin Lynx's BLOG</div></div><ul class="w-100"><li class="nav-item"> <a href="/" class="nav-link"> <i class="fa-fw fas fa-home ml-xl-3 mr-xl-3 unloaded"></i> <span>首页</span> </a><li class="nav-item"> <a href="/categories/" class="nav-link"> <i class="fa-fw fas fa-stream ml-xl-3 mr-xl-3 unloaded"></i> <span>分类</span> </a><li class="nav-item"> <a href="/tags/" class="nav-link"> <i class="fa-fw fas fa-tag ml-xl-3 mr-xl-3 unloaded"></i> <span>标签</span> </a><li class="nav-item"> <a href="/archives/" class="nav-link"> <i class="fa-fw fas fa-archive ml-xl-3 mr-xl-3 unloaded"></i> <span>归档</span> </a><li class="nav-item"> <a href="/about/" class="nav-link"> <i class="fa-fw ml-xl-3 mr-xl-3 unloaded"></i> <span>关于</span> </a></ul><div class="sidebar-bottom mt-auto d-flex flex-wrap justify-content-center align-items-center"> <button class="mode-toggle btn" aria-label="Switch Mode"> <i class="fas fa-adjust"></i> </button> <span class="icon-border"></span> <a href="https://github.com/kevinlynx" aria-label="github" target="_blank" rel="noopener"> <i class="fab fa-github"></i> </a> <a href="https://twitter.com/kevinlynx" aria-label="twitter" target="_blank" rel="noopener"> <i class="fab fa-twitter"></i> </a> <a href=" javascript:location.href = 'mailto:' + ['kevinlynx','gmail.com'].join('@')" aria-label="email" > <i class="fas fa-envelope"></i> </a> <a href="/feed.xml" aria-label="rss" > <i class="fas fa-rss"></i> </a></div></div><div id="topbar-wrapper"><div id="topbar" class="container d-flex align-items-center justify-content-between h-100 pl-3 pr-3 pl-md-4 pr-md-4"> <span id="breadcrumb"> <span> <a href="/"> 首页 </a> </span> <span>linux动态库的种种要点</span> </span> <i id="sidebar-trigger" class="fas fa-bars fa-fw"></i><div id="topbar-title"> 文章</div><i id="search-trigger" class="fas fa-search fa-fw"></i> <span id="search-wrapper" class="align-items-center"> <i class="fas fa-search fa-fw"></i> <input class="form-control" id="search-input" type="search" aria-label="search" autocomplete="off" placeholder="搜索..."> </span> <span id="search-cancel" >取消</span></div></div><div id="main-wrapper" class="d-flex justify-content-center"><div id="main" class="container pl-xl-4 pr-xl-4"><div class="row"><div id="core-wrapper" class="col-12 col-lg-11 col-xl-9 pr-xl-4"><div class="post pl-1 pr-1 pl-md-2 pr-md-2"><h1 data-toc-skip>linux动态库的种种要点</h1><div class="post-meta text-muted"> <span> 发表于 <em class="" data-ts="1415030400" data-df="YYYY-MM-DD" data-toggle="tooltip" data-placement="bottom"> 2014-11-04 </em> </span><div class="d-flex justify-content-between"> <span> 作者 <em> <a href="https://github.com/kevinlynx">Kevin Lynx</a> </em> </span><div> <span class="readtime" data-toggle="tooltip" data-placement="bottom" title="2060 字"> <em>11 分钟</em>阅读</span></div></div></div><div class="post-content"><p>linux下使用动态库，基本用起来还是很容易。但如果我们的程序中大量使用动态库来实现各种框架/插件，那么就会遇到一些坑，掌握这些坑才有利于程序更稳健地运行。</p><p>本篇先谈谈动态库符号方面的问题。</p><p>测试代码可以在<a href="https://github.com/kevinlynx/test/tree/master/dytest">github上找到</a></p><h2 id="符号查找"><span class="mr-2">符号查找</span><a href="#符号查找" class="anchor text-muted"><i class="fas fa-hashtag"></i></a></h2><p>一个应用程序<code class="language-plaintext highlighter-rouge">test</code>会链接一个动态库<code class="language-plaintext highlighter-rouge">libdy.so</code>，如果一个符号，例如函数<code class="language-plaintext highlighter-rouge">callfn</code>定义于libdy.so中，test要使用该函数，简单地声明即可：</p><figure class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// dy.cpp libdy.so</span>
+<span class="kt">void</span> <span class="nf">callfn</span><span class="p">()</span> <span class="p">{</span>
+    <span class="p">...</span>
+<span class="p">}</span>
+
+<span class="c1">// main.cpp test</span>
+<span class="k">extern</span> <span class="kt">void</span> <span class="n">callfn</span><span class="p">();</span>
+
+<span class="n">callfn</span><span class="p">();</span>    </code></pre></figure><p>在链接test的时候，链接器会统一进行检查。</p><p>同样，在libdy.so中有相同的规则，它可以使用一个外部的符号，<strong>在它被链接/载入进一个可执行程序时才会进行符号存在与否的检查</strong>。这个符号甚至可以定义在test中，形成一种双向依赖，或定义在其他动态库中：</p><figure class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// dy.cpp libdy.so</span>
+<span class="k">extern</span> <span class="kt">void</span> <span class="nf">mfunc</span><span class="p">();</span>
+
+<span class="n">mfunc</span><span class="p">();</span>
+
+<span class="c1">// main.cpp test</span>
+<span class="kt">void</span> <span class="nf">mfunc</span><span class="p">()</span> <span class="p">{</span>
+    <span class="p">...</span>
+<span class="p">}</span></code></pre></figure><p>在生成libdy.so时<code class="language-plaintext highlighter-rouge">mfunc</code>可以找不到，此时<code class="language-plaintext highlighter-rouge">mfunc</code>为未定义：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre><td class="rouge-code"><pre>$ nm libdy.so | grep mfun
+U _Z5mfuncv
+</pre></table></code></div></div><p>但在libdy.so被链接进test时则会进行检查，试着把<code class="language-plaintext highlighter-rouge">mfunc</code>函数的定义去掉，就会得到一个链接错误：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre><td class="rouge-code"><pre>./libdy.so: undefined reference to `mfunc()'
+</pre></table></code></div></div><p>同样，如果我们动态载入libdy.so，此时当然可以链接通过，但是在载入时同样得到找不到符号的错误：</p><figure class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="cp">#ifdef DY_LOAD
+</span>    <span class="kt">void</span> <span class="o">*</span><span class="n">dp</span> <span class="o">=</span> <span class="n">dlopen</span><span class="p">(</span><span class="s">"./libdy.so"</span><span class="p">,</span> <span class="n">RTLD_LAZY</span><span class="p">);</span>
+    <span class="k">typedef</span> <span class="nf">void</span> <span class="p">(</span><span class="o">*</span><span class="n">callfn</span><span class="p">)();</span>
+    <span class="n">callfn</span> <span class="n">f</span> <span class="o">=</span> <span class="p">(</span><span class="n">callfn</span><span class="p">)</span> <span class="n">dlsym</span><span class="p">(</span><span class="n">dp</span><span class="p">,</span> <span class="s">"callfn"</span><span class="p">);</span>
+    <span class="n">f</span><span class="p">();</span>
+    <span class="n">dlclose</span><span class="p">(</span><span class="n">dp</span><span class="p">);</span>
+<span class="cp">#else
+</span>    <span class="n">callfn</span><span class="p">();</span>
+<span class="cp">#endif</span></code></pre></figure><p>得到错误：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre><td class="rouge-code"><pre>./test: symbol lookup error: ./libdy.so: undefined symbol: _Z5mfuncv
+</pre></table></code></div></div><p><strong>结论：</strong>基于以上，我们知道，如果一个动态库依赖了一些外部符号，这些外部符号可以位于其他动态库甚至应用程序中。我们可以再链接这个动态库的时候就把依赖的其他库也链接上，或者推迟到链接应用程序时再链接。而动态加载的库，则要保证在加载该库时，进程中加载的其他动态库里已经存在该符号。</p><p>例如，通过<code class="language-plaintext highlighter-rouge">LD_PRELOAD</code>环境变量可以让一个进程先加载指定的动态库，上面那个动态加载启动失败的例子，可以通过预先加载包含<code class="language-plaintext highlighter-rouge">mfunc</code>符号的动态库解决：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre><td class="rouge-code"><pre>$ LD_PRELOAD=libmfun.so ./test
+...
+</pre></table></code></div></div><p>但是如果这个符号存在于可执行程序中则不行：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+</pre><td class="rouge-code"><pre>$ nm test | grep mfunc
+0000000000400a00 T _Z5mfuncv
+$ nm test | grep mfunc
+0000000000400a00 T _Z5mfuncv
+$ ./test
+...
+./test: symbol lookup error: ./libdy.so: undefined symbol: _Z5mfuncv
+</pre></table></code></div></div><h2 id="符号覆盖"><span class="mr-2">符号覆盖</span><a href="#符号覆盖" class="anchor text-muted"><i class="fas fa-hashtag"></i></a></h2><p>前面主要讲的是符号缺少的情况，如果同一个符号存在多分，则更能引发问题。这里谈到的符号都是全局符号，一个进程中某个全局符号始终是全局唯一的。为了保证这一点，在链接或动态载入动态库时，就会出现忽略重复符号的情况。</p><p><em>这里就不提同一个链接单位（如可执行程序、动态库）里符号重复的问题了</em></p><h3 id="函数"><span class="mr-2">函数</span><a href="#函数" class="anchor text-muted"><i class="fas fa-hashtag"></i></a></h3><p>当动态库和libdy.so可执行程序test中包含同名的函数时会怎样？根据是否动态加载情况还有所不同。</p><p>当直接链接动态库时，libdy.so和test都会链接包含<code class="language-plaintext highlighter-rouge">func</code>函数的fun.o，为了区分，我把<code class="language-plaintext highlighter-rouge">func</code>按照条件编译得到不同的版本：</p><figure class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// fun.cpp</span>
+<span class="cp">#ifdef V2
+</span><span class="k">extern</span> <span class="s">"C"</span> <span class="kt">void</span> <span class="nf">func</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"func v2</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="cp">#else
+</span><span class="k">extern</span> <span class="s">"C"</span> <span class="kt">void</span> <span class="n">func</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"func v1</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="cp">#endif
+</span>
+<span class="c1">// Makefile</span>
+<span class="nl">test:</span> <span class="n">libdy</span> <span class="n">obj</span><span class="p">.</span><span class="n">o</span> <span class="n">mainfn</span>
+    <span class="n">g</span><span class="o">++</span> <span class="o">-</span><span class="n">g</span> <span class="o">-</span><span class="n">Wall</span> <span class="o">-</span><span class="n">c</span> <span class="n">fun</span><span class="p">.</span><span class="n">cpp</span> <span class="o">-</span><span class="n">o</span> <span class="n">fun</span><span class="p">.</span><span class="n">o</span> <span class="err">#</span> <span class="err">编译为</span><span class="n">fun</span><span class="p">.</span><span class="n">o</span>
+    <span class="n">g</span><span class="o">++</span> <span class="o">-</span><span class="n">g</span> <span class="o">-</span><span class="n">Wall</span> <span class="o">-</span><span class="n">c</span> <span class="n">main</span><span class="p">.</span><span class="n">cpp</span> <span class="err">#</span><span class="o">-</span><span class="n">DDY_LOAD</span>
+    <span class="n">g</span><span class="o">++</span> <span class="o">-</span><span class="n">g</span> <span class="o">-</span><span class="n">Wall</span> <span class="o">-</span><span class="n">o</span> <span class="n">test</span> <span class="n">main</span><span class="p">.</span><span class="n">o</span> <span class="n">obj</span><span class="p">.</span><span class="n">o</span> <span class="n">fun</span><span class="p">.</span><span class="n">o</span> <span class="o">-</span><span class="n">ldl</span> <span class="n">mfun</span><span class="p">.</span><span class="n">o</span> <span class="o">-</span><span class="n">ldy</span> <span class="o">-</span><span class="n">L</span><span class="p">.</span>
+
+<span class="nl">libdy:</span> <span class="n">obj</span>
+    <span class="n">g</span><span class="o">++</span> <span class="o">-</span><span class="n">Wall</span> <span class="o">-</span><span class="n">fPIC</span> <span class="o">-</span><span class="n">c</span> <span class="n">fun</span><span class="p">.</span><span class="n">cpp</span> <span class="o">-</span><span class="n">DV2</span> <span class="o">-</span><span class="n">o</span> <span class="n">fun</span><span class="o">-</span><span class="n">dy</span><span class="p">.</span><span class="n">o</span>  <span class="err">#</span> <span class="err">定义</span><span class="n">V2</span><span class="err">宏，编译为</span><span class="n">fun</span><span class="o">-</span><span class="n">dy</span><span class="p">.</span><span class="n">o</span>
+    <span class="n">g</span><span class="o">++</span> <span class="o">-</span><span class="n">Wall</span> <span class="o">-</span><span class="n">fPIC</span> <span class="o">-</span><span class="n">shared</span> <span class="o">-</span><span class="n">o</span> <span class="n">libdy</span><span class="p">.</span><span class="n">so</span> <span class="n">dy</span><span class="p">.</span><span class="n">cpp</span> <span class="o">-</span><span class="n">g</span> <span class="n">obj</span><span class="p">.</span><span class="n">o</span> <span class="n">fun</span><span class="o">-</span><span class="n">dy</span><span class="p">.</span><span class="n">o</span></code></pre></figure><p>这样，test中的<code class="language-plaintext highlighter-rouge">func</code>就会输出<code class="language-plaintext highlighter-rouge">func v1</code>；libdy.so中的<code class="language-plaintext highlighter-rouge">func</code>就会输出<code class="language-plaintext highlighter-rouge">func v2</code>。test和libdy.o确实都有<code class="language-plaintext highlighter-rouge">func</code>符号：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+</pre><td class="rouge-code"><pre>$ nm libdy.so | grep func
+0000000000000a60 T func
+
+$nm test | grep func
+0000000000400a80 T func
+</pre></table></code></div></div><p>在test和libdy.so中都会调用<code class="language-plaintext highlighter-rouge">func</code>函数：</p><figure class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// main.cpp test</span>
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">func</span><span class="p">();</span>
+    <span class="p">...</span>
+    <span class="n">callfn</span><span class="p">();</span> <span class="c1">// 调用libdy.so中的函数</span>
+    <span class="p">...</span>
+<span class="p">}</span>
+
+<span class="c1">// dy.cpp libdy.so</span>
+<span class="k">extern</span> <span class="s">"C"</span> <span class="kt">void</span> <span class="n">callfn</span><span class="p">()</span> <span class="p">{</span>
+    <span class="p">...</span> 
+    <span class="n">printf</span><span class="p">(</span><span class="s">"callfn</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+    <span class="n">func</span><span class="p">();</span>
+    <span class="p">...</span>
+<span class="p">}</span></code></pre></figure><p>运行后发现，都<strong>调用的是同一个<code class="language-plaintext highlighter-rouge">func</code></strong>：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+</pre><td class="rouge-code"><pre>$ ./test
+...
+func v1
+...
+callfn
+func v1
+</pre></table></code></div></div><p><strong>结论</strong>，直接链接动态库时，整个程序运行的时候符号会发生覆盖，只有一个符号被使用。<strong>在实践中</strong>，如果程序和链接的动态库都依赖了一个静态库，而后他们链接的这个静态库版本不同，则很有可能因为符号发生了覆盖而导致问题。(静态库同普通的.o性质一样，参考<a href="http://codemacro.com/2014/09/15/inside-static-library/">浅析静态库链接原理</a>)</p><p>更复杂的情况中，多个动态库和程序都有相同的符号，情况也是一样，会发生符号覆盖。如果程序里没有这个符号，而多个动态库里有相同的符号，也会覆盖。</p><p>但是对于动态载入的情况则不同，同样的libdy.so我们在test中不链接，而是动态载入：</p><figure class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">func</span><span class="p">();</span>
+<span class="cp">#ifdef DY_LOAD
+</span>    <span class="kt">void</span> <span class="o">*</span><span class="n">dp</span> <span class="o">=</span> <span class="n">dlopen</span><span class="p">(</span><span class="s">"./libdy.so"</span><span class="p">,</span> <span class="n">RTLD_LAZY</span><span class="p">);</span>
+    <span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">callfn</span><span class="p">)();</span>
+    <span class="n">callfn</span> <span class="n">f</span> <span class="o">=</span> <span class="p">(</span><span class="n">callfn</span><span class="p">)</span> <span class="n">dlsym</span><span class="p">(</span><span class="n">dp</span><span class="p">,</span> <span class="s">"callfn"</span><span class="p">);</span>
+    <span class="n">f</span><span class="p">();</span>
+    <span class="n">func</span><span class="p">();</span>
+    <span class="n">dlclose</span><span class="p">(</span><span class="n">dp</span><span class="p">);</span>
+<span class="cp">#else
+</span>    <span class="n">callfn</span><span class="p">();</span>
+<span class="cp">#endif
+</span>    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span></code></pre></figure><p>运行得到：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+</pre><td class="rouge-code"><pre>$ ./test
+func v1
+...
+callfn
+func v2
+func v1
+</pre></table></code></div></div><p>都正确地调用到各自链接的<code class="language-plaintext highlighter-rouge">func</code>。</p><p><strong>结论</strong>，实践中，动态载入的动态库一般会作为插件使用，那么其同程序链接不同版本的静态库（相同符号不同实现），是没有问题的。</p><h3 id="变量"><span class="mr-2">变量</span><a href="#变量" class="anchor text-muted"><i class="fas fa-hashtag"></i></a></h3><p>变量本质上也是符号(symbol)，但其处理规则和函数还有点不一样(<em>是不是有点想吐槽了</em>)。</p><figure class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// object.h</span>
+<span class="k">class</span> <span class="nc">Object</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="n">Object</span><span class="p">()</span> <span class="p">{</span>
+<span class="cp">#ifdef DF
+</span>        <span class="n">s</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="mi">32</span><span class="p">);</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">"s addr %p</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">s</span><span class="p">);</span>
+<span class="cp">#endif
+</span>        <span class="n">printf</span><span class="p">(</span><span class="s">"ctor %p</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="k">this</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="o">~</span><span class="n">Object</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">"dtor %p</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="k">this</span><span class="p">);</span>
+<span class="cp">#ifdef DF
+</span>        <span class="n">printf</span><span class="p">(</span><span class="s">"s addr %p</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">s</span><span class="p">);</span>
+        <span class="n">free</span><span class="p">(</span><span class="n">s</span><span class="p">);</span>
+<span class="cp">#endif
+</span>    <span class="p">}</span>
+
+    <span class="kt">void</span> <span class="o">*</span><span class="n">s</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="k">extern</span> <span class="n">Object</span> <span class="n">g_obj</span><span class="p">;</span></code></pre></figure><p>我们的程序test和动态库libdy.so都会链接object.o。首先测试test链接libdy.so，test和libdy.so中都会有<code class="language-plaintext highlighter-rouge">g_obj</code>这个符号：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+</pre><td class="rouge-code"><pre>// B g_obj 表示g_obj位于BSS段，未初始化段
+
+$ nm test | grep g_obj
+0000000000400a14 t _GLOBAL__I_g_obj
+00000000006012c8 B g_obj
+$ nm libdy.so | grep g_obj
+000000000000097c t _GLOBAL__I_g_obj
+0000000000200f30 B g_obj
+</pre></table></code></div></div><p>运行：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+</pre><td class="rouge-code"><pre>$ ./test
+ctor 0x6012c8
+ctor 0x6012c8
+...
+dtor 0x6012c8
+dtor 0x6012c8
+</pre></table></code></div></div><p><strong><code class="language-plaintext highlighter-rouge">g_obj</code>被构造了两次，但地址一样</strong>。全局变量只有一个实例，似乎在情理之中。</p><p>动态载入libdy.so，变量地址还是相同的：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+</pre><td class="rouge-code"><pre>$ ./test
+ctor 0x6012a8
+...
+ctor 0x6012a8
+...
+dtor 0x6012a8
+dtor 0x6012a8
+</pre></table></code></div></div><p><strong>结论</strong>，不同于函数，全局变量符号重复时，不论动态库是动态载入还是直接链接，变量始终只有一个。</p><p>但诡异的情况是，对象被构造和析构了两次。构造两次倒无所谓，浪费点空间，但是析构两次就有问题。因为析构时都操作的是同一个对象，那么如果这个对象内部有分配的内存，那就会对这块内存造成double free，因为指针相同。打开<code class="language-plaintext highlighter-rouge">DF</code>宏实验下：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre><td class="rouge-code"><pre>$ ./test
+s addr 0x20de010
+ctor 0x6012b8
+s addr 0x20de040
+ctor 0x6012b8
+...
+dtor 0x6012b8
+s addr 0x20de040
+dtor 0x6012b8
+s addr 0x20de040
+</pre></table></code></div></div><p>因为析构的两次都是同一个对象，所以其成员<code class="language-plaintext highlighter-rouge">s</code>指向的内存被释放了两次，从而产生了double free，让程序coredump了。</p><p><strong>总结</strong>，全局变量符号重复时，始终会只使用一个，并且会被初始化/释放两次，是一种较危险的情况，应当避免在使用动态库的过程中使用全局变量。</p><p><em>完</em></p></div><div class="post-tail-wrapper text-muted"><div class="post-meta mb-3"> <i class="far fa-folder-open fa-fw mr-1"></i> <a href='/categories/c-c/'>c/c++</a></div><div class="post-tags"> <i class="fa fa-tags fa-fw mr-1"></i> <a href="/tags/dynamic/" class="post-tag no-text-decoration" >dynamic</a> <a href="/tags/library/" class="post-tag no-text-decoration" >library</a></div><div class="post-tail-bottom d-flex justify-content-between align-items-center mt-3 pt-5 pb-2"><div class="license-wrapper"> 本文由作者按照 <a href="https://creativecommons.org/licenses/by/4.0/"> CC BY 4.0 </a> 进行授权</div><div class="share-wrapper"> <span class="share-label text-muted mr-1">分享</span> <span class="share-icons"> <a href="https://twitter.com/intent/tweet?text=linux%E5%8A%A8%E6%80%81%E5%BA%93%E7%9A%84%E7%A7%8D%E7%A7%8D%E8%A6%81%E7%82%B9+-+Loop+in+Codes&url=https%3A%2F%2Fkevinlynx.cc%2Fposts%2Flinux-dynamic-library%2F" data-toggle="tooltip" data-placement="top" title="Twitter" target="_blank" rel="noopener" aria-label="Twitter"> <i class="fa-fw fab fa-twitter"></i> </a> <a href="https://www.facebook.com/sharer/sharer.php?title=linux%E5%8A%A8%E6%80%81%E5%BA%93%E7%9A%84%E7%A7%8D%E7%A7%8D%E8%A6%81%E7%82%B9+-+Loop+in+Codes&u=https%3A%2F%2Fkevinlynx.cc%2Fposts%2Flinux-dynamic-library%2F" data-toggle="tooltip" data-placement="top" title="Facebook" target="_blank" rel="noopener" aria-label="Facebook"> <i class="fa-fw fab fa-facebook-square"></i> </a> <a href="https://t.me/share/url?url=https%3A%2F%2Fkevinlynx.cc%2Fposts%2Flinux-dynamic-library%2F&text=linux%E5%8A%A8%E6%80%81%E5%BA%93%E7%9A%84%E7%A7%8D%E7%A7%8D%E8%A6%81%E7%82%B9+-+Loop+in+Codes" data-toggle="tooltip" data-placement="top" title="Telegram" target="_blank" rel="noopener" aria-label="Telegram"> <i class="fa-fw fab fa-telegram"></i> </a> <i id="copy-link" class="fa-fw fas fa-link small" data-toggle="tooltip" data-placement="top" title="分享链接" data-title-succeed="链接已复制！"> </i> </span></div></div></div></div></div><div id="panel-wrapper" class="col-xl-3 pl-2 text-muted"><div class="access"><div id="access-tags"><div class="panel-heading">热门标签</div><div class="d-flex flex-wrap mt-3 mb-1 mr-3"> <a class="post-tag" href="/tags/tips/">tips</a> <a class="post-tag" href="/tags/c-c/">c/c++</a> <a class="post-tag" href="/tags/erlang/">erlang</a> <a class="post-tag" href="/tags/dht/">dht</a> <a class="post-tag" href="/tags/lisp/">lisp</a> <a class="post-tag" href="/tags/lua/">lua</a> <a class="post-tag" href="/tags/p2p/">p2p</a> <a class="post-tag" href="/tags/magnet/">magnet</a> <a class="post-tag" href="/tags/octopress/">octopress</a> <a class="post-tag" href="/tags/ruby/">ruby</a></div></div></div><script src="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@1.0.1/dist/bootstrap-toc.min.js"></script><div id="toc-wrapper" class="pl-0 pr-4 mb-5"><div class="panel-heading pl-3 pt-2 mb-2">文章内容</div><nav id="toc" data-toggle="toc"></nav></div></div></div><div class="row"><div id="tail-wrapper" class="col-12 col-lg-11 col-xl-9 pl-3 pr-3 pr-xl-4"><div id="related-posts" class="mt-5 mb-2 mb-sm-4"><h3 class="pt-2 mt-1 mb-4 ml-1" data-toc-skip>相关文章</h3><div class="card-deck mb-4"><div class="card"> <a href="/posts/multi-inherit-void/"><div class="card-body"> <em class="small" data-ts="1304092800" data-df="YYYY-MM-DD" > 2011-04-30 </em><h3 class="pt-0 mt-1 mb-3" data-toc-skip>多重继承和void*的糗事</h3><div class="text-muted small"><p> C++为了兼容C，导致了不少语言阴暗面。Bjarne Stroustrup在&amp;lt;D&amp;amp;E&amp;gt;一书里也常为此表现出无奈。另一方面，强制转换也是C++的一大诟病。但是，因为我们的应用环境总是那么“不 纯”，所以也就常常导致各种问题。 本文即描述了一个关于强制转换带来的问题。这个问题几年前我曾遇到过(&amp;lt;多线程下vc2003,vc2005对虚函数表处理的BUG？&amp;gt;)，当时...</p></div></div></a></div><div class="card"> <a href="/posts/write-cpp-like-fp/"><div class="card-body"> <em class="small" data-ts="1343639460" data-df="YYYY-MM-DD" > 2012-07-30 </em><h3 class="pt-0 mt-1 mb-3" data-toc-skip>像写函数式语言代码一样写C++</h3><div class="text-muted small"><p> 忘记最早接触函数式编程语言是什么时候了，也忘记接触的第一门函数式语言是哪一门。断断续续接触过好几种函数式语言（当然都算不纯的，ruby/lisp不算纯吧），这些语言的思想在潜移默化中多多少少对我有所影响。 我是个C++程序员，我不知道我平时写的都是些什么代码。最让人印象深刻就是我会经常写遍历STL容器的代码，是经常，这样的遍历你可能也不陌生： for (ListType::iterato...</p></div></div></a></div><div class="card"> <a href="/posts/memcmp-on-copy-value/"><div class="card-body"> <em class="small" data-ts="1345174620" data-df="YYYY-MM-DD" > 2012-08-17 </em><h3 class="pt-0 mt-1 mb-3" data-toc-skip>使用memcmp比较两个变量结果一定吗？</h3><div class="text-muted small"><p> 参考Is using memcmp on array of int strictly conforming? 以下代码一定会输出ok吗？ #include &amp;lt;stdio.h&amp;gt; #include &amp;lt;string.h&amp;gt; struct S { int array[2]; }; int main () { struct S a = { { 1, 2 } }; ...</p></div></div></a></div></div></div><div class="post-navigation d-flex justify-content-between"> <a href="/posts/zk-fastleaderelection/" class="btn btn-outline-primary" prompt="上一篇"><p>图解zookeeper FastLeader选举算法</p></a> <a href="/posts/gdb_stl/" class="btn btn-outline-primary" prompt="下一篇"><p>基于内存查看STL常用容器内容</p></a></div><script type="text/javascript"> $(function () { const origin = "https://giscus.app"; const iframe = "iframe.giscus-frame"; const lightTheme = "light"; const darkTheme = "dark_dimmed"; let initTheme = lightTheme; if ($("html[data-mode=dark]").length > 0 || ($("html[data-mode]").length == 0 && window.matchMedia("(prefers-color-scheme: dark)").matches)) { initTheme = darkTheme; } let giscusAttributes = { "src": "https://giscus.app/client.js", "data-repo": "kevinlynx/kevinlynx.github.io", "data-repo-id": "R_kgDOIAJnIQ", "data-category": "General", "data-category-id": "DIC_kwDOIAJnIc4CReqT", "data-mapping": "pathname", "data-reactions-enabled": "1", "data-emit-metadata": "0", "data-theme": initTheme, "data-input-position": "top", "data-lang": "zh-CN", "crossorigin": "anonymous", "async": "" }; let giscusScript = document.createElement("script"); Object.entries(giscusAttributes).forEach(([key, value]) => giscusScript.setAttribute(key, value)); document.getElementById("tail-wrapper").appendChild(giscusScript); addEventListener("message", (event) => { if (event.source === window && event.data && event.data.direction === ModeToggle.ID) { /* global theme mode changed */ const mode = event.data.message; const theme = (mode === ModeToggle.DARK_MODE ? darkTheme : lightTheme); const message = { setConfig: { theme: theme } }; const giscus = document.querySelector(iframe).contentWindow; giscus.postMessage({ giscus: message }, origin); } }); }); </script></div></div><footer class="row pl-3 pr-3"><div class="col-12 d-flex justify-content-between align-items-center text-muted pl-0 pr-0"><div class="footer-left"><p class="mb-0"> © 2022 <a href="https://github.com/kevinlynx">Kevin Lynx</a>. <span data-toggle="tooltip" data-placement="top" title="除非另有说明，本网站上的博客文章均由作者按照知识共享署名 4.0 国际 (CC BY 4.0) 许可协议进行授权。">保留部分权利。</span></p></div><div class="footer-right"><p class="mb-0"> 本站由 <a href="https://jekyllrb.com" target="_blank" rel="noopener">Jekyll</a> 生成，采用 <a href="https://github.com/cotes2020/jekyll-theme-chirpy" target="_blank" rel="noopener">Chirpy</a> 主题。</p></div></div></footer></div><div id="search-result-wrapper" class="d-flex justify-content-center unloaded"><div class="col-12 col-sm-11 post-content"><div id="search-hints"><div id="access-tags"><div class="panel-heading">热门标签</div><div class="d-flex flex-wrap mt-3 mb-1 mr-3"> <a class="post-tag" href="/tags/tips/">tips</a> <a class="post-tag" href="/tags/c-c/">c/c++</a> <a class="post-tag" href="/tags/erlang/">erlang</a> <a class="post-tag" href="/tags/dht/">dht</a> <a class="post-tag" href="/tags/lisp/">lisp</a> <a class="post-tag" href="/tags/lua/">lua</a> <a class="post-tag" href="/tags/p2p/">p2p</a> <a class="post-tag" href="/tags/magnet/">magnet</a> <a class="post-tag" href="/tags/octopress/">octopress</a> <a class="post-tag" href="/tags/ruby/">ruby</a></div></div></div><div id="search-results" class="d-flex flex-wrap justify-content-center text-muted mt-3"></div></div></div></div><div id="mask"></div><a id="back-to-top" href="#" aria-label="back-to-top" class="btn btn-lg btn-box-shadow" role="button"> <i class="fas fa-angle-up"></i> </a><div id="notification" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-animation="true" data-autohide="false"><div class="toast-header"> <button type="button" class="ml-2 ml-auto close" data-dismiss="toast" aria-label="Close"> <span aria-hidden="true">&times;</span> </button></div><div class="toast-body text-center pt-0"><p class="pl-2 pr-2 mb-3">发现新版本的内容。</p><button type="button" class="btn btn-primary" aria-label="Update"> 更新 </button></div></div><script src="https://cdn.jsdelivr.net/npm/simple-jekyll-search@1.10.0/dest/simple-jekyll-search.min.js"></script> <script> SimpleJekyllSearch({ searchInput: document.getElementById('search-input'), resultsContainer: document.getElementById('search-results'), json: '/assets/js/data/search.json', searchResultTemplate: '<div class="pl-1 pr-1 pl-sm-2 pr-sm-2 pl-lg-4 pr-lg-4 pl-xl-0 pr-xl-0"> <a href="{url}">{title}</a><div class="post-meta d-flex flex-column flex-sm-row text-muted mt-1 mb-1"> {categories} {tags}</div><p>{snippet}</p></div>', noResultsText: '<p class="mt-5">搜索结果为空</p>', templateMiddleware: function(prop, value, template) { if (prop === 'categories') { if (value === '') { return `${value}`; } else { return `<div class="mr-sm-4"><i class="far fa-folder fa-fw"></i>${value}</div>`; } } if (prop === 'tags') { if (value === '') { return `${value}`; } else { return `<div><i class="fa fa-tag fa-fw"></i>${value}</div>`; } } } }); </script> <script src="https://cdn.jsdelivr.net/combine/npm/magnific-popup@1/dist/jquery.magnific-popup.min.js,npm/lozad/dist/lozad.min.js,npm/clipboard@2/dist/clipboard.min.js"></script> <script src="https://cdn.jsdelivr.net/combine/npm/dayjs@1/dayjs.min.js,npm/dayjs@1/locale/zh.min.js,npm/dayjs@1/plugin/relativeTime.min.js,npm/dayjs@1/plugin/localizedFormat.min.js"></script> <script defer src="/assets/js/dist/post.min.js"></script> <script src="https://cdn.jsdelivr.net/npm/bootstrap@4/dist/js/bootstrap.bundle.min.js"></script> <script defer src="/app.js"></script>

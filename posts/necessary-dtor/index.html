@@ -1,0 +1,287 @@
+<!DOCTYPE html><html lang="zh-CN" ><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><meta name="generator" content="Jekyll v4.2.2" /><meta property="og:title" content="C++构造/析构函数中的多态(二)" /><meta property="og:locale" content="zh_CN" /><meta name="description" content="本来是几年以前写的一篇博客：C++陷阱：构造函数中的多态。然后有同学在评论中讨论了起来，为了记录我就在这里单独写一篇，基本上就是用编译器的实现去证明了早就被大家熟知的一些结论。" /><meta property="og:description" content="本来是几年以前写的一篇博客：C++陷阱：构造函数中的多态。然后有同学在评论中讨论了起来，为了记录我就在这里单独写一篇，基本上就是用编译器的实现去证明了早就被大家熟知的一些结论。" /><link rel="canonical" href="https://kevinlynx.cc/posts/necessary-dtor/" /><meta property="og:url" content="https://kevinlynx.cc/posts/necessary-dtor/" /><meta property="og:site_name" content="Loop in Codes" /><meta property="og:type" content="article" /><meta property="article:published_time" content="2014-09-06T00:00:00+08:00" /><meta name="twitter:card" content="summary" /><meta property="twitter:title" content="C++构造/析构函数中的多态(二)" /><meta name="twitter:site" content="@kevinlynx" /> <script type="application/ld+json"> {"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2014-09-06T00:00:00+08:00","datePublished":"2014-09-06T00:00:00+08:00","description":"本来是几年以前写的一篇博客：C++陷阱：构造函数中的多态。然后有同学在评论中讨论了起来，为了记录我就在这里单独写一篇，基本上就是用编译器的实现去证明了早就被大家熟知的一些结论。","headline":"C++构造/析构函数中的多态(二)","mainEntityOfPage":{"@type":"WebPage","@id":"https://kevinlynx.cc/posts/necessary-dtor/"},"url":"https://kevinlynx.cc/posts/necessary-dtor/"}</script><title>C++构造/析构函数中的多态(二) | Loop in Codes</title><link rel="apple-touch-icon" sizes="180x180" href="/assets/img/favicons/apple-touch-icon.png"><link rel="icon" type="image/png" sizes="32x32" href="/assets/img/favicons/favicon-32x32.png"><link rel="icon" type="image/png" sizes="16x16" href="/assets/img/favicons/favicon-16x16.png"><link rel="manifest" href="/assets/img/favicons/site.webmanifest"><link rel="shortcut icon" href="/assets/img/favicons/favicon.ico"><meta name="apple-mobile-web-app-title" content="Loop in Codes"><meta name="application-name" content="Loop in Codes"><meta name="msapplication-TileColor" content="#da532c"><meta name="msapplication-config" content="/assets/img/favicons/browserconfig.xml"><meta name="theme-color" content="#ffffff"><link rel="preconnect" href="https://fonts.googleapis.com" ><link rel="dns-prefetch" href="https://fonts.googleapis.com" ><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="dns-prefetch" href="https://fonts.gstatic.com" crossorigin><link rel="preconnect" href="https://fonts.googleapis.com" ><link rel="dns-prefetch" href="https://fonts.googleapis.com" ><link rel="preconnect" href="https://cdn.jsdelivr.net" ><link rel="dns-prefetch" href="https://cdn.jsdelivr.net" ><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato&family=Source+Sans+Pro:wght@400;600;700;900&display=swap"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4/dist/css/bootstrap.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.11.2/css/all.min.css"><link rel="stylesheet" href="/assets/css/style.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@1.0.1/dist/bootstrap-toc.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/magnific-popup@1/dist/magnific-popup.min.css"> <script src="https://cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js"></script> <script type="text/javascript"> class ModeToggle { static get MODE_KEY() { return "mode"; } static get MODE_ATTR() { return "data-mode"; } static get DARK_MODE() { return "dark"; } static get LIGHT_MODE() { return "light"; } static get ID() { return "mode-toggle"; } constructor() { if (this.hasMode) { if (this.isDarkMode) { if (!this.isSysDarkPrefer) { this.setDark(); } } else { if (this.isSysDarkPrefer) { this.setLight(); } } } let self = this; /* always follow the system prefers */ this.sysDarkPrefers.addEventListener("change", () => { if (self.hasMode) { if (self.isDarkMode) { if (!self.isSysDarkPrefer) { self.setDark(); } } else { if (self.isSysDarkPrefer) { self.setLight(); } } self.clearMode(); } self.notify(); }); } /* constructor() */ get sysDarkPrefers() { return window.matchMedia("(prefers-color-scheme: dark)"); } get isSysDarkPrefer() { return this.sysDarkPrefers.matches; } get isDarkMode() { return this.mode === ModeToggle.DARK_MODE; } get isLightMode() { return this.mode === ModeToggle.LIGHT_MODE; } get hasMode() { return this.mode != null; } get mode() { return sessionStorage.getItem(ModeToggle.MODE_KEY); } /* get the current mode on screen */ get modeStatus() { if (this.isDarkMode || (!this.hasMode && this.isSysDarkPrefer)) { return ModeToggle.DARK_MODE; } else { return ModeToggle.LIGHT_MODE; } } setDark() { $('html').attr(ModeToggle.MODE_ATTR, ModeToggle.DARK_MODE); sessionStorage.setItem(ModeToggle.MODE_KEY, ModeToggle.DARK_MODE); } setLight() { $('html').attr(ModeToggle.MODE_ATTR, ModeToggle.LIGHT_MODE); sessionStorage.setItem(ModeToggle.MODE_KEY, ModeToggle.LIGHT_MODE); } clearMode() { $('html').removeAttr(ModeToggle.MODE_ATTR); sessionStorage.removeItem(ModeToggle.MODE_KEY); } /* Notify another plugins that the theme mode has changed */ notify() { window.postMessage({ direction: ModeToggle.ID, message: this.modeStatus }, "*"); } } /* ModeToggle */ const toggle = new ModeToggle(); function flipMode() { if (toggle.hasMode) { if (toggle.isSysDarkPrefer) { if (toggle.isLightMode) { toggle.clearMode(); } else { toggle.setLight(); } } else { if (toggle.isDarkMode) { toggle.clearMode(); } else { toggle.setDark(); } } } else { if (toggle.isSysDarkPrefer) { toggle.setLight(); } else { toggle.setDark(); } } toggle.notify(); } /* flipMode() */ </script><body data-spy="scroll" data-target="#toc" data-topbar-visible="true"><div id="sidebar" class="d-flex flex-column align-items-end"><div class="profile-wrapper text-center"><div id="avatar"> <a href="/" class="mx-auto"> <img src="https://avatars.githubusercontent.com/u/789143?s=400&v=4" alt="avatar" onerror="this.style.display='none'"> </a></div><div class="site-title mt-3"> <a href="/">Loop in Codes</a></div><div class="site-subtitle font-italic">Kevin Lynx's BLOG</div></div><ul class="w-100"><li class="nav-item"> <a href="/" class="nav-link"> <i class="fa-fw fas fa-home ml-xl-3 mr-xl-3 unloaded"></i> <span>首页</span> </a><li class="nav-item"> <a href="/categories/" class="nav-link"> <i class="fa-fw fas fa-stream ml-xl-3 mr-xl-3 unloaded"></i> <span>分类</span> </a><li class="nav-item"> <a href="/tags/" class="nav-link"> <i class="fa-fw fas fa-tag ml-xl-3 mr-xl-3 unloaded"></i> <span>标签</span> </a><li class="nav-item"> <a href="/archives/" class="nav-link"> <i class="fa-fw fas fa-archive ml-xl-3 mr-xl-3 unloaded"></i> <span>归档</span> </a><li class="nav-item"> <a href="/about/" class="nav-link"> <i class="fa-fw ml-xl-3 mr-xl-3 unloaded"></i> <span>关于</span> </a></ul><div class="sidebar-bottom mt-auto d-flex flex-wrap justify-content-center align-items-center"> <button class="mode-toggle btn" aria-label="Switch Mode"> <i class="fas fa-adjust"></i> </button> <span class="icon-border"></span> <a href="https://github.com/kevinlynx" aria-label="github" target="_blank" rel="noopener"> <i class="fab fa-github"></i> </a> <a href="https://twitter.com/kevinlynx" aria-label="twitter" target="_blank" rel="noopener"> <i class="fab fa-twitter"></i> </a> <a href=" javascript:location.href = 'mailto:' + ['kevinlynx','gmail.com'].join('@')" aria-label="email" > <i class="fas fa-envelope"></i> </a> <a href="/feed.xml" aria-label="rss" > <i class="fas fa-rss"></i> </a></div></div><div id="topbar-wrapper"><div id="topbar" class="container d-flex align-items-center justify-content-between h-100 pl-3 pr-3 pl-md-4 pr-md-4"> <span id="breadcrumb"> <span> <a href="/"> 首页 </a> </span> <span>C++构造/析构函数中的多态(二)</span> </span> <i id="sidebar-trigger" class="fas fa-bars fa-fw"></i><div id="topbar-title"> 文章</div><i id="search-trigger" class="fas fa-search fa-fw"></i> <span id="search-wrapper" class="align-items-center"> <i class="fas fa-search fa-fw"></i> <input class="form-control" id="search-input" type="search" aria-label="search" autocomplete="off" placeholder="搜索..."> </span> <span id="search-cancel" >取消</span></div></div><div id="main-wrapper" class="d-flex justify-content-center"><div id="main" class="container pl-xl-4 pr-xl-4"><div class="row"><div id="core-wrapper" class="col-12 col-lg-11 col-xl-9 pr-xl-4"><div class="post pl-1 pr-1 pl-md-2 pr-md-2"><h1 data-toc-skip>C++构造/析构函数中的多态(二)</h1><div class="post-meta text-muted"> <span> 发表于 <em class="" data-ts="1409932800" data-df="YYYY-MM-DD" data-toggle="tooltip" data-placement="bottom"> 2014-09-06 </em> </span><div class="d-flex justify-content-between"> <span> 作者 <em> <a href="https://github.com/kevinlynx">Kevin Lynx</a> </em> </span><div> <span class="readtime" data-toggle="tooltip" data-placement="bottom" title="1446 字"> <em>8 分钟</em>阅读</span></div></div></div><div class="post-content"><p>本来是几年以前写的一篇博客：<a href="http://codemacro.com/2012/09/17/c-plus-plus-ctor-virtual/">C++陷阱：构造函数中的多态</a>。然后有同学在评论中讨论了起来，为了记录我就在这里单独写一篇，基本上就是用编译器的实现去证明了早就被大家熟知的一些结论。</p><p><strong>默认构造函数/析构函数不是在所有情况下都会被生成出来的。</strong>为此我还特地翻出《Inside C++ object model》：</p><blockquote><p>2.1 Default Constructor Construction</p></blockquote><blockquote><p>The C++ Annotated Reference Manual (ARM) [ELLIS90] (Section 12.1) tells us that “default constructors…are generated (by the compiler) where needed….”</p></blockquote><p>后面别人还罗列了好些例子告诉你哪些情况才算<code class="language-plaintext highlighter-rouge">needed</code>。本文我就解释<code class="language-plaintext highlighter-rouge">构造函数中的多态</code>评论中的问题。 实验代码如下：</p><figure class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp">
+</span>
+<span class="k">class</span> <span class="nc">Base</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="n">Base</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">Init</span><span class="p">();</span>
+    <span class="p">}</span>
+
+    <span class="c1">//virtual</span>
+     <span class="o">~</span><span class="n">Base</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">"Base dtor</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+        <span class="n">Release</span><span class="p">();</span>
+    <span class="p">}</span>
+
+    <span class="k">virtual</span> <span class="kt">void</span> <span class="n">Init</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">"Base::Init</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">virtual</span> <span class="kt">void</span> <span class="n">Release</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">"Base::Release</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="k">class</span> <span class="nc">Derived</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Base</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="cm">/*
+    ~Derived() {
+        printf("Derived dtor\n");
+    } // */</span>
+
+    <span class="k">virtual</span> <span class="kt">void</span> <span class="n">Init</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">"Derived::Init</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">virtual</span> <span class="kt">void</span> <span class="n">Release</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">"Derived:Release</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="kt">int</span> <span class="n">main</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="n">Base</span> <span class="o">*</span><span class="n">obj</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Derived</span><span class="p">();</span>
+    <span class="k">delete</span> <span class="n">obj</span><span class="p">;</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span></code></pre></figure><p>去掉<code class="language-plaintext highlighter-rouge">Derived</code>的析构函数，去掉<code class="language-plaintext highlighter-rouge">Base</code>析构函数的<code class="language-plaintext highlighter-rouge">virtual</code>：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+</pre><td class="rouge-code"><pre># g++ -Wa,-adhln -g test.cpp &gt; test.s
+
+  44:test.cpp      ****     delete obj;
+ 227                    .loc 1 44 0
+ 228 0028 488B45F0      movq    -16(%rbp), %rax
+ 229 002c 488945E0      movq    %rax, -32(%rbp)
+ 230 0030 48837DE0      cmpq    $0, -32(%rbp)       
+ 230      00
+ 231 0035 7520          jne .L17                   
+ 232 0037 EB30          jmp .L18
+...
+ 244                .L17:
+ 245                    .loc 1 44 0
+ 246 0057 488B7DE0      movq    -32(%rbp), %rdi
+ 247 005b E8000000      call    _ZN4BaseD1Ev             # 直接call
+</pre></table></code></div></div><p>从这里甚至可以看到<code class="language-plaintext highlighter-rouge">delete</code>对空指针的判定。<code class="language-plaintext highlighter-rouge">Base</code>的析构函数不是<code class="language-plaintext highlighter-rouge">virtual</code>，所以这里编译器生成的析构函数调用代码根本不需要用到<code class="language-plaintext highlighter-rouge">vptr</code>，直接<code class="language-plaintext highlighter-rouge">call</code>就可以。而具体<code class="language-plaintext highlighter-rouge">call</code>谁则是根据<code class="language-plaintext highlighter-rouge">obj</code>指向的类型<code class="language-plaintext highlighter-rouge">Base</code>确定。<em>即使<code class="language-plaintext highlighter-rouge">Derived</code>用户定义了析构函数也不会调用，无论是否<code class="language-plaintext highlighter-rouge">virtual</code>。</em></p><p>事实上编译器甚至不需要生成<code class="language-plaintext highlighter-rouge">Derived</code>的析构函数，<em>多傻的编译器才会生成这些什么事都不做的代码而光进出函数就得好几条指令？</em></p><p>查看程序中的符号，没有生成<code class="language-plaintext highlighter-rouge">Derived</code>析构函数：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre><td class="rouge-code"><pre># nm test
+...
+0000000000400816 W _ZN4Base4InitEv
+00000000004007fe W _ZN4Base7ReleaseEv
+000000000040082e W _ZN4BaseC2Ev
+0000000000400876 W _ZN4BaseD1Ev             
+00000000004007e6 W _ZN7Derived4InitEv
+00000000004007ce W _ZN7Derived7ReleaseEv
+0000000000400852 W _ZN7DerivedC1Ev
+...
+</pre></table></code></div></div><p>现在把<code class="language-plaintext highlighter-rouge">Base</code>析构函数变为<code class="language-plaintext highlighter-rouge">virtual</code>的：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+</pre><td class="rouge-code"><pre>  44:test.cpp      ****     delete obj;
+ 170                    .loc 1 44 0
+ 171 0028 48837DF0      cmpq    $0, -16(%rbp)
+ 171      00
+ 172 002d 7520          jne .L12
+ 173 002f EB32          jmp .L13
+...
+ 185                .L12:
+ 186                    .loc 1 44 0
+ 187 004f 488B45F0      movq    -16(%rbp), %rax     # this -&gt; rax
+ 188 0053 488B00        movq    (%rax), %rax        # *rax -&gt; vptr
+ 189 0056 4883C008      addq    $8, %rax            # vptr += 8
+ 190 005a 488B00        movq    (%rax), %rax        # *vptr -&gt; Base::~Base
+ 191 005d 488B7DF0      movq    -16(%rbp), %rdi     # this as first argument (passed by rdi)
+ 192 0061 FFD0          call    *%rax               # call
+</pre></table></code></div></div><p>析构函数动态调用这也是预期的。至于为什么是偏移<code class="language-plaintext highlighter-rouge">vptr+8</code>，是因为第一个指针指向的是<code class="language-plaintext highlighter-rouge">type_info</code>，具体可看<a href="http://www.cnblogs.com/zhyg6516/archive/2011/03/07/1971898.html">浅议 Dynamic_cast 和 RTTI</a>。<em>vptr和virtual function table还需要详述吗？</em></p><p>此时就会生成<code class="language-plaintext highlighter-rouge">Derived</code>的析构函数：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+</pre><td class="rouge-code"><pre>...
+000000000040084c W _ZN4Base4InitEv
+00000000004008ac W _ZN4Base7ReleaseEv
+0000000000400864 W _ZN4BaseC2Ev
+0000000000400970 W _ZN4BaseD0Ev
+00000000004009b0 W _ZN4BaseD1Ev
+00000000004008c4 W _ZN4BaseD2Ev
+0000000000400834 W _ZN7Derived4InitEv
+000000000040081c W _ZN7Derived7ReleaseEv
+0000000000400888 W _ZN7DerivedC1Ev
+0000000000400904 W _ZN7DerivedD0Ev          
+000000000040093a W _ZN7DerivedD1Ev
+...
+</pre></table></code></div></div><p>细心的人就会发现无论是<code class="language-plaintext highlighter-rouge">Base</code>还是<code class="language-plaintext highlighter-rouge">Derived</code>都会生成多个析构函数，这个深入下去还有很多内容，具体可以参看：<a href="http://stackoverflow.com/questions/6613870/gnu-gcc-g-why-does-it-generate-multiple-dtors">GNU GCC (g++): Why does it generate multiple dtors?</a>。</p><p>甚至可以运行这个例子看到调用到了<code class="language-plaintext highlighter-rouge">Derived</code>的析构函数：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+</pre><td class="rouge-code"><pre>(gdb) ni
+0x000000000040080d      45          return 0;
+1: x/3i $pc
+0x40080d &lt;main()+117&gt;:  callq  *%rax                  # 调用
+0x40080f &lt;main()+119&gt;:  mov    $0x0,%eax
+0x400814 &lt;main()+124&gt;:  add    $0x28,%rsp
+(gdb) si
+Derived::~Derived (this=0x7ffff7ffd000, __in_chrg=&lt;value optimized out&gt;) at test.cpp:24
+24      class Derived : public Base {
+1: x/3i $pc
+0x400904 &lt;Derived::~Derived()&gt;: push   %rbp
+0x400905 &lt;Derived::~Derived()+1&gt;:       mov    %rsp,%rbp
+0x400908 &lt;Derived::~Derived()+4&gt;:       sub    $0x10,%rsp
+</pre></table></code></div></div><p>其实看<code class="language-plaintext highlighter-rouge">Derived</code>的析构函数实现会发现很多有趣的东西：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+</pre><td class="rouge-code"><pre>(gdb) disassemble 'Derived::~Derived'
+Dump of assembler code for function Derived::~Derived():
+0x0000000000400904 &lt;Derived::~Derived()+0&gt;:     push   %rbp
+0x0000000000400905 &lt;Derived::~Derived()+1&gt;:     mov    %rsp,%rbp
+0x0000000000400908 &lt;Derived::~Derived()+4&gt;:     sub    $0x10,%rsp
+0x000000000040090c &lt;Derived::~Derived()+8&gt;:     mov    %rdi,-0x8(%rbp)
+0x0000000000400910 &lt;Derived::~Derived()+12&gt;:    mov    $0x400b50,%edx
+0x0000000000400915 &lt;Derived::~Derived()+17&gt;:    mov    -0x8(%rbp),%rax
+0x0000000000400919 &lt;Derived::~Derived()+21&gt;:    mov    %rdx,(%rax)
+0x000000000040091c &lt;Derived::~Derived()+24&gt;:    mov    -0x8(%rbp),%rdi
+0x0000000000400920 &lt;Derived::~Derived()+28&gt;:    callq  0x4008c4 &lt;Base::~Base()&gt;
+0x0000000000400925 &lt;Derived::~Derived()+33&gt;:    mov    $0x1,%eax
+0x000000000040092a &lt;Derived::~Derived()+38&gt;:    test   %al,%al
+0x000000000040092c &lt;Derived::~Derived()+40&gt;:    je     0x400937 &lt;Derived::~Derived()+51&gt;
+0x000000000040092e &lt;Derived::~Derived()+42&gt;:    mov    -0x8(%rbp),%rdi
+0x0000000000400932 &lt;Derived::~Derived()+46&gt;:    callq  0x400670 &lt;_ZdlPv@plt&gt;               
+0x0000000000400937 &lt;Derived::~Derived()+51&gt;:    leaveq
+0x0000000000400938 &lt;Derived::~Derived()+52&gt;:    retq
+</pre></table></code></div></div><p>实际上这个析构函数就是上面的<code class="language-plaintext highlighter-rouge">D0</code>版本，它做了一件重要的事就是<code class="language-plaintext highlighter-rouge">delete this</code>。具体的可以google gcc对析构函数的实现。</p><p>构造函数和析构函数中根本就不会启用多态，这个是结论或者说是标准，但不是原因(真怕又有人告诉我c++ standard某section这样写的所以这就是理由)。既然反正已经看实现了，就索性看一眼编译器怎么处理这个问题：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+</pre><td class="rouge-code"><pre>// Base::~Base
+ 261 0000 55            pushq   %rbp
+ 262                .LCFI22:
+ 263 0001 4889E5        movq    %rsp, %rbp
+ 264                .LCFI23:
+ 265 0004 4883EC10      subq    $16, %rsp
+ 266                .LCFI24:
+ 267 0008 48897DF8      movq    %rdi, -8(%rbp)
+ 268                    .loc 1 10 0
+ 269 000c BA000000      movl    $_ZTV4Base+16, %edx
+ 269      00
+ 270 0011 488B45F8      movq    -8(%rbp), %rax
+ 271 0015 488910        movq    %rdx, (%rax)
+ 272                    .loc 1 11 0
+ 273 0018 BF000000      movl    $.LC4, %edi
+ 273      00
+ 274 001d E8000000      call    puts
+ 274      00
+ 275                    .loc 1 12 0
+ 276 0022 488B7DF8      movq    -8(%rbp), %rdi
+ 277 0026 E8000000      call    _ZN4Base7ReleaseEv  # 直接call绝对地址
+</pre></table></code></div></div><p>构造函数一样：</p><div class="language-plaintext highlighter-rouge"><div class="code-header"> <span data-label-text="Plaintext"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+</pre><td class="rouge-code"><pre>  94 0000 55            pushq   %rbp
+  95                .LCFI9:
+  96 0001 4889E5        movq    %rsp, %rbp
+  97                .LCFI10:
+  98 0004 4883EC10      subq    $16, %rsp
+  99                .LCFI11:
+ 100 0008 48897DF8      movq    %rdi, -8(%rbp)
+ 101                .LBB2:
+ 102                    .loc 1 5 0
+ 103 000c B8000000      movl    $_ZTV4Base+16, %eax
+ 103      00
+ 104 0011 488B55F8      movq    -8(%rbp), %rdx
+ 105 0015 488902        movq    %rax, (%rdx)
+ 106                    .loc 1 6 0
+ 107 0018 488B7DF8      movq    -8(%rbp), %rdi
+ 108 001c E8000000      call    _ZN4Base4InitEv  # 直接call地址
+</pre></table></code></div></div><p><em>END</em></p></div><div class="post-tail-wrapper text-muted"><div class="post-meta mb-3"> <i class="far fa-folder-open fa-fw mr-1"></i> <a href='/categories/c-c/'>c/c++</a></div><div class="post-tags"> <i class="fa fa-tags fa-fw mr-1"></i> <a href="/tags/c-c/" class="post-tag no-text-decoration" >c/c++</a> <a href="/tags/virtual/" class="post-tag no-text-decoration" >virtual</a></div><div class="post-tail-bottom d-flex justify-content-between align-items-center mt-3 pt-5 pb-2"><div class="license-wrapper"> 本文由作者按照 <a href="https://creativecommons.org/licenses/by/4.0/"> CC BY 4.0 </a> 进行授权</div><div class="share-wrapper"> <span class="share-label text-muted mr-1">分享</span> <span class="share-icons"> <a href="https://twitter.com/intent/tweet?text=C%2B%2B%E6%9E%84%E9%80%A0%2F%E6%9E%90%E6%9E%84%E5%87%BD%E6%95%B0%E4%B8%AD%E7%9A%84%E5%A4%9A%E6%80%81%28%E4%BA%8C%29+-+Loop+in+Codes&url=https%3A%2F%2Fkevinlynx.cc%2Fposts%2Fnecessary-dtor%2F" data-toggle="tooltip" data-placement="top" title="Twitter" target="_blank" rel="noopener" aria-label="Twitter"> <i class="fa-fw fab fa-twitter"></i> </a> <a href="https://www.facebook.com/sharer/sharer.php?title=C%2B%2B%E6%9E%84%E9%80%A0%2F%E6%9E%90%E6%9E%84%E5%87%BD%E6%95%B0%E4%B8%AD%E7%9A%84%E5%A4%9A%E6%80%81%28%E4%BA%8C%29+-+Loop+in+Codes&u=https%3A%2F%2Fkevinlynx.cc%2Fposts%2Fnecessary-dtor%2F" data-toggle="tooltip" data-placement="top" title="Facebook" target="_blank" rel="noopener" aria-label="Facebook"> <i class="fa-fw fab fa-facebook-square"></i> </a> <a href="https://t.me/share/url?url=https%3A%2F%2Fkevinlynx.cc%2Fposts%2Fnecessary-dtor%2F&text=C%2B%2B%E6%9E%84%E9%80%A0%2F%E6%9E%90%E6%9E%84%E5%87%BD%E6%95%B0%E4%B8%AD%E7%9A%84%E5%A4%9A%E6%80%81%28%E4%BA%8C%29+-+Loop+in+Codes" data-toggle="tooltip" data-placement="top" title="Telegram" target="_blank" rel="noopener" aria-label="Telegram"> <i class="fa-fw fab fa-telegram"></i> </a> <i id="copy-link" class="fa-fw fas fa-link small" data-toggle="tooltip" data-placement="top" title="分享链接" data-title-succeed="链接已复制！"> </i> </span></div></div></div></div></div><div id="panel-wrapper" class="col-xl-3 pl-2 text-muted"><div class="access"><div id="access-tags"><div class="panel-heading">热门标签</div><div class="d-flex flex-wrap mt-3 mb-1 mr-3"> <a class="post-tag" href="/tags/tips/">tips</a> <a class="post-tag" href="/tags/c-c/">c/c++</a> <a class="post-tag" href="/tags/erlang/">erlang</a> <a class="post-tag" href="/tags/dht/">dht</a> <a class="post-tag" href="/tags/lisp/">lisp</a> <a class="post-tag" href="/tags/lua/">lua</a> <a class="post-tag" href="/tags/p2p/">p2p</a> <a class="post-tag" href="/tags/magnet/">magnet</a> <a class="post-tag" href="/tags/octopress/">octopress</a> <a class="post-tag" href="/tags/ruby/">ruby</a></div></div></div></div></div><div class="row"><div id="tail-wrapper" class="col-12 col-lg-11 col-xl-9 pl-3 pr-3 pr-xl-4"><div id="related-posts" class="mt-5 mb-2 mb-sm-4"><h3 class="pt-2 mt-1 mb-4 ml-1" data-toc-skip>相关文章</h3><div class="card-deck mb-4"><div class="card"> <a href="/posts/c-plus-plus-virtual-destructor/"><div class="card-body"> <em class="small" data-ts="1347526980" data-df="YYYY-MM-DD" > 2012-09-13 </em><h3 class="pt-0 mt-1 mb-3" data-toc-skip>C++陷阱：virtual析构函数</h3><div class="text-muted small"><p> 有一天有个同事在通过vld调试一个内存泄漏问题，折腾了很久然后找到我。我瞥了一眼他的代码，发现问题和我曾经遇到的一模一样： class Base { public: ~Base(); }; class Derived : public Base { privated: std::vector&amp;lt;int&amp;gt; m_data; }; Base *obj = n...</p></div></div></a></div><div class="card"> <a href="/posts/c-plus-plus-ctor-virtual/"><div class="card-body"> <em class="small" data-ts="1347868860" data-df="YYYY-MM-DD" > 2012-09-17 </em><h3 class="pt-0 mt-1 mb-3" data-toc-skip>C++陷阱：构造函数中的多态</h3><div class="text-muted small"><p> C++中主要是通过给函数加上virtual关键字来实现多态。多态可用于改变一个接口的实现，也算是一种嵌入应用层代码到底层的实现手段。就算你用不到C++那些复杂的技术，多态肯定会被用到。 但加上virtual不一定能保证多态成功： #include &amp;lt;stdio.h&amp;gt; class Base { public: Base() { Init(); ...</p></div></div></a></div><div class="card"> <a href="/posts/multi-inherit-void/"><div class="card-body"> <em class="small" data-ts="1304092800" data-df="YYYY-MM-DD" > 2011-04-30 </em><h3 class="pt-0 mt-1 mb-3" data-toc-skip>多重继承和void*的糗事</h3><div class="text-muted small"><p> C++为了兼容C，导致了不少语言阴暗面。Bjarne Stroustrup在&amp;lt;D&amp;amp;E&amp;gt;一书里也常为此表现出无奈。另一方面，强制转换也是C++的一大诟病。但是，因为我们的应用环境总是那么“不 纯”，所以也就常常导致各种问题。 本文即描述了一个关于强制转换带来的问题。这个问题几年前我曾遇到过(&amp;lt;多线程下vc2003,vc2005对虚函数表处理的BUG？&amp;gt;)，当时...</p></div></div></a></div></div></div><div class="post-navigation d-flex justify-content-between"> <a href="/posts/stack-frame/" class="btn btn-outline-primary" prompt="上一篇"><p>C/C++中手动获取调用堆栈</p></a> <a href="/posts/understand-git/" class="btn btn-outline-primary" prompt="下一篇"><p>理解git常用命令原理</p></a></div><script type="text/javascript"> $(function () { const origin = "https://giscus.app"; const iframe = "iframe.giscus-frame"; const lightTheme = "light"; const darkTheme = "dark_dimmed"; let initTheme = lightTheme; if ($("html[data-mode=dark]").length > 0 || ($("html[data-mode]").length == 0 && window.matchMedia("(prefers-color-scheme: dark)").matches)) { initTheme = darkTheme; } let giscusAttributes = { "src": "https://giscus.app/client.js", "data-repo": "kevinlynx/kevinlynx.github.io", "data-repo-id": "R_kgDOIAJnIQ", "data-category": "General", "data-category-id": "DIC_kwDOIAJnIc4CReqT", "data-mapping": "pathname", "data-reactions-enabled": "1", "data-emit-metadata": "0", "data-theme": initTheme, "data-input-position": "top", "data-lang": "zh-CN", "crossorigin": "anonymous", "async": "" }; let giscusScript = document.createElement("script"); Object.entries(giscusAttributes).forEach(([key, value]) => giscusScript.setAttribute(key, value)); document.getElementById("tail-wrapper").appendChild(giscusScript); addEventListener("message", (event) => { if (event.source === window && event.data && event.data.direction === ModeToggle.ID) { /* global theme mode changed */ const mode = event.data.message; const theme = (mode === ModeToggle.DARK_MODE ? darkTheme : lightTheme); const message = { setConfig: { theme: theme } }; const giscus = document.querySelector(iframe).contentWindow; giscus.postMessage({ giscus: message }, origin); } }); }); </script></div></div><footer class="row pl-3 pr-3"><div class="col-12 d-flex justify-content-between align-items-center text-muted pl-0 pr-0"><div class="footer-left"><p class="mb-0"> © 2022 <a href="https://github.com/kevinlynx">Kevin Lynx</a>. <span data-toggle="tooltip" data-placement="top" title="除非另有说明，本网站上的博客文章均由作者按照知识共享署名 4.0 国际 (CC BY 4.0) 许可协议进行授权。">保留部分权利。</span></p></div><div class="footer-right"><p class="mb-0"> 本站由 <a href="https://jekyllrb.com" target="_blank" rel="noopener">Jekyll</a> 生成，采用 <a href="https://github.com/cotes2020/jekyll-theme-chirpy" target="_blank" rel="noopener">Chirpy</a> 主题。</p></div></div></footer></div><div id="search-result-wrapper" class="d-flex justify-content-center unloaded"><div class="col-12 col-sm-11 post-content"><div id="search-hints"><div id="access-tags"><div class="panel-heading">热门标签</div><div class="d-flex flex-wrap mt-3 mb-1 mr-3"> <a class="post-tag" href="/tags/tips/">tips</a> <a class="post-tag" href="/tags/c-c/">c/c++</a> <a class="post-tag" href="/tags/erlang/">erlang</a> <a class="post-tag" href="/tags/dht/">dht</a> <a class="post-tag" href="/tags/lisp/">lisp</a> <a class="post-tag" href="/tags/lua/">lua</a> <a class="post-tag" href="/tags/p2p/">p2p</a> <a class="post-tag" href="/tags/magnet/">magnet</a> <a class="post-tag" href="/tags/octopress/">octopress</a> <a class="post-tag" href="/tags/ruby/">ruby</a></div></div></div><div id="search-results" class="d-flex flex-wrap justify-content-center text-muted mt-3"></div></div></div></div><div id="mask"></div><a id="back-to-top" href="#" aria-label="back-to-top" class="btn btn-lg btn-box-shadow" role="button"> <i class="fas fa-angle-up"></i> </a><div id="notification" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-animation="true" data-autohide="false"><div class="toast-header"> <button type="button" class="ml-2 ml-auto close" data-dismiss="toast" aria-label="Close"> <span aria-hidden="true">&times;</span> </button></div><div class="toast-body text-center pt-0"><p class="pl-2 pr-2 mb-3">发现新版本的内容。</p><button type="button" class="btn btn-primary" aria-label="Update"> 更新 </button></div></div><script src="https://cdn.jsdelivr.net/npm/simple-jekyll-search@1.10.0/dest/simple-jekyll-search.min.js"></script> <script> SimpleJekyllSearch({ searchInput: document.getElementById('search-input'), resultsContainer: document.getElementById('search-results'), json: '/assets/js/data/search.json', searchResultTemplate: '<div class="pl-1 pr-1 pl-sm-2 pr-sm-2 pl-lg-4 pr-lg-4 pl-xl-0 pr-xl-0"> <a href="{url}">{title}</a><div class="post-meta d-flex flex-column flex-sm-row text-muted mt-1 mb-1"> {categories} {tags}</div><p>{snippet}</p></div>', noResultsText: '<p class="mt-5">搜索结果为空</p>', templateMiddleware: function(prop, value, template) { if (prop === 'categories') { if (value === '') { return `${value}`; } else { return `<div class="mr-sm-4"><i class="far fa-folder fa-fw"></i>${value}</div>`; } } if (prop === 'tags') { if (value === '') { return `${value}`; } else { return `<div><i class="fa fa-tag fa-fw"></i>${value}</div>`; } } } }); </script> <script src="https://cdn.jsdelivr.net/combine/npm/magnific-popup@1/dist/jquery.magnific-popup.min.js,npm/lozad/dist/lozad.min.js,npm/clipboard@2/dist/clipboard.min.js"></script> <script src="https://cdn.jsdelivr.net/combine/npm/dayjs@1/dayjs.min.js,npm/dayjs@1/locale/zh.min.js,npm/dayjs@1/plugin/relativeTime.min.js,npm/dayjs@1/plugin/localizedFormat.min.js"></script> <script defer src="/assets/js/dist/post.min.js"></script> <script src="https://cdn.jsdelivr.net/npm/bootstrap@4/dist/js/bootstrap.bundle.min.js"></script> <script defer src="/app.js"></script>
